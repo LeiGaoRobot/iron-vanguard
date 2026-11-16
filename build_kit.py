@@ -542,6 +542,67 @@ def build_relay():
         box((s * 0.9, 0, 0.5), (0.12, 0.12, 0.9), M["Frame"], dish)
     empty("E_RCore", (0, 0, 3.2), K)
 
+def build_colossus():
+    # Colossus: ~20 m quadruped siege walker. front = +Y. Breakable parts: E_CPodL (missile pod), E_CPodR (cannon pod),
+    # E_CCore (belly core). Legs hang from hip empties E_CLeg0..3 (swing about X).
+    K = kit("E_Colossus")
+    box((0, 0, 13.5), (13, 15, 3.2), M["EArmor"], K, bevel=0.2)                  # main deck
+    wedge((0, 8.6, 13.4), (11, 2.4, 2.8), M["EArmor"], K, taper=0.5, bevel=0.1)    # prow
+    box((0, -1, 15.9), (9, 10, 1.8), M["EArmor2"], K, bevel=0.15)                 # upper deck
+    box((0, -8.2, 14.2), (10, 1.8, 3.6), M["Frame"], K, bevel=0.1)                # rear engine block
+    for i in range(4):
+        cyl((-3.6 + i * 2.4, -9.3, 15.6), 0.5, 1.6, M["Nozzle"], K, rot=ALONG_Y, verts=10)
+        cyl((-3.6 + i * 2.4, -10.1, 15.6), 0.32, 0.1, M["NozzleGlow"], K, rot=ALONG_Y, verts=10)
+    for sx in (-1, 1):
+        box((sx * 6.6, 0, 13.5), (0.3, 13, 2.2), M["Hazard"], K)
+        for j in range(5):
+            box((sx * 6.75, -5 + j * 2.5, 14.2), (0.2, 1.4, 0.5), M["Frame"], K)
+    # sensor head
+    box((0, 8.4, 16.2), (4.2, 3.4, 2.2), M["EArmor2"], K, bevel=0.15)
+    box((0, 10.12, 16.4), (3.2, 0.08, 0.5), M["EEye"], K)
+    for sx in (-1, 1):
+        ball((sx * 1.2, 10.05, 15.6), 0.32, M["EEye"], K)
+    cyl((1.6, 6.8, 18.4), 0.08, 2.6, M["Frame"], K, verts=6)
+    ball((1.6, 6.8, 19.75), 0.18, M["EEye"], K)
+    # belly core (weak point) under the deck, caged
+    core = empty("E_CCore", (0, 0, 10.4), K)
+    ball((0, 0, 0), 2.1, M["Plasma"], core, sub=2)
+    torus((0, 0, 0), 2.5, 0.28, M["Frame"], core)
+    torus((0, 0, 0), 2.5, 0.28, M["Frame"], core, rot=(math.pi / 2, 0, 0))
+    cyl((0, 0, 1.9), 1.4, 1.2, M["Frame"], core, verts=10)
+    # pods on the upper deck
+    pl = empty("E_CPodL", (-4.2, 1.5, 17.9), K)
+    box((0, 0, 0), (3.4, 4.6, 2.6), M["EArmor"], pl, bevel=0.12)
+    for ix in range(3):
+        for iz in range(2):
+            cyl((-1.0 + ix * 1.0, 2.32, -0.5 + iz * 1.0), 0.36, 0.2, M["Black"], pl, rot=ALONG_Y, verts=8)
+            cyl((-1.0 + ix * 1.0, 2.38, -0.5 + iz * 1.0), 0.18, 0.08, M["EEye"], pl, rot=ALONG_Y, verts=8)
+    box((-1.75, 0, 0), (0.12, 3.8, 1.4), M["Hazard"], pl)
+    empty("Muzzle_CPodL", (0, 2.6, 0.4), pl)
+    pr = empty("E_CPodR", (4.2, 1.5, 17.9), K)
+    box((0, -0.6, 0), (3.2, 3.6, 2.4), M["EArmor"], pr, bevel=0.12)
+    for sx in (-0.65, 0.65):
+        cyl((sx, 2.8, 0.1), 0.42, 4.6, M["Frame"], pr, rot=ALONG_Y, verts=12)
+        cyl((sx, 5.1, 0.1), 0.55, 0.5, M["Joint"], pr, rot=ALONG_Y, verts=12)
+    box((1.65, -0.6, 0), (0.12, 2.8, 1.2), M["Hazard"], pr)
+    empty("Muzzle_CPodR", (0, 5.5, 0.1), pr)
+    # legs: hip at deck corner, thigh out/down to a knee, shin to a broad foot
+    for i, (sx, sy) in enumerate(((-1, 1), (1, 1), (-1, -1), (1, -1))):
+        hip = empty(f"E_CLeg{i}", (sx * 5.6, sy * 5.4, 12.6), K)
+        ball((0, 0, 0), 1.5, M["Joint"], hip)
+        # thigh: from hip (0,0,0) to knee (sx*4.4, sy*3.0, 1.4)
+        kx, ky, kz = sx * 4.4, sy * 3.0, 1.6
+        L = math.sqrt(kx * kx + ky * ky + kz * kz)
+        ax = math.atan2(math.hypot(kx, ky), kz)
+        az = math.atan2(ky, kx) - math.pi / 2
+        box((kx / 2, ky / 2, kz / 2), (1.6, 1.6, L), M["EArmor2"], hip, rot=(ax, 0, az + math.pi), bevel=0.1)
+        ball((kx, ky, kz), 1.1, M["Joint"], hip)
+        # shin straight down to the foot
+        box((kx, ky, (kz - 12.0) / 2 + kz / 2 - kz / 2), (1.3, 1.3, 12.0 + kz), M["Frame"], hip, bevel=0.08)
+        box((kx, ky, -6.2), (1.7, 1.7, 3.0), M["EArmor"], hip, bevel=0.1)
+        cyl((kx, ky, -12.1), 1.9, 1.0, M["EArmor2"], hip, verts=8, smooth=False)
+        box((kx, ky, -6.2 + 1.2), (1.75, 1.75, 0.3), M["Hazard"], hip)
+
 def build_reactor():
     # friendly reactor core for the defense mission: ~11 m, octagonal base, glowing coil column, spinning ring F_RRing
     K = kit("F_Reactor")
@@ -626,7 +687,7 @@ def build_props():
 build_mech()
 build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun()
 build_missile(); build_cannon(); build_laser(); build_shield()
-build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout

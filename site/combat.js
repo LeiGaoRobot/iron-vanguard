@@ -43,7 +43,7 @@ const _a = new V3(), _b = new V3(), _c = new V3(), _d = new V3();
 function entsFor(team) {
   const out = [];
   if (team === 'P') {
-    for (const e of G.enemies) if (e.alive && !e.dying) out.push(e);
+    for (const e of G.enemies) if (e.alive && !e.dying) { if (e.parts) { for (const pt of e.parts) if (pt.alive) out.push(pt); } else out.push(e); }
     for (const b of barrels) if (!b.dead) out.push(b.ent || (b.ent = { isBarrel: true, b, c: b.pos, r: 1.5, get alive() { return !b.dead; }, hit: (dmg) => hitBarrel(b, dmg) }));
   } else {
     const p = G.player;
@@ -949,7 +949,176 @@ export class Boss {
 }
 
 // ------------------------------------------------------------------ pickups
+// Colossus: 25 m quadruped siege walker. Three breakable parts — missile pod, cannon pod, belly core. The core is armoured
+// (damage x0.12) until both pods are gone. Stomps anyone standing under it (jump to avoid); in phase 2 the core fires plasma.
+export class Colossus {
+  constructor(pos, hpMul = 1) {
+    const S = this.scale = 1.4;
+    this.kind = 'boss'; this.isColossus = true;
+    this.B = { name: '巨像 COLOSSUS', palette: 'tyrant', phase2: ['巨像核心暴露', '两座武器舱已毁 · 攻击腹部发光核心'] };
+    this.obj = cloneKit('E_Colossus'); this.obj.scale.setScalar(S); this.obj.position.copy(pos); G.scene.add(this.obj);
+    this.n = nodes(this.obj); this.pos = this.obj.position; this.vel = new V3();
+    this.yaw = Math.atan2(pos.x - G.player.pos.x, pos.z - G.player.pos.z); this.obj.rotation.y = this.yaw;
+    const H = G.diff.hp * hpMul;
+    const mk = (key, node, hp, r) => {
+      const pt = { kind: 'cpart', key, node: this.n[node], owner: this, c: new V3(), r, hp, maxHp: hp, alive: true };
+      pt.hit = (dmg, at) => this.hitPart(pt, dmg, at);
+      return pt;
+    };
+    this.parts = [mk('podL', 'E_CPodL', 3800 * H, 2.7 * S), mk('podR', 'E_CPodR', 3800 * H, 2.7 * S), mk('core', 'E_CCore', 7600 * H, 2.3 * S)];
+    this.core = this.parts[2];
+    this.maxHp = this.parts.reduce((a, p) => a + p.maxHp, 0); this.hp = this.maxHp;
+    this.c = new V3(); this.r = 4; this.alive = true; this.dying = false; this.phase = 1;
+    this.msT = 5; this.cnT = 3; this.stompT = 4; this.windT = 0; this.plT = 2; this.stepPh = 0; this.armorSaid = 0; this.losT = 0; this.los = true;
+    this.legs = [0, 1, 2, 3].map((i) => this.n['E_CLeg' + i]);
+    this.updateParts();
+    G.enemies.push(this);
+  }
+  tg() { return pickTarget(this); }
+  updateParts() {
+    this.obj.updateMatrixWorld(true);
+    for (const pt of this.parts) if (pt.node) pt.node.getWorldPosition(pt.c);
+    const lead = this.parts.find((p) => p.alive && p.key !== 'core') || this.core;
+    this.c.copy(lead.c);
+  }
+  hitPart(pt, dmg) {
+    if (!pt.alive || !this.alive) return;
+    if (pt.key === 'core' && this.phase === 1) {
+      dmg *= 0.12;
+      if (Math.random() < 0.3) G.fx.sparks(pt.c, null, 4, 0xffd080, 14, 1, 0.25, 0.25);
+      if (G.time - this.armorSaid > 12) { this.armorSaid = G.time; G.onHint && G.onHint('核心有装甲 · 先摧毁两座武器舱', 2.4); }
+    }
+    pt.hp -= dmg;
+    this.hp = this.parts.reduce((a, p) => a + Math.max(0, p.hp), 0);
+    if (pt.hp > 0) return;
+    pt.alive = false; pt.hp = 0;
+    if (pt.key === 'core') { this.die(); return; }
+    G.fx.explosion(pt.c, 2.6); G.fx.flash(pt.c, 0xff8040, 60, 40, 0.4); sfx('bigboom', G.player.pos.distanceTo(pt.c));
+    G.fx.trauma = Math.min(1, (G.fx.trauma || 0) + 0.5);
+    if (pt.node) pt.node.visible = false;
+    G.onHint && G.onHint(pt.key === 'podL' ? '导弹舱已摧毁' : '炮舱已摧毁', 2);
+    if (this.parts.every((p) => p.key === 'core' || !p.alive)) { this.phase = 2; G.onBossPhase && G.onBossPhase(this); }
+  }
+  die() {
+    this.alive = false; this.dying = true; this.deathT = 3.2; this.hp = 0;
+    G.stats.kills++; G.onKill && G.onKill(this);
+  }
+  remove() { this.obj.parent && this.obj.parent.remove(this.obj); this.gone = true; }
+  update(dt) {
+    const S = this.scale;
+    if (this.dying) {
+      this.deathT -= dt;
+      if (Math.random() < 0.18) { _a.copy(this.pos).add(_b.set((Math.random() - 0.5) * 16, 12 + Math.random() * 12, (Math.random() - 0.5) * 16)); G.fx.explosion(_a, 1.4 + Math.random()); if (Math.random() < 0.5) sfx('boom', G.player.pos.distanceTo(_a)); }
+      this.obj.rotation.z += dt * 0.08; this.obj.position.y -= dt * 1.2;
+      if (this.deathT <= 0) { explodeAt(this.core.c.clone(), 18, 0, 'P', 4, 0xff7030); G.fx.flash(this.core.c, 0xffa060, 120, 80, 0.8); this.remove(); }
+      return;
+    }
+    const t = this.tg(), tc = t.center(playerC);
+    const dx = tc.x - this.pos.x, dz = tc.z - this.pos.z, dist = Math.hypot(dx, dz);
+    // slow tank-like walk: turn toward the target, keep it at 30–60 m
+    const want = Math.atan2(-dx, -dz);
+    this.yaw += Math.max(-0.4 * dt, Math.min(0.4 * dt, angDiff(want, this.yaw)));
+    const sp = (this.phase === 2 ? 3.4 : 2.4) * (dist > 60 ? 1 : dist < 30 ? -0.5 : 0.2);
+    this.vel.set(-Math.sin(this.yaw) * sp, 0, -Math.cos(this.yaw) * sp);
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    collideCyl(this.pos, 7, 4);
+    this.pos.x = Math.max(-ARENA + 14, Math.min(ARENA - 14, this.pos.x)); this.pos.z = Math.max(-ARENA + 14, Math.min(ARENA - 14, this.pos.z));
+    this.obj.rotation.y = this.yaw;
+    this.stepPh += Math.abs(sp) * dt * 0.55 + dt * 0.15;
+    for (let i = 0; i < 4; i++) if (this.legs[i]) this.legs[i].rotation.x = Math.sin(this.stepPh + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.16;
+    const bob = Math.abs(Math.sin(this.stepPh)) * 0.35;
+    this.obj.position.y = bob;
+    if (Math.abs(sp) > 0.5 && Math.sin(this.stepPh) * Math.sin(this.stepPh - dt) < 0) { sfx('land', G.player.pos.distanceTo(this.pos) * 0.6); G.fx.trauma = Math.min(1, (G.fx.trauma || 0) + Math.max(0, 0.25 - dist / 400)); }
+    this.updateParts();
+    this.losT -= dt; if (this.losT <= 0) { this.losT = 0.4; this.los = clearLine(_c.copy(this.pos).setY(22 * S * 0.9), tc); }
+    const pod = (k) => this.parts.find((p) => p.key === k && p.alive);
+    // missile pod: 8 homing missiles
+    if (pod('podL') && dist < 170) {
+      this.msT -= dt;
+      if (this.msT <= 0) {
+        this.msT = 7 + Math.random() * 2;
+        if (t === G.player) G.onEnemyMissile && G.onEnemyMissile();
+        for (let k = 0; k < 10; k++) G.queue.push({ label: 'colossus-missile', t: k * 0.14, fn: () => {
+          const pl = pod('podL'); if (!pl || !this.alive) return;
+          const mp = this.n.Muzzle_CPodL.getWorldPosition(_a).clone(), f = this.tg();
+          const v = new V3((Math.random() - 0.5) * 10, 20 + Math.random() * 6, (Math.random() - 0.5) * 10).addScaledVector(_d.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw)), 10);
+          spawnShot({ p: mp, v, dmg: 20, team: 'E', kind: 'missile', splash: 4, target: f._ent, aim: f.center(new V3()), life: 7, maxSpeed: 52, turn: 1.6, label: 'colossus-missile' });
+          G.fx.muzzle(mp, v.clone().normalize(), 0xff7040, 1.2); sfx('missile', dist);
+        } });
+      }
+    }
+    // cannon pod: 4 lobbed shells around the target, landing spots marked
+    if (pod('podR') && dist < 150 && this.los) {
+      this.cnT -= dt;
+      if (this.cnT <= 0) {
+        this.cnT = 4.2 + Math.random() * 1.2;
+        for (let k = 0; k < 6; k++) G.queue.push({ label: 'colossus-cannon', t: k * 0.3, fn: () => {
+          if (!pod('podR') || !this.alive) return;
+          const mp = this.n.Muzzle_CPodR.getWorldPosition(_a).clone(), f = this.tg();
+          const D = Math.hypot(f.pos.x - mp.x, f.pos.z - mp.z), Tf = 1.6 + D / 80, g = 22;
+          const aim = new V3().copy(f.pos).addScaledVector(f.vel, Tf * 0.6);
+          if (k) { aim.x += (Math.random() - 0.5) * 16; aim.z += (Math.random() - 0.5) * 16; }
+          aim.y = groundAt(aim.x, aim.z, aim.y + 1);
+          const v = new V3((aim.x - mp.x) / Tf, (aim.y - mp.y + 0.5 * g * Tf * Tf) / Tf, (aim.z - mp.z) / Tf);
+          spawnShot({ p: mp, v, dmg: 32, team: 'E', kind: 'shell', splash: 7, life: Tf + 1, grav: g, label: 'colossus-cannon' });
+          G.fx.warn(aim, 7, Tf); G.fx.muzzle(mp, _d.copy(v).normalize(), 0xff9050, 2.4); sfx('cannon', dist);
+        } });
+      }
+    }
+    // chin gun: bursts from the sensor head, always active
+    this.gunT = (this.gunT ?? 2) - dt;
+    if (this.gunT <= 0 && dist < 90 && this.los) {
+      this.gunT = 3.4;
+      for (let k = 0; k < 6; k++) G.queue.push({ label: 'colossus-gun', t: k * 0.07, fn: () => {
+        if (!this.alive) return;
+        const mp = this.obj.localToWorld(new V3(0, 16.4, -10.4)), f = this.tg(), aim = lead(mp, 150, _b, f);
+        _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.06; _d.y += (Math.random() - 0.5) * 0.04; _d.z += (Math.random() - 0.5) * 0.06;
+        spawnShot({ p: mp, v: _d.normalize().multiplyScalar(150), dmg: 4.5, team: 'E', kind: 'ebullet', color: 0xff6040, w: 0.32, len: 6, label: 'colossus-gun' });
+        G.fx.muzzle(mp, _d, 0xff8a50, 1.2); sfx('eshot', dist);
+      } });
+    }
+    // stomp: anyone under or right next to it gets a ground shockwave (jump / hover to avoid)
+    this.stompT -= dt;
+    let near = false;
+    for (const f of [G.player, ...G.friends]) if (f && f.alive && Math.hypot(f.pos.x - this.pos.x, f.pos.z - this.pos.z) < 20 * S * 0.8) near = true;
+    if (this.windT > 0) {
+      this.windT -= dt;
+      for (const l of this.legs) if (l) l.rotation.x *= 0.9;
+      this.obj.position.y = 1.4 * (1 - this.windT / 1.3);
+      if (this.windT <= 0) {
+        const R = 22, gp = new V3(this.pos.x, 0.4, this.pos.z);
+        G.fx.ring(gp, null, 2, R + 4, 0.6, 0xff8a40); G.fx.ring(gp, null, 1, R * 0.6, 0.4, 0xffc080); G.fx.dust(gp, 8, 6, 20);
+        G.fx.trauma = 1; sfx('bigboom', G.player.pos.distanceTo(this.pos));
+        G.curLabel = 'colossus-stomp';
+        for (const e of entsFor('E')) {
+          if (e.isBarrel) continue;
+          const hd = Math.hypot(e.c.x - this.pos.x, e.c.z - this.pos.z), gy = groundAt(e.c.x, e.c.z, e.c.y);
+          if (hd < R && e.c.y - gy < 4.2) dealDamage(e, 70 * (1 - hd / R * 0.4), 'E', gp, 'colossus-stomp');
+        }
+        this.stompT = 7;
+      }
+    } else if (near && this.stompT <= 0) {
+      this.windT = 1.3; G.fx.warn(new V3(this.pos.x, groundAt(this.pos.x, this.pos.z, 1), this.pos.z), 22, 1.3); sfx('warn', 0);
+    }
+    // phase 2: the exposed core fires plasma bursts
+    if (this.phase === 2 && dist < 140 && this.los) {
+      this.plT -= dt;
+      if (this.plT <= 0) {
+        this.plT = 2.1;
+        for (let k = 0; k < 4; k++) G.queue.push({ label: 'colossus-plasma', t: k * 0.25, fn: () => {
+          if (!this.alive) return;
+          const mp = this.core.c.clone(), f = this.tg(), aim = lead(mp, 75, _b, f);
+          _d.subVectors(aim, mp).normalize();
+          spawnShot({ p: mp, v: _d.clone().multiplyScalar(75), dmg: 24, team: 'E', kind: 'plasma', splash: 6, life: 3, size: 1.2, label: 'colossus-plasma' });
+          G.fx.muzzle(mp, _d, 0xff8a30, 2); sfx('cannon', dist);
+        } });
+      }
+    }
+  }
+}
+
 export function dropRepair(pos) {
+  if (G.noRepair) return;
   const o = cloneKit('P_Repair'); o.position.copy(pos); o.position.y = Math.max(1.5, groundAt(pos.x, pos.z, pos.y) + 1.5);
   G.scene.add(o);
   G.pickups.push({ o, t: 0 });

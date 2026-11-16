@@ -11,7 +11,7 @@ import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 const V3 = THREE.Vector3;
@@ -60,6 +60,11 @@ const MISSIONS = {
     { title: 'WAVE 4', sub: '敌方机甲小队', spawn: { bulwark: 2, raider: 2, lancer: 1, drone: 3 }, late: { gunship: 1, walker: 2 } },
     { title: 'FINAL WAVE', sub: '「暴君」封锁撤离点', spawn: { boss: 'tyrant', drone: 3, walker: 2 }, late: { raider: 1, bulwark: 1, drone: 3 } },
   ] },
+  ash: { name: '灰烬 · 巨像', en: 'COLOSSUS', desc: '火山灰夜幕 · 巨型四足攻城兵器「巨像」 · 先毁武器舱再打核心', seed: 61, env: 'ash', reward: 5200, waves: [
+    { title: 'WAVE 1', sub: '先遣部队', spawn: { walker: 3, drone: 5, turret: 3 } },
+    { title: 'WAVE 2', sub: '护卫机甲', spawn: { raider: 2, bulwark: 1, drone: 4 } },
+    { title: 'FINAL WAVE', sub: '巨像来袭 · 摧毁两座武器舱，再攻击腹部核心 · 别站在它脚下', spawn: { colossus: 1, drone: 3 } },
+  ] },
   endless: { name: '无尽防线', en: 'ENDLESS', desc: '黄昏 · 无限波次，越来越强 · 每 5 波一个头目', seed: 5, env: 'dusk', endless: true, reward: 0 },
 };
 const ENVS = {
@@ -67,6 +72,7 @@ const ENVS = {
   dusk: { top: 0x3c4f7c, hor: 0xd99a74, fog: [80, 520], hemi: [0xffd6b8, 0x4c4240, 0.5], sun: [0xffb47a, 2.5], env: 0.34, exp: 0.95, dir: [-0.62, 0.2, 0.46], disc: 1.4 },
   snow: { top: 0x8ea3b8, hor: 0xd6dee6, fog: [40, 300], hemi: [0xeef4ff, 0x8f99a6, 0.72], sun: [0xf2f6ff, 1.5], env: 0.36, exp: 0.82, dir: [0.35, 0.42, 0.65], disc: 0.35, snow: true },
   desert: { top: 0x6f9cc6, hor: 0xe8d2a8, fog: [80, 520], hemi: [0xfff0d8, 0x8a6a48, 0.62], sun: [0xffe4b8, 2.6], env: 0.4, exp: 0.86, dir: [0.5, 0.62, -0.38], disc: 1.3 },
+  ash: { top: 0x1f1716, hor: 0x7a4a36, fog: [45, 360], hemi: [0xffc0a0, 0x2a2020, 0.42], sun: [0xff9060, 1.5], env: 0.22, exp: 1.02, dir: [-0.45, 0.32, 0.6], disc: 0.8, ash: true },
   storm: { top: 0x1c232c, hor: 0x46505c, fog: [30, 230], hemi: [0x9aacc0, 0x26282c, 0.42], sun: [0xc0cce0, 0.8], env: 0.2, exp: 1.02, dir: [0.25, 0.7, 0.4], disc: 0.05, rain: true },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
@@ -78,6 +84,14 @@ const UPGRADES = {
   fcs: { name: '火控系统', desc: '全武器伤害 +6%' },
 };
 const UP_COST = [600, 1200, 2000, 3000, 4200];
+// challenge modifiers: toggled on the title screen, each raises the payout
+const MODS = {
+  glass: { name: '玻璃机体', desc: '机体 AP ×0.6', cr: 0.3 },
+  elite: { name: '精锐敌军', desc: '敌方耐久 ×1.3', cr: 0.3 },
+  nofix: { name: '无补给', desc: '敌人不掉修理包 · 波间不修复装甲', cr: 0.25 },
+};
+const modOn = (k) => !!(cfg.mods && cfg.mods[k]);
+const modMul = () => 1 + Object.keys(MODS).reduce((a, k) => a + (modOn(k) ? MODS[k].cr : 0), 0);
 const SAVE_KEY = 'ironvanguard.save.v1';
 const save = { cr: 0, up: { armor: 0, gen: 0, thr: 0, fcs: 0 }, best: {}, bestWave: 0, earned: 0, wing: false };
 const WING_COST = 2500, WING_CR = 0.85;
@@ -94,6 +108,7 @@ const saveCfg = () => { try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg))
 // migrate the v1 per-difficulty best times (proving ground only)
 try { const old = JSON.parse(localStorage.getItem('ironvanguard.best') || '{}'); for (const k in old) if (!save.best['drill.' + k]) save.best['drill.' + k] = old[k]; } catch (e) { /* ignore */ }
 if (!MISSIONS[cfg.mission]) cfg.mission = 'drill';
+if (!cfg.mods || typeof cfg.mods !== 'object') cfg.mods = {};
 
 // ------------------------------------------------------------------ renderer / scene
 const canvas = $('c');
@@ -133,7 +148,8 @@ function applyEnv(key) {
   hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2];
   sun.color.set(E.sun[0]); sun.intensity = E.sun[1];
   scene.environmentIntensity = E.env; renderer.toneMappingExposure = E.exp;
-  snowFx.visible = !!E.snow; rainFx.visible = !!E.rain;
+  snowFx.visible = !!(E.snow || E.ash); rainFx.visible = !!E.rain;
+  snowFx.material.color.set(E.ash ? 0x6a605a : 0xffffff); snowFx.userData.k = E.ash ? 0.35 : 1;
   storm.on = !!E.rain; storm.hemi = E.hemi[2]; storm.top.set(E.top); storm.k = 0; storm.t = 4 + Math.random() * 6;
 }
 let arenaKey = '';
@@ -196,7 +212,7 @@ function updateSnow(dt) {
   const cc = [c.x, c.y, c.z];
   for (let i = 0; i < SNOW_N; i++) {
     const j = i * 3;
-    a[j] += (Math.sin(t * 0.9 + ph[i]) * 0.6 + 2.2) * dt; a[j + 1] -= (2.6 + (ph[i] % 1.3)) * dt; a[j + 2] += Math.cos(t * 0.7 + ph[i]) * 0.5 * dt;
+    a[j] += (Math.sin(t * 0.9 + ph[i]) * 0.6 + 2.2) * dt; a[j + 1] -= (2.6 + (ph[i] % 1.3)) * dt * (snowFx.userData.k || 1); a[j + 2] += Math.cos(t * 0.7 + ph[i]) * 0.5 * dt;
     for (let k = 0; k < 3; k++) { const d = a[j + k] - cc[k]; if (d > H) a[j + k] -= SNOW_BOX; else if (d < -H) a[j + k] += SNOW_BOX; }
   }
   snowFx.geometry.attributes.position.needsUpdate = true;
@@ -443,7 +459,8 @@ const run = { wave: -1, breakT: 0, t: 0, over: false, deathT: 0, won: false, bos
 function endlessWave(i) {
   const n = i + 1;
   if (n % 5 === 0) {
-    const type = (n / 5) % 2 ? 'tyrant' : 'phantom';
+    if (n % 10 === 0) return { title: `WAVE ${n}`, sub: '巨像来袭：先摧毁武器舱', boss: true, spawn: { colossus: 1, bossHp: 0.7 + 0.1 * (n / 10 - 1), drone: Math.min(6, 2 + n / 10) } };
+    const type = ((n - 5) / 10) % 2 ? 'phantom' : 'tyrant';
     return { title: `WAVE ${n}`, sub: `头目来袭：${BOSSES[type].name}`, boss: true, spawn: { boss: type, bossHp: 0.75 + 0.15 * (n / 5 - 1), drone: Math.min(6, 1 + n / 5), turret: n >= 10 ? 2 : 0 } };
   }
   const pool = [['drone', 1, 99], ['turret', 1.5, 8]];
@@ -486,7 +503,10 @@ function newGame() {
   clearWorld();
   arenaKey = ''; ensureArena();   // rebuild so barrels and props are fresh
   G.diff = { key: cfg.diff, ...DIFFS[cfg.diff] };
+  if (modOn('elite')) G.diff.hp *= 1.3;
+  G.noRepair = modOn('nofix');
   makePlayer();
+  if (modOn('glass')) { G.player.maxHp = Math.round(G.player.maxHp * 0.6); G.player.hp = G.player.maxHp; }
   Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
   const M = MISSIONS[cfg.mission];
   if (M.defense) {
@@ -530,9 +550,9 @@ function roofSpot(minD, maxD) {
 function startWave(i) {
   if (run.endless && !run.waves[i]) run.waves[i] = endlessWave(i);
   run.wave = i; const W = run.waves[i];
-  if (run.endless) G.diff.hp = DIFFS[cfg.diff].hp * (1 + 0.05 * i);
+  if (run.endless) G.diff.hp = DIFFS[cfg.diff].hp * (1 + 0.05 * i) * (modOn('elite') ? 1.3 : 1);
   const S = W.spawn, R = run.defense ? 1.15 : 1;
-  banner(W.title, W.sub, !!S.boss);
+  banner(W.title, W.sub, !!(S.boss || S.colossus));
   sfx(S.boss ? 'alarm' : 'wave');
   // defense: the first group comes from one side; a second group follows from the opposite side
   const b0 = run.defense ? Math.atan2(G.player.pos.z, G.player.pos.x) + Math.PI * (0.5 + Math.random()) : run.escort && G.core ? G.core.heading() : undefined;
@@ -540,6 +560,11 @@ function startWave(i) {
   run.late = W.late || null; run.lateT = run.t + 20; run.lateB = b0 === undefined ? undefined : b0 + Math.PI;
   for (let k = 0; k < (S.relay || 0); k++) new Relay(relaySites[k].clone());
   G.bosses = [];
+  if (S.colossus) {
+    G.boss = new Colossus(spot(110, 140), S.bossHp || 1); G.bosses.push(G.boss);
+    $('bossName').textContent = G.boss.B.name; $('bossBox').classList.remove('hidden');
+    sfx('alarm');
+  }
   if (S.boss) {
     G.boss = new Boss(spot(90 * R, 120 * R), mctx, S.boss, S.bossHp || 1); G.bosses.push(G.boss);
     run.boss2 = S.boss2 ? { type: S.boss2, hp: S.bossHp || 1, t: 0 } : null;   // the second boss drops in mid-fight
@@ -576,6 +601,7 @@ G.onRelayCall = (r) => {
   G.fx.ring(new V3(r.pos.x, 13.5, r.pos.z), null, 1, 10, 0.6, 0xff6040);
   if (!run.relayHintT || run.t - run.relayHintT > 40) { run.relayHintT = run.t; showHint('中继塔正在呼叫增援 · 优先摧毁中继塔', 2.5); }
 };
+G.onHint = (t, d) => showHint(t, d);
 G.onEnemyMissile = () => { if (run.msslT <= 0) { sfx('warn'); run.msslT = 1; } };
 G.onPlayerHit = () => {};
 G.onAllyDown = () => { showHint(`僚机被击毁 · ${WING.respawn} 秒后重新空投`, 3); };
@@ -679,11 +705,11 @@ function waveLogic(dt) {
     if (!run.endless && !run.escort && run.wave >= run.waves.length - 1) { if (!run.won) { run.won = true; banner('MISSION COMPLETE', '头目已击破', false); run.deathT = 3.5; } run.deathT -= dt; if (run.deathT <= 0) finish(true); return; }
     if (run.endless) { const b = Math.round(150 * (run.wave + 1) * DIFFS[cfg.diff].cr); run.cr += b; }
     G.boss = null; G.bosses = [];
-    banner(run.waves[run.wave].spawn.relay ? 'OBJECTIVE CLEAR' : run.escort && run.wave >= run.waves.length - 1 ? 'AREA CLEAR' : 'WAVE CLEAR', run.endless ? `第 ${run.wave + 1} 波完成 · 弹药补满 · 修复 25% 装甲` : '短暂整备 · 弹药补满 · 修复 25% 装甲', false);
+    banner(run.waves[run.wave].spawn.relay ? 'OBJECTIVE CLEAR' : run.escort && run.wave >= run.waves.length - 1 ? 'AREA CLEAR' : 'WAVE CLEAR', run.endless ? `第 ${run.wave + 1} 波完成 · 弹药补满 · 修复 25% 装甲` : (G.noRepair ? '短暂整备 · 弹药补满' : '短暂整备 · 弹药补满 · 修复 25% 装甲'), false);
     sfx('repair');
     for (const k of ['R', 'L', 'S']) { const w = G.pw[k]; w.ammo = w.d.mag || 0; w.reloadT = 0; w.cd = 0; }
     const nx = run.waves[run.wave + 1], big = nx && nx.spawn.boss2;
-    p.hp = Math.min(p.maxHp, p.hp + p.maxHp * (big ? 0.5 : 0.25));
+    if (!G.noRepair) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * (big ? 0.5 : 0.25));
     if (big) showHint('下一波是双头目 · 已额外修复装甲', 3);
     if (G.wing) G.wing.repair(0.4);
     if (G.core && G.core.alive) { G.core.hp = Math.min(G.core.maxHp, G.core.hp + G.core.maxHp * 0.15); if (G.core.hp > G.core.maxHp * 0.3) run.coreLowSaid = false; }
@@ -711,11 +737,12 @@ function finish(win) {
     if (!save.best[bk] || tm < save.best[bk]) { save.best[bk] = Math.round(tm); newBest = true; }
   }
   if (G.wing) run.cr = Math.round(run.cr * WING_CR);
+  const mm = modMul(); if (mm > 1) { run.cr = Math.round(run.cr * mm); bonus = Math.round(bonus * mm); }
   const earned = run.cr + bonus;
   save.cr += earned; save.earned = (save.earned || 0) + earned; writeSave();
   $('rRank').textContent = rank;
   $('rTitle').textContent = run.endless ? 'LINE BROKEN' : win ? 'MISSION COMPLETE' : 'MISSION FAILED';
-  $('rSub').textContent = `${M.name} · ${D.name} · ` + (run.endless ? `坚守 ${Math.max(0, run.wave)} 波` : win ? (G.core ? `任务完成 · ${G.core.label}剩余 ${Math.ceil(G.core.hp / G.core.maxHp * 100)}%` : '任务完成') : run.coreLost ? `${G.core ? G.core.label : '反应堆'}在第 ${run.wave + 1} 波被摧毁` : `在第 ${run.wave + 1} 波被击毁`) + (G.wing ? ' · 僚机随行（报酬 ×0.85）' : '');
+  $('rSub').textContent = `${M.name} · ${D.name} · ` + (run.endless ? `坚守 ${Math.max(0, run.wave)} 波` : win ? (G.core ? `任务完成 · ${G.core.label}剩余 ${Math.ceil(G.core.hp / G.core.maxHp * 100)}%` : '任务完成') : run.coreLost ? `${G.core ? G.core.label : '反应堆'}在第 ${run.wave + 1} 波被摧毁` : `在第 ${run.wave + 1} 波被击毁`) + (G.wing ? ' · 僚机随行（报酬 ×0.85）' : '') + (mm > 1 ? ` · 挑战 ×${mm.toFixed(2)}` : '');
   const bestTxt = run.endless ? (save.best[bk] ? `${save.best[bk]} 波` : '—') : (save.best[bk] ? fmt(save.best[bk]) : '—');
   $('rStats').innerHTML = `<span>用时</span><b>${fmt(tm)}</b><span>击毁</span><b>${s.kills}</b><span>命中率</span><b>${acc}%</b><span>造成伤害</span><b>${Math.round(s.dmgDealt)}</b><span>承受伤害</span><b>${Math.round(s.dmgTaken)}</b><span>${run.endless ? '最佳波数' : '最佳用时'}</span><b>${bestTxt}${newBest ? ' <em>NEW</em>' : ''}</b>`
     + `<span class="cr">击毁报酬</span><b class="cr">${run.cr} C</b>` + (bonus ? `<span class="cr">任务报酬 · 评级 ${rank}</span><b class="cr">${bonus} C</b>` : '') + `<span class="cr">持有资金</span><b class="cr">${save.cr} C</b>`;
@@ -783,6 +810,13 @@ function buildTitle() {
     el.appendChild(d);
   }
   $('tMisDesc').textContent = MISSIONS[cfg.mission].desc;
+  const me = $('tMods'); me.innerHTML = '<span class="lbl">挑战</span>';
+  for (const [k, X] of Object.entries(MODS)) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (modOn(k) ? ' on' : '');
+    b.textContent = `${X.name} +${Math.round(X.cr * 100)}%`; b.title = X.desc + ' · 报酬 +' + Math.round(X.cr * 100) + '%';
+    b.onclick = () => { initAudio(); sfx('ui'); cfg.mods[k] = !modOn(k); saveCfg(); buildTitle(); };
+    me.appendChild(b);
+  }
   $('bestTxt').textContent = `资金 ${save.cr} C` + (Object.values(save.up).some((v) => v) ? ' · 机库强化 ' + Object.entries(save.up).filter(([, v]) => v).map(([k, v]) => `${UPGRADES[k].name} ${v}`).join(' / ') : '');
 }
 
@@ -1169,7 +1203,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=6');
+    await loadKit('./assets/kit.glb?v=7');
     ensureArena();
     makePlayer();
     setState('title');
