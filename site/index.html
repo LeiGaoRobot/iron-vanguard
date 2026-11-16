@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>钢铁先锋 Iron Vanguard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.184.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.184.0/examples/jsm/"
+} }
+</script>
+<style>
+:root {
+  --bg: #0b0d10; --ink: #e8f1f4; --dim: #8ea3ad; --line: rgba(120, 220, 255, 0.35);
+  --cyan: #5fe3ff; --amber: #ffc23c; --red: #ff4a3a; --green: #4dff9a; --panel: rgba(10, 16, 22, 0.78);
+  --num: 'Rajdhani', 'Segoe UI', sans-serif; --cn: 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+}
+html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink); font-family: var(--cn); overflow: hidden; user-select: none; -webkit-user-select: none; }
+canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+.hidden { display: none !important; }
+#hud { position: fixed; inset: 0; pointer-events: none; }
+#reticle { position: absolute; left: 50%; top: 50%; width: 46px; height: 46px; margin: -23px 0 0 -23px; }
+#reticle svg { width: 100%; height: 100%; overflow: visible; }
+#reticle .hm { opacity: 0; transition: opacity 0.05s; }
+#reticle.hit .hm { opacity: 1; }
+#reticle.kill .hm { stroke: var(--red); }
+#chargeRing { position: absolute; left: 50%; top: 50%; width: 70px; height: 70px; margin: -35px 0 0 -35px; }
+.lock { position: absolute; width: 34px; height: 34px; margin: -17px 0 0 -17px; border: 1.5px solid var(--amber); transform: rotate(45deg); opacity: 0.85; }
+.lock.primary { border-color: var(--red); width: 46px; height: 46px; margin: -23px 0 0 -23px; border-width: 2px; }
+.lock .hpb { position: absolute; left: -6px; right: -6px; bottom: -10px; height: 3px; background: rgba(0,0,0,0.5); transform: rotate(-45deg) translate(0, 14px); transform-origin: center; }
+.lock .hpb i { display: block; height: 100%; background: var(--red); }
+.mark { position: absolute; width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 13px solid var(--red); margin: -6px 0 0 -7px; opacity: 0.8; }
+.mark.boss { border-bottom-color: #ff8a1a; border-left-width: 10px; border-right-width: 10px; border-bottom-width: 18px; }
+#bars { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); width: min(520px, 70vw); }
+.bar { position: relative; height: 10px; background: rgba(0, 0, 0, 0.45); border: 1px solid var(--line); margin-top: 6px; overflow: hidden; }
+.bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--cyan); transition: width 0.08s; }
+#hpBar i { background: linear-gradient(90deg, #3fd18a, #8dffb8); }
+#hpBar.low i { background: linear-gradient(90deg, #ff3a2a, #ff8a5a); }
+#enBar i { background: linear-gradient(90deg, #2aa8ff, #8fe8ff); }
+#enBar.heat i { background: #ff5a3a; animation: blink 0.25s steps(2) infinite; }
+.barlbl { display: flex; justify-content: space-between; font-family: var(--num); font-size: 13px; letter-spacing: 1px; color: var(--dim); margin-top: 4px; }
+.barlbl b { color: var(--ink); font-weight: 600; }
+@keyframes blink { 50% { opacity: 0.35; } }
+#weapons { position: absolute; right: 22px; bottom: 22px; width: 250px; }
+.wrow { background: var(--panel); border-left: 3px solid var(--cyan); padding: 6px 10px 7px; margin-top: 6px; }
+.wrow .top { display: flex; justify-content: space-between; align-items: baseline; }
+.wrow .key { font-family: var(--num); font-size: 12px; color: var(--cyan); border: 1px solid var(--line); padding: 0 4px; margin-right: 6px; }
+.wrow .nm { font-size: 13px; flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wrow .am { font-family: var(--num); font-size: 20px; font-weight: 700; }
+.wrow .wb { height: 3px; background: rgba(255,255,255,0.1); margin-top: 4px; }
+.wrow .wb i { display: block; height: 100%; width: 0; background: var(--amber); }
+.wrow.reloading { border-left-color: var(--amber); }
+.wrow.ready .wb i { background: var(--green); }
+#topc { position: absolute; top: 18px; left: 50%; transform: translateX(-50%); text-align: center; }
+#waveTitle { font-family: var(--num); letter-spacing: 3px; font-size: 15px; color: var(--cyan); }
+#waveSub { font-size: 13px; color: var(--dim); margin-top: 2px; }
+#bossBox { margin-top: 10px; width: min(560px, 80vw); }
+#bossBox .nm { font-size: 14px; color: #ffb090; letter-spacing: 2px; }
+#bossBar { height: 8px; border-color: rgba(255, 120, 80, 0.5); }
+#bossBar i { background: linear-gradient(90deg, #ff3a20, #ff9a4a); }
+#banner { position: absolute; top: 30%; left: 0; right: 0; text-align: center; font-family: var(--num); font-weight: 700; font-size: clamp(28px, 5vw, 54px); letter-spacing: 8px; color: var(--ink); text-shadow: 0 0 18px rgba(95, 227, 255, 0.6); opacity: 0; transition: opacity 0.3s; }
+#banner small { display: block; font-family: var(--cn); font-size: 16px; letter-spacing: 3px; color: var(--dim); font-weight: 400; margin-top: 4px; }
+#banner.show { opacity: 1; }
+#banner.warn { color: #ff7a5a; text-shadow: 0 0 18px rgba(255, 80, 40, 0.7); }
+#hurt { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 50%, rgba(255, 30, 10, 0.55) 100%); opacity: 0; }
+#radar { position: absolute; left: 22px; bottom: 22px; width: 170px; height: 170px; border-radius: 50%; background: rgba(8, 14, 20, 0.7); border: 1px solid var(--line); }
+#info { position: absolute; left: 204px; bottom: 26px; font-family: var(--num); font-size: 13px; color: var(--dim); letter-spacing: 1px; line-height: 1.5; }
+#info b { color: var(--ink); font-size: 16px; }
+#hint { position: absolute; left: 50%; top: 62%; transform: translateX(-50%); font-size: 13px; color: var(--dim); background: rgba(0,0,0,0.4); padding: 4px 12px; border-radius: 3px; }
+/* ------------- overlays */
+.overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(6, 9, 12, 0.55); overflow-y: auto; padding: 16px; box-sizing: border-box; }
+.card { background: rgba(10, 15, 20, 0.92); border: 1px solid var(--line); padding: 26px 30px; max-width: 760px; width: 100%; box-sizing: border-box; margin: auto; }
+h1 { font-family: var(--num); font-size: clamp(36px, 7vw, 64px); letter-spacing: 10px; margin: 0; font-weight: 700; }
+h1 span { color: var(--cyan); }
+.sub { color: var(--dim); letter-spacing: 3px; margin: 2px 0 18px; }
+.btns { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+button { font-family: var(--cn); font-size: 15px; color: var(--ink); background: rgba(95, 227, 255, 0.08); border: 1px solid var(--line); padding: 10px 22px; cursor: pointer; letter-spacing: 2px; }
+button:hover { background: rgba(95, 227, 255, 0.2); border-color: var(--cyan); }
+button.primary { background: var(--cyan); color: #04141a; border-color: var(--cyan); font-weight: 700; }
+button.primary:hover { background: #9af0ff; }
+.keys { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; font-size: 13px; color: var(--dim); margin-top: 14px; }
+.keys b { font-family: var(--num); color: var(--ink); font-weight: 600; letter-spacing: 1px; }
+#garage .card { max-width: 430px; margin: 0 0 0 auto; max-height: calc(100vh - 32px); overflow-y: auto; }
+#garage.overlay { background: linear-gradient(90deg, transparent 40%, rgba(6, 9, 12, 0.6)); justify-content: flex-end; }
+.gsec { margin-top: 14px; }
+.gsec h3 { font-size: 13px; color: var(--dim); letter-spacing: 3px; margin: 0 0 6px; font-weight: 400; }
+.opts { display: flex; flex-wrap: wrap; gap: 6px; }
+.opt { font-size: 13px; padding: 7px 10px; border: 1px solid var(--line); cursor: pointer; background: rgba(255,255,255,0.03); }
+.opt:hover { border-color: var(--cyan); }
+.opt.on { background: rgba(95, 227, 255, 0.18); border-color: var(--cyan); color: #fff; }
+.opt small { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; }
+.sw { width: 34px; height: 34px; padding: 0; position: relative; }
+.sw i { position: absolute; inset: 4px; }
+.stats { font-family: var(--num); font-size: 13px; color: var(--dim); margin-top: 8px; letter-spacing: 1px; }
+.stats b { color: var(--ink); }
+.res { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; font-size: 15px; margin-top: 14px; }
+.res span { color: var(--dim); }
+.res b { font-family: var(--num); font-size: 20px; text-align: right; }
+.rank { font-family: var(--num); font-size: 80px; font-weight: 700; color: var(--amber); line-height: 1; float: right; margin-top: -8px; }
+.row { display: flex; align-items: center; gap: 12px; margin-top: 10px; font-size: 14px; color: var(--dim); }
+.row input[type=range] { flex: 1; }
+@media (max-width: 760px) {
+  #weapons { width: 190px; right: 10px; bottom: 10px; } .wrow .nm { font-size: 11px; }
+  #radar { width: 110px; height: 110px; left: 10px; bottom: 10px; } #info { left: 128px; bottom: 12px; }
+  #bars { bottom: 140px; } .card { padding: 18px; }
+}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hud" class="hidden">
+  <div id="hurt"></div>
+  <div id="locks"></div>
+  <div id="marks"></div>
+  <svg id="chargeRing" viewBox="-35 -35 70 70"><circle r="30" fill="none" stroke="rgba(200,150,255,0.25)" stroke-width="2"/><circle id="chargeArc" r="30" fill="none" stroke="#d0a0ff" stroke-width="3" stroke-dasharray="0 999" transform="rotate(-90)"/></svg>
+  <div id="reticle"><svg viewBox="-23 -23 46 46">
+    <g stroke="#bff4ff" stroke-width="1.6" fill="none" opacity="0.9">
+      <circle r="2" fill="#bff4ff" stroke="none"/>
+      <path d="M-16 0h-6M16 0h6M0 -16v-6M0 16v6"/>
+      <path d="M-11 -11 a15.5 15.5 0 0 1 22 0" opacity="0.5"/><path d="M-11 11 a15.5 15.5 0 0 0 22 0" opacity="0.5"/>
+    </g>
+    <g class="hm" stroke="#fff" stroke-width="2.4"><path d="M-12 -12l6 6M12 -12l-6 6M-12 12l6 -6M12 12l-6 -6"/></g>
+  </svg></div>
+  <div id="topc">
+    <div id="waveTitle">WAVE 1</div>
+    <div id="waveSub"></div>
+    <div id="bossBox" class="hidden"><div class="nm">暴君 TYRANT · 重装指挥机</div><div class="bar" id="bossBar"><i style="width:100%"></i></div></div>
+  </div>
+  <div id="banner"></div>
+  <canvas id="radar" width="340" height="340"></canvas>
+  <div id="info">速度 <b id="spd">0</b> km/h<br>高度 <b id="alt">0</b> m</div>
+  <div id="bars">
+    <div class="barlbl"><span>机体 AP</span><b id="hpTxt">1200</b></div>
+    <div class="bar" id="hpBar"><i style="width:100%"></i></div>
+    <div class="bar" id="enBar"><i style="width:100%"></i></div>
+    <div class="barlbl"><span>能量 EN</span><span id="enTxt"></span></div>
+  </div>
+  <div id="weapons"></div>
+  <div id="hint" class="hidden"></div>
+</div>
+
+<div id="title" class="overlay hidden">
+  <div class="card">
+    <h1>IRON <span>VANGUARD</span></h1>
+    <div class="sub">钢铁先锋 · 机甲演习场</div>
+    <div style="color: var(--dim); font-size: 14px; line-height: 1.7">驾驶可定制的人形机甲，在废弃演习场里清除四波自动防御部队，最后击破重装指挥机「暴君」。</div>
+    <div class="keys">
+      <b>WASD</b><span>移动 · 鼠标转向瞄准</span>
+      <b>SHIFT</b><span>按下 = 瞬间推进（急闪），按住 = 地面高速滑行</span>
+      <b>SPACE</b><span>跳跃，空中按住 = 喷射悬浮上升</span>
+      <b>左键 / 右键</b><span>右臂 / 左臂武器</span>
+      <b>E</b><span>肩部武器（飞弹会锁定准星附近多个目标）</span>
+      <b>R · ESC</b><span>手动换弹 · 暂停</span>
+    </div>
+    <div style="color: var(--dim); font-size: 12px; margin-top: 10px">推进、悬浮和急闪都消耗能量 EN；耗尽会过热 2 秒。需要键盘和鼠标。</div>
+    <div class="btns"><button class="primary" id="btnSortie">出击</button><button id="btnGarage">机库 · 改装</button></div>
+    <div class="stats" id="bestTxt"></div>
+  </div>
+</div>
+
+<div id="garage" class="overlay hidden">
+  <div class="card">
+    <div style="display:flex; justify-content:space-between; align-items:baseline"><h2 style="margin:0; font-family: var(--num); letter-spacing: 4px">HANGAR</h2><span style="color:var(--dim); font-size:13px">机库 · 拖动画面旋转</span></div>
+    <div class="gsec"><h3>涂装</h3><div class="opts" id="gPaint"></div></div>
+    <div class="gsec"><h3>机体框架</h3><div class="opts" id="gFrame"></div><div class="stats" id="gStats"></div></div>
+    <div class="gsec"><h3>右臂 · 左键</h3><div class="opts" id="gR"></div></div>
+    <div class="gsec"><h3>左臂 · 右键</h3><div class="opts" id="gL"></div></div>
+    <div class="gsec"><h3>肩部 · E</h3><div class="opts" id="gS"></div></div>
+    <div class="gsec"><h3>难度</h3><div class="opts" id="gDiff"></div></div>
+    <div class="btns"><button class="primary" id="gGo">出击</button><button id="gBack">返回</button></div>
+  </div>
+</div>
+
+<div id="pause" class="overlay hidden">
+  <div class="card" style="max-width: 420px">
+    <h2 style="margin: 0 0 6px; font-family: var(--num); letter-spacing: 4px">PAUSED</h2>
+    <div class="row">鼠标灵敏度 <input type="range" id="sens" min="0.3" max="2.5" step="0.05" value="1"></div>
+    <div class="row">音量 <input type="range" id="vol" min="0" max="1" step="0.05" value="0.7"></div>
+    <div class="row"><label><input type="checkbox" id="invY"> 反转 Y 轴</label></div>
+    <div class="btns"><button class="primary" id="pResume">继续</button><button id="pRestart">重新开始</button><button id="pGarage">机库</button></div>
+  </div>
+</div>
+
+<div id="result" class="overlay hidden">
+  <div class="card" style="max-width: 480px">
+    <div class="rank" id="rRank">S</div>
+    <h2 style="margin: 0; font-family: var(--num); letter-spacing: 4px" id="rTitle">MISSION COMPLETE</h2>
+    <div class="sub" id="rSub">演习完成</div>
+    <div class="res" id="rStats"></div>
+    <div class="btns"><button class="primary" id="rAgain">再来一局</button><button id="rGarage">机库</button></div>
+  </div>
+</div>
+
+<div id="loading" class="overlay"><div style="font-family: var(--num); letter-spacing: 4px; color: var(--dim)">LOADING…</div></div>
+<script type="module" src="./main.js"></script>
+</body>
+</html>
