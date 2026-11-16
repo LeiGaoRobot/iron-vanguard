@@ -26,6 +26,7 @@ An original third-person mech action game, inspired by the gameplay in x.com/Bey
 | LMB / RMB | Right-arm / left-arm weapon |
 | E | Shoulder weapon (missiles lock up to 6 targets) |
 | LMB / RMB with the blade | With a lock: lunge up to 38 m and slash. The blade cuts through Bulwark shields |
+| LMB / RMB with the pile bunker | With a lock: dash up to 26 m and drive the spike into one target (pierces shields, knocks back) |
 | R | Reload |
 | V | Overdrive (when the OD bar is full) |
 | Esc | Pause |
@@ -94,6 +95,14 @@ If the browser refuses pointer lock (for example inside the Artifact iframe), th
 - **GL-4 Grenade Launcher** (arm, `WEAPONS.grenade`, kit `W_Grenade`): lobbed grenades on a low-angle ballistic arc that lands on the aim point (speed 88, gravity 30), 78 damage with 6.5 m splash, 8 rounds. Good against groups, menders hiding behind allies and turrets behind cover; weak against fast drones
 - 10 mission cards on the title at 720 p (grid `repeat(5, …)`, two rows)
 
+## v10 content (2026-11-17)
+
+- **Dead City · Extraction** (`MISSIONS.extract`, `extract: true`, env `dawn`, seed 81, reward 5000): three data caches A / B / C (`F_Cache` terminal + a radius-8 ring, `makeZones(list, { R: 8, kind: 'cache' })`). Stand within 8 m to download (12 s; progress pauses when you leave, it doesn't reset). Starting a download trips the alarm: the next AMBUSH wave converges on that cache (`run.spotC`), and from then on a crawler pack hunts you every ~23 s. With all three done, the evac zone (radius 14, `kind: 'evac'`, appended with `append: true`) opens at `M.evac`. You get a 40 % repair and full ammo, and the Phantom (0.5 × HP, `lateBoss`) arrives 8 s later. Hold the zone for 30 s to win; progress runs at half speed while an enemy ground unit is inside, and crawler packs hit the zone every ~11 s. Code: `extractLogic` in `main.js`. Zones now carry `R` and `kind` (`zone` / `cache` / `evac`) and every HUD / radar / autopilot path uses `z.R`; the cache model is kept in `zoneKits` (shared kit geometry, removed but never disposed) and gets a small solid via `addSolid`
+- **Crawler** (`Crawler` in `combat.js`, kit `E_Crawler`, 75 HP): suicide spider bomb that comes in packs of up to 6 (`spawnGroup` `crawler: n`). Runs at its target at 12–15 m/s with a weave, flashes red and leaps from ~9 m (0.5 s ballistic arc onto the target's predicted position), then detonates on contact or when the 0.85 s fuse runs out (6 m, 42 damage). Shot down, it pops with a smaller blast that hurts other enemies (5.5 m, 45, queued 0.07 s later so packs chain-react). Also in endless / daily mixes from wave 3
+- **PB-9 Pile Bunker** (arm, `WEAPONS.pile`, kit `W_Pile` with a `P_Spike` node that fires 1.3 m forward): with a lock it dashes up to 26 m, then one piercing punch (430 damage to a single target, shields ignored) plus a 5 m shockwave (16 %), knockback, a 0.13 s hit-stop and heavy screen shake. 20 EN, 1.3 s cycle
+- **Dawn** lighting preset (`ENVS.dawn`, pink-orange sky, low sun); daily challenges can roll it too
+- Title: 11 mission cards in a `repeat(6, …)` grid. Best times moved off the cards (a ✓ marks cleared missions) into the description line under the grid, because cards with a best line were 20 px taller and pushed the title past 720 p
+
 ## Structure
 
 - `site/kit.js` — loads the GLB (uses `window.__MA_KIT` first), `cloneKit`, `recolor` (palettes are applied by material name), `bakeStatic` (static props merged per material)
@@ -124,6 +133,7 @@ If the browser refuses pointer lock (for example inside the Artifact iframe), th
 - The autopilot (perfect aim, never uses cover) clears all five loadouts in 110–190 s, with about a 50% win rate
 - Night Raid: the autopilot won 2 of 3 loadouts (130–150 s); its top damage sources are gunship missiles / chin gun and the boss blade. Endless: the autopilot reaches wave 10, where the second boss (Phantom) kills it
 - Reactor Defense (autopilot, no wingman): rifle / gatling / missile wins with the core at 28%; blade / rifle / cannon (light frame) wins with it at ~50%. With the wingman it is clearly easier (the core lost < 15% over the run that was checked). Walker shells are the largest source of core damage (> 50%)
+- v10 (autopilot, no wingman, normal): Extraction with rifle / gatling / missile won 2:37 (938 / 1200 AP) and 2:18 (306 AP); pile / rifle / missile won 2:40 (944 AP). Proving Ground with pile / rifle / missile 2:01. Earlier versions lost 4 of 6 runs in the evac hold: the Phantom arriving with the evac (its blade did 500–640 damage to an autopilot holding still), and leftover gunships from ambush 2. Six crawlers reaching a player who stands still do ~170 damage; the perfect-aim autopilot rarely lets them close
 - v9 (autopilot, no wingman, normal): Uplink Control with rifle / gatling / missile 4:14, 494 / 1200 AP left, rank B (the first version took 2:23: one walker + one turret per zone and a 30 s trickle were cleared before the first counterattack); Proving Ground with grenade / rifle / missile 2:41 (rifle / gatling ~2:00)
 - v8 (autopilot, no wingman, rifle / gatling + shoulder): Proving Ground with the drone pod 1:59 (missile pods 2:05); Night Raid 137 s with 765 / 1200 AP; daily challenge of 2026-11-17 (desert, forced glass frame) 140 s with 602 / 720 AP. The Stalker landed 3 of 7 shots on the moving autopilot; with the first version (aim locked on the current position, 0.45 s freeze) it hit nothing at all
 - Ash · Colossus (autopilot, no wingman): rifle / gatling / missile wins in 153 s with 362 / 1200 AP left; blade / rifle / cannon (light frame) wins in 95 s with 602 AP (the blade melts the exposed core). Largest damage sources: chin gun and phase-2 plasma. First version (10-round gun every 2.2 s, plasma 30) killed the rifle loadout at 128 s with the chin gun at 749 damage on its own; the autopilot outruns the homing missiles, a standing player takes ~50 per salvo

@@ -86,7 +86,7 @@ export class Mech {
     for (const s of Object.values(this.slots)) for (const m of s.models) m.parent && m.parent.remove(m);
     this.slots = {};
     this.loadout = { ...loadout };
-    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', grenade: 'W_Grenade', shield: 'S_Shield', drones: 'S_Drones' };
+    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', grenade: 'W_Grenade', pile: 'W_Pile', shield: 'S_Shield', drones: 'S_Drones' };
     const mk = (slot, key, mounts) => {
       const models = [], muzzles = [];
       for (const mt of mounts) {
@@ -94,7 +94,7 @@ export class Mech {
         this.n[mt].add(m); recolor(m, PALETTES[this.paletteKey], this.paletteKey);
         models.push(m); muzzles.push(find(m, 'Muzzle'));
       }
-      this.slots[slot] = { key, models, muzzles, spin: find(models[0], 'G_Spin'), blade: find(models[0], 'B_Blade'), alt: 0, slashT: 0, slashSide: 1, bladeOn: 0, bladeLv: 0 };
+      this.slots[slot] = { key, models, muzzles, spin: find(models[0], 'G_Spin'), blade: find(models[0], 'B_Blade'), pile: find(models[0], 'P_Spike'), pileT: 0, alt: 0, slashT: 0, slashSide: 1, bladeOn: 0, bladeLv: 0 };
     };
     mk('R', loadout.R, ['W_HandR']);
     mk('L', loadout.L, ['W_HandL']);
@@ -258,6 +258,13 @@ export class Mech {
         n['M_Fore' + side].rotation.x = (slot.recoil || 0);
       }
       slot.recoil = Math.max(0, (slot.recoil || 0) - dt * 3);
+      if (slot.pile) {
+        const sp = slot.pile;
+        if (!slot.pileP0) { slot.pileP0 = sp.position.clone(); const mz = find(slot.models[0], 'Muzzle'); slot.pileDir = mz ? mz.position.clone().sub(sp.position).normalize() : new THREE.Vector3(0, 1, 0); }
+        slot.pileT = Math.max(0, slot.pileT - dt);
+        const e = slot.pileT > 0.24 ? 1 : slot.pileT / 0.24;
+        sp.position.copy(slot.pileP0).addScaledVector(slot.pileDir, e * 1.3);
+      }
       if (slot.blade) {
         const on = slot.slashT > 0 || slot.bladeOn > 0 ? 1 : 0.14;
         slot.bladeOn = Math.max(0, slot.bladeOn - dt);

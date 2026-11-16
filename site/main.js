@@ -5,13 +5,13 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { loadKit } from './kit.js';
-import { buildArena, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine, relaySites, mulberry32 } from './world.js';
+import { loadKit, cloneKit } from './kit.js';
+import { buildArena, addSolid, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine, relaySites, mulberry32 } from './world.js';
 import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 const V3 = THREE.Vector3;
@@ -72,6 +72,14 @@ const MISSIONS = {
     { title: 'COUNTERATTACK', sub: '掠夺者小队前来夺点 · 当心隐形狙击机', spawn: { raider: 2, lancer: 1, walker: 2, drone: 3, stalker: 1, mender: 1 }, at: 0.65 },
     { title: 'FINAL WAVE', sub: '上行链路完成 · 击破来袭的「暴君」', spawn: { boss: 'tyrant', drone: 3, mender: 1 } },
   ] },
+  extract: { name: '废城 · 数据撤离', en: 'EXTRACTION', desc: '黎明 · 下载 3 处数据终端，再到撤离点坚守 30 秒等待回收 · 自爆蜘蛛群 · 头目「幻影」追击', seed: 81, env: 'dawn', reward: 5000, extract: true,
+    zones: [[-112, 18], [104, -40], [-10, -118]], evac: [126, 116], waves: [
+    { title: 'INFILTRATE', sub: '潜入废城 · 站在数据终端旁下载（12 秒）· 每个终端都有守军', spawn: { turret: 3, drone: 4 }, zoneDef: { turret: 1, walker: 1 } },
+    { title: 'AMBUSH', sub: '下载被发现 · 自爆蜘蛛群来袭 · 扑击前会闪红光，跳起或急闪躲开', spawn: { crawler: 10, drone: 3, walker: 1 } },
+    { title: 'AMBUSH', sub: '掠夺者追踪信号而来 · 维修无人机随行', spawn: { crawler: 12, raider: 1, walker: 1, mender: 1 } },
+    { title: 'AMBUSH', sub: '全面追击 · 当心隐形狙击机', spawn: { crawler: 14, bulwark: 1, lancer: 1, stalker: 1 } },
+    { title: 'EXTRACT', sub: '数据已全部取得 · 前往撤离点坚守 30 秒 · 「幻影」正在追击', spawn: { crawler: 8, drone: 3 }, lateBoss: { type: 'phantom', hp: 0.5, t: 8 } },
+  ] },
   endless: { name: '无尽防线', en: 'ENDLESS', desc: '黄昏 · 无限波次，越来越强 · 每 5 波一个头目', seed: 5, env: 'dusk', endless: true, reward: 0 },
 };
 const ENVS = {
@@ -81,9 +89,10 @@ const ENVS = {
   desert: { top: 0x6f9cc6, hor: 0xe8d2a8, fog: [80, 520], hemi: [0xfff0d8, 0x8a6a48, 0.62], sun: [0xffe4b8, 2.6], env: 0.4, exp: 0.86, dir: [0.5, 0.62, -0.38], disc: 1.3 },
   ash: { top: 0x1f1716, hor: 0x7a4a36, fog: [45, 360], hemi: [0xffc0a0, 0x2a2020, 0.42], sun: [0xff9060, 1.5], env: 0.22, exp: 1.02, dir: [-0.45, 0.32, 0.6], disc: 0.8, ash: true },
   storm: { top: 0x1c232c, hor: 0x46505c, fog: [30, 230], hemi: [0x9aacc0, 0x26282c, 0.42], sun: [0xc0cce0, 0.8], env: 0.2, exp: 1.02, dir: [0.25, 0.7, 0.4], disc: 0.05, rain: true },
+  dawn: { top: 0x56658f, hor: 0xf0b49c, fog: [70, 480], hemi: [0xffd8cc, 0x4a4250, 0.52], sun: [0xffc49a, 2.1], env: 0.34, exp: 0.95, dir: [0.75, 0.16, -0.25], disc: 1.6 },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
+const KILL_CR = { crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -98,7 +107,7 @@ const MODS = {
   nofix: { name: '无补给', desc: '敌人不掉修理包 · 波间不修复装甲', cr: 0.25 },
 };
 // daily challenge: one seeded mission per local date: arena, lighting, enemy mix, final boss and forced modifiers
-const ENV_CN = { day: '白天', dusk: '黄昏', night: '夜间', snow: '暴雪', desert: '沙漠', storm: '雷暴', ash: '火山灰' };
+const ENV_CN = { day: '白天', dawn: '黎明', dusk: '黄昏', night: '夜间', snow: '暴雪', desert: '沙漠', storm: '雷暴', ash: '火山灰' };
 function dailyMission() {
   const now = new Date(), ds = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   let h = 2166136261; for (const ch of 'iv-daily-' + ds) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
@@ -183,7 +192,7 @@ function ensureArena() {
   const M = MISSIONS[cfg.mission], key = M.seed + M.env;
   if (key === arenaKey && arenaGroup) return;
   if (arenaGroup) scene.remove(arenaGroup);
-  arenaGroup = buildArena(scene, M.seed, M.env, M.path || null, M.zones || null); arenaKey = key;
+  arenaGroup = buildArena(scene, M.seed, M.env, M.path || null, M.zones ? (M.evac ? [...M.zones, M.evac] : M.zones) : null); arenaKey = key;
   applyEnv(M.env);
 }
 
@@ -502,6 +511,7 @@ function mixWave(n, rnd) {
   if (n >= 3) pool.push(['bulwark', 3.5, 4]);
   if (n >= 4) pool.push(['gunship', 5, 3]);
   if (n >= 4) pool.push(['mender', 2.5, 2]);
+  if (n >= 3) pool.push(['crawler', 0.7, 10]);
   if (n >= 5) pool.push(['stalker', 4, 2]);
   if (n >= 6) pool.push(['raider', 4.5, 3], ['lancer', 4.5, 2]);
   const sp = {}; let budget = 5 + n * 2.6, total = 0;
@@ -555,7 +565,8 @@ function newGame() {
   $('coreName').textContent = G.core ? (M.convoy ? '运输车 CONVOY' : '反应堆 REACTOR') : '';
   if (wingOn()) { G.wing = new Wingman(scene, mctx, cfg.palette === 'kestrel' ? 'vanguard' : 'kestrel'); G.friends.push(G.wing); }
   run.coreLost = false;
-  run.capture = !!M.capture; run.zones = M.capture ? makeZones(M.zones) : []; run.up = 0; run.finalOn = false; run.trickT = 22; run.zoneWarnT = {}; run.spotC = null;
+  run.extract = !!M.extract; run.dlN = 0; run.got = 0; run.evac = null; run.lateBoss = null;
+  run.capture = !!M.capture; run.zones = M.capture ? makeZones(M.zones) : M.extract ? makeZones(M.zones, { R: 8, kind: 'cache' }) : []; run.up = 0; run.finalOn = false; run.trickT = 22; run.zoneWarnT = {}; run.spotC = null;
   Object.assign(run, { escort: !!M.convoy, stops: M.stops || [], driving: false, harT: 8, waitSaid: 0, wave: -1, defense: !!M.defense, coreWarnT: -99, coreLowSaid: false, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0, cr: 0, msslT: 0, boss2: null, relayHintT: 0, waves: M.endless ? [] : M.waves, endless: !!M.endless });
   G.boss = null; G.bosses = [];
   $('bossBox').classList.add('hidden');
@@ -596,7 +607,7 @@ function startWave(i) {
   if (run.capture && W.at) { goalZ = attackZone(); run.spotC = goalZ.pos; }
   spawnGroup(S, R, b0);
   run.spotC = null;
-  if (run.capture && W.zoneDef) for (const z of run.zones) {
+  if ((run.capture || run.extract) && W.zoneDef) for (const z of run.zones) {
     const m0 = G.enemies.length;
     for (let k = 0; k < (W.zoneDef.turret || 0); k++) new Turret(zoneSpot(z, 4, 8));
     for (let k = 0; k < (W.zoneDef.walker || 0); k++) new Walker(zoneSpot(z, 3, 9));
@@ -627,6 +638,10 @@ function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.gunship || 0); k++) new Gunship(spot(110 * R, 150 * R, true, b));
   for (let k = 0; k < (S.stalker || 0); k++) new Stalker(spot(80 * R, 130 * R, false, b));
   for (let k = 0; k < (S.mender || 0); k++) new Mender(spot(90 * R, 140 * R, true, b));
+  for (let k = 0; k < (S.crawler || 0); k += 6) {   // crawlers come in packs of up to 6
+    const c0 = spot(55 * R, 95 * R, false, b);
+    for (let j = 0; j < Math.min(6, S.crawler - k); j++) { const a = Math.random() * 6.28, r = Math.random() * 4; new Crawler(new V3(c0.x + Math.cos(a) * r, 0, c0.z + Math.sin(a) * r)); }
+  }
   for (const t of Object.keys(RAIDERS)) for (let k = 0; k < (S[t] || 0); k++) new Boss(spot(85 * R, 130 * R, false, b), mctx, t, 1);
 }
 
@@ -712,6 +727,7 @@ function waveLogic(dt) {
     return;
   }
   if (run.capture) { captureLogic(dt); return; }
+  if (run.extract) { extractLogic(dt); return; }
   if (run.driving) {
     const c = G.core, far = c.pos.distanceTo(p.pos) > 60;
     c.wait = far;
@@ -771,30 +787,39 @@ function waveLogic(dt) {
 const ZONE_R = 13, CAP_T = 6, UP_RATE = 0.0045, GROUND = new Set(['walker', 'bulwark', 'raider', 'turret', 'boss']);
 const ZCOL = { P: 0x5fe3ff, E: 0xff4a3a, N: 0xe8e8e8 };
 let zoneGroup = null;
+const zoneKits = [];
 function clearZones() {
+  for (const o of zoneKits) scene.remove(o); zoneKits.length = 0;
   if (!zoneGroup) return;
   zoneGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
   scene.remove(zoneGroup); zoneGroup = null;
 }
-function makeZones(list) {
-  clearZones(); zoneGroup = new THREE.Group(); scene.add(zoneGroup);
+function makeZones(list, o = {}) {
+  const ZR = o.R || ZONE_R, kind = o.kind || 'zone';
+  if (!o.append) { clearZones(); zoneGroup = new THREE.Group(); scene.add(zoneGroup); }
   const addM = (op) => new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
   return list.map(([x, z], i) => {
-    const ring = new THREE.Mesh(new THREE.RingGeometry(ZONE_R - 0.5, ZONE_R, 72).rotateX(-Math.PI / 2), addM(0.9)); ring.position.set(x, 0.14, z);
-    const disc = new THREE.Mesh(new THREE.CircleGeometry(ZONE_R, 48).rotateX(-Math.PI / 2), addM(0.07)); disc.position.set(x, 0.1, z);
-    const prog = new THREE.Mesh(new THREE.RingGeometry(ZONE_R - 2.4, ZONE_R - 1.3, 72, 1, 0, 0.01).rotateX(-Math.PI / 2), addM(0.85)); prog.position.set(x, 0.16, z);
+    const ring = new THREE.Mesh(new THREE.RingGeometry(ZR - 0.5, ZR, 72).rotateX(-Math.PI / 2), addM(0.9)); ring.position.set(x, 0.14, z);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(ZR, 48).rotateX(-Math.PI / 2), addM(0.07)); disc.position.set(x, 0.1, z);
+    const prog = new THREE.Mesh(new THREE.RingGeometry(ZR - 2.4, ZR - 1.3, 72, 1, 0, 0.01).rotateX(-Math.PI / 2), addM(0.85)); prog.position.set(x, 0.16, z);
     const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 1.1, 70, 12, 1, true), addM(0.22)); beam.position.set(x, 35, z);
     const pylon = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.3, 2.2, 8), new THREE.MeshStandardMaterial({ color: 0x3a3f48, roughness: 0.6, metalness: 0.4 })); pylon.position.set(x, 1.1, z); pylon.castShadow = true;
     const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 8), addM(1)); lamp.position.set(x, 2.5, z);
-    zoneGroup.add(ring, disc, prog, beam, pylon, lamp);
-    const Z = { name: 'ABC'[i], x, z, pos: new V3(x, 0, z), k: -1, own: 'E', pin: false, ein: 0, ring, disc, prog, beam, lamp, shownK: 9, col: -1 };
+    zoneGroup.add(ring, disc, prog, beam);
+    if (kind === 'cache') {   // data terminal model (shared kit geometry: removed, never disposed)
+      const q = Math.round(Math.random() * 4) % 4, m = cloneKit('F_Cache'); m.position.set(x, 0, z); m.rotation.y = q * Math.PI / 2;
+      scene.add(m); zoneKits.push(m); addSolid(x, z, q % 2 ? 1.2 : 1.8, q % 2 ? 1.8 : 1.2, 2.4);
+    } else zoneGroup.add(pylon, lamp);
+    const Z = { name: o.names ? o.names[i] : 'ABC'[i], kind, R: ZR, x, z, pos: new V3(x, 0, z), k: kind === 'zone' ? -1 : 0, own: kind === 'zone' ? 'E' : 'N', pin: false, ein: 0, ring, disc, prog, beam, lamp, shownK: 9, col: -1 };
     paintZone(Z, 0);
     return Z;
   });
 }
 function paintZone(z, t) {
   const contest = z.pin && z.ein > 0;
-  const base = z.own === 'P' ? ZCOL.P : z.own === 'E' ? ZCOL.E : ZCOL.N;
+  let base = z.own === 'P' ? ZCOL.P : z.own === 'E' ? ZCOL.E : ZCOL.N;
+  if (z.kind === 'cache' && z.own !== 'P') base = z.pin ? (Math.sin(t * 8) > 0 ? 0xffd23a : 0xfff0a0) : z.k > 0 ? 0xffd23a : ZCOL.N;
+  if (z.kind === 'evac') base = 0x6dff9a;
   const c = contest && Math.sin(t * 12) > 0 ? 0xffd23a : base;
   if (c !== z.col) { z.col = c; for (const m of [z.ring, z.disc, z.beam, z.lamp]) m.material.color.set(c); }
   z.beam.material.opacity = z.own === 'P' ? 0.3 : 0.18;
@@ -802,9 +827,9 @@ function paintZone(z, t) {
   const kk = Math.round(Math.abs(z.k) * 60) / 60;
   if (kk !== z.shownK) {
     z.shownK = kk; z.prog.geometry.dispose();
-    z.prog.geometry = new THREE.RingGeometry(ZONE_R - 2.4, ZONE_R - 1.3, 72, 1, Math.PI / 2, Math.max(0.01, kk * Math.PI * 2)).rotateX(-Math.PI / 2);
+    z.prog.geometry = new THREE.RingGeometry(z.R - 2.4, z.R - 1.3, 72, 1, Math.PI / 2, Math.max(0.01, kk * Math.PI * 2)).rotateX(-Math.PI / 2);
   }
-  z.prog.material.color.set(z.k >= 0 ? ZCOL.P : ZCOL.E);
+  z.prog.material.color.set(z.kind === 'evac' ? 0x6dff9a : z.k >= 0 ? ZCOL.P : ZCOL.E);
 }
 function zoneSpot(z, r0, r1) {
   for (let i = 0; i < 60; i++) {
@@ -863,6 +888,65 @@ function captureLogic(dt) {
     if (!run.won) { run.won = true; banner('MISSION COMPLETE', '上行链路已建立 · 头目已击破', false); run.deathT = 3.5; }
     run.deathT -= dt; if (run.deathT <= 0) finish(true);
   }
+}
+
+// ------------------------------------------------------------------ extraction mission: download 3 caches, then hold the evac zone
+const DL_T = 12, EVAC_T = 30;
+function extractLogic(dt) {
+  const p = G.player, M = MISSIONS[cfg.mission];
+  run.msslT -= dt;
+  const inZ = (o, z) => Math.hypot(o.pos.x - z.x, o.pos.z - z.z) < z.R;
+  for (const z of run.zones) {
+    if (z.kind !== 'cache') continue;
+    z.pin = p.alive && inZ(p, z) && p.pos.y < 14;
+    if (z.k < 1 && z.pin && !run.won) {
+      if (!z.started) {   // starting a download trips the alarm: the next ambush wave converges on this cache
+        z.started = true; run.dlN++;
+        if (run.dlN < run.waves.length - 1) { run.spotC = z.pos; startWave(run.dlN); run.spotC = null; }
+        run.trickT = 24;
+      }
+      z.k = Math.min(1, z.k + dt / DL_T);
+      if (z.k >= 1) {
+        z.own = 'P'; run.got++;
+        const n = run.zones.filter((q) => q.kind === 'cache').length;
+        banner(`数据 ${run.got}/${n} 已取得`, run.got < n ? '前往下一个数据终端' : '前往撤离点', false); sfx('repair');
+        if (run.got >= n) {
+          run.evac = makeZones([M.evac], { R: 14, kind: 'evac', append: true, names: ['EVAC'] })[0]; run.zones.push(run.evac);
+          startWave(run.waves.length - 1); run.trickT = 12; run.lateBoss = { ...(run.waves[run.waves.length - 1].lateBoss || {}) }; if (!run.lateBoss.type) run.lateBoss = null;
+          if (!G.noRepair) { p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.4); showHint('撤离点已开启 · 修复 40% 装甲 · 弹药补满', 3); }
+          for (const k of ['R', 'L', 'S']) { const w = G.pw[k]; w.ammo = w.d.mag || 0; w.reloadT = 0; }
+        }
+      }
+    }
+    paintZone(z, run.t);
+  }
+  run.trickT -= dt;
+  if (run.lateBoss && (run.lateBoss.t -= dt) <= 0) {   // the pursuer arrives a few seconds after the evac opens
+    const L = run.lateBoss; run.lateBoss = null;
+    G.boss = new Boss(spot(100, 130), mctx, L.type, L.hp); G.bosses = [G.boss];
+    $('bossName').textContent = BOSSES[L.type].name; $('bossBox').classList.remove('hidden');
+    banner('追击者出现', BOSSES[L.type].name + ' · 守住撤离点', true); sfx('alarm');
+  }
+  if (run.evac) {
+    const z = run.evac;
+    z.pin = p.alive && inZ(p, z) && p.pos.y < 16;
+    z.ein = 0; for (const e of G.enemies) if (e.alive && !e.dying && GROUND.has(e.kind) && inZ(e, z)) z.ein++;
+    if (z.pin && !run.won) z.k = Math.min(1, z.k + dt / EVAC_T * (z.ein ? 0.5 : 1));
+    paintZone(z, run.t);
+    if (z.k >= 1 && !run.won) { run.won = true; banner('MISSION COMPLETE', '回收完成 · 数据已安全撤离', false); sfx('wave'); run.deathT = 3.5; }
+    if (run.trickT <= 0 && !run.won) {   // pressure on the evac: a crawler pack every ~11 s
+      run.trickT = 9 + Math.random() * 4;
+      if (G.enemies.filter((e) => e.alive && e.kind === 'crawler').length < 14) { run.spotC = z.pos; spawnGroup({ crawler: 5 }); run.spotC = null; }
+    }
+  } else if (run.dlN > 0 && run.trickT <= 0) {   // once the alarm is up, crawler packs keep hunting you
+    run.trickT = 20 + Math.random() * 6;
+    if (G.enemies.filter((e) => e.alive).length < 16) spawnGroup({ crawler: 4, drone: 1 });
+  }
+  if (G.bosses && G.bosses.some((b) => b.phase === 2 && b.alive)) {
+    run.droneT -= dt;
+    if (run.droneT <= 0) { run.droneT = 22; if (G.enemies.filter((e) => e.kind === 'drone' && e.alive).length < 3) for (let k = 0; k < 2; k++) new Drone(spot(60, 100, true)); }
+  }
+  if (run.won) { run.deathT -= dt; if (run.deathT <= 0) finish(true); }
 }
 
 function finish(win) {
@@ -953,11 +1037,11 @@ function buildTitle() {
   for (const [k, M] of Object.entries(MISSIONS)) {
     const d = document.createElement('button'); d.type = 'button'; d.className = 'mis' + (cfg.mission === k ? ' on' : '');
     const b = bestLine(k);
-    d.innerHTML = `<b>${M.name}</b><span class="en">${M.en}</span>${b ? `<small class="best">最佳 ${b}</small>` : ''}`; d.title = M.desc;
+    d.innerHTML = `<b>${M.name}${b ? ' <em class="done">✓</em>' : ''}</b><span class="en">${M.en}</span>`; d.title = M.desc + (b ? ' · 最佳 ' + b : '');
     d.onclick = () => { initAudio(); sfx('ui'); cfg.mission = k; saveCfg(); ensureArena(); buildTitle(); };
     el.appendChild(d);
   }
-  $('tMisDesc').textContent = MISSIONS[cfg.mission].desc;
+  const bs = bestLine(cfg.mission); $('tMisDesc').innerHTML = MISSIONS[cfg.mission].desc + (bs ? ` <span class="best">· 最佳 ${bs}</span>` : '');
   const me = $('tMods'); me.innerHTML = '<span class="lbl">挑战</span>';
   for (const [k, X] of Object.entries(MODS)) {
     const b = document.createElement('button'); b.type = 'button'; b.className = 'chip' + (modOn(k) ? ' on' : '') + (forcedMod(k) ? ' forced' : '');
@@ -1133,13 +1217,16 @@ function drawHUD(dt) {
       d.textContent = `◆ ${G.core.label} ${Math.round(dd)}m`;
     }
   }
-  if (run.capture) for (const z of run.zones) {
+  if (run.capture || run.extract) for (const z of run.zones) {
     const dd = Math.hypot(z.x - p.pos.x, z.z - p.pos.z);
     _sp.set(z.x, 9, z.z).project(camera);
     if (_sp.z > 1 || Math.abs(_sp.x) > 1 || Math.abs(_sp.y) > 1) continue;
     const d = objPool[oi] || poolEl(objPool, M, 'objm'); oi++;
-    d.style.display = ''; d.className = 'objm' + (z.own === 'P' ? ' core' : z.own === 'E' ? ' foe' : ''); d.style.left = ((_sp.x + 1) / 2 * innerWidth) + 'px'; d.style.top = ((1 - _sp.y) / 2 * innerHeight) + 'px';
-    d.textContent = `◆ ${z.name} ` + (z.pin && z.ein ? '争夺中' : z.pin && z.k < 1 ? `占领中 ${Math.round((z.k + 1) * 50)}%` : z.own === 'P' ? '己方' : z.own === 'E' ? '敌方' : '中立') + (dd > ZONE_R ? ` ${Math.round(dd)}m` : '');
+    d.style.display = ''; d.className = 'objm' + (z.own === 'P' || z.kind === 'evac' ? ' core' : z.own === 'E' ? ' foe' : ''); d.style.left = ((_sp.x + 1) / 2 * innerWidth) + 'px'; d.style.top = ((1 - _sp.y) / 2 * innerHeight) + 'px';
+    const pct = Math.floor(z.k * 100);
+    d.textContent = z.kind === 'cache' ? `◆ 终端 ${z.name} ` + (z.k >= 1 ? '已取得' : z.pin ? `下载 ${pct}%` : z.k > 0 ? `${pct}%` : '') + (dd > z.R ? ` ${Math.round(dd)}m` : '')
+      : z.kind === 'evac' ? '◆ 撤离点 ' + (z.pin ? `回收 ${pct}%` + (z.ein ? ' · 敌机干扰' : '') : `${pct}%`) + (dd > z.R ? ` ${Math.round(dd)}m` : '')
+      : `◆ ${z.name} ` + (z.pin && z.ein ? '争夺中' : z.pin && z.k < 1 ? `占领中 ${Math.round((z.k + 1) * 50)}%` : z.own === 'P' ? '己方' : z.own === 'E' ? '敌方' : '中立') + (dd > z.R ? ` ${Math.round(dd)}m` : '');
   }
   for (; oi < objPool.length; oi++) objPool[oi].style.display = 'none';
   // hurt vignette
@@ -1150,9 +1237,14 @@ function drawHUD(dt) {
     $('waveTitle').textContent = curWave().title;
     const left = G.enemies.filter((e) => e.alive).length;
     const rl = G.enemies.filter((e) => e.kind === 'relay' && e.alive).length;
-    $('waveSub').textContent = run.breakT > 0 ? '整备中…' : run.capture ? run.zones.map((z) => `${z.name}${z.own === 'P' ? '◆' : z.own === 'E' ? '✕' : '○'}`).join(' ') + ` · 敌机 ${left}` : (rl ? `中继塔 ${rl} · 敌机 ${left - rl}` : `剩余敌机 ${left}`);
+    $('waveSub').textContent = run.breakT > 0 ? '整备中…' : run.extract ? (run.evac ? `撤离 ${Math.floor(run.evac.k * 100)}%` : `数据 ${run.got}/3`) + ` · 敌机 ${left}` : run.capture ? run.zones.map((z) => `${z.name}${z.own === 'P' ? '◆' : z.own === 'E' ? '✕' : '○'}`).join(' ') + ` · 敌机 ${left}` : (rl ? `中继塔 ${rl} · 敌机 ${left - rl}` : `剩余敌机 ${left}`);
   } else { $('waveTitle').textContent = 'STANDBY'; $('waveSub').textContent = ''; }
-  const cb = $('coreBox'); cb.classList.toggle('hidden', !G.core && !run.capture);
+  const cb = $('coreBox'); cb.classList.toggle('hidden', !G.core && !run.capture && !run.extract);
+  if (run.extract && !G.core) {
+    const act = run.zones.find((z) => z.kind === 'cache' && z.k > 0 && z.k < 1), v = run.evac ? run.evac.k : (run.got + (act ? act.k : 0)) / 3;
+    $('coreName').textContent = run.evac ? '撤离回收 EVAC' : `数据 DATA ${run.got}/3` + (act ? ` · 下载 ${act.name}` : '');
+    $('coreBar').firstElementChild.style.width = (v * 100).toFixed(1) + '%'; $('coreBar').classList.remove('low'); $('corePct').textContent = Math.floor(v * 100) + '%'; cb.classList.remove('hit');
+  }
   if (run.capture && !G.core) { $('coreName').textContent = '上行链路 UPLINK'; $('coreBar').firstElementChild.style.width = (run.up * 100).toFixed(1) + '%'; $('coreBar').classList.remove('low'); $('corePct').textContent = Math.floor(run.up * 100) + '%'; cb.classList.remove('hit'); }
   if (G.core) { const ck = G.core.hp / G.core.maxHp; $('coreBar').firstElementChild.style.width = (ck * 100).toFixed(1) + '%'; $('coreBar').classList.toggle('low', ck < 0.3); $('corePct').textContent = Math.ceil(ck * 100) + '%'; cb.classList.toggle('hit', G.core.flash > 0); }
   const wt = $('wingTxt'); wt.classList.toggle('hidden', !G.wing);
@@ -1191,7 +1283,7 @@ function drawHUD(dt) {
     const s = e.kind === 'boss' ? 9 : e.kind === 'gunship' || e.kind === 'raider' ? 8 : e.kind === 'walker' || e.kind === 'bulwark' ? 7 : 5;
     rctx.fillRect(x - s / 2, z - s / 2, s, s);
   }
-  if (run.capture) for (const z of run.zones) { const x = (z.x - p.pos.x) * K, y = (z.z - p.pos.z) * K; rctx.strokeStyle = z.own === 'P' ? '#5fe3ff' : z.own === 'E' ? '#ff4a3a' : '#e8e8e8'; rctx.lineWidth = 3; rctx.beginPath(); rctx.arc(x, y, ZONE_R * K, 0, Math.PI * 2); rctx.stroke(); rctx.fillStyle = rctx.strokeStyle; rctx.font = 'bold 13px system-ui'; rctx.textAlign = 'center'; rctx.textBaseline = 'middle'; rctx.fillText(z.name, x, y); }
+  if (run.capture || run.extract) for (const z of run.zones) { const x = (z.x - p.pos.x) * K, y = (z.z - p.pos.z) * K; rctx.strokeStyle = z.kind === 'evac' ? '#6dff9a' : z.own === 'P' ? '#5fe3ff' : z.own === 'E' ? '#ff4a3a' : z.kind === 'cache' ? '#ffd23a' : '#e8e8e8'; rctx.lineWidth = 3; rctx.beginPath(); rctx.arc(x, y, Math.max(6, z.R * K), 0, Math.PI * 2); rctx.stroke(); rctx.fillStyle = rctx.strokeStyle; rctx.font = 'bold 13px system-ui'; rctx.textAlign = 'center'; rctx.textBaseline = 'middle'; rctx.fillText(z.name, x, y); }
   if (G.core && G.core.alive) { rctx.fillStyle = '#5fe3ff'; const x = (G.core.pos.x - p.pos.x) * K, z = (G.core.pos.z - p.pos.z) * K; rctx.beginPath(); rctx.arc(x, z, 9, 0, Math.PI * 2); rctx.fill(); rctx.strokeStyle = '#e8fbff'; rctx.lineWidth = 2; rctx.stroke(); }
   if (G.wing && G.wing.alive) { rctx.fillStyle = '#9fffd0'; const x = (G.wing.pos.x - p.pos.x) * K, z = (G.wing.pos.z - p.pos.z) * K; rctx.beginPath(); rctx.moveTo(x, z - 8); rctx.lineTo(x - 6, z + 6); rctx.lineTo(x + 6, z + 6); rctx.fill(); }
   rctx.fillStyle = '#5dff9a';
@@ -1207,7 +1299,7 @@ function drawHUD(dt) {
 const auto = { on: false, st: 1, stT: 0, jT: 3, hover: 0, sT: 0 };
 function autoIntent(dt) {
   const p = G.player; let tgt = null, bd = 1e9;
-  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : e.kind === 'mender' ? -35 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
+  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : e.kind === 'mender' ? -35 : e.kind === 'crawler' && e.c.distanceTo(p.pos) < 35 ? -30 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
   // pick up repairs when hurt
   let goal = null;
   if (p.hp < p.maxHp * 0.6) for (const k of G.pickups) { const d = k.o.position.distanceTo(p.pos); if (d < 70) { goal = k.o.position; break; } }
@@ -1215,6 +1307,12 @@ function autoIntent(dt) {
     let zb = null, zs = 1e9;
     for (const z of run.zones) { const d = Math.hypot(z.x - p.pos.x, z.z - p.pos.z); const sc = z.own === 'P' ? (z.ein ? d * 0.6 : 1e9) : d; if (sc < zs) { zs = sc; zb = z; } }
     if (zb && Math.hypot(zb.x - p.pos.x, zb.z - p.pos.z) > ZONE_R * 0.55) goal = zb.pos;
+  }
+  if (!goal && run.extract && !run.won) {
+    let zb = run.evac, zs = 1e9;
+    if (!zb) for (const z of run.zones) { if (z.kind !== 'cache' || z.k >= 1) continue; const d = Math.hypot(z.x - p.pos.x, z.z - p.pos.z) - (z.k > 0 ? 200 : 0); if (d < zs) { zs = d; zb = z; } }
+    const busy = !run.evac && !(zb && zb.k > 0) && G.enemies.filter((e) => e.alive && !e.cloaked && e.kind !== 'crawler' && e.c.distanceTo(p.pos) < (e.kind === 'turret' ? 60 : 90)).length >= 2;   // clear the area before the next cache
+    if (zb && !busy && Math.hypot(zb.x - p.pos.x, zb.z - p.pos.z) > zb.R * 0.5) goal = zb.pos;
   }
   if (!goal && G.core && G.core.alive && Math.hypot(p.pos.x - G.core.pos.x, p.pos.z - G.core.pos.z) > (run.escort ? (run.driving ? 22 : G.enemies.filter((e) => e.alive).length <= 2 ? 999 : 45) : 70)) goal = G.core.pos;
   if (tgt) {
@@ -1229,16 +1327,18 @@ function autoIntent(dt) {
   auto.hover -= dt;
   if (tgt && tgt.c.y - p.pos.y > 7 && tgt.c.distanceTo(p.pos) < 70 && p.en > 25) { if (p.grounded) jump = true; auto.hover = 0.3; }
   const d = tgt ? tgt.c.distanceTo(p.pos) : 0;
-  const melee = G.pw.R.d.type === 'blade' || G.pw.L.d.type === 'blade';
+  const isMelee = (t) => t === 'blade' || t === 'pile';
+  const melee = isMelee(G.pw.R.d.type) || isMelee(G.pw.L.d.type);
   let f = tgt ? (melee ? (d > 24 ? 1 : 0) : (d > 45 ? 1 : d < 22 ? -1 : 0)) : 0, s = tgt ? auto.st : 0;
   if (goal) { const gx = goal.x - p.pos.x, gz = goal.z - p.pos.z; const yaw = cam.yaw; const fw = [-Math.sin(yaw), -Math.cos(yaw)], rt = [Math.cos(yaw), -Math.sin(yaw)]; f = Math.sign(gx * fw[0] + gz * fw[1]); s = Math.sign(gx * rt[0] + gz * rt[1]); }
   const los = tgt && clearLine(p.center(new V3()), tgt.c);
   auto.sT -= dt; const sPress = auto.sT <= 0 && los; if (sPress) auto.sT = 0.6;
   const sniped = G.enemies.some((e) => e.kind === 'stalker' && e.st === 'aim' && e.lockOn === p && e.stT < 0.5);
   const incoming = G.shots.some((sh) => sh.team === 'E' && sh.kind === 'missile' && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 22);
-  const fire = (slot) => !!los && (G.pw[slot].d.type !== 'blade' || d < 36) && (G.pw[slot].d.type !== 'charge' || Math.random() < 0.985);
+  const leapNear = G.enemies.some((e) => e.kind === 'crawler' && e.st === 'leap' && e.c.distanceTo(p.pos) < 12);
+  const fire = (slot) => !!los && (G.pw[slot].d.type !== 'blade' || d < 36) && (G.pw[slot].d.type !== 'pile' || d < 24) && (G.pw[slot].d.type !== 'charge' || Math.random() < 0.985);
   const odNow = G.od.k >= 1 && (G.bosses.some((b) => b.alive && b.c.distanceTo(p.pos) < 80) || G.enemies.filter((e) => e.alive && e.c.distanceTo(p.pos) < 60).length >= 3);
-  return { od: odNow, f, s, boost: d > 70 || !!goal, qboost: (G.hud.hurt > 0.35 && Math.random() < 0.05) || (incoming && Math.random() < 0.25) || (sniped && Math.random() < 0.035), jump, hover: auto.hover > 0, b0: fire('R'), b2: fire('L'), e: sPress };
+  return { od: odNow, f, s, boost: d > 70 || !!goal, qboost: (G.hud.hurt > 0.35 && Math.random() < 0.05) || (incoming && Math.random() < 0.25) || (sniped && Math.random() < 0.035) || (leapNear && Math.random() < 0.3), jump, hover: auto.hover > 0, b0: fire('R'), b2: fire('L'), e: sPress };
 }
 
 // ------------------------------------------------------------------ simulation step
@@ -1369,7 +1469,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=9');
+    await loadKit('./assets/kit.glb?v=11');
     ensureArena();
     makePlayer();
     setState('title');

@@ -108,7 +108,7 @@ button.primary:hover { background: #9af0ff; }
 .keys b { font-family: var(--num); color: var(--ink); font-weight: 600; letter-spacing: 1px; }
 #garage .card { max-width: 430px; margin: 0 0 0 auto; max-height: calc(100vh - 32px); overflow-y: auto; }
 #garage.overlay { background: linear-gradient(90deg, transparent 40%, rgba(6, 9, 12, 0.6)); justify-content: flex-end; }
-.gsec { margin-top: 14px; }
+.gsec { margin-top: 10px; }
 .gsec h3 { font-size: 13px; color: var(--dim); letter-spacing: 3px; margin: 0 0 6px; font-weight: 400; }
 .opts { display: flex; flex-wrap: wrap; gap: 6px; }
 .opt { font-size: 13px; padding: 7px 10px; border: 1px solid var(--line); cursor: pointer; background: rgba(255,255,255,0.03); }
@@ -132,13 +132,15 @@ button.primary:hover { background: #9af0ff; }
 #tMods .chip:hover { border-color: #ffb040; }
 #tMods .chip.on { border-color: #ffb040; color: #ffd08a; background: rgba(255, 150, 40, 0.15); }
 #tMods .chip.forced { cursor: default; border-style: dashed; }
-.mlist { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+.mlist { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
 #title .card { max-width: 1140px; }
-.mis { text-align: left; padding: 9px 10px; letter-spacing: 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mis { text-align: left; padding: 6px 10px; letter-spacing: 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .mis b { font-size: 15px; }
 .mis .en { font-family: var(--num); font-size: 12px; letter-spacing: 2px; color: var(--cyan); }
 .mis small { color: var(--dim); font-size: 12px; line-height: 1.5; }
 .mis small.best { color: var(--amber); }
+.mis em.done { font-style: normal; color: var(--amber); font-size: 13px; }
+#tMisDesc .best { color: var(--amber); }
 .mis.on { background: rgba(95, 227, 255, 0.18); border-color: var(--cyan); }
 .uprow { display: grid; grid-template-columns: 1fr auto 84px; gap: 10px; align-items: center; padding: 5px 0; border-bottom: 1px solid rgba(120, 220, 255, 0.12); }
 .uprow .un b { font-size: 13px; font-weight: 500; }

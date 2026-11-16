@@ -502,6 +502,57 @@ def build_mender():
     ball((0, 0.35, -0.56), 0.13, M["MendEmit"], K)
     muzzle("Muzzle_Mender", (0, 0.35, -0.62), K)
 
+def build_pile():
+    K = kit("W_Pile")
+    # pile bunker: heavy forearm housing with recoil pistons; the spike lives under P_Spike so the page can fire it along +Y
+    box((0, 0.2, 0), (0.52, 1.05, 0.52), M["Frame"], K, bevel=0.05)
+    box((0, 0.12, 0.3), (0.44, 0.8, 0.1), M["Armor2"], K, bevel=0.02)
+    for s_ in (-1, 1):
+        box((s_ * 0.28, 0.3, 0), (0.06, 0.75, 0.3), M["Hazard"], K)
+        cyl((s_ * 0.17, 0.5, -0.24), 0.07, 0.75, M["Piston"], K, rot=ALONG_Y, verts=8)
+    cyl((0, 0.82, 0), 0.25, 0.3, M["Joint"], K, rot=ALONG_Y, verts=12)
+    cyl((0, 0.98, 0), 0.19, 0.08, M["Accent"], K, rot=ALONG_Y, verts=12)
+    sp = empty("P_Spike", (0, 0.7, 0), K)
+    cyl((0, 0.45, 0), 0.11, 0.9, M["Piston"], sp, rot=ALONG_Y, verts=10)
+    cyl((0, 1.02, 0), 0.11, 0.26, M["Piston"], sp, rot=ALONG_Y, verts=10, r2=0.015)
+    muzzle("Muzzle_Pile", (0, 1.3, 0), K)
+
+def build_crawler():
+    # Crawler: suicide spider bomb, ~1.6 m across. front = +Y
+    K = kit("E_Crawler")
+    body = empty("E_CBody", (0, 0, 0.72), K)
+    ball((0, 0, 0), 0.5, M["EArmor"], body, scale=(1, 1.15, 0.6))
+    ball((0, 0, 0.12), 0.36, M["EArmor2"], body, scale=(1, 1, 0.7))
+    box((0, 0.52, 0.0), (0.36, 0.1, 0.1), M["EEye"], body)
+    box((0, -0.46, 0.05), (0.32, 0.18, 0.18), M["Hazard"], body)
+    for s_ in (-1, 1):
+        box((s_ * 0.42, 0, 0.12), (0.06, 0.6, 0.06), M["Hazard"], body)
+    bl = empty("E_CBlink", (0, 0, 0.34), body)
+    ball((0, 0, 0), 0.15, M["EEye"], bl)
+    for i, (x, y) in enumerate(((1, 1), (-1, 1), (1, -1), (-1, -1))):
+        leg = empty(f"E_KLeg{i + 1}", (x * 0.34, y * 0.34, -0.05), body, rot=(0, 0, math.atan2(y, x)))
+        ball((0, 0, 0), 0.11, M["Joint"], leg)
+        box((0.34, 0, 0.12), (0.68, 0.12, 0.12), M["Frame"], leg, rot=(0, math.radians(-22), 0))
+        box((0.815, 0, -0.2), (0.1, 0.1, 0.93), M["Frame"], leg, rot=(0, math.radians(-17), 0))
+        ball((0.68, 0, 0.24), 0.08, M["Joint"], leg)
+
+def build_cache():
+    # data cache terminal for the extraction mission, ~3.7 m tall. front = +Y
+    K = kit("F_Cache")
+    box((0, 0, 0.15), (2.6, 1.8, 0.3), M["Concrete"], K, bevel=0.03)
+    box((0, 0, 1.3), (1.6, 1.0, 2.0), M["Frame"], K, bevel=0.06)
+    box((0, 0.51, 1.55), (1.2, 0.04, 0.85), M["Visor"], K)
+    box((0, 0.52, 0.75), (1.2, 0.04, 0.25), M["Black"], K)
+    for i in range(4):
+        box((0, -0.51, 0.6 + i * 0.4), (1.3, 0.04, 0.1), M["Ammo"], K)
+    for s_ in (-1, 1):
+        box((s_ * 0.83, 0, 1.3), (0.06, 0.8, 1.8), M["Hazard"], K)
+        cyl((s_ * 1.05, 0.55, 0.45), 0.09, 0.5, M["Black"], K, rot=ALONG_Y, verts=8)
+    cyl((0.5, 0.2, 2.95), 0.05, 1.5, M["Joint"], K)
+    ball((0.5, 0.2, 3.72), 0.12, M["EEye"], K)
+    cyl((-0.4, -0.1, 2.45), 0.36, 0.3, M["Armor2"], K)
+    cyl((-0.4, -0.1, 2.62), 0.2, 0.06, M["Visor"], K)
+
 def build_walker():
     K = kit("E_Walker")
     body = empty("E_WBody", (0, 0, 2.2), K)
@@ -781,9 +832,9 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_mini()
-build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout

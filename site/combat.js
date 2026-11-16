@@ -25,13 +25,14 @@ export const WEAPONS = {
   blade: { slot: 'arm', name: 'LB-0 光束剑', en: 'LB-0 Pulse Blade', desc: '近战 · 锁定时冲刺斩击 · 耗 EN', type: 'blade', dmg: 310, range: 7.5, lunge: 38, cd: 0.95, cost: 16, sfx: 'blade' },
   shotgun: { slot: 'arm', name: 'SG-12 霰弹炮', en: 'SG-12 Scattergun', desc: '近距离 · 一发 9 颗弹丸 · 射程短', type: 'bullet', pellets: 9, rate: 0.72, dmg: 13, speed: 250, spread: 0.075, life: 0.42, mag: 6, reload: 2.3, color: 0xffc890, w: 0.2, len: 4, sfx: 'cannon', recoil: 0.7 },
   grenade: { slot: 'arm', name: 'GL-4 榴弹发射器', en: 'GL-4 Grenade Launcher', desc: '抛物线弹道 · 范围爆炸 · 可越过掩体', type: 'bullet', grenade: true, rate: 0.55, dmg: 78, splash: 6.5, speed: 88, grav: 30, spread: 0.004, mag: 8, reload: 2.5, color: 0xffa050, sfx: 'grenade', recoil: 0.55 },
+  pile: { slot: 'arm', name: 'PB-9 打桩机', en: 'PB-9 Pile Bunker', desc: '近战 · 锁定时冲刺 · 单体重击 · 贯穿护盾', type: 'pile', dmg: 430, range: 5.5, lunge: 26, cd: 1.3, cost: 20, sfx: 'pile' },
   missile: { slot: 'shoulder', name: 'MS-6 飞弹巢', en: 'MS-6 Missile Pods', desc: '多重锁定 · 6 发追踪', type: 'missile', count: 6, dmg: 40, splash: 5, cd: 6.5, sfx: 'missile' },
   cannon: { slot: 'shoulder', name: 'PC-2 等离子炮', en: 'PC-2 Plasma Cannon', desc: '大范围爆炸 · 弹速慢', type: 'plasma', dmg: 165, splash: 9, speed: 105, cd: 3.4, sfx: 'cannon' },
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
   drones: { slot: 'shoulder', name: 'DP-4 攻击无人机', en: 'DP-4 Drone Pod', desc: '放出 2 架无人机 · 自动攻击 14 秒', type: 'drones', count: 2, dur: 14, dmg: 6, rate: 0.17, range: 80, cd: 18, sfx: 'drone' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'grenade', 'coil', 'rail', 'blade'];
+export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'grenade', 'coil', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones'];
 
 export function weaponState(key) {
@@ -355,6 +356,13 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
         fx.ring(owner.pos, null, 6, 1.5, 0.45, 0xff4020);
       }
     }
+  } else if (d.type === 'pile') {
+    if (held && ws.cd <= 0 && owner.en >= d.cost * 0.5) {
+      ws.cd = d.cd; owner.en = Math.max(0, owner.en - d.cost); owner.drainT = 0;
+      const c = owner.center(_b);
+      ws.tgt = target && target.alive && !target.isBarrel && !target.dying && target.c.distanceTo(c) < d.lunge && clearLine(c, target.c) ? target : null;
+      pileLunge(owner, slot, ws, team, dmgMul);
+    }
   } else if (d.type === 'missile') {
     if (pressed && ws.cd <= 0) {
       ws.cd = d.cd;
@@ -547,6 +555,48 @@ function bladeLunge(owner, slot, ws, team, dmgMul) {
       prev = p;
     }
     if (hits) { sfx('bladehit', owner === G.player ? 0 : dist2); if (owner === G.player) { G.fx.trauma = Math.min(1, G.fx.trauma + 0.3); G.hitStop = 0.07; } }
+  } });
+}
+
+// ------------------------------------------------------------------ pile bunker: short dash, then one heavy piercing punch with a shockwave and knockback
+function pileLunge(owner, slot, ws, team, dmgMul) {
+  const d = ws.d, mslot = owner.slots[slot];
+  const c = owner.center(new V3());
+  const tgt = ws.tgt; ws.tgt = null;
+  const dir = new V3();
+  if (tgt) dir.subVectors(tgt.c, c); else dir.set(-Math.sin(owner.aimYaw), 0, -Math.cos(owner.aimYaw));
+  const dist = dir.length(); dir.normalize();
+  const travel = tgt ? Math.max(0, dist - 2.6 - tgt.r * 0.6) : 4;
+  const T = Math.max(0.08, travel / 110);
+  owner.vel.copy(dir).multiplyScalar(travel / T);
+  if (owner.grounded && dir.y < 0.15) owner.vel.y = 0; else owner.grounded = false;
+  owner.lungeT = T;
+  owner.ctx.onQuickBoost && travel > 4 && owner.ctx.onQuickBoost(owner);
+  const dist2 = G.player ? G.player.pos.distanceTo(owner.pos) : 0;
+  G.queue.push({ label: G.curLabel, t: T, fn: () => {
+    if (!owner.alive) return;
+    const oc = owner.center(new V3());
+    const fwd = tgt && tgt.alive ? new V3().subVectors(tgt.c, oc).normalize() : new V3(-Math.sin(owner.aimYaw), 0, -Math.cos(owner.aimYaw));
+    const tip = oc.clone().addScaledVector(fwd, 3.0 * owner.scale);
+    const ents = entsFor(team === 'P' ? 'P' : 'E');
+    let hit = tgt && tgt.alive && tgt.c.distanceTo(oc) < d.range + tgt.r + 2.5 ? tgt : null;
+    if (!hit) { let bd = 1e9; for (const e of ents) { const dd = e.c.distanceTo(tip) - e.r; if (dd < d.range && dd < bd) { bd = dd; hit = e; } } }
+    mslot.pileT = 0.34; mslot.recoil = 0.9;
+    sfx('pile', owner === G.player ? 0 : dist2);
+    if (!hit) { G.fx.sparks(tip, fwd, 8, 0xffd0a0, 10, 0.6, 0.3, 0.2); return; }
+    const at = hit.c.clone().lerp(oc, 0.35);
+    G.curSrc = owner.pos; G.pierce = true;
+    dealDamage(hit, d.dmg * dmgMul, team, at);
+    for (const e of ents) if (e !== hit && e.alive && e.c.distanceTo(hit.c) < 5 + e.r) dealDamage(e, d.dmg * 0.16 * dmgMul, team, e.c);
+    G.pierce = false;
+    const kv = !hit.parts && (hit.vel || (hit.m && hit.m.vel));
+    if (kv) { const big = hit.kind === 'boss' || hit.kind === 'raider'; kv.addScaledVector(fwd, big ? 9 : 18); if (big) kv.y += 4; }
+    G.fx.sparks(at, fwd, 34, 0xffe0a0, 30, 1.2, 0.5, 0.34);
+    G.fx.flash(at, 0xffc080, 55, 24, 0.18);
+    G.fx.ring(at, fwd, 0.6, 7, 0.32, 0xffb060);
+    G.fx.streak(oc.clone().addScaledVector(fwd, 1.5), at.clone().addScaledVector(fwd, 4), 0.6, 0xfff0d0, 0.12);
+    sfx('pilehit', owner === G.player ? 0 : dist2);
+    if (owner === G.player) { G.fx.trauma = Math.min(1, G.fx.trauma + 0.55); G.hitStop = 0.13; }
   } });
 }
 
@@ -1357,6 +1407,78 @@ export class Mender extends Enemy {
       if (Math.random() < 0.3) G.fx.sparks(e.c, null, 2, 0x7dffa8, 5, 1, 0.4, 0.2);
       this.sndT -= dt; if (this.sndT <= 0) { this.sndT = 1.4; sfx('mend', pd); }
       if (!G.mendSaid) { G.mendSaid = true; G.onHint && G.onHint('维修无人机正在修复敌机 · 绿色光束 · 优先击落它', 3.5); }
+    }
+  }
+}
+
+// Crawler: suicide spider bomb. Runs at its target in packs, leaps from ~9 m and detonates on contact or when the fuse runs out.
+// Shot down, it pops with a smaller blast that hurts nearby enemies, so packs chain-react.
+export class Crawler extends Enemy {
+  constructor(pos) {
+    super('crawler', 'E_Crawler', pos, 75, 1.1); this.boom = 0.5;
+    this.vel = new V3(); this.ph = Math.random() * 6; this.weave = Math.random() * 6; this.st = 'run'; this.fuse = 0;
+    this.strafe = Math.random() < 0.5 ? 1 : -1; this.spd = 12 + Math.random() * 3; this.wake = 0.3 + Math.random() * 0.9;
+    this.legY = [1, 2, 3, 4].map((i) => this.n['E_KLeg' + i].rotation.y); this.bodyY = this.n.E_CBody.position.y;
+    this.c.set(pos.x, pos.y + 0.75, pos.z); this.skT = Math.random();
+  }
+  explode() {
+    const c = this.c.clone(); this.remove();
+    G.fx.explosion(c, 0.45, 0xffa040);
+    G.queue.push({ label: 'crawler-chain', t: 0.07, fn: () => explodeAt(c, 5.5, 45, 'P', 0.6, 0xffa040) });
+  }
+  detonate() {
+    if (this.gone) return;
+    this.alive = false; this.dying = true;
+    G.curLabel = 'crawler'; G.curSrc = this.pos;
+    explodeAt(this.c, 6, 42, 'E', 0.85, 0xff6030);
+    this.remove();
+  }
+  update(dt) {
+    const n = this.n, p = this.tg(), pc = p.center(playerC);
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1;
+    this.ph += dt; this.wake -= dt;
+    if (this.st === 'leap') {
+      this.vel.y -= 26 * dt; this.pos.addScaledVector(this.vel, dt);
+      const gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.5);
+      if (this.pos.y < gy) { this.pos.y = gy; this.vel.x *= 0.3; this.vel.z *= 0.3; this.vel.y = 0; }
+      this.fuse -= dt;
+      this.c.set(this.pos.x, this.pos.y + 0.75, this.pos.z);
+      this.obj.rotation.x = -0.5;
+      n.E_CBlink.scale.setScalar(Math.sin(this.ph * 40) > 0 ? 2.2 : 1);
+      if (this.fuse <= 0 || this.c.distanceTo(pc) < 3.1) this.detonate();
+      return;
+    }
+    // run: straight at the target with a weave; slide along buildings
+    let fx_ = dx / dist, fz = dz / dist;
+    const gl = goalDir(this, this.pos); if (gl) { fx_ = gl.x; fz = gl.z; }
+    const w = Math.sin(this.ph * 2.2 + this.weave) * 0.45 * Math.min(1, dist / 20);
+    let tx = fx_ + -fz * w, tz = fz + fx_ * w;
+    this.slideT = Math.max(0, (this.slideT || 0) - dt);
+    if (this.slideT > 0) { tx = fx_ * 0.2 + -fz * this.strafe; tz = fz * 0.2 + fx_ * this.strafe; }
+    const L = Math.hypot(tx, tz) || 1, sp0 = this.wake > 0 ? 0 : this.spd;
+    tx = tx / L * sp0; tz = tz / L * sp0;
+    const k = 1 - Math.exp(-6 * dt);
+    this.vel.x += (tx - this.vel.x) * k; this.vel.z += (tz - this.vel.z) * k;
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 1.0, 1.5)) blockedSlide(this);
+    this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6, 2);
+    this.pos.x = Math.max(-ARENA + 2, Math.min(ARENA - 2, this.pos.x)); this.pos.z = Math.max(-ARENA + 2, Math.min(ARENA - 2, this.pos.z));
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    if (sp > 0.5) this.obj.rotation.y = Math.atan2(-this.vel.x, -this.vel.z);
+    const g = Math.min(1, sp / 6);
+    for (let i = 0; i < 4; i++) n['E_KLeg' + (i + 1)].rotation.y = this.legY[i] + Math.sin(this.ph * 22 + (i === 0 || i === 3 ? 0 : Math.PI)) * 0.35 * g;
+    n.E_CBody.position.y = this.bodyY + Math.abs(Math.sin(this.ph * 22)) * 0.07 * g;
+    n.E_CBlink.scale.setScalar(Math.sin(this.ph * (dist < 25 ? 18 : 5)) > 0.3 ? 1.5 : 1);
+    this.c.set(this.pos.x, this.pos.y + 0.75, this.pos.z);
+    this.skT -= dt; if (this.skT <= 0 && dist < 45) { this.skT = 0.5 + Math.random() * 0.4; sfx('skitter', Math.hypot(this.pos.x - G.player.pos.x, this.pos.z - G.player.pos.z)); }
+    // leap from close range (the target's vertical offset decides the arc)
+    if (this.wake <= 0 && dist < 9 && Math.abs(pc.y - this.c.y) < 12 && this.checkLos(dt)) {
+      const t = 0.5, tv = p.vel || _a.set(0, 0, 0);
+      const ax = pc.x + tv.x * t * 0.6 - this.pos.x, az = pc.z + tv.z * t * 0.6 - this.pos.z;
+      this.vel.set(ax / t, (pc.y - 0.8 - this.pos.y + 0.5 * 26 * t * t) / t, az / t);
+      this.st = 'leap'; this.fuse = 0.85;
+      G.fx.flash(this.c, 0xff4020, 18, 10, 0.3);
+      sfx('crawl', dist);
     }
   }
 }
