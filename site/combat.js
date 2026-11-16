@@ -8,7 +8,7 @@ import { sfx } from './audio.js';
 const V3 = THREE.Vector3;
 export const G = {
   scene: null, fx: null, camera: null, player: null, boss: null,
-  enemies: [], shots: [], pickups: [], beams: [], queue: [], minis: [],
+  enemies: [], shots: [], pickups: [], beams: [], queue: [], minis: [], mines: [], burning: new Set(),
   time: 0, diff: { key: 'normal', dmg: 1, hp: 1 },
   stats: { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0 },
   hud: { hit: 0, hurt: 0, kill: 0 },
@@ -25,6 +25,7 @@ export const WEAPONS = {
   blade: { slot: 'arm', name: 'LB-0 光束剑', en: 'LB-0 Pulse Blade', desc: '近战 · 锁定时冲刺斩击 · 耗 EN', type: 'blade', dmg: 310, range: 7.5, lunge: 38, cd: 0.95, cost: 16, sfx: 'blade' },
   shotgun: { slot: 'arm', name: 'SG-12 霰弹炮', en: 'SG-12 Scattergun', desc: '近距离 · 一发 9 颗弹丸 · 射程短', type: 'bullet', pellets: 9, rate: 0.72, dmg: 13, speed: 250, spread: 0.075, life: 0.42, mag: 6, reload: 2.3, color: 0xffc890, w: 0.2, len: 4, sfx: 'cannon', recoil: 0.7 },
   grenade: { slot: 'arm', name: 'GL-4 榴弹发射器', en: 'GL-4 Grenade Launcher', desc: '抛物线弹道 · 范围爆炸 · 可越过掩体', type: 'bullet', grenade: true, rate: 0.55, dmg: 78, splash: 6.5, speed: 88, grav: 30, spread: 0.004, mag: 8, reload: 2.5, color: 0xffa050, sfx: 'grenade', recoil: 0.55 },
+  flamer: { slot: 'arm', name: 'FT-2 火焰喷射器', en: 'FT-2 Flamethrower', desc: '近距离持续喷射 · 点燃敌人持续灼烧 · 燃烧中的敌人伤害 −25%', type: 'flame', rate: 0.04, dmg: 8, speed: 60, spread: 0.08, life: 0.42, mag: 120, reload: 2, burn: 22, burnT: 2.5, sfx: 'flame' },
   pile: { slot: 'arm', name: 'PB-9 打桩机', en: 'PB-9 Pile Bunker', desc: '近战 · 锁定时冲刺 · 单体重击 · 贯穿护盾', type: 'pile', dmg: 430, range: 5.5, lunge: 26, cd: 1.3, cost: 20, sfx: 'pile' },
   missile: { slot: 'shoulder', name: 'MS-6 飞弹巢', en: 'MS-6 Missile Pods', desc: '多重锁定 · 6 发追踪', type: 'missile', count: 6, dmg: 40, splash: 5, cd: 6.5, sfx: 'missile' },
   cannon: { slot: 'shoulder', name: 'PC-2 等离子炮', en: 'PC-2 Plasma Cannon', desc: '大范围爆炸 · 弹速慢', type: 'plasma', dmg: 165, splash: 9, speed: 105, cd: 3.4, sfx: 'cannon' },
@@ -32,7 +33,7 @@ export const WEAPONS = {
   drones: { slot: 'shoulder', name: 'DP-4 攻击无人机', en: 'DP-4 Drone Pod', desc: '放出 2 架无人机 · 自动攻击 14 秒', type: 'drones', count: 2, dur: 14, dmg: 6, rate: 0.17, range: 80, cd: 18, sfx: 'drone' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'grenade', 'coil', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'grenade', 'coil', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones'];
 
 export function weaponState(key) {
@@ -48,6 +49,7 @@ function entsFor(team) {
   if (team === 'P') {
     for (const e of G.enemies) if (e.alive && !e.dying) { if (e.parts) { for (const pt of e.parts) if (pt.alive) out.push(pt); } else out.push(e); }
     for (const b of barrels) if (!b.dead) out.push(b.ent || (b.ent = { isBarrel: true, b, c: b.pos, r: 1.5, get alive() { return !b.dead; }, hit: (dmg) => hitBarrel(b, dmg) }));
+    for (const m of G.mines) if (m.alive) out.push(m);
   } else {
     const p = G.player;
     if (p && p.alive) { p._ent = p._ent || { isPlayer: true, c: new V3(), r: 2.1 * p.scale, get alive() { return p.alive; }, hit: (dmg, src, label) => damagePlayer(dmg, src, label) }; p.center(p._ent.c); out.push(p._ent); }
@@ -84,7 +86,7 @@ export function rayEnts(o, d, maxT, ents, all = false) {
   hits.sort((a, b) => a.t - b.t);
   return all ? hits : hits[0] || null;
 }
-export function enemyEnts() { return entsFor('P').filter((e) => !e.isBarrel); }
+export function enemyEnts() { return entsFor('P').filter((e) => !e.isBarrel && !e.isMine); }
 
 // overdrive: the meter fills from damage dealt; while active: damage x1.4, damage taken x0.65, free energy, fast reloads
 export const OD = { fill: 2600, dur: 10, dmg: 1.4, armor: 0.65 };
@@ -96,11 +98,13 @@ function dealDamage(ent, dmg, team, at, label) {
   if (team === 'P' && !ent.isBarrel && !isAlly(label || G.curLabel)) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; if (G.od && !(G.od.t > 0) && !ent.isCore) G.od.k = Math.min(1, G.od.k + dmg / OD.fill); }
 }
 
+const BURN_WEAK = 0.75;
 const isAlly = (l) => !!l && l.startsWith('ally');
 function damagePlayer(dmg, src, label) {
   const p = G.player; if (!p || !p.alive || G.godMode) return;
   const blk = shieldBlock(p, src || G.curSrc);
   if (blk) { G.stats.blocked = (G.stats.blocked || 0) + dmg * blk; if (Math.random() < 0.3) sfx('shield', 0); }
+  if (G.curShooter && G.curShooter.burnT > 0) dmg *= BURN_WEAK;   // direct hits (melee, beams) from a burning enemy
   const d = dmg * G.diff.dmg * p.frame.armor * (1 - blk) * (G.od && G.od.t > 0 ? OD.armor : 1);
   G.dmgLog = G.dmgLog || {}; G.dmgLog[label || '?'] = (G.dmgLog[label || '?'] || 0) + d;
   p.hit(d); G.stats.dmgTaken += d; G.hud.hurt = Math.min(1, G.hud.hurt + d / 120);
@@ -134,7 +138,8 @@ export function explodeAt(pos, radius, dmg, team, size = 1, color) {
 // kind: bullet | ebullet | shell | missile | plasma
 export function spawnShot(o) {
   const s = { x: o.p.x, y: o.p.y, z: o.p.z, v: o.v.clone(), life: o.life ?? 2.5, dmg: o.dmg, team: o.team, kind: o.kind, splash: o.splash || 0,
-    label: o.label || G.curLabel || o.kind, color: o.color ?? 0xffd27a, w: o.w ?? 0.2, len: o.len ?? 6, target: o.target || null, aim: o.aim ? o.aim.clone() : null, age: 0, speed: o.v.length(), maxSpeed: o.maxSpeed || 0, size: o.size || 1, turn: o.turn || 5.5, grav: o.grav ?? 6 };
+    burn: o.burn || 0, burnT: o.burnT || 0, label: o.label || G.curLabel || o.kind, color: o.color ?? 0xffd27a, w: o.w ?? 0.2, len: o.len ?? 6, target: o.target || null, aim: o.aim ? o.aim.clone() : null, age: 0, speed: o.v.length(), maxSpeed: o.maxSpeed || 0, size: o.size || 1, turn: o.turn || 5.5, grav: o.grav ?? 6 };
+  if (s.team === 'E' && G.curShooter && G.curShooter.burnT > 0) s.dmg *= BURN_WEAK;   // burning enemies fire weakened shots
   G.shots.push(s);
   return s;
 }
@@ -145,6 +150,10 @@ function impact(s, at, ent) {
   else if (s.kind === 'plasma') explodeAt(at, s.splash, s.dmg, s.team, 1.5, 0xff8a30);
   else if (s.kind === 'shell') explodeAt(at, s.splash, s.dmg, s.team, 0.55, 0xff7040);
   else if (s.kind === 'grenade') explodeAt(at, s.splash, s.dmg, s.team, 0.95, 0xffa040);
+  else if (s.kind === 'flame') {
+    if (ent) { dealDamage(ent, s.dmg, s.team, at); if (s.burn && ent.alive && !ent.isBarrel && !ent.isPlayer && !ent.isMine) ignite(ent, s.burn, s.burnT, s.label); }
+    fx.emit('add', { x: at.x, y: at.y, z: at.z, vy: 1.5, life: 0.25, s0: 1.4, s1: 2.4, c0: 0xffa040, c1: 0xff3010 });
+  }
   else {
     if (ent) dealDamage(ent, s.dmg, s.team, at);
     fx.sparks(at, _a.copy(s.v).normalize().multiplyScalar(-1), ent ? 6 : 4, s.team === 'P' ? 0xffd27a : 0xff7a50, 14, 0.8, 0.25, 0.22);
@@ -172,6 +181,11 @@ function updateShots(dt) {
       } else s.v.y -= 12 * dt;
       fx.emit('smoke', { x: s.x, y: s.y, z: s.z, vx: (Math.random() - 0.5), vy: 0.5, vz: (Math.random() - 0.5), life: 0.9, s0: 0.6, s1: 2.2, c0: 0xc8c6c0, c1: 0xa09e98, a0: 0.5, drag: 2 });
       fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.05, s0: s.team === 'E' ? 1.8 : 1.3, c0: s.team === 'E' ? 0xff5030 : 0xffc070 });
+    } else if (s.kind === 'flame') {
+      s.v.multiplyScalar(1 - Math.min(0.5, 1.3 * dt)); s.v.y += 4 * dt;
+      const a = s.age;
+      fx.emit('add', { x: s.x, y: s.y, z: s.z, vx: s.v.x * 0.25, vy: s.v.y * 0.25 + 0.8, vz: s.v.z * 0.25, life: 0.11, s0: 0.5 + a * 6, s1: 0.8 + a * 7.5, c0: a < 0.12 ? 0xffe6a8 : 0xffa040, c1: 0xff3a10 });
+      if (a > 0.25 && Math.random() < 0.18) fx.emit('smoke', { x: s.x, y: s.y, z: s.z, vx: 0, vy: 1.6, vz: 0, life: 0.8, s0: 1.2, s1: 3, c0: 0x4a4440, c1: 0x2a2624, a0: 0.35, drag: 1.5 });
     } else if (s.kind === 'grenade') {
       s.v.y -= s.grav * dt;
       fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.1, s0: 1.0, s1: 0.3, c0: 0xffb060 });
@@ -186,7 +200,7 @@ function updateShots(dt) {
     _a.set(s.x, s.y, s.z);
     _b.set(s.x + s.v.x * dt, s.y + s.v.y * dt, s.z + s.v.z * dt);
     // vs entities
-    const h = segHit(_a, _b, s.team === 'P' ? entsP : entsE, s.kind === 'plasma' ? 0.6 : 0);
+    const h = segHit(_a, _b, s.team === 'P' ? entsP : entsE, s.kind === 'plasma' ? 0.6 : s.kind === 'flame' ? 0.4 + s.age * 2.5 : 0);
     // vs world
     const L = _a.distanceTo(_b); _d.subVectors(_b, _a).divideScalar(L || 1);
     const w = raySolids(_a, _d, L);
@@ -356,6 +370,22 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
         fx.ring(owner.pos, null, 6, 1.5, 0.45, 0xff4020);
       }
     }
+  } else if (d.type === 'flame') {
+    if (held && ws.reloadT <= 0 && ws.ammo > 0) {
+      while (ws.cd <= 0 && ws.ammo > 0) {
+        ws.cd += d.rate; ws.ammo--;
+        const mp = owner.muzzlePos(slot, _a);
+        _d.subVectors(aim, mp).normalize();
+        _d.x += (Math.random() - 0.5) * d.spread * 2; _d.y += (Math.random() - 0.5) * d.spread * 1.4; _d.z += (Math.random() - 0.5) * d.spread * 2; _d.normalize();
+        const v = _d.clone().multiplyScalar(d.speed).addScaledVector(owner.vel, 0.6);
+        spawnShot({ p: mp, v, dmg: d.dmg * dmgMul, team, kind: 'flame', life: d.life * (0.85 + Math.random() * 0.3), burn: d.burn * dmgMul, burnT: d.burnT });
+        if (me) G.stats.shots++;
+      }
+      ws.sndT -= dt; if (ws.sndT <= 0) { ws.sndT = 0.11; sfx('flame', dist); }
+      mslot.recoil = Math.min(0.12, (mslot.recoil || 0) + dt * 0.6);
+      if (ws.ammo <= 0) startReload();
+    } else if (pressed && ws.ammo <= 0) startReload();
+    if (!held && ws.cd < 0) ws.cd = 0;
   } else if (d.type === 'pile') {
     if (held && ws.cd <= 0 && owner.en >= d.cost * 0.5) {
       ws.cd = d.cd; owner.en = Math.max(0, owner.en - d.cost); owner.drainT = 0;
@@ -1483,6 +1513,99 @@ export class Crawler extends Enemy {
   }
 }
 
+// burning: flamethrower hits set ents alight for a few seconds (stacks refresh the timer, the strongest burn wins)
+function ignite(e, dps, t, label) {
+  e.burnT = Math.max(e.burnT || 0, t); e.burnDps = Math.max(e.burnT > t ? e.burnDps || 0 : 0, dps); e.burnLabel = label;
+  G.burning.add(e);
+}
+function updateBurning(dt) {
+  for (const e of G.burning) {
+    if (!e.alive || e.dying || !(e.burnT > 0)) { e.burnT = 0; G.burning.delete(e); continue; }
+    e.burnT -= dt;
+    const dmg = e.burnDps * dt;
+    G.pierce = true; e.hit(dmg, e.c, e.burnLabel); G.pierce = false;
+    if (!isAlly(e.burnLabel)) { G.stats.dmgDealt += dmg; if (G.od && !(G.od.t > 0)) G.od.k = Math.min(1, G.od.k + dmg / OD.fill); }
+    if (Math.random() < 0.55) { const r = (e.r || 1.5) * 0.7; G.fx.emit('add', { x: e.c.x + (Math.random() - 0.5) * r, y: e.c.y + (Math.random() - 0.3) * r, z: e.c.z + (Math.random() - 0.5) * r, vy: 3, life: 0.35, s0: 0.9, s1: 1.6, c0: 0xffa040, c1: 0xff3010 }); }
+    if (Math.random() < 0.08) G.fx.emit('smoke', { x: e.c.x, y: e.c.y + 1, z: e.c.z, vx: 0, vy: 2, vz: 0, life: 1.2, s0: 1.2, s1: 3.2, c0: 0x3a3634, c1: 0x222020, a0: 0.4, drag: 1 });
+  }
+}
+
+// Sapper: twin-rotor drone that circles its target at ~11 m and drops proximity mines on the ground around it
+export class Sapper extends Enemy {
+  constructor(pos) {
+    super('sapper', 'E_Sapper', pos, 300, 2.0); this.boom = 1;
+    this.vel = new V3(); this.ph = Math.random() * 6; this.dropT = 3 + Math.random() * 2; this.orbit = Math.random() < 0.5 ? 1 : -1; this.c.copy(pos);
+  }
+  update(dt) {
+    this.n.E_BRotor1.rotation.y += dt * 36; this.n.E_BRotor2.rotation.y -= dt * 36;
+    const p = this.tg(); this.ph += dt;
+    const ang = Math.atan2(this.pos.z - p.pos.z, this.pos.x - p.pos.x) + this.orbit * dt * 0.55;
+    const rad = 15 + 9 * Math.sin(this.ph * 0.45);
+    const tx = p.pos.x + Math.cos(ang) * rad, tz = p.pos.z + Math.sin(ang) * rad;
+    const ty = Math.max(groundAt(this.pos.x, this.pos.z, 99), groundAt(tx, tz, 99)) + 11 + Math.sin(this.ph) * 0.8;
+    _a.set(tx - this.pos.x, ty - this.pos.y, tz - this.pos.z);
+    const L = _a.length(); if (L > 0) _a.multiplyScalar(Math.min(15, L * 1.1) / L);
+    this.vel.lerp(_a, 1 - Math.exp(-1.6 * dt));
+    this.pos.addScaledVector(this.vel, dt);
+    const s = pointInSolid(this.pos, 2); if (s) { this.pos.y = s.max.y + 3; this.vel.y = Math.max(this.vel.y, 2); }
+    this.pos.x = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.x)); this.pos.z = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.z));
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    if (sp > 1) this.obj.rotation.y += angDiff(Math.atan2(-this.vel.x, -this.vel.z), this.obj.rotation.y) * Math.min(1, dt * 3);
+    this.obj.rotation.z = Math.max(-0.3, Math.min(0.3, -this.orbit * sp * 0.012));
+    this.c.copy(this.pos);
+    this.dropT -= dt;
+    if (this.dropT <= 0 && Math.hypot(this.pos.x - p.pos.x, this.pos.z - p.pos.z) < 32) {
+      this.dropT = 2.2 + Math.random() * 0.8;
+      if (G.mines.filter((m) => m.alive && m.owner === this).length < 6) { new Mine(this.pos.clone().addScaledVector(this.vel, 0.4).setY(this.pos.y - 0.9), this); sfx('minedrop', Math.hypot(this.pos.x - G.player.pos.x, this.pos.z - G.player.pos.z)); }
+    }
+  }
+}
+
+// proximity mine: falls, arms after 1.2 s, beeps for 0.5 s when a ground target comes within 4.5 m, then blows (6.5 m, 55).
+// Shoot it to set it off early (it hurts anyone nearby, you included). Lives in G.mines, not G.enemies, so waves don't wait for it.
+class Mine {
+  constructor(pos, owner) {
+    this.obj = cloneKit('E_Mine'); this.obj.position.copy(pos); this.obj.rotation.y = Math.random() * 6.28; G.scene.add(this.obj);
+    this.pos = this.obj.position; this.light = find(this.obj, 'E_MineLight'); this.owner = owner;
+    this.c = new V3(); this.r = 1.1; this.hp = 24; this.alive = true; this.isMine = true; this.kind = 'mine';
+    this.armT = 1.2; this.trigT = -1; this.life = 45; this.vy = -2; this.ph = Math.random() * 6; this.landed = false;
+    G.mines.push(this);
+  }
+  hit(dmg) { if (!this.alive) return; this.hp -= dmg; if (this.hp <= 0) this.blow(false); }
+  blow(trap) {
+    if (!this.alive) return;
+    this.alive = false; this.obj.parent && this.obj.parent.remove(this.obj);
+    const c = this.c.clone();
+    const prev = G.curLabel; G.curLabel = trap ? 'mine' : 'mine-shot'; G.curSrc = c;
+    explodeAt(c, trap ? 6.5 : 6, trap ? 55 : 40, trap ? 'E' : 'X', 0.8, 0xff7040);
+    G.curLabel = prev;
+  }
+  update(dt) {
+    this.ph += dt;
+    const gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.3);
+    if (!this.landed) {
+      this.vy -= 22 * dt; this.pos.y += this.vy * dt;
+      if (this.pos.y <= gy) { this.pos.y = gy; this.landed = true; G.fx.emit('smoke', { x: this.pos.x, y: gy + 0.3, z: this.pos.z, vx: 0, vy: 0.5, vz: 0, life: 0.6, s0: 0.8, s1: 2, c0: 0x9a948c, c1: 0x7a746c, a0: 0.4, drag: 2 }); }
+    }
+    this.c.set(this.pos.x, this.pos.y + 0.35, this.pos.z);
+    this.life -= dt; if (this.life <= 0) { this.alive = false; this.obj.parent && this.obj.parent.remove(this.obj); return; }
+    if (this.landed) this.armT -= dt;
+    const blink = this.trigT >= 0 ? Math.sin(this.ph * 50) > 0 : this.armT <= 0 && Math.sin(this.ph * 4) > 0.6;
+    this.light.scale.setScalar(blink ? 2.4 : this.armT > 0 ? 0.5 : 1);
+    if (this.trigT >= 0) { this.trigT -= dt; if (this.trigT <= 0) this.blow(true); return; }
+    if (this.armT > 0) return;
+    for (const f of [G.player, ...G.friends]) {
+      if (!f || !f.alive || !f.pos) continue;
+      if (Math.hypot(f.pos.x - this.pos.x, f.pos.z - this.pos.z) < 4.5 && f.pos.y - this.pos.y < 3) {
+        this.trigT = 0.5; sfx('minebeep', Math.hypot(this.pos.x - G.player.pos.x, this.pos.z - G.player.pos.z));
+        if (f === G.player && !G.mineSaid) { G.mineSaid = true; G.onHint && G.onHint('踩到地雷 · 立刻急闪或跳起 · 也可以远远射爆地雷', 3); }
+        break;
+      }
+    }
+  }
+}
+export function clearMines() { for (const m of G.mines) m.obj.parent && m.obj.parent.remove(m.obj); G.mines.length = 0; G.burning.clear(); }
+
 export function dropRepair(pos) {
   if (G.noRepair) return;
   const o = cloneKit('P_Repair'); o.position.copy(pos); o.position.y = Math.max(1.5, groundAt(pos.x, pos.z, pos.y) + 1.5);
@@ -1494,10 +1617,14 @@ export function updateCombat(dt) {
   for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; q.fn(); } }
   for (const e of G.enemies) {
     G.curLabel = e.kind;
-    e.update(dt);
+    G.curShooter = e; e.update(dt); G.curShooter = null;
     if (e.flash > 0) e.flash -= dt;
   }
   for (let i = G.enemies.length - 1; i >= 0; i--) if (G.enemies[i].gone) G.enemies.splice(i, 1);
+  G.curLabel = null;
+  updateBurning(dt);
+  for (const m of G.mines) if (m.alive) m.update(dt);
+  for (let i = G.mines.length - 1; i >= 0; i--) if (!G.mines[i].alive) G.mines.splice(i, 1);
   G.curLabel = null;
   updateMinis(dt);
   updateShots(dt);

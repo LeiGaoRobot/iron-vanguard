@@ -86,6 +86,10 @@ export function sfx(name, d = 0, pan = 0) {
       case 'pilehit': noise(t, 0.5, 'lowpass', 1600, 0.6, 0.9 * k, 0.45, pan, 120); tone(t, 'sine', 70, 24, 0.9 * k, 0.5); tone(t, 'square', 1200, 300, 0.12 * k, 0.1); break;
       case 'crawl': for (let i = 0; i < 3; i++) tone(t + i * 0.08, 'square', 2200, 2200, 0.06 * k, 0.05); break;
       case 'skitter': noise(t, 0.08, 'highpass', 3500, 1, 0.07 * k, 0.06, pan); break;
+      case 'flame': noise(t, 0.16, 'lowpass', 900, 0.6, 0.22 * k, 0.15, pan, 500); break;
+      case 'minedrop': tone(t, 'sine', 300, 120, 0.12 * k, 0.15); noise(t, 0.1, 'bandpass', 1200, 1, 0.12 * k, 0.08, pan); break;
+      case 'minebeep': for (let i = 0; i < 4; i++) tone(t + i * 0.11, 'square', 2600, 2600, 0.08 * Math.max(0.5, k), 0.05); break;
+      case 'medal': [659, 784, 988, 1319].forEach((f, i) => tone(t + i * 0.08, 'triangle', f, f, 0.1, 0.25)); break;
       case 'cloak': noise(t, 0.5, 'highpass', 3000, 0.5, 0.12 * k, 0.4, pan, 600); tone(t, 'sine', 900, 200, 0.06 * k, 0.4); break;
       case 'alarm': for (let i = 0; i < 3; i++) { tone(t + i * 0.5, 'sawtooth', 440, 440, 0.12, 0.3, 0.02); tone(t + i * 0.5 + 0.25, 'sawtooth', 330, 330, 0.12, 0.2, 0.02); } break;
       case 'ui': tone(t, 'triangle', 880, 990, 0.08, 0.06); break;

@@ -517,6 +517,51 @@ def build_pile():
     cyl((0, 1.02, 0), 0.11, 0.26, M["Piston"], sp, rot=ALONG_Y, verts=10, r2=0.015)
     muzzle("Muzzle_Pile", (0, 1.3, 0), K)
 
+def build_flamer():
+    K = kit("W_Flamer")
+    # flamethrower: fuel tank slung under a stubby receiver, long ribbed nozzle with a pilot light
+    box((0, 0.15, 0.04), (0.42, 0.85, 0.42), M["Frame"], K, bevel=0.05)
+    box((0, 0.1, 0.28), (0.34, 0.6, 0.1), M["Armor"], K, bevel=0.02)
+    cyl((0, 0.15, -0.32), 0.22, 0.85, M["Barrel"], K, rot=ALONG_Y, verts=12)
+    for y in (-0.15, 0.45):
+        cyl((0, y, -0.32), 0.235, 0.06, M["Hazard"], K, rot=ALONG_Y, verts=12)
+    cyl((0, 0.95, 0.04), 0.12, 0.8, M["Joint"], K, rot=ALONG_Y, verts=10)
+    for i in range(4):
+        torus((0, 0.7 + i * 0.16, 0.04), 0.13, 0.03, M["Frame"], K, rot=(math.pi / 2, 0, 0))
+    cyl((0, 1.38, 0.04), 0.17, 0.12, M["Frame"], K, rot=ALONG_Y, verts=10, r2=0.13)
+    ball((0, 1.36, 0.2), 0.05, M["Plasma"], K)
+    box((0.23, 0.3, 0.04), (0.04, 0.5, 0.2), M["Accent"], K)
+    muzzle("Muzzle_Flamer", (0, 1.46, 0.04), K)
+
+def build_sapper():
+    # Sapper: twin-rotor mine-laying drone, ~3 m long, mine rack underneath. front = +Y
+    K = kit("E_Sapper")
+    box((0, 0, 0), (1.1, 2.2, 0.7), M["EArmor"], K, bevel=0.1)
+    wedge((0, 1.2, 0.0), (0.9, 0.5, 0.6), M["EArmor2"], K, taper=0.5, bevel=0.05)
+    box((0, 1.38, 0.08), (0.5, 0.06, 0.14), M["EEye"], K)
+    box((0, -0.3, -0.5), (0.9, 1.2, 0.3), M["Frame"], K, bevel=0.03)
+    for i in range(3):
+        cyl((0, -0.75 + i * 0.45, -0.68), 0.26, 0.1, M["EArmor2"], K, verts=12, smooth=False)
+        cyl((0, -0.75 + i * 0.45, -0.62), 0.05, 0.04, M["EEye"], K, verts=8)
+    box((0, -0.3, -0.36), (0.6, 0.05, 0.05), M["Hazard"], K)
+    for s_ in (-1, 1):
+        box((s_ * 1.0, 0, 0.15), (1.0, 0.25, 0.14), M["Frame"], K)
+        cyl((s_ * 1.6, 0, 0.15), 0.62, 0.14, M["EArmor2"], K, verts=16, smooth=False)
+        r = empty(f"E_BRotor{1 if s_ < 0 else 2}", (s_ * 1.6, 0, 0.26), K)
+        box((0, 0, 0), (1.1, 0.1, 0.03), M["Black"], r)
+        box((0, 0, 0), (0.1, 1.1, 0.03), M["Black"], r)
+    box((0, -1.25, 0.25), (0.08, 0.4, 0.5), M["EArmor2"], K)
+
+def build_mine():
+    K = kit("E_Mine")
+    cyl((0, 0, 0.12), 0.75, 0.24, M["EArmor2"], K, verts=16, smooth=False)
+    cyl((0, 0, 0.27), 0.5, 0.08, M["Frame"], K, verts=16, smooth=False)
+    for i in range(4):
+        a = i * math.pi / 2
+        box((math.cos(a) * 0.62, math.sin(a) * 0.62, 0.24), (0.18, 0.18, 0.06), M["Hazard"], K, rot=(0, 0, a))
+    lt = empty("E_MineLight", (0, 0, 0.36), K)
+    ball((0, 0, 0), 0.13, M["EEye"], lt)
+
 def build_crawler():
     # Crawler: suicide spider bomb, ~1.6 m across. front = +Y
     K = kit("E_Crawler")
@@ -832,9 +877,9 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_mini()
-build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout
