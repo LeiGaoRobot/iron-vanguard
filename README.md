@@ -29,6 +29,7 @@ An original third-person mech action game, inspired by the gameplay in x.com/Bey
 | R | Reload |
 | Esc | Pause |
 | Gamepad (standard mapping) | LS move · RS look (light aim assist toward the primary lock) · RT / LT arm weapons · RB shoulder · A jump / hover · B, LB or LS click boost (tap = quick boost) · X reload · Start pause. On the title screen A sorties and Y opens the hangar; in pause / results A resumes or retries, B goes to the hangar. Moving the mouse switches back to mouse control |
+| Touch | Shown after the first touch. Drag on the left to move (the stick appears where the finger lands), drag anywhere else to look (aim assist toward the primary lock is 1.4× the gamepad's), buttons bottom-right: right arm / left arm / shoulder / jump-hover / boost (tap = quick boost) / reload; ‖ at the top pauses. The HUD moves to the top corners in touch mode |
 
 If the browser refuses pointer lock (for example inside the Artifact iframe), the game falls back to free-mouse mode: the reticle follows the cursor and the camera turns when the cursor is near the screen edge.
 
@@ -48,6 +49,14 @@ If the browser refuses pointer lock (for example inside the Artifact iframe), th
 - Snow look: `buildArena(scene, seed, env)` now takes the env key; the snow floor covers the tiles, roofs are white, and walls get frost ledges. `snowFx` is 3200 flakes in a 70 m box that follows the camera and wraps around it
 - **Gamepad**: `pollPad()` runs once per rendered frame (menu buttons, edge detection); `step()` folds the stick and button state into the same intent as the keyboard. Test hook: override `navigator.getGamepads`, then call `__iv.pollPad()` + `__iv.step(1)` per frame, because rAF doesn't run in a hidden pane
 
+## v4 content (2026-11-16)
+
+- **Reactor Defense** (`MISSIONS.defense`, dusk, seed 31): protect the `F_Reactor` core at the centre plaza (7000 HP, `Reactor` in `ally.js`, model scaled ×1.5). The mission fails if it falls. 5 waves; each wave comes from one side and a second group (`late`) arrives from the opposite side after 20 s or once ≤ 2 enemies are left (`spawnGroup` + `spot(..., bearing)`, which now spawns around the core). Between waves the core repairs 15%. The rank is based on the core's remaining HP
+- **Targeting** (`pickTarget` in `combat.js`): every enemy re-picks its target every 1–1.5 s from `G.player` + `G.friends`, scored by distance × weight (player 1, wingman 0.95, core 0.5 for ground units / 0.85 for flyers). Anything put in `G.friends` needs `pos / vel / center() / alive / _ent`. Enemy missile warnings only fire when the player is the target
+- **Wingman** (`Wingman` in `ally.js`): a one-off 2500 C contract in the hangar, then on/off per sortie (`cfg.wing`). Rifle + arc coil + missiles at 0.5× damage, 0.8× HP, takes 0.75× damage; stays 13 m beside the player and fights what is near the player (and the core). When destroyed it is air-dropped again 30 s later. With a wingman, kill and mission rewards are ×0.85. Its shots are labelled `ally-*` and don't count toward the player's accuracy / damage stats
+- **Ground AI fixes**: walkers and Bulwarks with no line of sight for 4 s close in instead of idling at their preferred range; on bumping into a building they slide along it for 2.5 s (`blockedSlide`), and reverse direction next time if a slide made less than 4 m of progress. The first version left a walker stuck behind a building for a minute and the wave could never be cleared
+- **Touch controls** (see Controls) and a 5-column mission grid on a wider title card
+
 ## Structure
 
 - `site/kit.js` — loads the GLB (uses `window.__MA_KIT` first), `cloneKit`, `recolor` (palettes are applied by material name), `bakeStatic` (static props merged per material)
@@ -56,6 +65,7 @@ If the browser refuses pointer lock (for example inside the Artifact iframe), th
 - `site/world.js` — 170 m arena, 30 random buildings, AABB collision, `groundAt` (0.7 m step-up), `raySolids`, explosive barrels
 - `site/fx.js` — additive particles / smoke / streaks / rings / scorch decals / 5-light pool / screen shake
 - `site/audio.js` — WebAudio synthesis (weapons, explosions, thrusters, adaptive drums)
+- `site/ally.js` — `Wingman` (AI ally mech) and `Reactor` (defense objective); both register in `G.friends`
 - `site/main.js` — camera, input, aiming and lock-on, waves, HUD, hangar, pause, results, autopilot
 
 ## Model contract (`build_kit.py`)
@@ -76,4 +86,5 @@ If the browser refuses pointer lock (for example inside the Artifact iframe), th
 - Between waves: 4.5 s, ammo refilled, 25% HP restored
 - The autopilot (perfect aim, never uses cover) clears all five loadouts in 110–190 s, with about a 50% win rate
 - Night Raid: the autopilot won 2 of 3 loadouts (130–150 s); its top damage sources are gunship missiles / chin gun and the boss blade. Endless: the autopilot reaches wave 10, where the second boss (Phantom) kills it
+- Reactor Defense (autopilot, no wingman): rifle / gatling / missile wins with the core at 28%; blade / rifle / cannon (light frame) wins with it at ~50%. With the wingman it is clearly easier (the core lost < 15% over the run that was checked). Walker shells are the largest source of core damage (> 50%)
 - Snowfield: rifle / gatling / missile wins in 155 s; blade / rifle / cannon (light frame) loses at 144 s with Phantom on 505 HP. With both bosses arriving at once, both loadouts died; staggering Phantom's arrival is what makes it winnable

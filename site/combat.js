@@ -14,6 +14,7 @@ export const G = {
   hud: { hit: 0, hurt: 0, kill: 0 },
   aimPoint: new V3(), lockTarget: null, locks: [], onKill: null, onPlayerHit: null,
   pw: {},      // player weapon states by slot
+  friends: [],  // other things enemies may shoot: wingman, reactor core ({pos, vel, center(), alive, _ent, foeW})
 };
 
 export const WEAPONS = {
@@ -45,6 +46,7 @@ function entsFor(team) {
   } else {
     const p = G.player;
     if (p && p.alive) { p._ent = p._ent || { isPlayer: true, c: new V3(), r: 2.1 * p.scale, get alive() { return p.alive; }, hit: (dmg, src, label) => damagePlayer(dmg, src, label) }; p.center(p._ent.c); out.push(p._ent); }
+    for (const f of G.friends) if (f.alive && f._ent) { f.center(f._ent.c); out.push(f._ent); }
     for (const b of barrels) if (!b.dead) out.push(b.ent || (b.ent = { isBarrel: true, b, c: b.pos, r: 1.5, get alive() { return !b.dead; }, hit: (dmg) => hitBarrel(b, dmg) }));
   }
   return out;
@@ -83,9 +85,10 @@ export function enemyEnts() { return entsFor('P').filter((e) => !e.isBarrel); }
 function dealDamage(ent, dmg, team, at, label) {
   if (!ent.alive) return;
   ent.hit(dmg, at, label || G.curLabel);
-  if (team === 'P' && !ent.isBarrel) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; }
+  if (team === 'P' && !ent.isBarrel && !isAlly(label || G.curLabel)) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; }
 }
 
+const isAlly = (l) => !!l && l.startsWith('ally');
 function damagePlayer(dmg, src, label) {
   const p = G.player; if (!p || !p.alive || G.godMode) return;
   const d = dmg * G.diff.dmg * p.frame.armor;
@@ -204,12 +207,12 @@ function updateShots(dt) {
 export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, dmgMul = 1) {
   const d = ws.d, fx = G.fx, mslot = owner.slots[slot];
   G.curSrc = owner.pos;
-  const isP = team === 'P';
+  const isP = team === 'P', me = isP && owner === G.player;
   const dist = G.player ? G.player.pos.distanceTo(owner.pos) : 0;
   ws.cd = Math.max(0, ws.cd - dt);
   if (ws.reloadT > 0) {
     ws.reloadT -= dt;
-    if (ws.reloadT <= 0) { ws.ammo = d.mag; if (isP) sfx('reload'); }
+    if (ws.reloadT <= 0) { ws.ammo = d.mag; if (me) sfx('reload'); }
   }
   const pressed = held && !ws.wasHeld, released = !held && ws.wasHeld;
   ws.wasHeld = held;
@@ -220,7 +223,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (d.spinUp) {
       ws.spin = Math.max(0, Math.min(1, ws.spin + (held && ws.reloadT <= 0 ? dt / d.spinUp : -dt / 0.8)));
       mslot.spinV = ws.spin * 32;
-      if (pressed && isP) sfx('spin');
+      if (pressed && me) sfx('spin');
     }
     if (held && ws.reloadT <= 0 && (!d.spinUp || ws.spin >= 1)) {
       while (ws.cd <= 0 && ws.ammo > 0) {
@@ -233,7 +236,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
         spawnShot({ p: mp, v: _d.clone().multiplyScalar(d.speed), dmg: d.dmg * dmgMul, team, kind: isP ? 'bullet' : 'ebullet', color: isP ? d.color : 0xff6a40, w: d.w, len: d.len, life: 1.6 });
         fx.muzzle(mp, _d, isP ? 0xffd27a : 0xff8a50, d.spinUp ? 0.9 : 1.1);
         mslot.recoil = Math.min(0.5, (mslot.recoil || 0) + d.recoil);
-        if (isP) G.stats.shots++;
+        if (me) G.stats.shots++;
         if (Math.random() < 0.6 || !d.spinUp) sfx(d.sfx, dist);
       }
       if (ws.ammo <= 0) startReload();
@@ -271,13 +274,13 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
       }
       fx.muzzle(mp, _d.subVectors(aim, mp).normalize(), 0x9ff6ff, 1.0);
       mslot.recoil = Math.min(0.6, (mslot.recoil || 0) + d.recoil);
-      if (isP) G.stats.shots++;
+      if (me) G.stats.shots++;
       sfx('coil', dist);
       if (ws.ammo <= 0) startReload();
     }
   } else if (d.type === 'charge') {
     if (held && ws.cd <= 0 && ws.reloadT <= 0 && ws.ammo > 0) {
-      if (ws.chargeT === 0 && isP) sfx('charge');
+      if (ws.chargeT === 0 && me) sfx('charge');
       ws.chargeT = Math.min(d.charge, ws.chargeT + dt);
       const mp = owner.muzzlePos(slot, _a), k = ws.chargeT / d.charge;
       fx.emit('add', { x: mp.x, y: mp.y, z: mp.z, life: 0.05, s0: 0.6 + k * 2.4, c0: 0xc890ff });
@@ -305,7 +308,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
       if (w.solid && w.solid !== 'floor' && w.solid.kind === 'barrel') hitBarrel(w.solid.ref, dmg);
       if (w.solid === 'floor' || (w.solid && end.y < 1)) fx.decal(end, 1.5 + k * 1.5);
       mslot.recoil = 0.6 + k * 0.6;
-      if (isP) { G.stats.shots++; fx.trauma = Math.min(1, fx.trauma + 0.15 + k * 0.25); }
+      if (me) { G.stats.shots++; fx.trauma = Math.min(1, fx.trauma + 0.15 + k * 0.25); }
       sfx('rail', dist);
       if (ws.ammo <= 0) startReload();
     }
@@ -337,7 +340,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
         owner.slots.S.recoil = 0.4;
         sfx('missile', dist);
       } });
-      if (isP) G.stats.shots += d.count;
+      if (me) G.stats.shots += d.count;
     }
   } else if (d.type === 'plasma') {
     if (pressed && ws.cd <= 0) {
@@ -353,10 +356,10 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
         if (owner === G.player) { fx.trauma = Math.min(1, fx.trauma + 0.2); owner.vel.addScaledVector(_d, -4); }
         sfx('cannon', dist);
       } });
-      if (isP) G.stats.shots += 2;
+      if (me) G.stats.shots += 2;
     }
   } else if (d.type === 'beam') {
-    if (pressed && ws.cd <= 0) { ws.cd = d.cd; ws.beamT = d.dur; if (isP) G.stats.shots++; }
+    if (pressed && ws.cd <= 0) { ws.cd = d.cd; ws.beamT = d.dur; if (me) G.stats.shots++; }
     if (ws.beamT > 0) {
       ws.beamT -= dt;
       for (let k = 0; k < 2; k++) {
@@ -398,7 +401,7 @@ function bladeLunge(owner, slot, ws, team, dmgMul) {
   ws.side = -ws.side; mslot.slashT = 0.5; mslot.slashSide = ws.side; mslot.bladeOn = 0.9;
   ws.tgt = null;
   const dist2 = G.player ? G.player.pos.distanceTo(owner.pos) : 0;
-  sfx('blade', isP ? 0 : dist2);
+  sfx('blade', owner === G.player ? 0 : dist2);
   owner.ctx.onQuickBoost && travel > 4 && owner.ctx.onQuickBoost(owner);
   G.queue.push({ label: G.curLabel, t: T * 0.85, fn: () => {
     if (!owner.alive) return;
@@ -427,14 +430,30 @@ function bladeLunge(owner, slot, ws, team, dmgMul) {
       if (prev) { G.fx.streak(prev, p, 1.1, 0x48d8ff, 0.16); G.fx.streak(prev, p, 0.35, 0xf0ffff, 0.12); }
       prev = p;
     }
-    if (hits) { sfx('bladehit', isP ? 0 : dist2); if (isP) { G.fx.trauma = Math.min(1, G.fx.trauma + 0.3); G.hitStop = 0.07; } }
+    if (hits) { sfx('bladehit', owner === G.player ? 0 : dist2); if (owner === G.player) { G.fx.trauma = Math.min(1, G.fx.trauma + 0.3); G.hitStop = 0.07; } }
   } });
 }
 
 // ------------------------------------------------------------------ enemies
 const playerC = new V3();
-function lead(from, speed, out) {
-  const p = G.player; p.center(playerC);
+// pick who to shoot: distance x weight (player 1, wingman ~1.15, core per mission); re-picked every ~1.2 s
+export function pickTarget(self) {
+  const cur = self.foe;
+  if (cur && cur.alive && G.time < (self.tgT || 0)) return cur;
+  self.tgT = G.time + 1 + Math.random() * 0.5;
+  let best = G.player, bs = 1e9;
+  const from = self.pos || self.c;
+  for (const f of [G.player, ...G.friends]) {
+    if (!f || !f.alive) continue;
+    const w = f === G.player ? 1 : (self.kind === 'drone' || self.kind === 'gunship' ? f.foeWAir ?? f.foeW : f.foeW) ?? 1.15;
+    const sc = Math.hypot(f.pos.x - from.x, f.pos.z - from.z) * w;
+    if (sc < bs) { bs = sc; best = f; }
+  }
+  self.foe = best;
+  return best;
+}
+function lead(from, speed, out, p = G.player) {
+  p.center(playerC);
   const t = from.distanceTo(playerC) / speed;
   return out.copy(playerC).addScaledVector(p.vel, t * 0.7);
 }
@@ -454,9 +473,10 @@ class Enemy {
   die() { this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this); this.explode(); }
   explode() { explodeAt(this.c, 5, 30, 'P', this.boom || 1); this.remove(); }
   remove() { this.obj.parent && this.obj.parent.remove(this.obj); this.gone = true; }
+  tg() { return pickTarget(this); }
   checkLos(dt) {
     this.losT -= dt;
-    if (this.losT <= 0) { this.losT = 0.3 + Math.random() * 0.2; this.los = clearLine(this.c, G.player.center(playerC)); }
+    if (this.losT <= 0) { this.losT = 0.3 + Math.random() * 0.2; this.los = clearLine(this.c, this.tg().center(playerC)); }
     return this.los;
   }
 }
@@ -464,7 +484,7 @@ class Enemy {
 export class Turret extends Enemy {
   constructor(pos) { super('turret', 'E_Turret', pos, 240, 2.1); this.boom = 1.1; this.burst = 0; this.burstT = 0; this.c.set(pos.x, pos.y + 1.8, pos.z); }
   update(dt) {
-    const p = G.player; const pc = p.center(playerC);
+    const p = this.tg(); const pc = p.center(playerC);
     const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz);
     const yaw = Math.atan2(-dx, -dz);   // kit fronts point down -Z
     const Y = this.n.E_TYaw; Y.rotation.y += angDiff(yaw, Y.rotation.y) * Math.min(1, dt * 2.4);
@@ -479,7 +499,7 @@ export class Turret extends Enemy {
       if (this.burstT <= 0) {
         this.burst--; this.burstT = 0.12;
         const mp = this.n.Muzzle_Turret.getWorldPosition(_a).clone();
-        const aim = lead(mp, 140, _b);
+        const aim = lead(mp, 140, _b, this.tg());
         _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.04; _d.y += (Math.random() - 0.5) * 0.03; _d.z += (Math.random() - 0.5) * 0.04;
         spawnShot({ p: mp, v: _d.normalize().multiplyScalar(140), dmg: 12, team: 'E', kind: 'ebullet', color: 0xff6040, w: 0.32, len: 6 });
         G.fx.muzzle(mp, _d, 0xff8a50, 1.2); sfx('eshot', dist);
@@ -511,7 +531,7 @@ export class Drone extends Enemy {
       }
       return;
     }
-    const p = G.player, pc = p.center(playerC);
+    const p = this.tg(), pc = p.center(playerC);
     this.ph += dt;
     const ang = Math.atan2(this.pos.z - p.pos.z, this.pos.x - p.pos.x) + this.orbit * dt * 0.45;
     const tx = p.pos.x + Math.cos(ang) * this.radius, tz = p.pos.z + Math.sin(ang) * this.radius;
@@ -533,7 +553,7 @@ export class Drone extends Enemy {
         for (let k = 0; k < 2; k++) G.queue.push({ label: G.curLabel, t: k * 0.14, fn: () => {
           if (!this.alive) return;
           const mp = this.n.Muzzle_Drone.getWorldPosition(_a).clone();
-          const aim = lead(mp, 150, _b);
+          const aim = lead(mp, 150, _b, this.tg());
           _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.y += (Math.random() - 0.5) * 0.05; _d.z += (Math.random() - 0.5) * 0.05;
           spawnShot({ p: mp, v: _d.normalize().multiplyScalar(150), dmg: 6, team: 'E', kind: 'ebullet', color: 0xff5040, w: 0.26, len: 5 });
           G.fx.muzzle(mp, _d, 0xff7050, 0.7); sfx('eshot', this.pos.distanceTo(G.player.pos));
@@ -543,21 +563,31 @@ export class Drone extends Enemy {
   }
 }
 
+// ground units that bump into a building slide sideways along it for a while; if a slide made no progress, the next one goes the other way
+function blockedSlide(e) {
+  if (e.slideT > 0) return;
+  if (e.slideFrom && e.slideFrom.distanceTo(e.pos) < 4) e.strafe *= -1;
+  e.slideT = 2.5; e.stT = 3; (e.slideFrom || (e.slideFrom = new V3())).copy(e.pos);
+}
+
 export class Walker extends Enemy {
   constructor(pos) {
     super('walker', 'E_Walker', pos, 700, 2.8); this.boom = 1.4;
     this.vel = new V3(); this.ph = Math.random() * 6; this.strafe = Math.random() < 0.5 ? 1 : -1; this.stT = 3; this.yaw = 0;
   }
   update(dt) {
-    const p = G.player, pc = p.center(playerC);
+    const p = this.tg(), pc = p.center(playerC);
     const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz);
-    const toward = dist > 42 ? 1 : dist < 26 ? -0.7 : 0;
+    this.blindT = this.los ? 0 : (this.blindT || 0) + dt;   // no firing line for a while: close in instead of idling behind a building
+    let toward = dist > 42 || this.blindT > 4 ? 1 : dist < 26 ? -0.7 : 0;
+    this.slideT = Math.max(0, (this.slideT || 0) - dt); if (this.slideT > 0) toward *= 0.15;   // blocked: slide along the wall
     this.stT -= dt; if (this.stT <= 0) { this.stT = 3 + Math.random() * 3; this.strafe *= -1; }
     const fx_ = dx / dist, fz = dz / dist;
-    const tx = (fx_ * toward + -fz * this.strafe * 0.6) * 5.5, tz = (fz * toward + fx_ * this.strafe * 0.6) * 5.5;
+    const sw = this.slideT > 0 ? 1.2 : 0.6;
+    const tx = (fx_ * toward + -fz * this.strafe * sw) * 5.5, tz = (fz * toward + fx_ * this.strafe * sw) * 5.5;
     this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-2 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-2 * dt));
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
-    if (collideCyl(this.pos, 2.8, 4)) this.strafe *= -1, this.stT = 2;
+    if (collideCyl(this.pos, 2.8, 4)) blockedSlide(this);
     this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6, 2);
     const sp = Math.hypot(this.vel.x, this.vel.z);
     this.ph += dt * (1.5 + sp * 0.9);
@@ -580,7 +610,7 @@ export class Walker extends Enemy {
         for (let k = 0; k < 3; k++) G.queue.push({ label: G.curLabel, t: k * 0.3, fn: () => {
           if (!this.alive) return;
           const mp = this.n.Muzzle_Walker.getWorldPosition(_a).clone();
-          const aim = lead(mp, 95, _b);
+          const aim = lead(mp, 95, _b, this.tg());
           const dd = mp.distanceTo(aim);
           _d.subVectors(aim, mp).normalize(); _d.y += dd * 0.00055 * 4.5; _d.x += (Math.random() - 0.5) * 0.03; _d.z += (Math.random() - 0.5) * 0.03;
           spawnShot({ p: mp, v: _d.normalize().multiplyScalar(95), dmg: 30, team: 'E', kind: 'shell', splash: 5.5, life: 3.5 });
@@ -626,16 +656,19 @@ export class Bulwark extends Enemy {
     super.hit(dmg);
   }
   update(dt) {
-    const p = G.player, pc = p.center(playerC);
+    const p = this.tg(), pc = p.center(playerC);
     const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz);
     // slow advance to mid range, turning the hull toward the player
-    const toward = dist > 55 ? 1 : dist < 30 ? -0.6 : 0;
+    this.blindT = this.los ? 0 : (this.blindT || 0) + dt;
+    let toward = dist > 55 || this.blindT > 4 ? 1 : dist < 30 ? -0.6 : 0;
+    this.slideT = Math.max(0, (this.slideT || 0) - dt); if (this.slideT > 0) toward *= 0.15;
     this.stT -= dt; if (this.stT <= 0) { this.stT = 4 + Math.random() * 3; this.strafe *= -1; }
     const fx_ = dx / dist, fz = dz / dist;
-    const tx = (fx_ * toward - fz * this.strafe * 0.4) * 3.6, tz = (fz * toward + fx_ * this.strafe * 0.4) * 3.6;
+    const sw = this.slideT > 0 ? 1.2 : 0.4;
+    const tx = (fx_ * toward - fz * this.strafe * sw) * 3.6, tz = (fz * toward + fx_ * this.strafe * sw) * 3.6;
     this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-1.5 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-1.5 * dt));
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
-    if (collideCyl(this.pos, 3.0, 3)) { this.strafe *= -1; this.stT = 2; }
+    if (collideCyl(this.pos, 3.0, 3)) blockedSlide(this);
     this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6, 2.5);
     const sp = Math.hypot(this.vel.x, this.vel.z);
     if (sp > 0.4) this.yaw += angDiff(Math.atan2(-this.vel.x, -this.vel.z), this.yaw) * Math.min(1, dt * 0.9);
@@ -659,8 +692,8 @@ export class Bulwark extends Enemy {
         for (let k = 0; k < 2; k++) G.queue.push({ label: 'bulwark-mortar', t: k * 0.45, fn: () => {
           if (!this.alive) return;
           const mp = this.n.Muzzle_Bulwark.getWorldPosition(_a).clone();
-          const D = Math.hypot(G.player.pos.x - mp.x, G.player.pos.z - mp.z), Tf = 1.5 + D / 70, g = 22;
-          const aim = new V3().copy(G.player.pos).addScaledVector(G.player.vel, Tf * 0.55);
+          const f = this.tg(), D = Math.hypot(f.pos.x - mp.x, f.pos.z - mp.z), Tf = 1.5 + D / 70, g = 22;
+          const aim = new V3().copy(f.pos).addScaledVector(f.vel, Tf * 0.55);
           aim.x += (Math.random() - 0.5) * 5; aim.z += (Math.random() - 0.5) * 5; aim.y = groundAt(aim.x, aim.z, aim.y + 1);
           const v = new V3((aim.x - mp.x) / Tf, (aim.y - mp.y + 0.5 * g * Tf * Tf) / Tf, (aim.z - mp.z) / Tf);
           spawnShot({ p: mp, v, dmg: 30, team: 'E', kind: 'shell', splash: 6.5, life: Tf + 1, grav: g, label: 'bulwark-mortar' });
@@ -687,7 +720,7 @@ export class Gunship extends Enemy {
   }
   update(dt) {
     for (const s of ['L', 'R']) this.n['E_GRotor' + s].rotation.y += dt * (this.fall ? 6 : 26) * (s === 'L' ? 1 : -1);
-    const p = G.player, pc = p.center(playerC);
+    const p = this.tg(), pc = p.center(playerC);
     const dist = this.pos.distanceTo(pc);
     this.sndT -= dt; if (this.sndT <= 0) { this.sndT = 0.12; if (dist < 90 && !this.fall) sfx('rotor', dist); }
     if (this.fall) {
@@ -719,13 +752,13 @@ export class Gunship extends Enemy {
     this.msT -= dt;
     if (this.msT <= 0) {
       this.msT = 7 + Math.random() * 2;
-      G.onEnemyMissile && G.onEnemyMissile();
+      if (this.tg() === G.player) G.onEnemyMissile && G.onEnemyMissile();
       for (let k = 0; k < 4; k++) G.queue.push({ label: 'gunship-missile', t: k * 0.22, fn: () => {
         if (!this.alive) return;
         const mp = this.n[k % 2 ? 'Muzzle_GunshipR' : 'Muzzle_GunshipL'].getWorldPosition(_a).clone();
         const fwd = _d.set(-Math.sin(this.obj.rotation.y), -0.2, -Math.cos(this.obj.rotation.y));
         const v = fwd.clone().multiplyScalar(22).add(new V3((Math.random() - 0.5) * 8, 6 + Math.random() * 4, (Math.random() - 0.5) * 8));
-        spawnShot({ p: mp, v, dmg: 28, team: 'E', kind: 'missile', splash: 4, target: G.player._ent, aim: G.player.center(new V3()), life: 6, maxSpeed: 56, turn: 1.55, label: 'gunship-missile' });
+        spawnShot({ p: mp, v, dmg: 28, team: 'E', kind: 'missile', splash: 4, target: this.tg()._ent, aim: this.tg().center(new V3()), life: 6, maxSpeed: 56, turn: 1.55, label: 'gunship-missile' });
         G.fx.muzzle(mp, v.clone().normalize(), 0xff7040, 1); sfx('missile', dist);
       } });
     }
@@ -737,7 +770,7 @@ export class Gunship extends Enemy {
       if (this.burstT <= 0) {
         this.burst--; this.burstT = 0.08;
         const mp = this.n.Muzzle_GunshipC.getWorldPosition(_a).clone();
-        const aim = lead(mp, 160, _b);
+        const aim = lead(mp, 160, _b, this.tg());
         _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.07; _d.y += (Math.random() - 0.5) * 0.05; _d.z += (Math.random() - 0.5) * 0.07;
         spawnShot({ p: mp, v: _d.normalize().multiplyScalar(160), dmg: 5.5, team: 'E', kind: 'ebullet', color: 0xff6040, w: 0.3, len: 6, label: 'gunship-gun' });
         G.fx.muzzle(mp, _d, 0xff8a50, 1); sfx('eshot', dist);
@@ -820,7 +853,7 @@ export class Boss {
     if (this.hp <= 0) { this.hp = 0; this.alive = false; this.dying = true; this.deathT = 2.2; G.stats.kills++; G.onKill && G.onKill(this); }
   }
   update(dt) {
-    const m = this.mech, p = G.player, A = this.ai, B = this.B;
+    const m = this.mech, p = pickTarget(this), A = this.ai, B = this.B;
     this.c.set(m.pos.x, m.pos.y + 2.7 * B.scale, m.pos.z);
     if (this.dying) {
       this.deathT -= dt;
@@ -844,7 +877,8 @@ export class Boss {
     A.hover -= dt;
     m.update(dt, { mx, mz, boost: m.en > 30 && (dist > want + 20 || this.phase === 2 || !!B.agile), qboost: qb, jump, hover: A.hover > 0, aimYaw, aimPitch });
     // weapons
-    const ent = p._ent; const aim = lead(this.c, 200, _c).clone();
+    if (!p._ent) p.center(playerC);
+    const ent = p._ent; const aim = lead(this.c, 200, _c, p).clone();
     aim.x += (Math.random() - 0.5) * 2.5; aim.y += (Math.random() - 0.5) * 2; aim.z += (Math.random() - 0.5) * 2.5;
     const los = clearLine(this.c, pc) && dist < 140;
     A.burstT -= dt; if (A.burstT <= 0) { A.burst = A.burst > 0 ? 0 : 1; A.burstT = A.burst ? 1.4 + Math.random() : 1 + Math.random() * 1.5; }

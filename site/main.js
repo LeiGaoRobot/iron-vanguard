@@ -10,6 +10,7 @@ import { buildArena, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine
 import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff } from './mech.js';
+import { Wingman, Reactor, WING } from './ally.js';
 import { G, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
@@ -37,6 +38,13 @@ const MISSIONS = {
     { title: 'WAVE 2', sub: '敌军反扑', spawn: { bulwark: 2, gunship: 1, walker: 2, drone: 4 } },
     { title: 'FINAL WAVE', sub: '双头目来袭：「暴君」与「幻影」', spawn: { boss: 'tyrant', boss2: 'phantom', bossHp: 0.62 } },
   ] },
+  defense: { name: '要塞 · 反应堆防卫', en: 'REACTOR DEFENSE', desc: '黄昏 · 守住中央反应堆 · 敌军四面合围', seed: 31, env: 'dusk', reward: 3800, defense: true, coreHp: 7000, waves: [
+    { title: 'WAVE 1', sub: '敌军接近反应堆 · 守住它', spawn: { walker: 4, drone: 6 }, late: { walker: 2, drone: 4 } },
+    { title: 'WAVE 2', sub: '护盾坦克推进 · 迫击炮会轰击反应堆', spawn: { bulwark: 2, walker: 3, drone: 4 }, late: { bulwark: 1, walker: 2, drone: 3 } },
+    { title: 'WAVE 3', sub: '空中突击', spawn: { gunship: 2, drone: 6, walker: 2 }, late: { gunship: 1, drone: 5 } },
+    { title: 'WAVE 4', sub: '全面合围', spawn: { bulwark: 2, walker: 3, gunship: 1, drone: 4 }, late: { gunship: 1, walker: 2, drone: 4 } },
+    { title: 'FINAL WAVE', sub: '击破「暴君」 · 它会直扑反应堆', spawn: { boss: 'tyrant', walker: 3, drone: 4, bossHp: 0.85 }, late: { bulwark: 2, drone: 4 } },
+  ] },
   endless: { name: '无尽防线', en: 'ENDLESS', desc: '黄昏 · 无限波次，越来越强 · 每 5 波一个头目', seed: 5, env: 'dusk', endless: true, reward: 0 },
 };
 const ENVS = {
@@ -54,7 +62,8 @@ const UPGRADES = {
 };
 const UP_COST = [600, 1200, 2000, 3000, 4200];
 const SAVE_KEY = 'ironvanguard.save.v1';
-const save = { cr: 0, up: { armor: 0, gen: 0, thr: 0, fcs: 0 }, best: {}, bestWave: 0, earned: 0 };
+const save = { cr: 0, up: { armor: 0, gen: 0, thr: 0, fcs: 0 }, best: {}, bestWave: 0, earned: 0, wing: false };
+const WING_COST = 2500, WING_CR = 0.85;
 try { const o = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (o) { Object.assign(save, o); save.up = { armor: 0, gen: 0, thr: 0, fcs: 0, ...(o.up || {}) }; } } catch (e) { /* storage unavailable */ }
 const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } };
 const playerMods = () => { const u = save.up; return { hp: 1 + 0.08 * u.armor, en: 1 + 0.08 * u.gen, regen: 1 + 0.08 * u.gen, boost: 1 + 0.04 * u.thr, speed: 1 + 0.02 * u.thr }; };
@@ -62,7 +71,7 @@ const dmgMul = () => 1 + 0.06 * save.up.fcs;
 
 // ------------------------------------------------------------------ config (per-viewer convenience only)
 const CFG_KEY = 'ironvanguard.cfg.v1';
-const cfg = { palette: 'vanguard', frame: 'std', R: 'rifle', L: 'gatling', S: 'missile', diff: 'normal', mission: 'drill', sens: 1, vol: 0.7, invY: false };
+const cfg = { palette: 'vanguard', frame: 'std', R: 'rifle', L: 'gatling', S: 'missile', diff: 'normal', mission: 'drill', sens: 1, vol: 0.7, invY: false, wing: true };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); } catch (e) { /* storage unavailable */ }
 const saveCfg = () => { try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) { /* ignore */ } };
 // migrate the v1 per-difficulty best times (proving ground only)
@@ -206,7 +215,7 @@ function requestLock() {
 }
 document.addEventListener('pointerlockchange', () => {
   pointerLocked = document.pointerLockElement === canvas;
-  if (!pointerLocked && state === 'play' && !freeMouse && !pad.active) setState('pause');
+  if (!pointerLocked && state === 'play' && !freeMouse && !pad.active && !touch.active) setState('pause');
 });
 
 // ------------------------------------------------------------------ gamepad (standard mapping)
@@ -243,6 +252,59 @@ function pollPad() {
   if (state === 'play' && padHit(2)) manualReload();
 }
 addEventListener('gamepadconnected', () => { pollPad(); });
+
+// ------------------------------------------------------------------ touch (left: move stick · right: drag to look · buttons)
+const touch = { active: false, stick: null, ox: 0, oy: 0, mx: 0, my: 0, look: null, lx: 0, ly: 0, dx: 0, dy: 0, b: {} };
+function setTouch(on) {
+  if (touch.active === on) return;
+  touch.active = on; document.body.classList.toggle('touchmode', on);
+  $('touch').classList.toggle('hidden', !(on && state === 'play'));
+  if (on) { freeMouse = true; layoutTouch(); }
+}
+function layoutTouch() { const k = Math.max(0.62, Math.min(1, (innerHeight - 40) / 330)); $('tBtns').style.transform = `scale(${k.toFixed(3)})`; }
+addEventListener('resize', layoutTouch);
+addEventListener('touchstart', () => { if (!touch.active) setTouch(true); initAudio(); }, { capture: true, passive: true });
+const stickEl = $('tStick'), knob = $('tKnob'), base = $('tBase');
+stickEl.addEventListener('touchstart', (e) => {
+  e.preventDefault(); if (touch.stick !== null) return;
+  const t = e.changedTouches[0], r = stickEl.getBoundingClientRect();
+  touch.stick = t.identifier; touch.ox = t.clientX; touch.oy = t.clientY;
+  base.style.left = (t.clientX - r.left) + 'px'; base.style.top = (t.clientY - r.top) + 'px';
+}, { passive: false });
+const STICK_R = 52;
+function stickMove(e) {
+  for (const t of e.changedTouches) {
+    if (t.identifier === touch.stick) {
+      let dx = t.clientX - touch.ox, dy = t.clientY - touch.oy; const L = Math.hypot(dx, dy);
+      if (L > STICK_R) { dx *= STICK_R / L; dy *= STICK_R / L; }
+      touch.mx = dx / STICK_R; touch.my = dy / STICK_R;
+      knob.style.transform = `translate(${dx}px, ${dy}px)`;
+    } else if (t.identifier === touch.look) {
+      touch.dx += t.clientX - touch.lx; touch.dy += t.clientY - touch.ly; touch.lx = t.clientX; touch.ly = t.clientY;
+    }
+  }
+}
+function stickEnd(e) {
+  for (const t of e.changedTouches) {
+    if (t.identifier === touch.stick) { touch.stick = null; touch.mx = touch.my = 0; knob.style.transform = ''; }
+    if (t.identifier === touch.look) touch.look = null;
+  }
+}
+addEventListener('touchmove', (e) => { stickMove(e); if (state === 'play') e.preventDefault(); }, { passive: false });
+addEventListener('touchend', stickEnd); addEventListener('touchcancel', stickEnd);
+canvas.addEventListener('touchstart', (e) => {   // drag anywhere else on the screen to look
+  if (state !== 'play') return;
+  e.preventDefault();
+  if (touch.look !== null) return;
+  const t = e.changedTouches[0]; touch.look = t.identifier; touch.lx = t.clientX; touch.ly = t.clientY;
+}, { passive: false });
+for (const b of document.querySelectorAll('#tBtns button')) {
+  const k = b.dataset.k;
+  const down = (e) => { e.preventDefault(); e.stopPropagation(); touch.b[k] = true; b.classList.add('on'); if (k === 'reload' && state === 'play') manualReload(); };
+  const up = (e) => { e.preventDefault(); touch.b[k] = false; b.classList.remove('on'); };
+  b.addEventListener('touchstart', down, { passive: false }); b.addEventListener('touchend', up); b.addEventListener('touchcancel', up);
+}
+$('tPause').addEventListener('touchstart', (e) => { e.preventDefault(); if (state === 'play') setState('pause'); }, { passive: false });
 document.addEventListener('pointerlockerror', () => { freeMouse = true; showHint('浏览器不允许锁定鼠标：准星跟随光标，光标靠近屏幕边缘会转动视角', 4); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') setState('pause'); });
 
@@ -283,7 +345,7 @@ function garageCamera(dt, auto) {
 // ------------------------------------------------------------------ aiming + locks
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), _sp = new V3();
 const lockR = () => innerHeight * 0.16, mslR = () => innerHeight * 0.3;
-function reticlePx() { return freeMouse && !pad.active && state === 'play' ? { x: mouse.x, y: mouse.y } : { x: innerWidth / 2, y: innerHeight / 2 }; }
+function reticlePx() { return freeMouse && !pad.active && !touch.active && state === 'play' ? { x: mouse.x, y: mouse.y } : { x: innerWidth / 2, y: innerHeight / 2 }; }
 function updateAim() {
   const p = G.player; const rp = reticlePx();
   ndc.set(rp.x / innerWidth * 2 - 1, -(rp.y / innerHeight) * 2 + 1);
@@ -356,7 +418,10 @@ function makePlayer() {
   buildWeaponPanel();
 }
 
+const wingOn = () => !!(save.wing && cfg.wing);
 function clearWorld() {
+  if (G.wing) G.wing.dispose(); if (G.core) G.core.dispose();
+  G.wing = null; G.core = null; G.friends.length = 0;
   for (const e of G.enemies) e.remove ? e.remove() : null;
   G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0;
   for (const k of G.pickups) scene.remove(k.o);
@@ -364,21 +429,28 @@ function clearWorld() {
 }
 
 function newGame() {
+  run.late = null;
   clearWorld();
   arenaKey = ''; ensureArena();   // rebuild so barrels and props are fresh
   G.diff = { key: cfg.diff, ...DIFFS[cfg.diff] };
   makePlayer();
   Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
   const M = MISSIONS[cfg.mission];
-  Object.assign(run, { wave: -1, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0, cr: 0, msslT: 0, boss2: null, relayHintT: 0, waves: M.endless ? [] : M.waves, endless: !!M.endless });
+  if (M.defense) {
+    G.core = new Reactor(scene, new V3(0, 0, 0), M.coreHp); G.friends.push(G.core);
+    G.player.pos.set(0, 0, 22);
+  }
+  if (wingOn()) { G.wing = new Wingman(scene, mctx, cfg.palette === 'kestrel' ? 'vanguard' : 'kestrel'); G.friends.push(G.wing); }
+  run.coreLost = false;
+  Object.assign(run, { wave: -1, defense: !!M.defense, coreWarnT: -99, coreLowSaid: false, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0, cr: 0, msslT: 0, boss2: null, relayHintT: 0, waves: M.endless ? [] : M.waves, endless: !!M.endless });
   G.boss = null; G.bosses = [];
   $('bossBox').classList.add('hidden');
 }
 
-function spot(minD, maxD, air) {
-  const p = G.player.pos;
+function spot(minD, maxD, air, bearing) {
+  const p = run.defense && G.core ? G.core.pos : G.player.pos;
   for (let i = 0; i < 300; i++) {
-    const a = Math.random() * Math.PI * 2, r = minD + Math.random() * (maxD - minD);
+    const a = bearing === undefined || i > 200 ? Math.random() * Math.PI * 2 : bearing + (Math.random() - 0.5) * 2.1, r = minD + Math.random() * (maxD - minD);
     const x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
     if (Math.abs(x) > ARENA - 10 || Math.abs(z) > ARENA - 10) continue;
     if (!air && pointInSolid(new V3(x, 1, z), 4)) continue;
@@ -400,22 +472,29 @@ function startWave(i) {
   if (run.endless && !run.waves[i]) run.waves[i] = endlessWave(i);
   run.wave = i; const W = run.waves[i];
   if (run.endless) G.diff.hp = DIFFS[cfg.diff].hp * (1 + 0.05 * i);
-  const S = W.spawn;
+  const S = W.spawn, R = run.defense ? 1.15 : 1;
   banner(W.title, W.sub, !!S.boss);
   sfx(S.boss ? 'alarm' : 'wave');
-  for (let k = 0; k < (S.turret || 0); k++) new Turret((Math.random() < 0.45 && roofSpot(50, 150)) || spot(55, 140));
-  for (let k = 0; k < (S.drone || 0); k++) new Drone(spot(70, 140, true));
-  for (let k = 0; k < (S.walker || 0); k++) new Walker(spot(80, 140));
-  for (let k = 0; k < (S.bulwark || 0); k++) new Bulwark(spot(75, 130));
-  for (let k = 0; k < (S.gunship || 0); k++) new Gunship(spot(100, 150, true));
+  // defense: the first group comes from one side; a second group follows from the opposite side
+  const b0 = run.defense ? Math.atan2(G.player.pos.z, G.player.pos.x) + Math.PI * (0.5 + Math.random()) : undefined;
+  spawnGroup(S, R, b0);
+  run.late = W.late || null; run.lateT = run.t + 20; run.lateB = b0 === undefined ? undefined : b0 + Math.PI;
   for (let k = 0; k < (S.relay || 0); k++) new Relay(relaySites[k].clone());
   G.bosses = [];
   if (S.boss) {
-    G.boss = new Boss(spot(90, 120), mctx, S.boss, S.bossHp || 1); G.bosses.push(G.boss);
+    G.boss = new Boss(spot(90 * R, 120 * R), mctx, S.boss, S.bossHp || 1); G.bosses.push(G.boss);
     run.boss2 = S.boss2 ? { type: S.boss2, hp: S.bossHp || 1, t: 0 } : null;   // the second boss drops in mid-fight
     $('bossName').textContent = BOSSES[S.boss].name;
     $('bossBox').classList.remove('hidden');
   }
+}
+
+function spawnGroup(S, R = 1, b) {
+  for (let k = 0; k < (S.turret || 0); k++) new Turret((Math.random() < 0.45 && roofSpot(50, 150)) || spot(55, 140));
+  for (let k = 0; k < (S.drone || 0); k++) new Drone(spot(70 * R, 140 * R, true, b));
+  for (let k = 0; k < (S.walker || 0); k++) new Walker(spot(95 * R, 140 * R, false, b));
+  for (let k = 0; k < (S.bulwark || 0); k++) new Bulwark(spot(95 * R, 130 * R, false, b));
+  for (let k = 0; k < (S.gunship || 0); k++) new Gunship(spot(110 * R, 150 * R, true, b));
 }
 
 G.onKill = (e) => {
@@ -439,6 +518,13 @@ G.onRelayCall = (r) => {
 };
 G.onEnemyMissile = () => { if (run.msslT <= 0) { sfx('warn'); run.msslT = 1; } };
 G.onPlayerHit = () => {};
+G.onAllyDown = () => { showHint(`僚机被击毁 · ${WING.respawn} 秒后重新空投`, 3); };
+G.onAllyBack = () => { showHint('僚机已重新空投', 2.5); sfx('repair'); };
+G.onCoreHit = () => {
+  const c = G.core; if (!c) return;
+  if (run.t - run.coreWarnT > 9) { run.coreWarnT = run.t; showHint(`反应堆遭受攻击 · 剩余 ${Math.ceil(c.hp / c.maxHp * 100)}%`, 2.2); sfx('warn'); }
+  if (!run.coreLowSaid && c.hp < c.maxHp * 0.3) { run.coreLowSaid = true; banner('反应堆危急', '耐久低于 30%', true); sfx('alarm'); }
+};
 let timeScaleT = 0;
 
 function waveLogic(dt) {
@@ -451,6 +537,12 @@ function waveLogic(dt) {
     if (run.deathT <= 0) finish(false);
     return;
   }
+  if (G.core && !G.core.alive) {
+    if (!run.deathT) { run.deathT = 3.2; run.coreLost = true; fx.trauma = 1; sfx('bigboom'); banner('反应堆被摧毁', 'REACTOR LOST', true); }
+    run.deathT -= dt;
+    if (run.deathT <= 0) finish(false);
+    return;
+  }
   if (run.breakT > 0) {
     run.breakT -= dt;
     if (run.breakT <= 0) startWave(run.wave + 1);
@@ -458,6 +550,11 @@ function waveLogic(dt) {
   }
   const alive = G.enemies.filter((e) => !e.gone).length;
   run.msslT -= dt;
+  if (run.late && (run.t > run.lateT || alive <= 2)) {
+    spawnGroup(run.late, run.defense ? 1.15 : 1, run.lateB); run.late = null;
+    banner('敌军增援', run.defense ? '从反应堆另一侧逼近' : '更多敌机接近', true); sfx('warn');
+    return;
+  }
   if (run.boss2 && G.boss) {
     run.boss2.t += dt;
     if (run.boss2.t > 45 || G.boss.hp < G.boss.maxHp * 0.5 || !G.boss.alive) {
@@ -483,6 +580,8 @@ function waveLogic(dt) {
     const nx = run.waves[run.wave + 1], big = nx && nx.spawn.boss2;
     p.hp = Math.min(p.maxHp, p.hp + p.maxHp * (big ? 0.5 : 0.25));
     if (big) showHint('下一波是双头目 · 已额外修复装甲', 3);
+    if (G.wing) G.wing.repair(0.4);
+    if (G.core && G.core.alive) { G.core.hp = Math.min(G.core.maxHp, G.core.hp + G.core.maxHp * 0.15); if (G.core.hp > G.core.maxHp * 0.3) run.coreLowSaid = false; }
     run.breakT = 4.5;
   }
 }
@@ -502,14 +601,16 @@ function finish(win) {
   } else if (win) {
     const dmgK = s.dmgTaken / p.maxHp;
     rank = dmgK < 0.6 && tm < 420 ? 'S' : dmgK < 1.4 && tm < 600 ? 'A' : 'B';
-    bonus = Math.round(M.reward * D.cr * ({ S: 1.5, A: 1.2, B: 1 }[rank]));
+    if (G.core) { const ck = G.core.hp / G.core.maxHp; rank = ck > 0.7 && dmgK < 1.2 ? 'S' : ck > 0.35 ? 'A' : 'B'; }
+    bonus = Math.round(M.reward * D.cr * ({ S: 1.5, A: 1.2, B: 1 }[rank]) * (G.wing ? WING_CR : 1));
     if (!save.best[bk] || tm < save.best[bk]) { save.best[bk] = Math.round(tm); newBest = true; }
   }
+  if (G.wing) run.cr = Math.round(run.cr * WING_CR);
   const earned = run.cr + bonus;
   save.cr += earned; save.earned = (save.earned || 0) + earned; writeSave();
   $('rRank').textContent = rank;
   $('rTitle').textContent = run.endless ? 'LINE BROKEN' : win ? 'MISSION COMPLETE' : 'MISSION FAILED';
-  $('rSub').textContent = `${M.name} · ${D.name} · ` + (run.endless ? `坚守 ${Math.max(0, run.wave)} 波` : win ? '任务完成' : `在第 ${run.wave + 1} 波被击毁`);
+  $('rSub').textContent = `${M.name} · ${D.name} · ` + (run.endless ? `坚守 ${Math.max(0, run.wave)} 波` : win ? (G.core ? `任务完成 · 反应堆剩余 ${Math.ceil(G.core.hp / G.core.maxHp * 100)}%` : '任务完成') : run.coreLost ? `反应堆在第 ${run.wave + 1} 波被摧毁` : `在第 ${run.wave + 1} 波被击毁`) + (G.wing ? ' · 僚机随行（报酬 ×0.85）' : '');
   const bestTxt = run.endless ? (save.best[bk] ? `${save.best[bk]} 波` : '—') : (save.best[bk] ? fmt(save.best[bk]) : '—');
   $('rStats').innerHTML = `<span>用时</span><b>${fmt(tm)}</b><span>击毁</span><b>${s.kills}</b><span>命中率</span><b>${acc}%</b><span>造成伤害</span><b>${Math.round(s.dmgDealt)}</b><span>承受伤害</span><b>${Math.round(s.dmgTaken)}</b><span>${run.endless ? '最佳波数' : '最佳用时'}</span><b>${bestTxt}${newBest ? ' <em>NEW</em>' : ''}</b>`
     + `<span class="cr">击毁报酬</span><b class="cr">${run.cr} C</b>` + (bonus ? `<span class="cr">任务报酬 · 评级 ${rank}</span><b class="cr">${bonus} C</b>` : '') + `<span class="cr">持有资金</span><b class="cr">${save.cr} C</b>`;
@@ -526,6 +627,8 @@ function setState(s) {
   state = s;
   for (const o of overlays) $(o).classList.toggle('hidden', o !== s);
   $('hud').classList.toggle('hidden', !(s === 'play' || s === 'pause'));
+  $('touch').classList.toggle('hidden', !(touch.active && s === 'play'));
+  if (s !== 'play') { touch.b = {}; touch.mx = touch.my = 0; touch.stick = touch.look = null; for (const b of document.querySelectorAll('#tBtns button')) b.classList.remove('on'); }
   if (s !== 'play' && document.pointerLockElement) document.exitPointerLock();
   if (s !== 'play') { mouse.b0 = mouse.b2 = false; thrust(0); }
   if (s === 'garage') buildGarage();
@@ -537,9 +640,10 @@ function sortie() {
   initAudio(); saveCfg();
   newGame();
   setState('play');
-  if (!pad.active) requestLock(); else { freeMouse = true; showHint('手柄：左摇杆移动 · 右摇杆视角 · RT/LT 双臂 · RB 肩部 · A 跳跃 · B 推进 · X 装填', 4); }
+  if (touch.active) { freeMouse = true; showHint('左侧拖动移动 · 右侧拖动转视角 · 准星靠近敌人会自动锁定', 4); }
+  else if (!pad.active) requestLock(); else { freeMouse = true; showHint('手柄：左摇杆移动 · 右摇杆视角 · RT/LT 双臂 · RB 肩部 · A 跳跃 · B 推进 · X 装填', 4); }
 }
-function resume() { setState('play'); if (!freeMouse) requestLock(); }
+function resume() { setState('play'); if (!freeMouse && !touch.active) requestLock(); }
 $('btnSortie').onclick = sortie;
 $('btnGarage').onclick = () => { initAudio(); sfx('ui'); setState('garage'); };
 $('gGo').onclick = sortie;
@@ -607,6 +711,19 @@ function buildGarage() {
   fill('gR', ARM_KEYS.map((k) => wopt('R', k)));
   fill('gL', ARM_KEYS.map((k) => wopt('L', k)));
   fill('gS', SHOULDER_KEYS.map((k) => wopt('S', k)));
+  const gw = $('gWing'); gw.innerHTML = '';
+  if (!save.wing) {
+    const row = document.createElement('div'); row.className = 'uprow';
+    row.innerHTML = `<div class="un"><b>雇佣僚机</b><small>AI 僚机随行：突击步枪 + 闪电线圈 + 飞弹，伤害为你的一半，击毁后 ${WING.respawn} 秒重新空投 · 随行时报酬 ×0.85</small></div><div></div>`;
+    const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = `${WING_COST} C`; btn.disabled = save.cr < WING_COST;
+    btn.onclick = () => { if (save.cr < WING_COST) return; save.cr -= WING_COST; save.wing = true; cfg.wing = true; writeSave(); saveCfg(); sfx('coin'); buildGarage(); };
+    row.appendChild(btn); gw.appendChild(row);
+  } else {
+    const o = document.createElement('div'); o.className = 'opts';
+    o.appendChild(opt('随行<small>AI 僚机 · 报酬 ×0.85</small>', cfg.wing, () => { cfg.wing = true; }));
+    o.appendChild(opt('单机出击<small>报酬 ×1</small>', !cfg.wing, () => { cfg.wing = false; }));
+    gw.appendChild(o);
+  }
   fill('gDiff', Object.entries(DIFFS).map(([k, d]) => opt(`${d.name}<small>${d.desc}</small>`, cfg.diff === k, () => { cfg.diff = k; })));
 }
 function rebuildPreview() { makePlayer(); }
@@ -690,6 +807,15 @@ function drawHUD(dt) {
     d.style.left = (cx + Math.cos(ang) * k) + 'px'; d.style.top = (cy + Math.sin(ang) * k) + 'px';
     d.style.transform = `rotate(${ang + Math.PI / 2}rad)`;
   }
+  if (G.core && G.core.alive) {   // the core always has an arrow when off-screen
+    _sp.copy(G.core.c).project(camera);
+    const behind = _sp.z > 1; let x = _sp.x, y = _sp.y; if (behind) { x = -x; y = -y; }
+    if (behind || Math.abs(x) > 0.95 || Math.abs(y) > 0.92) {
+      const ang = Math.atan2(-y, x), k = Math.min((innerWidth / 2 - 30) / Math.abs(Math.cos(ang) || 1e-6), (innerHeight / 2 - 30) / Math.abs(Math.sin(ang) || 1e-6));
+      const d = markPool[mi] || poolEl(markPool, M, 'mark'); mi++;
+      d.style.display = ''; d.className = 'mark core'; d.style.left = (cx + Math.cos(ang) * k) + 'px'; d.style.top = (cy + Math.sin(ang) * k) + 'px'; d.style.transform = `rotate(${ang + Math.PI / 2}rad)`;
+    }
+  }
   for (; mi < markPool.length; mi++) markPool[mi].style.display = 'none';
   let oi = 0;
   for (const e of G.enemies) {
@@ -697,8 +823,17 @@ function drawHUD(dt) {
     _sp.set(e.pos.x, e.pos.y + 15.5, e.pos.z).project(camera);
     if (_sp.z > 1 || Math.abs(_sp.x) > 1 || Math.abs(_sp.y) > 1) continue;
     const d = objPool[oi] || poolEl(objPool, M, 'objm'); oi++;
-    d.style.display = ''; d.style.left = ((_sp.x + 1) / 2 * innerWidth) + 'px'; d.style.top = ((1 - _sp.y) / 2 * innerHeight) + 'px';
+    d.style.display = ''; d.className = 'objm'; d.style.left = ((_sp.x + 1) / 2 * innerWidth) + 'px'; d.style.top = ((1 - _sp.y) / 2 * innerHeight) + 'px';
     d.textContent = `◆ 中继塔 ${Math.round(e.pos.distanceTo(p.pos))}m`;
+  }
+  if (G.core && G.core.alive) {
+    _sp.set(G.core.pos.x, 17.5, G.core.pos.z).project(camera);
+    const dd = G.core.pos.distanceTo(p.pos);
+    if (_sp.z < 1 && Math.abs(_sp.x) < 1 && Math.abs(_sp.y) < 1 && dd > 18) {
+      const d = objPool[oi] || poolEl(objPool, M, 'objm'); oi++;
+      d.style.display = ''; d.className = 'objm core'; d.style.left = ((_sp.x + 1) / 2 * innerWidth) + 'px'; d.style.top = ((1 - _sp.y) / 2 * innerHeight) + 'px';
+      d.textContent = `◆ 反应堆 ${Math.round(dd)}m`;
+    }
   }
   for (; oi < objPool.length; oi++) objPool[oi].style.display = 'none';
   // hurt vignette
@@ -711,6 +846,10 @@ function drawHUD(dt) {
     const rl = G.enemies.filter((e) => e.kind === 'relay' && e.alive).length;
     $('waveSub').textContent = run.breakT > 0 ? '整备中…' : (rl ? `中继塔 ${rl} · 敌机 ${left - rl}` : `剩余敌机 ${left}`);
   } else { $('waveTitle').textContent = 'STANDBY'; $('waveSub').textContent = ''; }
+  const cb = $('coreBox'); cb.classList.toggle('hidden', !G.core);
+  if (G.core) { const ck = G.core.hp / G.core.maxHp; $('coreBar').firstElementChild.style.width = (ck * 100).toFixed(1) + '%'; $('coreBar').classList.toggle('low', ck < 0.3); $('corePct').textContent = Math.ceil(ck * 100) + '%'; cb.classList.toggle('hit', G.core.flash > 0); }
+  const wt = $('wingTxt'); wt.classList.toggle('hidden', !G.wing);
+  if (G.wing) wt.innerHTML = G.wing.alive ? `僚机 <b>${Math.ceil(G.wing.hp / G.wing.maxHp * 100)}%</b>` : `僚机 <em>重新空投 ${Math.ceil(G.wing.downT)}s</em>`;
   const bl = (G.bosses || []).filter((b) => !b.gone);
   if (bl.length) $('bossBar').firstElementChild.style.width = (bl.reduce((a, b) => a + b.hp, 0) / G.bosses.reduce((a, b) => a + b.maxHp, 0) * 100).toFixed(1) + '%';
   else $('bossBox').classList.add('hidden');
@@ -744,6 +883,8 @@ function drawHUD(dt) {
     const s = e.kind === 'boss' ? 9 : e.kind === 'gunship' ? 8 : e.kind === 'walker' || e.kind === 'bulwark' ? 7 : 5;
     rctx.fillRect(x - s / 2, z - s / 2, s, s);
   }
+  if (G.core && G.core.alive) { rctx.fillStyle = '#5fe3ff'; const x = (G.core.pos.x - p.pos.x) * K, z = (G.core.pos.z - p.pos.z) * K; rctx.beginPath(); rctx.arc(x, z, 9, 0, Math.PI * 2); rctx.fill(); rctx.strokeStyle = '#e8fbff'; rctx.lineWidth = 2; rctx.stroke(); }
+  if (G.wing && G.wing.alive) { rctx.fillStyle = '#9fffd0'; const x = (G.wing.pos.x - p.pos.x) * K, z = (G.wing.pos.z - p.pos.z) * K; rctx.beginPath(); rctx.moveTo(x, z - 8); rctx.lineTo(x - 6, z + 6); rctx.lineTo(x + 6, z + 6); rctx.fill(); }
   rctx.fillStyle = '#5dff9a';
   for (const k of G.pickups) rctx.fillRect((k.o.position.x - p.pos.x) * K - 3, (k.o.position.z - p.pos.z) * K - 3, 6, 6);
   rctx.restore();
@@ -757,10 +898,11 @@ function drawHUD(dt) {
 const auto = { on: false, st: 1, stT: 0, jT: 3, hover: 0, sT: 0 };
 function autoIntent(dt) {
   const p = G.player; let tgt = null, bd = 1e9;
-  for (const e of G.enemies) { if (!e.alive || e.dying) continue; const d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : 0); if (d < bd) { bd = d; tgt = e; } }
+  for (const e of G.enemies) { if (!e.alive || e.dying) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
   // pick up repairs when hurt
   let goal = null;
   if (p.hp < p.maxHp * 0.6) for (const k of G.pickups) { const d = k.o.position.distanceTo(p.pos); if (d < 70) { goal = k.o.position; break; } }
+  if (!goal && G.core && G.core.alive && Math.hypot(p.pos.x - G.core.pos.x, p.pos.z - G.core.pos.z) > 70) goal = G.core.pos;
   if (tgt) {
     const pc = p.center(new V3());
     const dx = tgt.c.x - pc.x, dz = tgt.c.z - pc.z, h = Math.hypot(dx, dz);
@@ -800,29 +942,34 @@ function step(dt) {
   // look
   if (pointerLocked) {
     cam.yaw -= mouse.dx * 0.0022 * cfg.sens; cam.pitch -= mouse.dy * 0.0022 * cfg.sens * (cfg.invY ? -1 : 1);
-  } else if (freeMouse && !pad.active && innerWidth > 0 && innerHeight > 0) {
+  } else if (freeMouse && !pad.active && !touch.active && innerWidth > 0 && innerHeight > 0) {
     const ex = (mouse.x / innerWidth - 0.5) * 2, ey = (mouse.y / innerHeight - 0.5) * 2;
     const band = (v) => Math.sign(v) * Math.max(0, Math.abs(v) - 0.55) / 0.45;
     cam.yaw -= band(ex) * 2.4 * cfg.sens * dt; cam.pitch -= band(ey) * 1.4 * cfg.sens * dt * (cfg.invY ? -1 : 1);
   }
   mouse.dx = mouse.dy = 0;
-  if (pad.active) {
-    cam.yaw -= pad.rx * 2.7 * cfg.sens * dt; cam.pitch -= pad.ry * 1.7 * cfg.sens * dt * (cfg.invY ? -1 : 1);
+  if (touch.active) {
+    cam.yaw -= touch.dx * 0.0062 * cfg.sens; cam.pitch -= touch.dy * 0.0048 * cfg.sens * (cfg.invY ? -1 : 1);
+    touch.dx = touch.dy = 0;
+  }
+  if (pad.active || touch.active) {
+    if (pad.active) { cam.yaw -= pad.rx * 2.7 * cfg.sens * dt; cam.pitch -= pad.ry * 1.7 * cfg.sens * dt * (cfg.invY ? -1 : 1); }
     // light aim assist: drift toward the primary lock while the right stick is gentle
     const lt = G.lockTarget;
     if (lt && lt.sx !== undefined && Math.abs(pad.rx) + Math.abs(pad.ry) < 0.6) {
       const ox = (lt.sx - innerWidth / 2) / innerHeight, oy = (lt.sy - innerHeight / 2) / innerHeight;
-      cam.yaw -= ox * 2.2 * dt; cam.pitch -= oy * 1.6 * dt;
+      const k = touch.active ? 1.4 : 1;   // a finger is less precise than a stick
+      cam.yaw -= ox * 2.2 * k * dt; cam.pitch -= oy * 1.6 * k * dt;
     }
   }
   let A;
   if (auto.on) A = autoIntent(dt);
   else {
-    const B = pad.b;
-    const shift = keys.has('ShiftLeft') || keys.has('ShiftRight') || !!B[1] || !!B[4] || !!B[10], space = keys.has('Space') || !!B[0];
+    const B = pad.b, T = touch.b;
+    const shift = keys.has('ShiftLeft') || keys.has('ShiftRight') || !!B[1] || !!B[4] || !!B[10] || !!T.boost, space = keys.has('Space') || !!B[0] || !!T.jump;
     const cl = (v) => Math.max(-1, Math.min(1, v));
-    A = { f: cl((keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0) - pad.ly), s: cl((keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0) + pad.lx),
-      boost: shift, qboost: shift && !lastShift, jump: space && !lastSpace, hover: space, b0: mouse.b0 || !!B[7], b2: mouse.b2 || !!B[6], e: ePressed || !!B[5] };
+    A = { f: cl((keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0) - pad.ly - touch.my), s: cl((keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0) + pad.lx + touch.mx),
+      boost: shift, qboost: shift && !lastShift, jump: space && !lastSpace, hover: space, b0: mouse.b0 || !!B[7] || !!T.b0, b2: mouse.b2 || !!B[6] || !!T.b2, e: ePressed || !!B[5] || !!T.e };
     lastShift = shift; lastSpace = space;
   }
   cam.pitch = Math.max(-0.75, Math.min(0.95, cam.pitch));
@@ -845,6 +992,8 @@ function step(dt) {
     G.curLabel = null;
     if (G.pw.S.d.type !== 'beam' && G.pw.S.cd > 0 && A.e && G.pw.S.cd < G.pw.S.d.cd - 0.3 && !auto.on && Math.random() < 0.02) sfx('empty');
   }
+  if (G.core) G.core.update(dt);
+  if (G.wing && !run.won) G.wing.update(dt);
   updateCombat(dt);
   // boost dust trail
   if (p.alive && p.grounded && p.thrustLv > 0.5 && Math.random() < 0.6) fx.dust(p.pos, 1, 1.8, 3);
@@ -895,13 +1044,13 @@ window.__iv = {
   setState,
   wave: (i) => { clearWorld(); run.breakT = 0; startWave(i); },
   save, MISSIONS, ensureArena, applyEnv, writeSave,
-  mouse, pad, setPadActive, pollPad,
+  mouse, pad, setPadActive, pollPad, touch, setTouch,
 };
 
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=3');
+    await loadKit('./assets/kit.glb?v=4');
     ensureArena();
     makePlayer();
     setState('title');

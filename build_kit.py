@@ -518,6 +518,31 @@ def build_relay():
         box((s * 0.9, 0, 0.5), (0.12, 0.12, 0.9), M["Frame"], dish)
     empty("E_RCore", (0, 0, 3.2), K)
 
+def build_reactor():
+    # friendly reactor core for the defense mission: ~11 m, octagonal base, glowing coil column, spinning ring F_RRing
+    K = kit("F_Reactor")
+    cyl((0, 0, 0.5), 6.2, 1.0, M["Concrete"], K, verts=8, smooth=False)
+    cyl((0, 0, 1.05), 5.4, 0.12, M["Hazard"], K, verts=8, smooth=False)
+    for i in range(4):
+        a = i * math.pi / 2 + math.pi / 4
+        x, y = math.cos(a) * 4.0, math.sin(a) * 4.0
+        box((x, y, 2.6), (1.4, 1.4, 3.2), M["Frame"], K, rot=(0, 0, a), bevel=0.08)
+        box((x * 0.82, y * 0.82, 4.4), (1.2, 0.5, 0.5), M["Joint"], K, rot=(0, 0, a))
+        cyl((x, y, 4.35), 0.45, 0.25, M["Coil"], K, verts=10)
+    cyl((0, 0, 2.2), 2.6, 2.4, M["Frame"], K, verts=12, smooth=False)
+    cyl((0, 0, 6.0), 1.55, 5.4, M["Glass"], K, verts=16)
+    for z in (3.9, 5.1, 6.3, 7.5):
+        cyl((0, 0, z), 1.75, 0.22, M["Coil"], K, verts=16)
+    cyl((0, 0, 6.0), 0.8, 5.0, M["Coil"], K, verts=12)
+    cyl((0, 0, 8.9), 2.3, 0.7, M["Frame"], K, verts=12, smooth=False)
+    cyl((0, 0, 9.4), 1.4, 0.4, M["Piston"], K, verts=12)
+    ball((0, 0, 10.1), 0.75, M["Coil"], K)
+    ring = empty("F_RRing", (0, 0, 6.0), K)
+    for i in range(6):
+        a = i * math.pi / 3
+        box((math.cos(a) * 2.6, math.sin(a) * 2.6, 0), (0.35, 1.3, 0.25), M["Piston"], ring, rot=(0, 0, a))
+        box((math.cos(a) * 2.6, math.sin(a) * 2.6, 0), (0.12, 0.8, 0.3), M["Coil"], ring, rot=(0, 0, a))
+
 # ================================================================= PROPS / PICKUPS
 def build_props():
     K = kit("P_Crate")
@@ -550,7 +575,7 @@ def build_props():
 build_mech()
 build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade()
 build_missile(); build_cannon(); build_laser()
-build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout

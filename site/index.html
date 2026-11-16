@@ -36,6 +36,16 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 .mark { position: absolute; width: 0; height: 0; border-left: 7px solid transparent; border-right: 7px solid transparent; border-bottom: 13px solid var(--red); margin: -6px 0 0 -7px; opacity: 0.8; }
 .mark.boss { border-bottom-color: #ff8a1a; border-left-width: 10px; border-right-width: 10px; border-bottom-width: 18px; }
 .mark.obj { border-bottom-color: #ffd23a; border-left-width: 9px; border-right-width: 9px; border-bottom-width: 16px; opacity: 1; }
+.mark.core { border-bottom-color: #5fe3ff; border-left-width: 9px; border-right-width: 9px; border-bottom-width: 16px; opacity: 1; }
+.objm.core { color: #5fe3ff; }
+#coreBox { margin-top: 8px; width: min(420px, 70vw); }
+#coreBox .nm { font-size: 13px; color: #9feeff; letter-spacing: 2px; }
+#coreBox .nm b { font-family: var(--num); font-weight: 500; margin-left: 6px; }
+#coreBar i { background: linear-gradient(90deg, #2fb8e8, #8ff4ff) !important; }
+#coreBar.low i { background: linear-gradient(90deg, #e83a2f, #ff9a7a) !important; }
+#coreBox.hit .nm { color: #ff8a7a; }
+#wingTxt { position: absolute; left: 22px; bottom: 202px; font-size: 13px; color: #9fffd0; letter-spacing: 1px; text-shadow: 0 0 6px rgba(0,0,0,0.7); }
+#wingTxt b { font-family: var(--num); font-weight: 500; font-size: 15px; } #wingTxt em { color: var(--dim); font-style: normal; }
 .objm { position: absolute; transform: translate(-50%, -100%); color: #ffd23a; font: 600 12px/1 system-ui, sans-serif; letter-spacing: 1px; text-shadow: 0 0 6px rgba(0,0,0,0.8); white-space: nowrap; pointer-events: none; }
 #bars { position: absolute; left: 50%; bottom: 26px; transform: translateX(-50%); width: min(520px, 70vw); }
 .bar { position: relative; height: 10px; background: rgba(0, 0, 0, 0.45); border: 1px solid var(--line); margin-top: 6px; overflow: hidden; }
@@ -105,8 +115,9 @@ button.primary:hover { background: #9af0ff; }
 .rank { font-family: var(--num); font-size: 80px; font-weight: 700; color: var(--amber); line-height: 1; float: right; margin-top: -8px; }
 .row { display: flex; align-items: center; gap: 12px; margin-top: 10px; font-size: 14px; color: var(--dim); }
 .row input[type=range] { flex: 1; }
-.mlist { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; }
-.mis { text-align: left; padding: 10px 12px; letter-spacing: 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.mlist { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+#title .card { max-width: 940px; }
+.mis { text-align: left; padding: 9px 10px; letter-spacing: 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .mis b { font-size: 15px; }
 .mis .en { font-family: var(--num); font-size: 12px; letter-spacing: 2px; color: var(--cyan); }
 .mis small { color: var(--dim); font-size: 12px; line-height: 1.5; }
@@ -131,6 +142,36 @@ button.primary:hover { background: #9af0ff; }
   #radar { width: 110px; height: 110px; left: 10px; bottom: 10px; } #info { left: 128px; bottom: 12px; }
   #bars { bottom: 140px; } .card { padding: 18px; }
 }
+/* touch controls (shown once the first touch arrives) */
+#c { touch-action: none; }
+#touch { position: fixed; inset: 0; pointer-events: none; z-index: 5; }
+#touch.hidden { display: none; }
+#tStick { position: absolute; left: 0; bottom: 0; width: 42vw; height: 62vh; pointer-events: auto; touch-action: none; }
+#tBase { position: absolute; width: 124px; height: 124px; margin: -62px 0 0 -62px; border-radius: 50%; border: 2px solid rgba(120, 220, 255, 0.35); background: rgba(8, 14, 20, 0.35); left: 110px; top: calc(100% - 110px); }
+#tKnob { position: absolute; left: 50%; top: 50%; width: 54px; height: 54px; margin: -27px 0 0 -27px; border-radius: 50%; background: rgba(120, 220, 255, 0.45); border: 2px solid rgba(200, 245, 255, 0.7); }
+#tBtns { position: absolute; right: 0; bottom: 0; width: 270px; height: 230px; transform-origin: right bottom; }
+#tBtns button { position: absolute; pointer-events: auto; touch-action: none; border-radius: 50%; border: 2px solid rgba(120, 220, 255, 0.45); background: rgba(8, 14, 20, 0.45); color: var(--ink); font: 600 13px/1.1 var(--cn); padding: 0; letter-spacing: 0; }
+#tBtns button small { display: block; font: 600 10px/1 var(--num); color: var(--dim); letter-spacing: 1px; margin-top: 2px; }
+#tBtns button.on { background: rgba(95, 227, 255, 0.4); border-color: #bff4ff; }
+#tBtns .b0 { right: 18px; bottom: 58px; width: 86px; height: 86px; font-size: 15px; border-color: rgba(255, 200, 100, 0.6); }
+#tBtns .b2 { right: 112px; bottom: 26px; width: 66px; height: 66px; }
+#tBtns .e { right: 108px; bottom: 104px; width: 58px; height: 58px; }
+#tBtns .jump { right: 28px; bottom: 156px; width: 62px; height: 62px; }
+#tBtns .boost { right: 184px; bottom: 70px; width: 62px; height: 62px; }
+#tBtns .rl { right: 176px; bottom: 150px; width: 46px; height: 46px; font-size: 12px; }
+#tPause { position: absolute; left: 50%; top: 6px; margin-left: -22px; width: 44px; height: 32px; pointer-events: auto; padding: 0; font: 700 14px/1 var(--num); }
+body.touchmode #weapons { top: 46px; right: 10px; bottom: auto; width: 176px; }
+body.touchmode .wrow .key { display: none; }
+body.touchmode .wrow { padding: 2px 8px 3px; margin-top: 3px; } body.touchmode .wrow .nm { font-size: 10.5px; } body.touchmode .wrow .am { font-size: 14px; } body.touchmode .wrow .wb { margin-top: 2px; }
+body.touchmode #weapons { width: 150px; }
+body.touchmode #radar { top: 10px; left: 10px; bottom: auto; width: 96px; height: 96px; }
+body.touchmode #info { display: none; }
+body.touchmode #wingTxt { left: 116px; top: 14px; bottom: auto; }
+body.touchmode #bars { bottom: 8px; width: min(300px, 34vw); }
+body.touchmode #crTxt { top: 14px; right: 10px; font-size: 15px; }
+body.touchmode #hint { top: auto; bottom: 100px; font-size: 12px; max-width: 46vw; text-align: center; }
+body.touchmode #topc { top: 42px; } body.touchmode #waveTitle { font-size: 18px; }
+body.touchmode #mAlert { top: 30%; }
 </style>
 </head>
 <body>
@@ -151,6 +192,7 @@ button.primary:hover { background: #9af0ff; }
   <div id="topc">
     <div id="waveTitle">WAVE 1</div>
     <div id="waveSub"></div>
+    <div id="coreBox" class="hidden"><div class="nm">反应堆 REACTOR <b id="corePct">100%</b></div><div class="bar" id="coreBar"><i style="width:100%"></i></div></div>
     <div id="bossBox" class="hidden"><div class="nm" id="bossName">暴君 TYRANT · 重装指挥机</div><div class="bar" id="bossBar"><i style="width:100%"></i></div></div>
   </div>
   <div id="banner"></div>
@@ -165,9 +207,22 @@ button.primary:hover { background: #9af0ff; }
     <div class="barlbl"><span>能量 EN</span><span id="enTxt"></span></div>
   </div>
   <div id="weapons"></div>
+  <div id="wingTxt" class="hidden"></div>
   <div id="hint" class="hidden"></div>
 </div>
 
+<div id="touch" class="hidden">
+  <div id="tStick"><div id="tBase"><div id="tKnob"></div></div></div>
+  <div id="tBtns">
+    <button type="button" class="b0" data-k="b0">右臂<small>FIRE</small></button>
+    <button type="button" class="b2" data-k="b2">左臂</button>
+    <button type="button" class="e" data-k="e">肩部</button>
+    <button type="button" class="jump" data-k="jump">跳跃<small>悬浮</small></button>
+    <button type="button" class="boost" data-k="boost">推进<small>急闪</small></button>
+    <button type="button" class="rl" data-k="reload">装填</button>
+  </div>
+  <button type="button" id="tPause">II</button>
+</div>
 <div id="title" class="overlay hidden">
   <div class="card">
     <h1>IRON <span>VANGUARD</span></h1>
@@ -183,8 +238,9 @@ button.primary:hover { background: #9af0ff; }
       <b>光束剑</b><span>锁定敌人时按下 = 冲刺斩击，能斩开护盾坦克的护盾</span>
       <b>R · ESC</b><span>手动换弹 · 暂停</span>
       <b>手柄</b><span>左摇杆移动 · 右摇杆视角 · RT/LT 双臂 · RB 肩部 · A 跳跃 · B 推进 · X 装填 · Start 暂停（标题页按 A 出击，Y 进机库）</span>
+      <b>触屏</b><span>左侧拖动移动 · 右侧拖动转视角 · 右下按钮射击 / 跳跃 / 推进 · 准星靠近敌人会自动吸附</span>
     </div>
-    <div style="color: var(--dim); font-size: 12px; margin-top: 10px">推进、悬浮和急闪都消耗能量 EN；耗尽会过热 2 秒。支持键盘鼠标或手柄。</div>
+    <div style="color: var(--dim); font-size: 12px; margin-top: 10px">推进、悬浮和急闪都消耗能量 EN；耗尽会过热 2 秒。支持键盘鼠标、手柄和触屏。</div>
     <div class="btns"><button class="primary" id="btnSortie">出击</button><button id="btnGarage">机库 · 改装</button></div>
     <div class="stats" id="bestTxt"></div>
   </div>
@@ -199,6 +255,7 @@ button.primary:hover { background: #9af0ff; }
     <div class="gsec"><h3>右臂 · 左键</h3><div class="opts" id="gR"></div></div>
     <div class="gsec"><h3>左臂 · 右键</h3><div class="opts" id="gL"></div></div>
     <div class="gsec"><h3>肩部 · E</h3><div class="opts" id="gS"></div></div>
+    <div class="gsec"><h3>僚机 WINGMAN</h3><div id="gWing"></div></div>
     <div class="gsec"><h3>难度</h3><div class="opts" id="gDiff"></div></div>
     <div class="btns"><button class="primary" id="gGo">出击</button><button id="gBack">返回</button></div>
   </div>
