@@ -11,6 +11,8 @@ export const PALETTES = {
   specter: { name: '幽灵 黑', en: 'Specter', Armor: '#2b2e34', Armor2: '#585d66', Accent: '#2fd0ff' },
   sakura: { name: '樱 粉', en: 'Sakura', Armor: '#f1e4e9', Armor2: '#c595a6', Accent: '#7a3cc8' },
   phantom: { name: '幻影', en: 'Phantom', Armor: '#1e2026', Armor2: '#3c3f48', Accent: '#d01840', Visor: '#ff3a5a', VisorEmit: '#ff1030', NozzleGlow: '#ff8aa0', NozzleGlowEmit: '#ff2050' },
+  raider: { name: '掠夺者', en: 'Raider', enemy: true, Armor: '#8a6a44', Armor2: '#3a3430', Accent: '#ff7a1a', Visor: '#ffb040', VisorEmit: '#ff8a10', NozzleGlow: '#ffc080', NozzleGlowEmit: '#ff8a30' },
+  lancer: { name: '枪骑兵', en: 'Lancer', enemy: true, Armor: '#5a2a4a', Armor2: '#241c24', Accent: '#ff3ac0', Visor: '#ff70e0', VisorEmit: '#ff30c8', NozzleGlow: '#ff9ae8', NozzleGlowEmit: '#ff40c0' },
   tyrant: { name: '暴君', en: 'Tyrant', Armor: '#3b2627', Armor2: '#1d1e22', Accent: '#ff3a20', Visor: '#ff5a3a', VisorEmit: '#ff2a10', NozzleGlow: '#ffb070', NozzleGlowEmit: '#ff6a20' },
 };
 export const FRAMES = {
@@ -84,7 +86,7 @@ export class Mech {
     for (const s of Object.values(this.slots)) for (const m of s.models) m.parent && m.parent.remove(m);
     this.slots = {};
     this.loadout = { ...loadout };
-    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade' };
+    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', shield: 'S_Shield' };
     const mk = (slot, key, mounts) => {
       const models = [], muzzles = [];
       for (const mt of mounts) {

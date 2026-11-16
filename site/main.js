@@ -11,7 +11,7 @@ import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff } from './mech.js';
 import { Wingman, Reactor, WING } from './ally.js';
-import { G, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 const V3 = THREE.Vector3;
@@ -45,15 +45,22 @@ const MISSIONS = {
     { title: 'WAVE 4', sub: '全面合围', spawn: { bulwark: 2, walker: 3, gunship: 1, drone: 4 }, late: { gunship: 1, walker: 2, drone: 4 } },
     { title: 'FINAL WAVE', sub: '击破「暴君」 · 它会直扑反应堆', spawn: { boss: 'tyrant', walker: 3, drone: 4, bossHp: 0.85 }, late: { bulwark: 2, drone: 4 } },
   ] },
+  storm: { name: '暴雨 · 机甲猎杀', en: 'STORM HUNT', desc: '雷暴夜雨 · 敌方机甲小队「掠夺者」「枪骑兵」 · 头目「幻影」', seed: 41, env: 'storm', reward: 4200, waves: [
+    { title: 'WAVE 1', sub: '掠夺者小队接近 · 它们和你一样会推进、急闪', spawn: { raider: 2, drone: 4, turret: 3 } },
+    { title: 'WAVE 2', sub: '枪骑兵加入 · 光束剑冲刺前会红光预警', spawn: { raider: 2, lancer: 1, walker: 2, drone: 3 } },
+    { title: 'WAVE 3', sub: '机甲猎杀队', spawn: { lancer: 1, raider: 2, gunship: 1 }, late: { lancer: 1, drone: 3 } },
+    { title: 'FINAL WAVE', sub: '猎杀队队长「幻影」亲自出击', spawn: { boss: 'phantom' } },
+  ] },
   endless: { name: '无尽防线', en: 'ENDLESS', desc: '黄昏 · 无限波次，越来越强 · 每 5 波一个头目', seed: 5, env: 'dusk', endless: true, reward: 0 },
 };
 const ENVS = {
   day: { top: 0x6f98bf, hor: 0xc4cfd8, fog: [90, 560], hemi: [0xdfe9f2, 0x6a6660, 0.6], sun: [0xfff1de, 2.2], env: 0.42, exp: 0.9, dir: [0.45, 0.55, 0.7], disc: 1 },
   dusk: { top: 0x3c4f7c, hor: 0xd99a74, fog: [80, 520], hemi: [0xffd6b8, 0x4c4240, 0.5], sun: [0xffb47a, 2.5], env: 0.34, exp: 0.95, dir: [-0.62, 0.2, 0.46], disc: 1.4 },
   snow: { top: 0x8ea3b8, hor: 0xd6dee6, fog: [40, 300], hemi: [0xeef4ff, 0x8f99a6, 0.72], sun: [0xf2f6ff, 1.5], env: 0.36, exp: 0.82, dir: [0.35, 0.42, 0.65], disc: 0.35, snow: true },
+  storm: { top: 0x1c232c, hor: 0x46505c, fog: [30, 230], hemi: [0x9aacc0, 0x26282c, 0.42], sun: [0xc0cce0, 0.8], env: 0.2, exp: 1.02, dir: [0.25, 0.7, 0.4], disc: 0.05, rain: true },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, relay: 450, boss: 1200 };
+const KILL_CR = { drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -116,7 +123,8 @@ function applyEnv(key) {
   hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2];
   sun.color.set(E.sun[0]); sun.intensity = E.sun[1];
   scene.environmentIntensity = E.env; renderer.toneMappingExposure = E.exp;
-  snowFx.visible = !!E.snow;
+  snowFx.visible = !!E.snow; rainFx.visible = !!E.rain;
+  storm.on = !!E.rain; storm.hemi = E.hemi[2]; storm.top.set(E.top); storm.k = 0; storm.t = 4 + Math.random() * 6;
 }
 let arenaKey = '';
 function ensureArena() {
@@ -139,6 +147,39 @@ const snowFx = (() => {
   pts.userData.ph = new Float32Array(SNOW_N).map(() => Math.random() * 6.28);
   return pts;
 })();
+// rain: line streaks in a box that follows the camera; lightning flashes the hemisphere light and sky
+const RAIN_N = 2400, RAIN_BOX = 60;
+const rainFx = (() => {
+  const g = new THREE.BufferGeometry(), a = new Float32Array(RAIN_N * 6);
+  for (let i = 0; i < RAIN_N; i++) { const x = (Math.random() - 0.5) * RAIN_BOX, y = (Math.random() - 0.5) * RAIN_BOX, z = (Math.random() - 0.5) * RAIN_BOX; a.set([x, y, z, x, y, z], i * 6); }
+  g.setAttribute('position', new THREE.BufferAttribute(a, 3));
+  const l = new THREE.LineSegments(g, new THREE.LineBasicMaterial({ color: 0xa8bcd0, transparent: true, opacity: 0.32, depthWrite: false }));
+  l.frustumCulled = false; l.visible = false; scene.add(l);
+  return l;
+})();
+const storm = { on: false, k: 0, t: 6, hemi: 0.4, top: new THREE.Color(), flashTop: new THREE.Color(0xb8c8e8) };
+function updateRain(dt) {
+  if (!rainFx.visible) return;
+  const a = rainFx.geometry.attributes.position.array, c = camera.position, H = RAIN_BOX / 2, vx = 3, vy = -34, L = 0.045;
+  for (let i = 0; i < RAIN_N; i++) {
+    const j = i * 6;
+    let x = a[j] + vx * dt, y = a[j + 1] + vy * dt, z = a[j + 2];
+    if (y - c.y < -H) y += RAIN_BOX; if (x - c.x > H) x -= RAIN_BOX; else if (x - c.x < -H) x += RAIN_BOX; if (z - c.z > H) z -= RAIN_BOX; else if (z - c.z < -H) z += RAIN_BOX;
+    if (y - c.y > H) y -= RAIN_BOX;
+    a[j] = x; a[j + 1] = y; a[j + 2] = z; a[j + 3] = x - vx * L; a[j + 4] = y - vy * L; a[j + 5] = z;
+  }
+  rainFx.geometry.attributes.position.needsUpdate = true;
+  // lightning
+  storm.t -= dt;
+  if (storm.t <= 0) {
+    storm.t = 7 + Math.random() * 9; storm.k = 1; storm.second = Math.random() < 0.6 ? 0.18 : 0;
+    const d = 120 + Math.random() * 260; G.queue.push({ label: 'thunder', t: d / 340, fn: () => sfx('thunder', d * 0.25) });
+  }
+  if (storm.second > 0) { storm.second -= dt; if (storm.second <= 0) storm.k = 0.8; }
+  storm.k = Math.max(0, storm.k - dt * 4.5);
+  hemi.intensity = storm.hemi + storm.k * 2.6;
+  sky.material.uniforms.top.value.copy(storm.top).lerp(storm.flashTop, storm.k * 0.8);
+}
 function updateSnow(dt) {
   if (!snowFx.visible) return;
   const a = snowFx.geometry.attributes.position.array, ph = snowFx.userData.ph, c = camera.position, H = SNOW_BOX / 2, t = G.time;
@@ -398,6 +439,7 @@ function endlessWave(i) {
   if (n >= 2) pool.push(['walker', 3, 6]);
   if (n >= 3) pool.push(['bulwark', 3.5, 4]);
   if (n >= 4) pool.push(['gunship', 5, 3]);
+  if (n >= 6) pool.push(['raider', 4.5, 3], ['lancer', 4.5, 2]);
   const sp = {}; let budget = 5 + n * 2.6, total = 0;
   while (budget > 0.9 && total < 24) {
     const [k, c, max] = pool[Math.floor(Math.random() * pool.length)];
@@ -495,6 +537,7 @@ function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.walker || 0); k++) new Walker(spot(95 * R, 140 * R, false, b));
   for (let k = 0; k < (S.bulwark || 0); k++) new Bulwark(spot(95 * R, 130 * R, false, b));
   for (let k = 0; k < (S.gunship || 0); k++) new Gunship(spot(110 * R, 150 * R, true, b));
+  for (const t of Object.keys(RAIDERS)) for (let k = 0; k < (S[t] || 0); k++) new Boss(spot(85 * R, 130 * R, false, b), mctx, t, 1);
 }
 
 G.onKill = (e) => {
@@ -702,7 +745,7 @@ function buildGarage() {
   buildUpgrades();
   const opt = (html, on, fn, cls = '') => { const d = document.createElement('div'); d.className = 'opt ' + cls + (on ? ' on' : ''); d.innerHTML = html; d.onclick = () => { sfx('ui'); fn(); saveCfg(); buildGarage(); }; return d; };
   const fill = (id, items) => { const el = $(id); el.innerHTML = ''; items.forEach((i) => el.appendChild(i)); };
-  fill('gPaint', Object.entries(PALETTES).filter(([k]) => k !== 'tyrant').map(([k, p]) =>
+  fill('gPaint', Object.entries(PALETTES).filter(([k, p]) => k !== 'tyrant' && !p.enemy).map(([k, p]) =>
     opt(`<i style="background:linear-gradient(135deg, ${p.Armor} 0 55%, ${p.Accent} 55% 75%, ${p.Armor2} 75%)"></i>`, cfg.palette === k, () => { cfg.palette = k; G.player.setPalette(k); }, 'sw')));
   fill('gFrame', Object.entries(FRAMES).map(([k, f]) => opt(`${f.name}<small>${f.en}</small>`, cfg.frame === k, () => { cfg.frame = k; rebuildPreview(); })));
   const F = G.player.frame;
@@ -767,7 +810,7 @@ function drawHUD(dt) {
       if (w.reloadT > 0) { txt = 'RELOAD'; k = 1 - w.reloadT / w.d.reload; cls = 'reloading'; }
       else { txt = w.ammo; k = w.d.type === 'charge' ? w.chargeT / w.d.charge : w.ammo / w.d.mag; }
     } else {
-      if (w.beamT > 0) { txt = 'FIRE'; k = w.beamT / w.d.dur; }
+      if (w.beamT > 0) { txt = w.d.type === 'shield' ? 'ACTIVE' : 'FIRE'; k = w.beamT / w.d.dur; }
       else if (w.cd > 0) { txt = w.cd.toFixed(1); k = 1 - w.cd / w.d.cd; cls = 'reloading'; }
       else { txt = 'READY'; k = 1; cls = 'ready'; }
       if (slot === 'S' && w.d.type === 'missile' && w.cd <= 0) txt = `READY ×${Math.max(1, G.locks.length)}`;
@@ -880,7 +923,8 @@ function drawHUD(dt) {
     const x = (e.c.x - p.pos.x) * K, z = (e.c.z - p.pos.z) * K;
     if (e.kind === 'relay') { rctx.fillStyle = '#ffd23a'; rctx.save(); rctx.translate(x, z); rctx.rotate(Math.PI / 4); rctx.fillRect(-6, -6, 12, 12); rctx.restore(); continue; }
     rctx.fillStyle = e.kind === 'boss' ? '#ff8a1a' : '#ff4a3a';
-    const s = e.kind === 'boss' ? 9 : e.kind === 'gunship' ? 8 : e.kind === 'walker' || e.kind === 'bulwark' ? 7 : 5;
+    if (e.kind === 'raider') rctx.fillStyle = '#ff9a5a';
+    const s = e.kind === 'boss' ? 9 : e.kind === 'gunship' || e.kind === 'raider' ? 8 : e.kind === 'walker' || e.kind === 'bulwark' ? 7 : 5;
     rctx.fillRect(x - s / 2, z - s / 2, s, s);
   }
   if (G.core && G.core.alive) { rctx.fillStyle = '#5fe3ff'; const x = (G.core.pos.x - p.pos.x) * K, z = (G.core.pos.z - p.pos.z) * K; rctx.beginPath(); rctx.arc(x, z, 9, 0, Math.PI * 2); rctx.fill(); rctx.strokeStyle = '#e8fbff'; rctx.lineWidth = 2; rctx.stroke(); }
@@ -999,7 +1043,7 @@ function step(dt) {
   if (p.alive && p.grounded && p.thrustLv > 0.5 && Math.random() < 0.6) fx.dust(p.pos, 1, 1.8, 3);
   if (p.alive && !p.grounded && p.hoverLv > 0.3 && p.pos.y - groundAt(p.pos.x, p.pos.z, p.pos.y) < 6 && Math.random() < 0.5) fx.dust(new V3(p.pos.x, groundAt(p.pos.x, p.pos.z, p.pos.y), p.pos.z), 1, 2.2, 6);
   fx.update(dt, camera);
-  updateSnow(dt);
+  updateSnow(dt); updateRain(dt);
   waveLogic(dt);
   thrust(p.alive ? Math.max(p.thrustLv, p.hoverLv * 0.7) : 0);
   const inten = run.wave < 0 ? 0 : (G.bosses && G.bosses.some((b) => b.alive)) ? 1 : Math.min(0.9, 0.45 + run.wave * 0.15);
@@ -1050,7 +1094,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=4');
+    await loadKit('./assets/kit.glb?v=5');
     ensureArena();
     makePlayer();
     setState('title');

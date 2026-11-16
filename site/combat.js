@@ -23,12 +23,14 @@ export const WEAPONS = {
   coil: { slot: 'arm', name: 'LC-3 闪电线圈', en: 'LC-3 Arc Coil', desc: '自动索敌 · 连锁 3 个目标', type: 'chain', rate: 0.5, dmg: 44, range: 60, chains: 3, chainR: 18, mag: 14, reload: 2.2, sfx: 'coil', recoil: 0.3 },
   rail: { slot: 'arm', name: 'RG-9 磁轨炮', en: 'RG-9 Railgun', desc: '按住蓄力 · 松开贯穿', type: 'charge', charge: 1.1, dmg: [45, 280], rate: 0.6, mag: 6, reload: 2.6, sfx: 'rail', recoil: 0.9 },
   blade: { slot: 'arm', name: 'LB-0 光束剑', en: 'LB-0 Pulse Blade', desc: '近战 · 锁定时冲刺斩击 · 耗 EN', type: 'blade', dmg: 310, range: 7.5, lunge: 38, cd: 0.95, cost: 16, sfx: 'blade' },
+  shotgun: { slot: 'arm', name: 'SG-12 霰弹炮', en: 'SG-12 Scattergun', desc: '近距离 · 一发 9 颗弹丸 · 射程短', type: 'bullet', pellets: 9, rate: 0.72, dmg: 13, speed: 250, spread: 0.075, life: 0.42, mag: 6, reload: 2.3, color: 0xffc890, w: 0.2, len: 4, sfx: 'cannon', recoil: 0.7 },
   missile: { slot: 'shoulder', name: 'MS-6 飞弹巢', en: 'MS-6 Missile Pods', desc: '多重锁定 · 6 发追踪', type: 'missile', count: 6, dmg: 40, splash: 5, cd: 6.5, sfx: 'missile' },
   cannon: { slot: 'shoulder', name: 'PC-2 等离子炮', en: 'PC-2 Plasma Cannon', desc: '大范围爆炸 · 弹速慢', type: 'plasma', dmg: 165, splash: 9, speed: 105, cd: 3.4, sfx: 'cannon' },
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
+  shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['rifle', 'gatling', 'coil', 'rail', 'blade'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser'];
+export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'coil', 'rail', 'blade'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -91,7 +93,9 @@ function dealDamage(ent, dmg, team, at, label) {
 const isAlly = (l) => !!l && l.startsWith('ally');
 function damagePlayer(dmg, src, label) {
   const p = G.player; if (!p || !p.alive || G.godMode) return;
-  const d = dmg * G.diff.dmg * p.frame.armor;
+  const blk = shieldBlock(p, src || G.curSrc);
+  if (blk) { G.stats.blocked = (G.stats.blocked || 0) + dmg * blk; if (Math.random() < 0.3) sfx('shield', 0); }
+  const d = dmg * G.diff.dmg * p.frame.armor * (1 - blk);
   G.dmgLog = G.dmgLog || {}; G.dmgLog[label || '?'] = (G.dmgLog[label || '?'] || 0) + d;
   p.hit(d); G.stats.dmgTaken += d; G.hud.hurt = Math.min(1, G.hud.hurt + d / 120);
   if (src) G.hud.hurtDir = Math.atan2(src.x - p.pos.x, src.z - p.pos.z);
@@ -229,14 +233,18 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
       while (ws.cd <= 0 && ws.ammo > 0) {
         ws.cd += d.rate; ws.ammo--;
         const mp = owner.muzzlePos(slot, _a);
-        _d.subVectors(aim, mp).normalize();
-        const spr = d.spread * (isP ? 2 : 6);
-        _d.x += (Math.random() - 0.5) * spr; _d.y += (Math.random() - 0.5) * spr; _d.z += (Math.random() - 0.5) * spr;
-        _d.normalize();
-        spawnShot({ p: mp, v: _d.clone().multiplyScalar(d.speed), dmg: d.dmg * dmgMul, team, kind: isP ? 'bullet' : 'ebullet', color: isP ? d.color : 0xff6a40, w: d.w, len: d.len, life: 1.6 });
-        fx.muzzle(mp, _d, isP ? 0xffd27a : 0xff8a50, d.spinUp ? 0.9 : 1.1);
+        const n = d.pellets || 1;
+        for (let k = 0; k < n; k++) {
+          _d.subVectors(aim, mp).normalize();
+          const spr = n > 1 ? d.spread * (isP ? 1 : 1.3) : d.spread * (isP ? 2 : 6);
+          _d.x += (Math.random() - 0.5) * spr; _d.y += (Math.random() - 0.5) * spr; _d.z += (Math.random() - 0.5) * spr;
+          _d.normalize();
+          spawnShot({ p: mp, v: _d.clone().multiplyScalar(d.speed * (n > 1 ? 0.9 + Math.random() * 0.2 : 1)), dmg: d.dmg * dmgMul, team, kind: isP ? 'bullet' : 'ebullet', color: isP ? d.color : 0xff6a40, w: d.w, len: d.len, life: d.life || 1.6 });
+        }
+        if (n > 1 && me) fx.trauma = Math.min(1, fx.trauma + 0.12);
+        fx.muzzle(mp, _d, isP ? 0xffd27a : 0xff8a50, n > 1 ? 1.9 : d.spinUp ? 0.9 : 1.1);
         mslot.recoil = Math.min(0.5, (mslot.recoil || 0) + d.recoil);
-        if (me) G.stats.shots++;
+        if (me) G.stats.shots += n;
         if (Math.random() < 0.6 || !d.spinUp) sfx(d.sfx, dist);
       }
       if (ws.ammo <= 0) startReload();
@@ -358,6 +366,11 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
       } });
       if (me) G.stats.shots += 2;
     }
+  } else if (d.type === 'shield') {
+    if (pressed && ws.cd <= 0) { ws.cd = d.cd; ws.beamT = d.dur; sfx('shield', dist); if (me) G.stats.shots++; }
+    if (ws.beamT > 0) ws.beamT = Math.max(0, ws.beamT - dt);
+    shieldVisual(owner, ws.beamT > 0 ? Math.min(1, ws.beamT * 4) : 0, dt);
+    owner.shieldT = ws.beamT; owner.shieldD = d;
   } else if (d.type === 'beam') {
     if (pressed && ws.cd <= 0) { ws.cd = d.cd; ws.beamT = d.dur; if (me) G.stats.shots++; }
     if (ws.beamT > 0) {
@@ -383,6 +396,33 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
       ws.sndT -= dt; if (ws.sndT <= 0) { ws.sndT = 0.11; sfx('laser', dist); }
     }
   }
+}
+
+// curved hex panel in front of the torso; fades in/out with the shield timer, flashes when it blocks
+const shieldGeo = new THREE.CylinderGeometry(3.4, 3.4, 4.6, 24, 3, true, Math.PI - 0.95, 1.9);
+function shieldVisual(owner, k, dt) {
+  let sv = owner._shield;
+  if (!sv && k <= 0) return;
+  if (!sv) {
+    const mat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x5fe0ff).multiplyScalar(1.5), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false });
+    const wire = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x58d8ff).multiplyScalar(0.9), wireframe: true, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+    sv = owner._shield = new THREE.Group(); sv.add(new THREE.Mesh(shieldGeo, mat), new THREE.Mesh(shieldGeo, wire)); sv.mats = [mat, wire]; sv.hitT = 0;
+    owner.root.add(sv);
+  }
+  sv.hitT = Math.max(0, sv.hitT - dt);
+  sv.visible = k > 0;
+  sv.position.set(0, 3.0 * owner.scale, 0); sv.rotation.y = owner.aimYaw - owner.root.rotation.y; sv.scale.setScalar(owner.scale);
+  sv.mats[0].opacity = k * (0.14 + 0.05 * Math.sin(G.time * 9)) + sv.hitT * 2;
+  sv.mats[1].opacity = k * 0.16 + sv.hitT * 2;
+}
+// shield block: fraction of damage removed when the hit comes from in front
+export function shieldBlock(m, src) {
+  if (!(m.shieldT > 0) || !src) return 0;
+  _a.set(src.x - m.pos.x, 0, src.z - m.pos.z); const L = _a.length(); if (L < 0.5) return 0;
+  const f = (-Math.sin(m.aimYaw) * _a.x - Math.cos(m.aimYaw) * _a.z) / L;
+  if (f < m.shieldD.arc) return 0;
+  if (m._shield) m._shield.hitT = 0.1;
+  return m.shieldD.block;
 }
 
 // ------------------------------------------------------------------ blade: dash to the target, then a wide slash
@@ -829,11 +869,17 @@ export const BOSSES = {
     phases: [{ R: 'rail', L: 'blade', S: 'missile' }, { R: 'gatling', L: 'blade', S: 'laser' }], mul: { rail: 0.25, blade: 0.34, missile: 0.5, gatling: 0.3, laser: 0.42 },
     phase2: ['幻影 · 解除限制', '机动全开：光束炮 / 加特林'] },
 };
+// Raiders: squad mechs, same AI and weapons as the bosses, no phases, no boss bar
+export const RAIDERS = {
+  raider: { name: '掠夺者 RAIDER', palette: 'raider', frame: 'std', scale: 1.0, hp: 900, want: [36, 36], phases: [{ R: 'rifle', L: 'shotgun', S: 'missile' }], mul: { rifle: 0.1, shotgun: 0.15, missile: 0.14 } },
+  lancer: { name: '枪骑兵 LANCER', palette: 'lancer', frame: 'light', scale: 0.96, hp: 700, want: [24, 24], agile: true, phases: [{ R: 'blade', L: 'gatling', S: 'cannon' }], mul: { blade: 0.13, gatling: 0.1, cannon: 0.2 } },
+};
 export class Boss {
   constructor(pos, ctx, type = 'tyrant', hpMul = 1) {
-    const B = this.B = BOSSES[type];
+    const B = this.B = BOSSES[type] || RAIDERS[type];
     this.kind = 'boss'; this.type = type; this.r = 2.5 * B.scale; this.c = new V3(); this.alive = true; this.dying = false; this.flash = 0;
     this.mech = new Mech(G.scene, ctx, { palette: B.palette, frame: B.frame, scale: B.scale, isBoss: true, loadout: B.phases[0], yaw: Math.PI });
+    if (RAIDERS[type]) { this.kind = 'raider'; this.r = 2.2 * B.scale; }
     this.mech.pos.copy(pos);
     this.maxHp = B.hp * G.diff.hp * hpMul; this.hp = this.maxHp; this.phase = 1;
     this.ws = { R: weaponState(B.phases[0].R), L: weaponState(B.phases[0].L), S: weaponState(B.phases[0].S) };
@@ -844,13 +890,13 @@ export class Boss {
   hit(dmg) {
     if (!this.alive) return;
     this.hp -= dmg; this.mech.flinch = Math.min(1, this.mech.flinch + dmg / 300);
-    if (this.phase === 1 && this.hp < this.maxHp * 0.5) {
+    if (this.phase === 1 && this.B.phases.length > 1 && this.hp < this.maxHp * 0.5) {
       this.phase = 2; const L = this.B.phases[1]; this.mech.mount(L);
       for (const k of ['R', 'L', 'S']) if (this.ws[k].key !== L[k]) this.ws[k] = weaponState(L[k]);
       this.ws.S.cd = 2;
       G.onBossPhase && G.onBossPhase(this);
     }
-    if (this.hp <= 0) { this.hp = 0; this.alive = false; this.dying = true; this.deathT = 2.2; G.stats.kills++; G.onKill && G.onKill(this); }
+    if (this.hp <= 0) { this.hp = 0; this.alive = false; this.dying = true; this.deathT = this.kind === 'raider' ? 0.7 : 2.2; G.stats.kills++; G.onKill && G.onKill(this); }
   }
   update(dt) {
     const m = this.mech, p = pickTarget(this), A = this.ai, B = this.B;
@@ -859,7 +905,7 @@ export class Boss {
       this.deathT -= dt;
       if (Math.random() < 0.25) explodeAt(_a.set(this.c.x + (Math.random() - 0.5) * 5, this.c.y + (Math.random() - 0.5) * 5, this.c.z + (Math.random() - 0.5) * 5).clone(), 0, 0, 'P', 0.6);
       m.update(dt, { mx: 0, mz: 0, aimYaw: m.aimYaw, aimPitch: -0.4 });
-      if (this.deathT <= 0) { explodeAt(this.c.clone(), 14, 0, 'P', 3.2); m.dispose(); this.gone = true; }
+      if (this.deathT <= 0) { explodeAt(this.c.clone(), this.kind === 'raider' ? 7 : 14, this.kind === 'raider' ? 40 : 0, 'P', this.kind === 'raider' ? 1.8 : 3.2); m.dispose(); this.gone = true; }
       return;
     }
     const pc = p.center(playerC);
@@ -886,12 +932,13 @@ export class Boss {
       const t = this.ws[k].d.type;
       if (!los) return false;
       if (t === 'blade') return dist < 30 && Math.random() < 0.04;
+      if (this.ws[k].d.pellets) return dist < 40;
       if (t === 'charge') return true;            // enemies release automatically at full charge
       if (k === 'S') return this.ws.S.cd <= 0 && Math.random() < 0.02;
       return k === 'R' ? A.burst > 0 : A.burst === 0 && Math.random() < 0.6;
     };
     for (const k of ['R', 'L', 'S']) {
-      G.curLabel = 'boss-' + this.ws[k].key;
+      G.curLabel = (this.kind === 'raider' ? this.B.palette + '-' : 'boss-') + this.ws[k].key;
       weaponTick(dt, m, k, this.ws[k], trig(k), aim, ent, 'E', ent ? [ent] : null, B.mul[this.ws[k].key] ?? 0.4);
     }
   }

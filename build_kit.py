@@ -384,6 +384,30 @@ def build_laser():
         box((s * 0.25, 0.2, 0.32), (0.04, 0.8, 0.14), M["Accent"], K)
     muzzle("Muzzle_Laser", (0, 0.95, 0.32), K)
 
+def build_shotgun():
+    K = kit("W_Shotgun")
+    # short heavy receiver, two stacked wide barrels, pump grip
+    box((0, 0.2, 0), (0.42, 0.9, 0.44), M["Frame"], K, bevel=0.05)
+    box((0, 0.1, 0.27), (0.34, 0.6, 0.1), M["Armor"], K, bevel=0.02)
+    for z in (0.09, -0.11):
+        cyl((0, 1.0, z), 0.11, 0.95, M["Joint"], K, rot=ALONG_Y, verts=10)
+        cyl((0, 1.47, z), 0.13, 0.08, M["Frame"], K, rot=ALONG_Y, verts=10)
+    box((0, 0.85, -0.02), (0.3, 0.32, 0.36), M["Armor2"], K, bevel=0.03)
+    box((0.23, 0.25, 0), (0.04, 0.6, 0.22), M["Hazard"], K)
+    box((0, 0.45, 0.34), (0.12, 0.2, 0.06), M["Visor"], K)
+    muzzle("Muzzle_Shotgun", (0, 1.55, 0), K)
+
+def build_shield():
+    K = kit("S_Shield")
+    # shoulder projector: armored housing with an emitter dish facing forward
+    box((0, 0.0, 0.32), (0.6, 0.8, 0.52), M["Armor2"], K, bevel=0.05)
+    box((0, 0.0, 0.6), (0.5, 0.6, 0.06), M["Accent"], K)
+    cyl((0, 0.44, 0.32), 0.27, 0.1, M["Frame"], K, rot=ALONG_Y, verts=16)
+    cyl((0, 0.5, 0.32), 0.2, 0.05, M["ShieldEmit"], K, rot=ALONG_Y, verts=16)
+    for s in (-1, 1):
+        box((s * 0.33, 0.25, 0.32), (0.05, 0.5, 0.36), M["Frame"], K)
+    muzzle("Muzzle_Shield", (0, 0.56, 0.32), K)
+
 # ================================================================= ENEMIES
 def build_turret():
     K = kit("E_Turret")
@@ -573,8 +597,8 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade()
-build_missile(); build_cannon(); build_laser()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun()
+build_missile(); build_cannon(); build_laser(); build_shield()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor()
 build_props()
 

@@ -66,6 +66,7 @@ export function sfx(name, d = 0, pan = 0) {
       case 'eshell': noise(t, 0.25, 'lowpass', 1200, 0.8, 0.4 * k, 0.2, pan, 300); tone(t, 'sine', 140, 60, 0.25 * k, 0.2); break;
       case 'boom': noise(t, 1.1, 'lowpass', 1400, 0.6, 0.9 * k, 1.0, pan, 120); tone(t, 'sine', 80, 28, 0.8 * k, 0.9); break;
       case 'bigboom': noise(t, 2.0, 'lowpass', 1000, 0.6, 1.0, 1.8, 0, 80); tone(t, 'sine', 60, 20, 1.0, 1.6); noise(t + 0.15, 1.0, 'bandpass', 400, 0.5, 0.6, 0.9); break;
+      case 'thunder': noise(t, 0.25, 'highpass', 2500, 0.5, 0.35 * k, 0.2); noise(t + 0.05, 3.2, 'lowpass', 600, 0.4, 0.9 * k, 2.8, 0, 60); noise(t + 0.6, 2.4, 'lowpass', 300, 0.5, 0.6 * k, 2.2, 0, 40); break;
       case 'hit': tone(t, 'square', 1800, 1500, 0.05, 0.04); break;
       case 'ping': noise(t, 0.08, 'highpass', 4000, 1, 0.15 * k, 0.06, pan); tone(t, 'triangle', 2400, 1800, 0.05 * k, 0.05); break;
       case 'hurt': noise(t, 0.25, 'bandpass', 500, 1.5, 0.5, 0.22, 0, 200); tone(t, 'square', 140, 70, 0.15, 0.18); break;

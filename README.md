@@ -57,6 +57,14 @@ If the browser refuses pointer lock (for example inside the Artifact iframe), th
 - **Ground AI fixes**: walkers and Bulwarks with no line of sight for 4 s close in instead of idling at their preferred range; on bumping into a building they slide along it for 2.5 s (`blockedSlide`), and reverse direction next time if a slide made less than 4 m of progress. The first version left a walker stuck behind a building for a minute and the wave could never be cleared
 - **Touch controls** (see Controls) and a 5-column mission grid on a wider title card
 
+## v5 content (2026-11-16)
+
+- **Storm Hunt** (`MISSIONS.storm`, env `storm`, seed 41): night rain, about 2400 `LineSegments` streaks in a 60 m box that follows the camera; lightning every 7–16 s flashes the hemisphere light and sky (sometimes a double flash) and the thunder (`sfx('thunder')`) arrives after the sound-travel delay. The floor is darker, a little metallic, with wet patches. Waves: raiders + drones + turrets → raiders + lancer + walkers → raiders + lancer + gunship (+ late lancer) → Phantom
+- **Enemy squad mechs** (`RAIDERS` in `combat.js`): the `Boss` brain with one phase and no boss bar (`kind = 'raider'`). Raider: standard frame, rifle / shotgun / missile, 900 HP. Lancer: light frame, agile, blade / gatling / cannon, 700 HP. Their shots are labelled `raider-*` / `lancer-*` in `G.dmgLog`. They also show up in Endless from round 6
+- **SG-12 Scattergun** (arm): 9 pellets per shot, short range (pellet life 0.42 s), 6 shells per load
+- **AS-3 Aegis Shield** (shoulder): 3 s, −85% damage from hits within the frontal arc (`shieldBlock`, measured against the aim direction), 9 s cooldown; a curved additive panel in front of the torso flashes on each blocked hit. The weapon panel reads ACTIVE while it is up
+- Enemy-only palettes carry `enemy: true` and are hidden from the hangar
+
 ## Structure
 
 - `site/kit.js` — loads the GLB (uses `window.__MA_KIT` first), `cloneKit`, `recolor` (palettes are applied by material name), `bakeStatic` (static props merged per material)
@@ -87,4 +95,5 @@ If the browser refuses pointer lock (for example inside the Artifact iframe), th
 - The autopilot (perfect aim, never uses cover) clears all five loadouts in 110–190 s, with about a 50% win rate
 - Night Raid: the autopilot won 2 of 3 loadouts (130–150 s); its top damage sources are gunship missiles / chin gun and the boss blade. Endless: the autopilot reaches wave 10, where the second boss (Phantom) kills it
 - Reactor Defense (autopilot, no wingman): rifle / gatling / missile wins with the core at 28%; blade / rifle / cannon (light frame) wins with it at ~50%. With the wingman it is clearly easier (the core lost < 15% over the run that was checked). Walker shells are the largest source of core damage (> 50%)
+- Storm Hunt (autopilot, no wingman): rifle / gatling / missile wins in 167 s with 273 HP left; shotgun / rifle / shield wins in 178 s with 135 HP (the shield blocked ~780 damage). First version (raider damage ×0.3, 1100 HP, Phantom with two escorts) died at 42 s
 - Snowfield: rifle / gatling / missile wins in 155 s; blade / rifle / cannon (light frame) loses at 144 s with Phantom on 505 HP. With both bosses arriving at once, both loadouts died; staggering Phantom's arrival is what makes it winnable

@@ -38,14 +38,14 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day') {
-  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow';
+  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm';
   solids.length = 0; barrels.length = 0; relaySites.length = 0;
   if (snow) relaySites.push(new THREE.Vector3(-104, 0, -40), new THREE.Vector3(96, 0, -64), new THREE.Vector3(-8, 0, -132));
   const group = new THREE.Group(); scene.add(group);
 
   // ---- floor: 4 m concrete tiles with per-tile tone + seams, 16 m darker lane lines
   const floorMat = panelMaterial(0x80848a, {
-    rough: 0.92, frag: `
+    rough: storm ? 0.5 : 0.92, metal: storm ? 0.25 : 0.1, frag: `
       vec2 cell = floor(vWP.xz / 4.0);
       float tone = 0.9 + 0.12 * h21(cell) + 0.03 * h21(floor(vWP.xz / 1.0));
       diffuseColor.rgb *= tone;
@@ -55,7 +55,9 @@ export function buildArena(scene, seed = 3, env = 'day') {
       diffuseColor.rgb *= 1.0 - 0.12 * lane;
       float ed = max(abs(vWP.x), abs(vWP.z));
       float stripe = step(${ARENA.toFixed(1)} - 3.0, ed) * step(ed, ${ARENA.toFixed(1)} - 1.6) * step(0.5, fract((vWP.x + vWP.z) / 4.0));
-      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.62, 0.08), stripe * 0.9);${snow ? `
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.62, 0.08), stripe * 0.9);${storm ? `
+      float wet = smoothstep(0.55, 0.8, h21(floor(vWP.xz / 9.0)) * 0.6 + h21(floor(vWP.xz / 3.0)) * 0.4);
+      diffuseColor.rgb *= 0.46 - 0.2 * wet;` : ''}${snow ? `
       float sn = 0.55 + 0.25 * h21(floor(vWP.xz / 7.0)) + 0.2 * h21(floor(vWP.xz / 1.3));
       float drift = smoothstep(0.25, 0.75, sin(vWP.x * 0.045 + sin(vWP.z * 0.03) * 2.0) * 0.5 + 0.5);
       float cover = clamp(0.8 + 0.17 * drift - 0.35 * stripe, 0.0, 0.97);
