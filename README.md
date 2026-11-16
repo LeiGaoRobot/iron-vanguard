@@ -2,7 +2,9 @@
 
 An original third-person mech action game, inspired by the gameplay in x.com/BeyondTheBoxCN/status/2121961415699497217. No assets were copied: every model is built with bpy, and everything else (effects, audio, logic) is in three.js r184 with no bundler.
 
-Artifact: https://claude.ai/artifact/LQpZpncQnSMrgf7ZGLnjzs
+- Play online: https://leigaorobot.github.io/iron-vanguard/ (GitHub Pages, served from `docs/`)
+- Artifact: https://claude.ai/artifact/LQpZpncQnSMrgf7ZGLnjzs
+- Release process: `python build_dist.py` → `cp dist/index.html docs/` → commit → push → republish the Artifact from the same path (`dist/artifact.html`)
 
 ## How to run
 
