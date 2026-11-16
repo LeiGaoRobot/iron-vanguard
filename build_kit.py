@@ -72,6 +72,7 @@ M = dict(
     Blade=mat("Blade", "#d8fbff", 0.1, emit="#7ff6ff", strength=9.0),
     Glass=mat("Glass", "#1c2a33", 0.15, metal=0.6),
     ShieldEmit=mat("ShieldEmit", "#9fe8ff", 0.2, emit="#4fd8ff", strength=6.0),
+    SArmor=mat("SArmor", "#3a3d48", 0.45, metal=0.45), SArmor2=mat("SArmor2", "#22242b", 0.5, metal=0.5),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -408,6 +409,36 @@ def build_shield():
         box((s * 0.33, 0.25, 0.32), (0.05, 0.5, 0.36), M["Frame"], K)
     muzzle("Muzzle_Shield", (0, 0.56, 0.32), K)
 
+def mini_drone(K):
+    # small player attack drone (also docked on the shoulder pod). front = +Y
+    ball((0, 0, 0), 0.34, M["Armor"], K, scale=(1, 1.15, 0.55))
+    box((0, 0, 0.15), (0.12, 0.55, 0.05), M["Accent"], K)
+    box((0, 0.36, 0.0), (0.2, 0.06, 0.07), M["Visor"], K)
+    for i, (x, y) in enumerate(((1, 1), (-1, 1), (1, -1), (-1, -1))):
+        box((x * 0.26, y * 0.26, 0.02), (0.38, 0.07, 0.05), M["Armor2"], K, rot=(0, 0, math.atan2(y, x)))
+        cyl((x * 0.44, y * 0.44, 0.04), 0.17, 0.05, M["Armor2"], K, verts=10, smooth=False)
+    cyl((0, 0.3, -0.16), 0.035, 0.32, M["Frame"], K, rot=ALONG_Y, verts=6)
+
+def build_drones():
+    K = kit("S_Drones")
+    # shoulder hangar: armored box with a docked mini drone on top
+    box((0, 0.0, 0.3), (0.72, 1.0, 0.46), M["Armor2"], K, bevel=0.05)
+    box((0, 0.0, 0.55), (0.62, 0.9, 0.04), M["Frame"], K)
+    for sx in (-1, 1):
+        box((sx * 0.33, 0, 0.62), (0.05, 0.9, 0.12), M["Accent"], K)
+    box((0, 0.51, 0.3), (0.5, 0.03, 0.2), M["Hazard"], K)
+    dock = empty("D_Dock", (0, 0.05, 0.78), K)
+    mini_drone(dock)
+    muzzle("Muzzle_Drones", (0, 0.1, 0.9), K)
+
+def build_mini():
+    K = kit("D_Mini")
+    mini_drone(K)
+    for i, (x, y) in enumerate(((1, 1), (-1, 1), (1, -1), (-1, -1))):
+        r = empty(f"D_Rotor{i + 1}", (x * 0.44, y * 0.44, 0.08), K)
+        box((0, 0, 0), (0.3, 0.04, 0.015), M["Black"], r)
+    muzzle("Muzzle_Mini", (0, 0.48, -0.16), K)
+
 # ================================================================= ENEMIES
 def build_turret():
     K = kit("E_Turret")
@@ -541,6 +572,36 @@ def build_relay():
     for s in (-1, 1):
         box((s * 0.9, 0, 0.5), (0.12, 0.12, 0.9), M["Frame"], dish)
     empty("E_RCore", (0, 0, 3.2), K)
+
+def build_stalker():
+    # Stalker: slim cloaking sniper biped, ~4.6 m. front = +Y. Body hangs off E_SBody, legs swing about X at E_SLeg1/2
+    K = kit("E_Stalker")
+    body = empty("E_SBody", (0, 0, 2.55), K)
+    box((0, 0, 0), (0.9, 0.6, 0.45), M["SArmor2"], body, bevel=0.05)               # pelvis
+    wedge((0, 0.05, 0.75), (1.0, 0.75, 1.0), M["SArmor"], body, taper=0.7, bevel=0.05)  # torso
+    box((0, -0.42, 0.85), (0.7, 0.25, 0.8), M["SArmor2"], body, bevel=0.04)        # cloak generator pack
+    for i in range(3):
+        box((0, -0.56, 0.6 + i * 0.25), (0.5, 0.04, 0.06), M["ShieldEmit"], body)
+    head = empty("E_SHead", (0, 0.12, 1.42), body)
+    box((0, 0, 0), (0.42, 0.5, 0.3), M["SArmor"], head, bevel=0.04)
+    box((0, 0.26, 0.02), (0.3, 0.04, 0.07), M["EEye"], head)
+    cyl((0.18, -0.1, 0.32), 0.025, 0.5, M["Frame"], head, verts=6)
+    gun = empty("E_SGun", (0.6, 0.15, 0.95), body)
+    box((0, 0.1, 0), (0.22, 0.9, 0.28), M["SArmor2"], gun, bevel=0.03)
+    cyl((0, 1.6, 0.02), 0.06, 2.4, M["Frame"], gun, rot=ALONG_Y, verts=8)
+    cyl((0, 2.85, 0.02), 0.1, 0.18, M["SArmor"], gun, rot=ALONG_Y, verts=8)
+    cyl((0, 0.35, 0.22), 0.07, 0.55, M["Black"], gun, rot=ALONG_Y, verts=8)
+    cyl((0, 0.64, 0.22), 0.05, 0.03, M["EEye"], gun, rot=ALONG_Y, verts=8)
+    for sx in (-1, 1):
+        box((sx * 0.1, 1.2, -0.12), (0.04, 0.4, 0.06), M["Rail"], gun)
+    muzzle("Muzzle_Stalker", (0, 2.98, 0.02), gun)
+    for i, sx in enumerate((-1, 1)):
+        leg = empty(f"E_SLeg{i + 1}", (sx * 0.3, 0, -0.1), body)
+        ball((0, 0, 0), 0.17, M["Joint"], leg)
+        box((0, 0.22, -0.6), (0.22, 0.24, 1.25), M["SArmor"], leg, rot=(math.radians(-18), 0, 0), bevel=0.03)
+        ball((0, 0.42, -1.2), 0.14, M["Joint"], leg)
+        box((0, 0.2, -1.8), (0.16, 0.16, 1.25), M["Frame"], leg, rot=(math.radians(18), 0, 0), bevel=0.02)
+        box((0, 0.12, -2.38), (0.3, 0.6, 0.12), M["SArmor2"], leg, bevel=0.02)
 
 def build_colossus():
     # Colossus: ~20 m quadruped siege walker. front = +Y. Breakable parts: E_CPodL (missile pod), E_CPodR (cannon pod),
@@ -686,8 +747,8 @@ def build_props():
 
 build_mech()
 build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun()
-build_missile(); build_cannon(); build_laser(); build_shield()
-build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus()
+build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_mini()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout

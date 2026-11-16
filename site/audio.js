@@ -77,6 +77,10 @@ export function sfx(name, d = 0, pan = 0) {
       case 'empty': tone(t, 'square', 300, 200, 0.06, 0.05); break;
       case 'repair': [523, 659, 784].forEach((f, i) => tone(t + i * 0.07, 'triangle', f, f, 0.12, 0.2)); break;
       case 'lock': tone(t, 'square', 1500, 1500, 0.04, 0.04); break;
+      case 'drone': [660, 880, 1100].forEach((f, i) => tone(t + i * 0.06, 'triangle', f, f * 1.2, 0.1 * k, 0.12)); noise(t, 0.3, 'bandpass', 2400, 2, 0.2 * k, 0.3, pan, 2400); break;
+      case 'dronefire': tone(t, 'square', 1400, 700, 0.05 * k, 0.03); break;
+      case 'snipe': for (let i = 0; i < 2; i++) tone(t + i * 0.16, 'sine', 1900, 1900, 0.09 * Math.max(0.4, k), 0.1); break;
+      case 'cloak': noise(t, 0.5, 'highpass', 3000, 0.5, 0.12 * k, 0.4, pan, 600); tone(t, 'sine', 900, 200, 0.06 * k, 0.4); break;
       case 'alarm': for (let i = 0; i < 3; i++) { tone(t + i * 0.5, 'sawtooth', 440, 440, 0.12, 0.3, 0.02); tone(t + i * 0.5 + 0.25, 'sawtooth', 330, 330, 0.12, 0.2, 0.02); } break;
       case 'ui': tone(t, 'triangle', 880, 990, 0.08, 0.06); break;
       case 'wave': [392, 523, 659, 784].forEach((f, i) => tone(t + i * 0.09, 'square', f, f, 0.06, 0.18)); break;

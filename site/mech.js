@@ -86,7 +86,7 @@ export class Mech {
     for (const s of Object.values(this.slots)) for (const m of s.models) m.parent && m.parent.remove(m);
     this.slots = {};
     this.loadout = { ...loadout };
-    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', shield: 'S_Shield' };
+    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', shield: 'S_Shield', drones: 'S_Drones' };
     const mk = (slot, key, mounts) => {
       const models = [], muzzles = [];
       for (const mt of mounts) {

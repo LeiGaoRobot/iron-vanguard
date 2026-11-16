@@ -1,14 +1,14 @@
 // Weapons, projectiles, enemies, damage.  Shared state lives in G.
 import * as THREE from 'three';
 import { barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA } from './world.js';
-import { cloneKit, nodes } from './kit.js';
-import { Mech, angDiff } from './mech.js';
+import { cloneKit, nodes, find, recolor } from './kit.js';
+import { Mech, angDiff, PALETTES } from './mech.js';
 import { sfx } from './audio.js';
 
 const V3 = THREE.Vector3;
 export const G = {
   scene: null, fx: null, camera: null, player: null, boss: null,
-  enemies: [], shots: [], pickups: [], beams: [], queue: [],
+  enemies: [], shots: [], pickups: [], beams: [], queue: [], minis: [],
   time: 0, diff: { key: 'normal', dmg: 1, hp: 1 },
   stats: { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0 },
   hud: { hit: 0, hurt: 0, kill: 0 },
@@ -27,10 +27,11 @@ export const WEAPONS = {
   missile: { slot: 'shoulder', name: 'MS-6 飞弹巢', en: 'MS-6 Missile Pods', desc: '多重锁定 · 6 发追踪', type: 'missile', count: 6, dmg: 40, splash: 5, cd: 6.5, sfx: 'missile' },
   cannon: { slot: 'shoulder', name: 'PC-2 等离子炮', en: 'PC-2 Plasma Cannon', desc: '大范围爆炸 · 弹速慢', type: 'plasma', dmg: 165, splash: 9, speed: 105, cd: 3.4, sfx: 'cannon' },
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
+  drones: { slot: 'shoulder', name: 'DP-4 攻击无人机', en: 'DP-4 Drone Pod', desc: '放出 2 架无人机 · 自动攻击 14 秒', type: 'drones', count: 2, dur: 14, dmg: 6, rate: 0.17, range: 80, cd: 18, sfx: 'drone' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'coil', 'rail', 'blade'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -369,6 +370,14 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
       } });
       if (me) G.stats.shots += 2;
     }
+  } else if (d.type === 'drones') {
+    if (pressed && ws.cd <= 0) {
+      ws.cd = d.cd;
+      for (let k = 0; k < d.count; k++) spawnMini(owner, slot, k, d, dmgMul, team);
+      sfx('drone', dist); if (me) G.stats.shots++;
+    }
+    const out = G.minis.some((m) => m.owner === owner);
+    for (const m of mslot.models) { const dk = m._dock || (m._dock = find(m, 'D_Dock')); if (dk) dk.visible = !out; }
   } else if (d.type === 'shield') {
     if (pressed && ws.cd <= 0) { ws.cd = d.cd; ws.beamT = d.dur; sfx('shield', dist); if (me) G.stats.shots++; }
     if (ws.beamT > 0) ws.beamT = Math.max(0, ws.beamT - dt);
@@ -397,6 +406,53 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
         if (k === 0) fx.flash(end, 0xff60e0, 8, 12, 0.08);
       }
       ws.sndT -= dt; if (ws.sndT <= 0) { ws.sndT = 0.11; sfx('laser', dist); }
+    }
+  }
+}
+
+// ------------------------------------------------------------------ DP-4 attack drones (shoulder weapon)
+function spawnMini(owner, slot, k, d, dmgMul, team) {
+  const obj = cloneKit('D_Mini');
+  if (owner.paletteKey) recolor(obj, PALETTES[owner.paletteKey], owner.paletteKey);
+  owner.muzzlePos(slot, obj.position, k % owner.slots[slot].muzzles.length);
+  G.scene.add(obj);
+  G.minis.push({ obj, n: nodes(obj), owner, t: d.dur, side: k ? -1 : 1, fireT: 0.4 + k * 0.08, team, dmg: d.dmg * dmgMul, rate: d.rate, range: d.range, tgt: null, tgtT: 0, ph: Math.random() * 6, label: owner === G.player ? 'drone-pod' : 'ally-drone' });
+  G.fx.ring(obj.position, null, 0.2, 1.6, 0.25, 0x9fe8ff);
+}
+export function clearMinis() { for (const m of G.minis) m.obj.parent && m.obj.parent.remove(m.obj); G.minis.length = 0; }
+const _md = new V3();
+function updateMinis(dt) {
+  for (let i = G.minis.length - 1; i >= 0; i--) {
+    const m = G.minis[i], o = m.owner, P = m.obj.position;
+    m.t -= dt;
+    if (m.t <= 0 || !o.alive) { G.fx.sparks(P, null, 6, 0x9fe8ff, 8, 0.6, 0.25, 0.2); G.fx.ring(P, null, 0.2, 1.4, 0.2, 0x9fe8ff); m.obj.parent && m.obj.parent.remove(m.obj); G.minis.splice(i, 1); continue; }
+    m.ph += dt;
+    const a = G.time * 0.8 + (m.side > 0 ? 0 : Math.PI);
+    _md.set(o.pos.x + Math.cos(a) * 4.6, o.pos.y + 5.2 + Math.sin(m.ph * 2.1) * 0.5, o.pos.z + Math.sin(a) * 4.6);
+    P.lerp(_md, 1 - Math.exp(-3.5 * dt));
+    for (let r = 1; r <= 4; r++) { const rr = m.n['D_Rotor' + r]; if (rr) rr.rotation.z += dt * 40; }
+    // target: closest visible enemy in range, re-picked a few times a second
+    m.tgtT -= dt;
+    if (m.tgtT <= 0) {
+      m.tgtT = 0.35; m.tgt = null; let bd = m.range;
+      for (const e of entsFor(m.team)) {
+        if (e.isBarrel || e.cloaked) continue;
+        const dd = e.c.distanceTo(P); if (dd < bd && clearLine(P, e.c)) { bd = dd; m.tgt = e; }
+      }
+    }
+    const t = m.tgt && m.tgt.alive ? m.tgt : null;
+    if (t) { m.obj.rotation.y += angDiff(Math.atan2(-(t.c.x - P.x), -(t.c.z - P.z)), m.obj.rotation.y) * Math.min(1, dt * 8); }
+    else m.obj.rotation.y += angDiff(o.aimYaw ?? m.obj.rotation.y, m.obj.rotation.y) * Math.min(1, dt * 3);
+    m.obj.rotation.x = Math.sin(m.ph * 1.7) * 0.08;
+    m.fireT -= dt;
+    if (t && m.fireT <= 0) {
+      m.fireT = m.rate * (0.9 + Math.random() * 0.2);
+      const mp = (m.n.Muzzle_Mini ? m.n.Muzzle_Mini.getWorldPosition(_a) : _a.copy(P)).clone();
+      _d.subVectors(t.c, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.02; _d.y += (Math.random() - 0.5) * 0.02; _d.z += (Math.random() - 0.5) * 0.02;
+      spawnShot({ p: mp, v: _d.normalize().multiplyScalar(260), dmg: m.dmg, team: m.team, kind: m.team === 'P' ? 'bullet' : 'ebullet', color: 0x9fe8ff, w: 0.14, len: 4, life: 0.6, label: m.label });
+      G.fx.muzzle(mp, _d, 0x9fe8ff, 0.5);
+      if (o === G.player) G.stats.shots++;
+      if (Math.random() < 0.35) sfx('dronefire', G.player ? G.player.pos.distanceTo(P) : 0);
     }
   }
 }
@@ -1117,6 +1173,105 @@ export class Colossus {
   }
 }
 
+// Stalker: cloaked sniper. Moves invisibly to a firing spot, decloaks, paints the target with a red laser
+// (tracks for 1.2 s, then freezes for 0.45 s), fires a hitscan rail shot along the frozen line, then cloaks and relocates.
+// Hits reveal it; ~90 damage while it is aiming interrupts the shot.
+export class Stalker extends Enemy {
+  constructor(pos) {
+    super('stalker', 'E_Stalker', pos, 520, 1.6); this.boom = 1;
+    this.mats = [];
+    this.obj.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); o.material.transparent = true; this.mats.push(o); } });
+    this.alpha = 0.06; this.st = 'move'; this.stT = 0; this.dest = null; this.reveal = 0; this.vel = new V3(); this.yaw = 0; this.ph = 0;
+    this.aimPt = new V3(); this.stag = 0; this.cloaked = true; this.lockOn = null; this.setAlpha(0.06);
+  }
+  setAlpha(a) {
+    for (const o of this.mats) { o.material.opacity = a; o.material.depthWrite = a > 0.9; o.castShadow = a > 0.5; o.visible = a > 0.02; }
+  }
+  hit(dmg, at, label) {
+    if (!this.alive || this.dying) return;
+    super.hit(dmg);
+    this.reveal = 2.5;
+    if (this.st === 'aim') { this.stag += dmg; if (this.stag > 90 * G.diff.hp) { this.st = 'cool'; this.stT = 1.6; G.fx.sparks(this.c, null, 10, 0xff6040, 14, 0.8, 0.3, 0.25); } }
+  }
+  pickDest(pc) {
+    for (let i = 0; i < 16; i++) {
+      const a = Math.random() * Math.PI * 2, r = 65 + Math.random() * 40;
+      const x = pc.x + Math.cos(a) * r, z = pc.z + Math.sin(a) * r;
+      if (Math.abs(x) > ARENA - 12 || Math.abs(z) > ARENA - 12) continue;
+      if (Math.hypot(x - this.pos.x, z - this.pos.z) < 25) continue;   // always relocate after a shot
+      const q = new V3(x, 1, z); if (pointInSolid(q, 3)) continue;
+      q.y = groundAt(x, z, 99) + 4; if (i < 12 && !clearLine(q, pc)) continue;
+      q.y -= 4; return q;
+    }
+    return new V3(pc.x + (Math.random() - 0.5) * 80, 0, pc.z + (Math.random() - 0.5) * 80);
+  }
+  update(dt) {
+    const p = this.tg(), pc = p.center(playerC);
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz);
+    this.reveal = Math.max(0, this.reveal - dt); this.stT -= dt;
+    let want = 0, moving = false;
+    if (this.st === 'move') {
+      if (!this.dest || this.stT < -8) { this.dest = this.pickDest(pc); this.stT = 0; }
+      const ex = this.dest.x - this.pos.x, ez = this.dest.z - this.pos.z, ed = Math.hypot(ex, ez);
+      if (ed < 3 || this.stT < -7.5) {
+        if (dist < 135 && clearLine(_a.set(this.pos.x, this.pos.y + 3.6, this.pos.z), pc)) { this.st = 'aim'; this.stT = 1.65; this.stag = 0; this.lockOn = p; this.aimPt.copy(pc); sfx('snipe', dist); G.onSnipe && G.onSnipe(this, p); }
+        else { this.dest = null; }
+      } else {
+        const sp = 10;
+        this.vel.x += (ex / ed * sp - this.vel.x) * (1 - Math.exp(-3 * dt)); this.vel.z += (ez / ed * sp - this.vel.z) * (1 - Math.exp(-3 * dt));
+        moving = true;
+      }
+      want = this.reveal > 0 ? 1 : 0.06;
+    } else if (this.st === 'aim') {
+      this.vel.multiplyScalar(Math.exp(-6 * dt));
+      // track the spot the target will be in when the shot goes off (straight-line movers get hit; changing direction dodges)
+      if (this.stT > 0.3) { const lt = Math.min(1, this.stT), v = p.vel || _c.set(0, 0, 0); _b.set(pc.x + v.x * lt, pc.y + Math.max(-2, Math.min(2, v.y * lt * 0.5)), pc.z + v.z * lt); this.aimPt.lerp(_b, 1 - Math.exp(-9 * dt)); }
+      const mp = this.n.Muzzle_Stalker.getWorldPosition(_a).clone();
+      const frozen = this.stT <= 0.3;
+      _d.subVectors(this.aimPt, mp).normalize();
+      const w = raySolids(mp, _d, 320); const h0 = rayEnts(mp, _d, w.t, entsFor('E')); const end = mp.clone().addScaledVector(_d, h0 ? h0.t : w.t);
+      const fl = frozen ? (Math.sin(G.time * 60) > 0 ? 1 : 0.5) : 1;
+      G.fx.streak(mp, end, (frozen ? 0.16 : 0.07) * fl, frozen ? 0xff3020 : 0xff2a1a);
+      G.fx.emit('add', { x: end.x, y: end.y, z: end.z, life: 0.05, s0: frozen ? 1.6 : 0.8, c0: 0xff4030 });
+      if (this.stT <= 0) {
+        const h = rayEnts(mp, _d, w.t, entsFor('E'));
+        const L = h ? h.t : w.t, hit = mp.clone().addScaledVector(_d, L);
+        G.curLabel = 'stalker';
+        if (h) dealDamage(h.ent, 70, 'E', hit, 'stalker');
+        G.fx.streak(mp, hit, 0.5, 0xffd0c0, 0.12);
+        G.fx.streak(mp, hit, 1.4, 0xff3a20, 0.18);
+        G.fx.muzzle(mp, _d, 0xff6040, 2.2);
+        G.fx.sparks(hit, _d.clone().multiplyScalar(-1), 10, 0xff8060, 18, 0.8, 0.3, 0.25);
+        sfx('rail', dist);
+        this.st = 'cool'; this.stT = 1.4; this.lockOn = null;
+      }
+      want = 0.55;
+    } else {
+      this.vel.multiplyScalar(Math.exp(-4 * dt)); want = 1; this.lockOn = null;
+      if (this.stT <= 0) { this.st = 'move'; this.dest = null; this.stT = 0; sfx('cloak', dist); }
+    }
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 1.3, 4) && this.st === 'move') this.stT -= dt * 3;
+    this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6, 1);
+    // visibility: cloaked units shimmer a little so a sharp eye can spot them
+    const tgtA = want < 0.1 ? 0.05 + (Math.sin(G.time * 7 + this.ph) > 0.92 ? 0.12 : 0) : want;
+    this.alpha += (tgtA - this.alpha) * (1 - Math.exp(-6 * dt));
+    this.setAlpha(this.alpha); this.cloaked = this.alpha < 0.35;
+    // pose
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    this.ph += dt * (2 + sp * 1.1);
+    const face = this.st === 'move' && sp > 1 ? Math.atan2(-this.vel.x, -this.vel.z) : Math.atan2(-dx, -dz);
+    this.yaw += angDiff(face, this.yaw) * Math.min(1, dt * 5); this.obj.rotation.y = this.yaw;
+    const k = Math.min(1, sp / 6);
+    this.n.E_SLeg1.rotation.x = Math.sin(this.ph) * 0.6 * k; this.n.E_SLeg2.rotation.x = -Math.sin(this.ph) * 0.6 * k;
+    this.n.E_SBody.position.y = 2.55 + Math.abs(Math.cos(this.ph)) * 0.1 * k;
+    this.n.E_SBody.rotation.x = -0.18 * k;
+    const g = this.n.E_SGun; const pt = this.st === 'aim' ? this.aimPt : pc;
+    g.rotation.x += (Math.atan2(pt.y - (this.pos.y + 3.5), Math.max(1, dist)) - g.rotation.x) * Math.min(1, dt * 6);
+    this.c.set(this.pos.x, this.pos.y + 3.2, this.pos.z);
+  }
+}
+
 export function dropRepair(pos) {
   if (G.noRepair) return;
   const o = cloneKit('P_Repair'); o.position.copy(pos); o.position.y = Math.max(1.5, groundAt(pos.x, pos.z, pos.y) + 1.5);
@@ -1133,6 +1288,7 @@ export function updateCombat(dt) {
   }
   for (let i = G.enemies.length - 1; i >= 0; i--) if (G.enemies[i].gone) G.enemies.splice(i, 1);
   G.curLabel = null;
+  updateMinis(dt);
   updateShots(dt);
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
