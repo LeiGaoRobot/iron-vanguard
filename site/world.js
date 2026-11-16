@@ -38,7 +38,7 @@ function panelMaterial(color, opts) {
   return m;
 }
 
-export function buildArena(scene, seed = 3, env = 'day', road = null) {
+export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
   const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash';
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
@@ -51,6 +51,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null) {
   };
   solids.length = 0; barrels.length = 0; relaySites.length = 0;
   if (snow) relaySites.push(new THREE.Vector3(-104, 0, -40), new THREE.Vector3(96, 0, -64), new THREE.Vector3(-8, 0, -132));
+  if (sites) for (const [x, z] of sites) relaySites.push(new THREE.Vector3(x, 0, z));   // capture zones: keep these clear of buildings
   const group = new THREE.Group(); scene.add(group);
 
   // ---- floor: 4 m concrete tiles with per-tile tone + seams, 16 m darker lane lines

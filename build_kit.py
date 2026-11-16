@@ -72,6 +72,7 @@ M = dict(
     Blade=mat("Blade", "#d8fbff", 0.1, emit="#7ff6ff", strength=9.0),
     Glass=mat("Glass", "#1c2a33", 0.15, metal=0.6),
     ShieldEmit=mat("ShieldEmit", "#9fe8ff", 0.2, emit="#4fd8ff", strength=6.0),
+    MendEmit=mat("MendEmit", "#a8ffc8", 0.2, emit="#3dff8a", strength=6.0), MArmor=mat("MArmor", "#d8dcd6", 0.45, metal=0.2),
     SArmor=mat("SArmor", "#3a3d48", 0.45, metal=0.45), SArmor2=mat("SArmor2", "#22242b", 0.5, metal=0.5),
 )
 
@@ -398,6 +399,21 @@ def build_shotgun():
     box((0, 0.45, 0.34), (0.12, 0.2, 0.06), M["Visor"], K)
     muzzle("Muzzle_Shotgun", (0, 1.55, 0), K)
 
+def build_grenade():
+    K = kit("W_Grenade")
+    # stubby launcher: boxy receiver, revolver drum under it, one fat short barrel
+    box((0, 0.15, 0.05), (0.44, 0.85, 0.42), M["Frame"], K, bevel=0.05)
+    box((0, 0.05, 0.3), (0.36, 0.55, 0.1), M["Armor"], K, bevel=0.02)
+    cyl((0, 0.25, -0.24), 0.3, 0.5, M["Armor2"], K, rot=ALONG_Y, verts=12)
+    for i in range(6):
+        a = i * math.pi / 3
+        cyl((math.cos(a) * 0.18, 0.25, -0.24 + math.sin(a) * 0.18), 0.07, 0.52, M["Black"], K, rot=ALONG_Y, verts=8)
+    cyl((0, 0.95, 0.06), 0.17, 0.95, M["Joint"], K, rot=ALONG_Y, verts=12)
+    cyl((0, 1.42, 0.06), 0.2, 0.12, M["Frame"], K, rot=ALONG_Y, verts=12)
+    box((0.24, 0.3, 0.05), (0.04, 0.5, 0.2), M["Hazard"], K)
+    box((0, 0.6, 0.31), (0.12, 0.22, 0.06), M["Visor"], K)
+    muzzle("Muzzle_Grenade", (0, 1.5, 0.06), K)
+
 def build_shield():
     K = kit("S_Shield")
     # shoulder projector: armored housing with an emitter dish facing forward
@@ -466,6 +482,25 @@ def build_drone():
         box((0, 0, 0), (0.7, 0.08, 0.03), M["Black"], r)
     cyl((0, 0.4, -0.45), 0.07, 0.5, M["Joint"], K, rot=ALONG_Y)
     muzzle("Muzzle_Drone", (0, 0.7, -0.45), K)
+
+def build_mender():
+    # Mender: field repair drone. Light hull, three rotors, green repair emitter under the nose. front = +Y
+    K = kit("E_Mender")
+    ball((0, 0, 0), 0.62, M["MArmor"], K, scale=(1, 1.2, 0.6))
+    box((0, 0, 0.3), (0.5, 0.7, 0.12), M["EArmor2"], K, bevel=0.03)
+    box((0, 0.1, 0.38), (0.12, 0.42, 0.04), M["MendEmit"], K)
+    box((0, 0.1, 0.38), (0.42, 0.12, 0.04), M["MendEmit"], K)
+    box((0, 0.66, 0.0), (0.34, 0.08, 0.12), M["EEye"], K)
+    for i in range(3):
+        a = math.pi / 2 + i * 2 * math.pi / 3 + math.pi / 3
+        x, y = math.cos(a), math.sin(a)
+        box((x * 0.55, y * 0.55, 0.05), (0.75, 0.12, 0.08), M["Frame"], K, rot=(0, 0, a))
+        cyl((x * 0.95, y * 0.95, 0.05), 0.34, 0.1, M["EArmor2"], K, verts=12, smooth=False)
+        r = empty(f"E_MRotor{i + 1}", (x * 0.95, y * 0.95, 0.14), K)
+        box((0, 0, 0), (0.62, 0.07, 0.03), M["Black"], r)
+    cyl((0, 0.35, -0.38), 0.12, 0.3, M["Frame"], K, verts=10)
+    ball((0, 0.35, -0.56), 0.13, M["MendEmit"], K)
+    muzzle("Muzzle_Mender", (0, 0.35, -0.62), K)
 
 def build_walker():
     K = kit("E_Walker")
@@ -746,9 +781,9 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_mini()
-build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout

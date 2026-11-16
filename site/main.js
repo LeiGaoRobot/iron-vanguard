@@ -11,7 +11,7 @@ import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 const V3 = THREE.Vector3;
@@ -42,7 +42,7 @@ const MISSIONS = {
     { title: 'WAVE 1', sub: '敌军接近反应堆 · 守住它', spawn: { walker: 4, drone: 6 }, late: { walker: 2, drone: 4 } },
     { title: 'WAVE 2', sub: '护盾坦克推进 · 迫击炮会轰击反应堆', spawn: { bulwark: 2, walker: 3, drone: 4 }, late: { bulwark: 1, walker: 2, drone: 3 } },
     { title: 'WAVE 3', sub: '空中突击', spawn: { gunship: 2, drone: 6, walker: 2 }, late: { gunship: 1, drone: 5 } },
-    { title: 'WAVE 4', sub: '全面合围', spawn: { bulwark: 2, walker: 3, gunship: 1, drone: 4 }, late: { gunship: 1, walker: 2, drone: 4 } },
+    { title: 'WAVE 4', sub: '全面合围 · 维修无人机随行', spawn: { bulwark: 2, walker: 3, gunship: 1, drone: 4, mender: 1 }, late: { gunship: 1, walker: 2, drone: 4 } },
     { title: 'FINAL WAVE', sub: '击破「暴君」 · 它会直扑反应堆', spawn: { boss: 'tyrant', walker: 3, drone: 4, bossHp: 0.85 }, late: { bulwark: 2, drone: 4 } },
   ] },
   storm: { name: '暴雨 · 机甲猎杀', en: 'STORM HUNT', desc: '雷暴夜雨 · 敌方机甲小队「掠夺者」「枪骑兵」 · 头目「幻影」', seed: 41, env: 'storm', reward: 4200, waves: [
@@ -57,13 +57,20 @@ const MISSIONS = {
     { title: 'AMBUSH', sub: '车队遭遇伏击 · 运输车停车等待 · 清除敌人后继续前进', spawn: { turret: 4, drone: 5, walker: 3 } },
     { title: 'WAVE 2', sub: '装甲部队拦截', spawn: { walker: 3, bulwark: 2, drone: 4 }, late: { walker: 2, drone: 3 } },
     { title: 'WAVE 3', sub: '空中拦截 · 掠夺者出现', spawn: { gunship: 2, raider: 1, drone: 4 }, late: { walker: 2, raider: 1 } },
-    { title: 'WAVE 4', sub: '敌方机甲小队', spawn: { bulwark: 2, raider: 2, lancer: 1, drone: 3 }, late: { gunship: 1, walker: 2 } },
+    { title: 'WAVE 4', sub: '敌方机甲小队 · 维修无人机随行', spawn: { bulwark: 2, raider: 2, lancer: 1, drone: 3, mender: 1 }, late: { gunship: 1, walker: 2 } },
     { title: 'FINAL WAVE', sub: '「暴君」封锁撤离点', spawn: { boss: 'tyrant', drone: 3, walker: 2 }, late: { raider: 1, bulwark: 1, drone: 3 } },
   ] },
   ash: { name: '灰烬 · 巨像', en: 'COLOSSUS', desc: '火山灰夜幕 · 巨型四足攻城兵器「巨像」 · 先毁武器舱再打核心', seed: 61, env: 'ash', reward: 5200, waves: [
     { title: 'WAVE 1', sub: '先遣部队', spawn: { walker: 3, drone: 5, turret: 3 } },
     { title: 'WAVE 2', sub: '护卫机甲', spawn: { raider: 2, bulwark: 1, drone: 4 } },
     { title: 'FINAL WAVE', sub: '巨像来袭 · 摧毁两座武器舱，再攻击腹部核心 · 别站在它脚下', spawn: { colossus: 1, drone: 3 } },
+  ] },
+  uplink: { name: '工业区 · 据点争夺', en: 'UPLINK CONTROL', desc: '白天 · 占领并守住 A / B / C 三个据点，上行链路满载后击破「暴君」', seed: 71, env: 'day', reward: 4600, capture: true,
+    zones: [[-100, 30], [96, 10], [-4, -104]], waves: [
+    { title: 'CAPTURE', sub: '占领 A / B / C 据点 · 站进圈内，并清除圈内的敌方地面单位', spawn: { drone: 4, mender: 1 }, zoneDef: { turret: 1, walker: 2 } },
+    { title: 'COUNTERATTACK', sub: '敌军反攻据点 · 维修无人机随行', spawn: { walker: 3, bulwark: 2, drone: 4, mender: 1 }, at: 0.3 },
+    { title: 'COUNTERATTACK', sub: '掠夺者小队前来夺点 · 当心隐形狙击机', spawn: { raider: 2, lancer: 1, walker: 2, drone: 3, stalker: 1, mender: 1 }, at: 0.65 },
+    { title: 'FINAL WAVE', sub: '上行链路完成 · 击破来袭的「暴君」', spawn: { boss: 'tyrant', drone: 3, mender: 1 } },
   ] },
   endless: { name: '无尽防线', en: 'ENDLESS', desc: '黄昏 · 无限波次，越来越强 · 每 5 波一个头目', seed: 5, env: 'dusk', endless: true, reward: 0 },
 };
@@ -76,7 +83,7 @@ const ENVS = {
   storm: { top: 0x1c232c, hor: 0x46505c, fog: [30, 230], hemi: [0x9aacc0, 0x26282c, 0.42], sun: [0xc0cce0, 0.8], env: 0.2, exp: 1.02, dir: [0.25, 0.7, 0.4], disc: 0.05, rain: true },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
+const KILL_CR = { mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -176,7 +183,7 @@ function ensureArena() {
   const M = MISSIONS[cfg.mission], key = M.seed + M.env;
   if (key === arenaKey && arenaGroup) return;
   if (arenaGroup) scene.remove(arenaGroup);
-  arenaGroup = buildArena(scene, M.seed, M.env, M.path || null); arenaKey = key;
+  arenaGroup = buildArena(scene, M.seed, M.env, M.path || null, M.zones || null); arenaKey = key;
   applyEnv(M.env);
 }
 
@@ -494,6 +501,7 @@ function mixWave(n, rnd) {
   if (n >= 2) pool.push(['walker', 3, 6]);
   if (n >= 3) pool.push(['bulwark', 3.5, 4]);
   if (n >= 4) pool.push(['gunship', 5, 3]);
+  if (n >= 4) pool.push(['mender', 2.5, 2]);
   if (n >= 5) pool.push(['stalker', 4, 2]);
   if (n >= 6) pool.push(['raider', 4.5, 3], ['lancer', 4.5, 2]);
   const sp = {}; let budget = 5 + n * 2.6, total = 0;
@@ -519,7 +527,7 @@ function clearWorld() {
   if (G.wing) G.wing.dispose(); if (G.core) G.core.dispose();
   G.wing = null; G.core = null; G.friends.length = 0;
   for (const e of G.enemies) e.remove ? e.remove() : null;
-  G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0; clearMinis(); snipeSaid = false;
+  G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0; clearMinis(); snipeSaid = false; G.mendSaid = false; clearZones();
   for (const k of G.pickups) scene.remove(k.o);
   G.pickups.length = 0;
 }
@@ -547,13 +555,14 @@ function newGame() {
   $('coreName').textContent = G.core ? (M.convoy ? '运输车 CONVOY' : '反应堆 REACTOR') : '';
   if (wingOn()) { G.wing = new Wingman(scene, mctx, cfg.palette === 'kestrel' ? 'vanguard' : 'kestrel'); G.friends.push(G.wing); }
   run.coreLost = false;
+  run.capture = !!M.capture; run.zones = M.capture ? makeZones(M.zones) : []; run.up = 0; run.finalOn = false; run.trickT = 22; run.zoneWarnT = {}; run.spotC = null;
   Object.assign(run, { escort: !!M.convoy, stops: M.stops || [], driving: false, harT: 8, waitSaid: 0, wave: -1, defense: !!M.defense, coreWarnT: -99, coreLowSaid: false, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0, cr: 0, msslT: 0, boss2: null, relayHintT: 0, waves: M.endless ? [] : M.waves, endless: !!M.endless });
   G.boss = null; G.bosses = [];
   $('bossBox').classList.add('hidden');
 }
 
 function spot(minD, maxD, air, bearing) {
-  const p = (run.defense || run.escort) && G.core ? G.core.pos : G.player.pos;
+  const p = run.spotC || ((run.defense || run.escort) && G.core ? G.core.pos : G.player.pos);
   for (let i = 0; i < 300; i++) {
     const a = bearing === undefined || i > 200 ? Math.random() * Math.PI * 2 : bearing + (Math.random() - 0.5) * 2.1, r = minD + Math.random() * (maxD - minD);
     const x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
@@ -582,7 +591,18 @@ function startWave(i) {
   sfx(S.boss ? 'alarm' : 'wave');
   // defense: the first group comes from one side; a second group follows from the opposite side
   const b0 = run.defense ? Math.atan2(G.player.pos.z, G.player.pos.x) + Math.PI * (0.5 + Math.random()) : run.escort && G.core ? G.core.heading() : undefined;
+  const n0 = G.enemies.length;
+  let goalZ = null;
+  if (run.capture && W.at) { goalZ = attackZone(); run.spotC = goalZ.pos; }
   spawnGroup(S, R, b0);
+  run.spotC = null;
+  if (run.capture && W.zoneDef) for (const z of run.zones) {
+    const m0 = G.enemies.length;
+    for (let k = 0; k < (W.zoneDef.turret || 0); k++) new Turret(zoneSpot(z, 4, 8));
+    for (let k = 0; k < (W.zoneDef.walker || 0); k++) new Walker(zoneSpot(z, 3, 9));
+    for (const e of G.enemies.slice(m0)) { e.goalP = z.pos; e.goalR = 7; }
+  }
+  if (goalZ) { for (const e of G.enemies.slice(n0)) if (GROUND.has(e.kind)) { e.goalP = goalZ.pos; e.goalR = 7; } showHint(`敌军目标：据点 ${goalZ.name}`, 3); }
   run.late = W.late || null; run.lateT = run.t + 20; run.lateB = b0 === undefined ? undefined : b0 + Math.PI;
   for (let k = 0; k < (S.relay || 0); k++) new Relay(relaySites[k].clone());
   G.bosses = [];
@@ -606,6 +626,7 @@ function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.bulwark || 0); k++) new Bulwark(spot(95 * R, 130 * R, false, b));
   for (let k = 0; k < (S.gunship || 0); k++) new Gunship(spot(110 * R, 150 * R, true, b));
   for (let k = 0; k < (S.stalker || 0); k++) new Stalker(spot(80 * R, 130 * R, false, b));
+  for (let k = 0; k < (S.mender || 0); k++) new Mender(spot(90 * R, 140 * R, true, b));
   for (const t of Object.keys(RAIDERS)) for (let k = 0; k < (S[t] || 0); k++) new Boss(spot(85 * R, 130 * R, false, b), mctx, t, 1);
 }
 
@@ -690,6 +711,7 @@ function waveLogic(dt) {
     }
     return;
   }
+  if (run.capture) { captureLogic(dt); return; }
   if (run.driving) {
     const c = G.core, far = c.pos.distanceTo(p.pos) > 60;
     c.wait = far;
@@ -742,6 +764,104 @@ function waveLogic(dt) {
     if (G.wing) G.wing.repair(0.4);
     if (G.core && G.core.alive) { G.core.hp = Math.min(G.core.maxHp, G.core.hp + G.core.maxHp * 0.15); if (G.core.hp > G.core.maxHp * 0.3) run.coreLowSaid = false; }
     run.breakT = 4.5;
+  }
+}
+
+// ------------------------------------------------------------------ capture zones (uplink mission)
+const ZONE_R = 13, CAP_T = 6, UP_RATE = 0.0045, GROUND = new Set(['walker', 'bulwark', 'raider', 'turret', 'boss']);
+const ZCOL = { P: 0x5fe3ff, E: 0xff4a3a, N: 0xe8e8e8 };
+let zoneGroup = null;
+function clearZones() {
+  if (!zoneGroup) return;
+  zoneGroup.traverse((o) => { if (o.geometry) o.geometry.dispose(); if (o.material) o.material.dispose(); });
+  scene.remove(zoneGroup); zoneGroup = null;
+}
+function makeZones(list) {
+  clearZones(); zoneGroup = new THREE.Group(); scene.add(zoneGroup);
+  const addM = (op) => new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+  return list.map(([x, z], i) => {
+    const ring = new THREE.Mesh(new THREE.RingGeometry(ZONE_R - 0.5, ZONE_R, 72).rotateX(-Math.PI / 2), addM(0.9)); ring.position.set(x, 0.14, z);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(ZONE_R, 48).rotateX(-Math.PI / 2), addM(0.07)); disc.position.set(x, 0.1, z);
+    const prog = new THREE.Mesh(new THREE.RingGeometry(ZONE_R - 2.4, ZONE_R - 1.3, 72, 1, 0, 0.01).rotateX(-Math.PI / 2), addM(0.85)); prog.position.set(x, 0.16, z);
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 1.1, 70, 12, 1, true), addM(0.22)); beam.position.set(x, 35, z);
+    const pylon = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 1.3, 2.2, 8), new THREE.MeshStandardMaterial({ color: 0x3a3f48, roughness: 0.6, metalness: 0.4 })); pylon.position.set(x, 1.1, z); pylon.castShadow = true;
+    const lamp = new THREE.Mesh(new THREE.SphereGeometry(0.55, 12, 8), addM(1)); lamp.position.set(x, 2.5, z);
+    zoneGroup.add(ring, disc, prog, beam, pylon, lamp);
+    const Z = { name: 'ABC'[i], x, z, pos: new V3(x, 0, z), k: -1, own: 'E', pin: false, ein: 0, ring, disc, prog, beam, lamp, shownK: 9, col: -1 };
+    paintZone(Z, 0);
+    return Z;
+  });
+}
+function paintZone(z, t) {
+  const contest = z.pin && z.ein > 0;
+  const base = z.own === 'P' ? ZCOL.P : z.own === 'E' ? ZCOL.E : ZCOL.N;
+  const c = contest && Math.sin(t * 12) > 0 ? 0xffd23a : base;
+  if (c !== z.col) { z.col = c; for (const m of [z.ring, z.disc, z.beam, z.lamp]) m.material.color.set(c); }
+  z.beam.material.opacity = z.own === 'P' ? 0.3 : 0.18;
+  z.disc.material.opacity = z.pin ? 0.13 : 0.07;
+  const kk = Math.round(Math.abs(z.k) * 60) / 60;
+  if (kk !== z.shownK) {
+    z.shownK = kk; z.prog.geometry.dispose();
+    z.prog.geometry = new THREE.RingGeometry(ZONE_R - 2.4, ZONE_R - 1.3, 72, 1, Math.PI / 2, Math.max(0.01, kk * Math.PI * 2)).rotateX(-Math.PI / 2);
+  }
+  z.prog.material.color.set(z.k >= 0 ? ZCOL.P : ZCOL.E);
+}
+function zoneSpot(z, r0, r1) {
+  for (let i = 0; i < 60; i++) {
+    const a = Math.random() * Math.PI * 2, r = r0 + Math.random() * (r1 - r0), q = new V3(z.x + Math.cos(a) * r, 0, z.z + Math.sin(a) * r);
+    if (!pointInSolid(new V3(q.x, 1, q.z), 3)) return q;
+  }
+  return new V3(z.x, 0, z.z);
+}
+// counterattack target: a zone the player holds and is far from (else the nearest one)
+function attackZone() {
+  const p = G.player.pos; let best = null, bs = -1;
+  for (const z of run.zones) { const d = Math.hypot(z.x - p.x, z.z - p.z) + (z.own === 'P' ? 400 : 0); if (d > bs) { bs = d; best = z; } }
+  return best;
+}
+function captureLogic(dt) {
+  const p = G.player; let own = 0, eown = 0;
+  for (const z of run.zones) {
+    const inZ = (o) => Math.hypot(o.pos.x - z.x, o.pos.z - z.z) < ZONE_R;
+    z.pin = (p.alive && inZ(p) && p.pos.y < 16) || !!(G.wing && G.wing.alive && inZ(G.wing));
+    z.ein = 0; for (const e of G.enemies) if (e.alive && !e.dying && GROUND.has(e.kind) && inZ(e)) z.ein++;
+    if (z.pin && !z.ein) z.k = Math.min(1, z.k + dt / CAP_T);
+    else if (z.ein && !z.pin) z.k = Math.max(-1, z.k - dt / 9 * Math.min(2, z.ein));
+    const prev = z.own;
+    if (z.k >= 1) z.own = 'P'; else if (z.k <= -1) z.own = 'E'; else if ((z.own === 'P' && z.k < 0) || (z.own === 'E' && z.k > 0)) z.own = null;
+    if (z.own !== prev) {
+      if (z.own === 'P') { banner(`据点 ${z.name} 已占领`, `上行链路 +${Math.round(UP_RATE * 1000) / 10}%/秒`, false); sfx('repair'); }
+      else if (prev === 'P') { banner(`据点 ${z.name} 失守`, '回去夺回它', true); sfx('alarm'); }
+      else if (z.own === 'E') showHint(`敌军占领了据点 ${z.name}`, 2.5);
+    }
+    if (z.own === 'P' && z.ein && !z.pin && run.t - (run.zoneWarnT[z.name] || -99) > 12) { run.zoneWarnT[z.name] = run.t; showHint(`据点 ${z.name} 遭到进攻`, 2.5); sfx('warn'); }
+    if (z.own === 'P') own++; else if (z.own === 'E') eown++;
+    paintZone(z, run.t);
+  }
+  if (!run.finalOn) run.up = Math.max(0, Math.min(1, run.up + dt * (UP_RATE * own - (eown >= 2 ? 0.003 : 0))));
+  // escalation by uplink progress
+  const nx = run.waves[run.wave + 1];
+  if (!run.finalOn && nx && nx.at !== undefined && run.up >= nx.at) { startWave(run.wave + 1); return; }
+  if (!run.finalOn && run.up >= 1) {
+    run.finalOn = true; startWave(run.waves.length - 1);
+    if (!G.noRepair) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.25);
+    for (const k of ['R', 'L', 'S']) { const w = G.pw[k]; w.ammo = w.d.mag || 0; w.reloadT = 0; }
+    return;
+  }
+  // trickle: a small squad heads for a zone every ~30 s
+  run.trickT -= dt;
+  if (!run.finalOn && run.trickT <= 0) {
+    run.trickT = 18 + Math.random() * 6;
+    if (G.enemies.filter((e) => e.alive && GROUND.has(e.kind)).length < 8) {
+      const z = attackZone(); run.spotC = z.pos; const n0 = G.enemies.length;
+      spawnGroup(run.up > 0.45 && Math.random() < 0.5 ? { raider: 1, walker: 1, drone: 1 } : { walker: 2, drone: 2 });
+      run.spotC = null;
+      for (const e of G.enemies.slice(n0)) if (GROUND.has(e.kind)) { e.goalP = z.pos; e.goalR = 7; }
+    }
+  }
+  if (run.finalOn && G.bosses.length && G.bosses.every((b) => !b.alive)) {
+    if (!run.won) { run.won = true; banner('MISSION COMPLETE', '上行链路已建立 · 头目已击破', false); run.deathT = 3.5; }
+    run.deathT -= dt; if (run.deathT <= 0) finish(true);
   }
 }
 
@@ -1013,6 +1133,14 @@ function drawHUD(dt) {
       d.textContent = `◆ ${G.core.label} ${Math.round(dd)}m`;
     }
   }
+  if (run.capture) for (const z of run.zones) {
+    const dd = Math.hypot(z.x - p.pos.x, z.z - p.pos.z);
+    _sp.set(z.x, 9, z.z).project(camera);
+    if (_sp.z > 1 || Math.abs(_sp.x) > 1 || Math.abs(_sp.y) > 1) continue;
+    const d = objPool[oi] || poolEl(objPool, M, 'objm'); oi++;
+    d.style.display = ''; d.className = 'objm' + (z.own === 'P' ? ' core' : z.own === 'E' ? ' foe' : ''); d.style.left = ((_sp.x + 1) / 2 * innerWidth) + 'px'; d.style.top = ((1 - _sp.y) / 2 * innerHeight) + 'px';
+    d.textContent = `◆ ${z.name} ` + (z.pin && z.ein ? '争夺中' : z.pin && z.k < 1 ? `占领中 ${Math.round((z.k + 1) * 50)}%` : z.own === 'P' ? '己方' : z.own === 'E' ? '敌方' : '中立') + (dd > ZONE_R ? ` ${Math.round(dd)}m` : '');
+  }
   for (; oi < objPool.length; oi++) objPool[oi].style.display = 'none';
   // hurt vignette
   G.hud.hurt = Math.max(0, G.hud.hurt - dt * 1.2);
@@ -1022,9 +1150,10 @@ function drawHUD(dt) {
     $('waveTitle').textContent = curWave().title;
     const left = G.enemies.filter((e) => e.alive).length;
     const rl = G.enemies.filter((e) => e.kind === 'relay' && e.alive).length;
-    $('waveSub').textContent = run.breakT > 0 ? '整备中…' : (rl ? `中继塔 ${rl} · 敌机 ${left - rl}` : `剩余敌机 ${left}`);
+    $('waveSub').textContent = run.breakT > 0 ? '整备中…' : run.capture ? run.zones.map((z) => `${z.name}${z.own === 'P' ? '◆' : z.own === 'E' ? '✕' : '○'}`).join(' ') + ` · 敌机 ${left}` : (rl ? `中继塔 ${rl} · 敌机 ${left - rl}` : `剩余敌机 ${left}`);
   } else { $('waveTitle').textContent = 'STANDBY'; $('waveSub').textContent = ''; }
-  const cb = $('coreBox'); cb.classList.toggle('hidden', !G.core);
+  const cb = $('coreBox'); cb.classList.toggle('hidden', !G.core && !run.capture);
+  if (run.capture && !G.core) { $('coreName').textContent = '上行链路 UPLINK'; $('coreBar').firstElementChild.style.width = (run.up * 100).toFixed(1) + '%'; $('coreBar').classList.remove('low'); $('corePct').textContent = Math.floor(run.up * 100) + '%'; cb.classList.remove('hit'); }
   if (G.core) { const ck = G.core.hp / G.core.maxHp; $('coreBar').firstElementChild.style.width = (ck * 100).toFixed(1) + '%'; $('coreBar').classList.toggle('low', ck < 0.3); $('corePct').textContent = Math.ceil(ck * 100) + '%'; cb.classList.toggle('hit', G.core.flash > 0); }
   const wt = $('wingTxt'); wt.classList.toggle('hidden', !G.wing);
   if (G.wing) wt.innerHTML = G.wing.alive ? `僚机 <b>${Math.ceil(G.wing.hp / G.wing.maxHp * 100)}%</b>` : `僚机 <em>重新空投 ${Math.ceil(G.wing.downT)}s</em>`;
@@ -1062,6 +1191,7 @@ function drawHUD(dt) {
     const s = e.kind === 'boss' ? 9 : e.kind === 'gunship' || e.kind === 'raider' ? 8 : e.kind === 'walker' || e.kind === 'bulwark' ? 7 : 5;
     rctx.fillRect(x - s / 2, z - s / 2, s, s);
   }
+  if (run.capture) for (const z of run.zones) { const x = (z.x - p.pos.x) * K, y = (z.z - p.pos.z) * K; rctx.strokeStyle = z.own === 'P' ? '#5fe3ff' : z.own === 'E' ? '#ff4a3a' : '#e8e8e8'; rctx.lineWidth = 3; rctx.beginPath(); rctx.arc(x, y, ZONE_R * K, 0, Math.PI * 2); rctx.stroke(); rctx.fillStyle = rctx.strokeStyle; rctx.font = 'bold 13px system-ui'; rctx.textAlign = 'center'; rctx.textBaseline = 'middle'; rctx.fillText(z.name, x, y); }
   if (G.core && G.core.alive) { rctx.fillStyle = '#5fe3ff'; const x = (G.core.pos.x - p.pos.x) * K, z = (G.core.pos.z - p.pos.z) * K; rctx.beginPath(); rctx.arc(x, z, 9, 0, Math.PI * 2); rctx.fill(); rctx.strokeStyle = '#e8fbff'; rctx.lineWidth = 2; rctx.stroke(); }
   if (G.wing && G.wing.alive) { rctx.fillStyle = '#9fffd0'; const x = (G.wing.pos.x - p.pos.x) * K, z = (G.wing.pos.z - p.pos.z) * K; rctx.beginPath(); rctx.moveTo(x, z - 8); rctx.lineTo(x - 6, z + 6); rctx.lineTo(x + 6, z + 6); rctx.fill(); }
   rctx.fillStyle = '#5dff9a';
@@ -1077,10 +1207,15 @@ function drawHUD(dt) {
 const auto = { on: false, st: 1, stT: 0, jT: 3, hover: 0, sT: 0 };
 function autoIntent(dt) {
   const p = G.player; let tgt = null, bd = 1e9;
-  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
+  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : e.kind === 'mender' ? -35 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
   // pick up repairs when hurt
   let goal = null;
   if (p.hp < p.maxHp * 0.6) for (const k of G.pickups) { const d = k.o.position.distanceTo(p.pos); if (d < 70) { goal = k.o.position; break; } }
+  if (!goal && run.capture && !run.finalOn) {
+    let zb = null, zs = 1e9;
+    for (const z of run.zones) { const d = Math.hypot(z.x - p.pos.x, z.z - p.pos.z); const sc = z.own === 'P' ? (z.ein ? d * 0.6 : 1e9) : d; if (sc < zs) { zs = sc; zb = z; } }
+    if (zb && Math.hypot(zb.x - p.pos.x, zb.z - p.pos.z) > ZONE_R * 0.55) goal = zb.pos;
+  }
   if (!goal && G.core && G.core.alive && Math.hypot(p.pos.x - G.core.pos.x, p.pos.z - G.core.pos.z) > (run.escort ? (run.driving ? 22 : G.enemies.filter((e) => e.alive).length <= 2 ? 999 : 45) : 70)) goal = G.core.pos;
   if (tgt) {
     const pc = p.center(new V3());
@@ -1234,7 +1369,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=8');
+    await loadKit('./assets/kit.glb?v=9');
     ensureArena();
     makePlayer();
     setState('title');

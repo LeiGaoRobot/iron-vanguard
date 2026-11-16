@@ -38,6 +38,7 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 .mark.obj { border-bottom-color: #ffd23a; border-left-width: 9px; border-right-width: 9px; border-bottom-width: 16px; opacity: 1; }
 .mark.core { border-bottom-color: #5fe3ff; border-left-width: 9px; border-right-width: 9px; border-bottom-width: 16px; opacity: 1; }
 .objm.core { color: #5fe3ff; }
+.objm.foe { color: #ff6a5a; }
 #coreBox { margin-top: 8px; width: min(420px, 70vw); }
 #coreBox .nm { font-size: 13px; color: #9feeff; letter-spacing: 2px; }
 #coreBox .nm b { font-family: var(--num); font-weight: 500; margin-left: 6px; }
@@ -131,7 +132,7 @@ button.primary:hover { background: #9af0ff; }
 #tMods .chip:hover { border-color: #ffb040; }
 #tMods .chip.on { border-color: #ffb040; color: #ffd08a; background: rgba(255, 150, 40, 0.15); }
 #tMods .chip.forced { cursor: default; border-style: dashed; }
-.mlist { display: grid; grid-template-columns: repeat(9, minmax(0, 1fr)); gap: 8px; }
+.mlist { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
 #title .card { max-width: 1140px; }
 .mis { text-align: left; padding: 9px 10px; letter-spacing: 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .mis b { font-size: 15px; }

@@ -24,13 +24,14 @@ export const WEAPONS = {
   rail: { slot: 'arm', name: 'RG-9 磁轨炮', en: 'RG-9 Railgun', desc: '按住蓄力 · 松开贯穿', type: 'charge', charge: 1.1, dmg: [45, 280], rate: 0.6, mag: 6, reload: 2.6, sfx: 'rail', recoil: 0.9 },
   blade: { slot: 'arm', name: 'LB-0 光束剑', en: 'LB-0 Pulse Blade', desc: '近战 · 锁定时冲刺斩击 · 耗 EN', type: 'blade', dmg: 310, range: 7.5, lunge: 38, cd: 0.95, cost: 16, sfx: 'blade' },
   shotgun: { slot: 'arm', name: 'SG-12 霰弹炮', en: 'SG-12 Scattergun', desc: '近距离 · 一发 9 颗弹丸 · 射程短', type: 'bullet', pellets: 9, rate: 0.72, dmg: 13, speed: 250, spread: 0.075, life: 0.42, mag: 6, reload: 2.3, color: 0xffc890, w: 0.2, len: 4, sfx: 'cannon', recoil: 0.7 },
+  grenade: { slot: 'arm', name: 'GL-4 榴弹发射器', en: 'GL-4 Grenade Launcher', desc: '抛物线弹道 · 范围爆炸 · 可越过掩体', type: 'bullet', grenade: true, rate: 0.55, dmg: 78, splash: 6.5, speed: 88, grav: 30, spread: 0.004, mag: 8, reload: 2.5, color: 0xffa050, sfx: 'grenade', recoil: 0.55 },
   missile: { slot: 'shoulder', name: 'MS-6 飞弹巢', en: 'MS-6 Missile Pods', desc: '多重锁定 · 6 发追踪', type: 'missile', count: 6, dmg: 40, splash: 5, cd: 6.5, sfx: 'missile' },
   cannon: { slot: 'shoulder', name: 'PC-2 等离子炮', en: 'PC-2 Plasma Cannon', desc: '大范围爆炸 · 弹速慢', type: 'plasma', dmg: 165, splash: 9, speed: 105, cd: 3.4, sfx: 'cannon' },
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
   drones: { slot: 'shoulder', name: 'DP-4 攻击无人机', en: 'DP-4 Drone Pod', desc: '放出 2 架无人机 · 自动攻击 14 秒', type: 'drones', count: 2, dur: 14, dmg: 6, rate: 0.17, range: 80, cd: 18, sfx: 'drone' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'coil', 'rail', 'blade'];
+export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'grenade', 'coil', 'rail', 'blade'];
 export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones'];
 
 export function weaponState(key) {
@@ -142,6 +143,7 @@ function impact(s, at, ent) {
   if (s.kind === 'missile') explodeAt(at, s.splash, s.dmg, s.team, 0.7);
   else if (s.kind === 'plasma') explodeAt(at, s.splash, s.dmg, s.team, 1.5, 0xff8a30);
   else if (s.kind === 'shell') explodeAt(at, s.splash, s.dmg, s.team, 0.55, 0xff7040);
+  else if (s.kind === 'grenade') explodeAt(at, s.splash, s.dmg, s.team, 0.95, 0xffa040);
   else {
     if (ent) dealDamage(ent, s.dmg, s.team, at);
     fx.sparks(at, _a.copy(s.v).normalize().multiplyScalar(-1), ent ? 6 : 4, s.team === 'P' ? 0xffd27a : 0xff7a50, 14, 0.8, 0.25, 0.22);
@@ -169,6 +171,10 @@ function updateShots(dt) {
       } else s.v.y -= 12 * dt;
       fx.emit('smoke', { x: s.x, y: s.y, z: s.z, vx: (Math.random() - 0.5), vy: 0.5, vz: (Math.random() - 0.5), life: 0.9, s0: 0.6, s1: 2.2, c0: 0xc8c6c0, c1: 0xa09e98, a0: 0.5, drag: 2 });
       fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.05, s0: s.team === 'E' ? 1.8 : 1.3, c0: s.team === 'E' ? 0xff5030 : 0xffc070 });
+    } else if (s.kind === 'grenade') {
+      s.v.y -= s.grav * dt;
+      fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.1, s0: 1.0, s1: 0.3, c0: 0xffb060 });
+      if (Math.random() < 0.5) fx.emit('smoke', { x: s.x, y: s.y, z: s.z, vx: 0, vy: 0.3, vz: 0, life: 0.6, s0: 0.4, s1: 1.4, c0: 0xb8b4ac, c1: 0x98948c, a0: 0.35, drag: 2 });
     } else if (s.kind === 'shell') {
       s.v.y -= s.grav * dt;
       fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.12, s0: 1.2, s1: 0.4, c0: 0xff8050 });
@@ -195,7 +201,7 @@ function updateShots(dt) {
     }
     s.x = _b.x; s.y = _b.y; s.z = _b.z;
     if (s.life <= 0 || Math.abs(s.x) > 400 || Math.abs(s.z) > 400) {
-      if (s.kind === 'missile' || s.kind === 'plasma') impact(s, _b.clone(), null);
+      if (s.kind === 'missile' || s.kind === 'plasma' || s.kind === 'grenade') impact(s, _b.clone(), null);
       G.shots.splice(i, 1); continue;
     }
     // draw
@@ -238,6 +244,17 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
         ws.cd += d.rate; ws.ammo--;
         const mp = owner.muzzlePos(slot, _a);
         const n = d.pellets || 1;
+        if (d.grenade) {
+          const hx = aim.x - mp.x, hz = aim.z - mp.z, h = Math.max(1, Math.hypot(hx, hz)), dy = aim.y - mp.y, v = d.speed, g = d.grav;
+          const disc = v ** 4 - g * (g * h * h + 2 * dy * v * v);
+          const th = disc > 0 ? Math.atan((v * v - Math.sqrt(disc)) / (g * h)) : Math.PI / 4;
+          _d.set(hx / h * Math.cos(th), Math.sin(th), hz / h * Math.cos(th));
+          _d.x += (Math.random() - 0.5) * d.spread; _d.z += (Math.random() - 0.5) * d.spread;
+          spawnShot({ p: mp, v: _d.clone().normalize().multiplyScalar(v), dmg: d.dmg * dmgMul, team, kind: 'grenade', splash: d.splash, grav: g, life: 5, color: d.color });
+          fx.muzzle(mp, _d, 0xffb060, 1.5); mslot.recoil = Math.min(0.6, (mslot.recoil || 0) + d.recoil);
+          if (me) { G.stats.shots++; fx.trauma = Math.min(1, fx.trauma + 0.08); }
+          sfx(d.sfx, dist); continue;
+        }
         for (let k = 0; k < n; k++) {
           _d.subVectors(aim, mp).normalize();
           const spr = n > 1 ? d.spread * (isP ? 1 : 1.3) : d.spread * (isP ? 2 : 6);
@@ -662,6 +679,12 @@ export class Drone extends Enemy {
   }
 }
 
+// capture zones: ground units with a goalP walk there first; inside goalR they fight normally
+function goalDir(e, pos) {
+  const g = e.goalP; if (!g) return null;
+  const dx = g.x - pos.x, dz = g.z - pos.z, d = Math.hypot(dx, dz);
+  return d < (e.goalR || 8) ? null : { x: dx / d, z: dz / d };
+}
 // ground units that bump into a building slide sideways along it for a while; if a slide made no progress, the next one goes the other way
 function blockedSlide(e) {
   if (e.slideT > 0) return;
@@ -681,8 +704,9 @@ export class Walker extends Enemy {
     let toward = dist > 42 || this.blindT > 4 ? 1 : dist < 26 ? -0.7 : 0;
     this.slideT = Math.max(0, (this.slideT || 0) - dt); if (this.slideT > 0) toward *= 0.15;   // blocked: slide along the wall
     this.stT -= dt; if (this.stT <= 0) { this.stT = 3 + Math.random() * 3; this.strafe *= -1; }
-    const fx_ = dx / dist, fz = dz / dist;
-    const sw = this.slideT > 0 ? 1.2 : 0.6;
+    let fx_ = dx / dist, fz = dz / dist;
+    const gl = goalDir(this, this.pos); if (gl) { fx_ = gl.x; fz = gl.z; toward = this.slideT > 0 ? 0.15 : 1; }
+    const sw = this.slideT > 0 ? 1.2 : gl ? 0.2 : 0.6;
     const tx = (fx_ * toward + -fz * this.strafe * sw) * 5.5, tz = (fz * toward + fx_ * this.strafe * sw) * 5.5;
     this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-2 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-2 * dt));
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
@@ -762,8 +786,9 @@ export class Bulwark extends Enemy {
     let toward = dist > 55 || this.blindT > 4 ? 1 : dist < 30 ? -0.6 : 0;
     this.slideT = Math.max(0, (this.slideT || 0) - dt); if (this.slideT > 0) toward *= 0.15;
     this.stT -= dt; if (this.stT <= 0) { this.stT = 4 + Math.random() * 3; this.strafe *= -1; }
-    const fx_ = dx / dist, fz = dz / dist;
-    const sw = this.slideT > 0 ? 1.2 : 0.4;
+    let fx_ = dx / dist, fz = dz / dist;
+    const gl = goalDir(this, this.pos); if (gl) { fx_ = gl.x; fz = gl.z; toward = this.slideT > 0 ? 0.15 : 1; }
+    const sw = this.slideT > 0 ? 1.2 : gl ? 0.15 : 0.4;
     const tx = (fx_ * toward - fz * this.strafe * sw) * 3.6, tz = (fz * toward + fx_ * this.strafe * sw) * 3.6;
     this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-1.5 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-1.5 * dt));
     this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
@@ -975,7 +1000,8 @@ export class Boss {
     const want = B.want[this.phase - 1];
     const fwd = dist > want + 12 ? 1 : dist < want - 12 ? -1 : 0;
     const fx_ = dx / dist, fz = dz / dist;
-    const mx = fx_ * fwd + -fz * A.strafe, mz = fz * fwd + fx_ * A.strafe;
+    let mx = fx_ * fwd + -fz * A.strafe, mz = fz * fwd + fx_ * A.strafe;
+    const gl = goalDir(this, m.pos); if (gl) { mx = gl.x + -gl.z * A.strafe * 0.3; mz = gl.z + gl.x * A.strafe * 0.3; }
     A.qbT -= dt; const qb = A.qbT <= 0 && m.en > 40; if (qb) A.qbT = (this.phase === 1 ? 2.8 : 1.8) * (B.agile ? 0.6 : 1) + Math.random() * 2;
     A.jumpT -= dt; let jump = false;
     if (A.jumpT <= 0 && m.grounded) { A.jumpT = (B.agile ? 3 : 5) + Math.random() * 4; jump = true; A.hover = 1.2 + Math.random(); }
@@ -1269,6 +1295,69 @@ export class Stalker extends Enemy {
     const g = this.n.E_SGun; const pt = this.st === 'aim' ? this.aimPt : pc;
     g.rotation.x += (Math.atan2(pt.y - (this.pos.y + 3.5), Math.max(1, dist)) - g.rotation.x) * Math.min(1, dt * 6);
     this.c.set(this.pos.x, this.pos.y + 3.2, this.pos.z);
+  }
+}
+
+// Mender: field repair drone. Hangs back behind its allies and beams repairs into the most damaged one (bulwark shields too).
+export class Mender extends Enemy {
+  constructor(pos) {
+    super('mender', 'E_Mender', pos, 170, 1.5); this.boom = 0.6;
+    this.vel = new V3(); this.ph = Math.random() * 6; this.patT = 0; this.pat = null; this.beam = 0; this.sndT = 0; this.c.copy(pos);
+  }
+  pickPatient() {
+    let best = null, bs = 0.03;
+    for (const e of G.enemies) {
+      if (e === this || !e.alive || e.dying || e.kind === 'mender' || e.kind === 'relay' || e.parts || !e.maxHp) continue;
+      const d = e.c.distanceTo(this.c); if (d > 110) continue;
+      const lack = 1 - e.hp / e.maxHp + (e.maxShp ? (1 - e.shp / e.maxShp) * 0.5 : 0);
+      const sc = lack - d * 0.002 + (e.kind === 'boss' || e.kind === 'raider' ? 0.06 : 0);
+      if (sc > bs) { bs = sc; best = e; }
+    }
+    return best;
+  }
+  update(dt) {
+    for (let i = 1; i <= 3; i++) this.n['E_MRotor' + i].rotation.y += dt * 38;
+    this.ph += dt;
+    this.patT -= dt;
+    if (this.patT <= 0 || (this.pat && (!this.pat.alive || this.pat.dying))) { this.patT = 0.8; this.pat = this.pickPatient(); }
+    const p = G.player, pc = p.center(playerC);
+    // stay behind the patient (or behind the pack) as seen from the player
+    let ax, az, ay;
+    const anchor = this.pat ? this.pat.c : null;
+    if (anchor) {
+      _a.set(anchor.x - pc.x, 0, anchor.z - pc.z); const L = _a.length() || 1; _a.multiplyScalar(1 / L);
+      ax = anchor.x + _a.x * 11 + -_a.z * Math.sin(this.ph * 0.6) * 5; az = anchor.z + _a.z * 11 + _a.x * Math.sin(this.ph * 0.6) * 5; ay = anchor.y + 6;
+    } else {
+      _a.set(this.pos.x - pc.x, 0, this.pos.z - pc.z); const L = _a.length() || 1; _a.multiplyScalar(1 / L);
+      const want = 70; ax = pc.x + _a.x * want; az = pc.z + _a.z * want; ay = pc.y + 10;
+    }
+    ay = Math.max(ay, groundAt(this.pos.x, this.pos.z, 99) + 4) + Math.sin(this.ph * 1.7) * 0.8;
+    _b.set(ax - this.pos.x, ay - this.pos.y, az - this.pos.z);
+    const Lb = _b.length(); if (Lb > 0) _b.multiplyScalar(Math.min(15, Lb * 1.1) / Lb);
+    // shy: back off if the player gets close
+    const pd = this.pos.distanceTo(pc);
+    if (pd < 30) { _a.subVectors(this.pos, pc).setY(0.3).normalize(); _b.addScaledVector(_a, 10 * (1 - pd / 30)); }
+    this.vel.lerp(_b, 1 - Math.exp(-2 * dt));
+    this.pos.addScaledVector(this.vel, dt);
+    const s = pointInSolid(this.pos, 1.5); if (s) { this.pos.y = s.max.y + 2.5; this.vel.y = Math.max(this.vel.y, 2); }
+    this.pos.x = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.x)); this.pos.z = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.z));
+    this.c.copy(this.pos);
+    const look = anchor || pc;
+    this.obj.rotation.y = Math.atan2(this.pos.x - look.x, this.pos.z - look.z);
+    this.obj.rotation.x = -this.vel.z * 0.01; this.obj.rotation.z = this.vel.x * 0.01;
+    // repair beam
+    this.beam = 0;
+    if (this.pat && this.pat.c.distanceTo(this.c) < 30 && clearLine(this.c, this.pat.c)) {
+      const e = this.pat, rate = Math.min(60, 12 + e.maxHp * 0.03);
+      e.hp = Math.min(e.maxHp, e.hp + rate * dt);
+      if (e.maxShp && e.shp > 0) e.shp = Math.min(e.maxShp, e.shp + rate * 0.8 * dt);
+      this.beam = 1;
+      const mp = this.n.Muzzle_Mender.getWorldPosition(_a);
+      G.fx.streak(mp, e.c, 0.22 + Math.sin(this.ph * 18) * 0.05, 0x6dff9a);
+      if (Math.random() < 0.3) G.fx.sparks(e.c, null, 2, 0x7dffa8, 5, 1, 0.4, 0.2);
+      this.sndT -= dt; if (this.sndT <= 0) { this.sndT = 1.4; sfx('mend', pd); }
+      if (!G.mendSaid) { G.mendSaid = true; G.onHint && G.onHint('维修无人机正在修复敌机 · 绿色光束 · 优先击落它', 3.5); }
+    }
   }
 }
 
