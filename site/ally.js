@@ -115,6 +115,80 @@ export class Wingman {
 }
 
 // ------------------------------------------------------------------ reactor core
+// armored transport for the escort mission: follows a (smoothed) road polyline up to `target` metres
+export class Convoy {
+  constructor(scene, path, hp) {
+    let P = path.map(([x, z]) => new V3(x, 0, z));
+    for (let it = 0; it < 3; it++) {   // Chaikin: round the corners so the truck turns instead of snapping
+      const Q = [P[0]];
+      for (let i = 0; i < P.length - 1; i++) { const a = P[i], b = P[i + 1]; Q.push(a.clone().lerp(b, 0.25), a.clone().lerp(b, 0.75)); }
+      Q.push(P[P.length - 1]); P = Q;
+    }
+    this.pts = P; this.cum = [0];
+    for (let i = 1; i < P.length; i++) this.cum.push(this.cum[i - 1] + P[i].distanceTo(P[i - 1]));
+    this.total = this.cum[this.cum.length - 1];
+    this.obj = cloneKit('F_Truck'); scene.add(this.obj);
+    this.n = nodes(this.obj); this.wheels = []; for (let i = 0; i < 8; i++) if (this.n['F_TW' + i]) this.wheels.push(this.n['F_TW' + i]);
+    this.pos = this.obj.position; this.vel = new V3(); this.tan = new V3(1, 0, 0);
+    this.d = 0; this.target = 0; this.speed = 0; this.maxSpeed = 7; this.wait = false;
+    this.maxHp = hp; this.hp = hp; this.alive = true; this.flash = 0; this.smokeT = 0; this.label = '运输车';
+    this.foeW = 0.5; this.foeWAir = 0.85;
+    this.c = new V3();
+    this._ent = { isCore: true, c: this.c, r: 2.9, get alive() { return this.w.alive; }, w: this, hit: (d) => this.damage(d) };
+    this.solid = addSolid(0, 0, 4, 4, 1.2, 0, 'core');   // low: a full-height box would stop every shot before it reaches the hit sphere
+    this.sample(0, this.pos, this.tan); this.yaw = Math.atan2(-this.tan.x, -this.tan.z); this.place();
+  }
+  sample(d, out, tan) {
+    d = Math.max(0, Math.min(this.total, d));
+    let i = 1; while (i < this.cum.length - 1 && this.cum[i] < d) i++;
+    const a = this.pts[i - 1], b = this.pts[i], k = (d - this.cum[i - 1]) / Math.max(1e-6, this.cum[i] - this.cum[i - 1]);
+    out.copy(a).lerp(b, k); if (tan) tan.subVectors(b, a).normalize();
+    return out;
+  }
+  heading(ahead = 40) { this.sample(this.d + ahead, _a, null); return Math.atan2(_a.z - this.pos.z, _a.x - this.pos.x); }
+  place() {
+    this.obj.rotation.y = this.yaw;
+    this.c.set(this.pos.x, 2.6, this.pos.z);
+    const s = this.solid; s.min.set(this.pos.x - 2, 0, this.pos.z - 2); s.max.set(this.pos.x + 2, 1.2, this.pos.z + 2);
+  }
+  center(out) { return out.copy(this.c); }
+  damage(d) {
+    if (!this.alive || G.godMode) return;
+    const x = d * G.diff.dmg;
+    this.hp -= x; this.flash = 0.12;
+    G.dmgLog = G.dmgLog || {}; G.dmgLog['truck<-' + (G.curLabel || '?')] = (G.dmgLog['truck<-' + (G.curLabel || '?')] || 0) + x;
+    G.onCoreHit && G.onCoreHit(x);
+    if (this.hp <= 0) {
+      this.hp = 0; this.alive = false; this.speed = 0;
+      explodeAt(this.c.clone(), 12, 0, 'P', 3.0, 0xffa050);
+      this.obj.visible = false; removeSolid(this.solid);
+    }
+  }
+  update(dt) {
+    if (!this.alive) return;
+    const go = !this.wait && this.d < this.target - 0.05;
+    const brake = Math.min(1, (this.target - this.d) / 12);   // ease into each stop
+    const want = go ? this.maxSpeed * Math.max(0.25, brake) : 0;
+    this.speed += Math.max(-9 * dt, Math.min(3 * dt, want - this.speed));
+    if (this.speed < 0.01 && !go) this.speed = 0;
+    this.d = Math.min(this.target, this.d + this.speed * dt);
+    this.sample(this.d, this.pos, this.tan);
+    const yw = Math.atan2(-this.tan.x, -this.tan.z);
+    let dy = yw - this.yaw; dy = Math.atan2(Math.sin(dy), Math.cos(dy)); this.yaw += dy * Math.min(1, dt * 3);
+    this.vel.copy(this.tan).multiplyScalar(this.speed);
+    for (const w of this.wheels) w.rotation.x -= this.speed * dt / 0.78;
+    this.place();
+    this.flash = Math.max(0, this.flash - dt);
+    if (this.speed > 1 && Math.random() < 0.5) G.fx.dust(_a.set(this.pos.x - this.tan.x * 4, 0, this.pos.z - this.tan.z * 4), 1, 2.4, 4);
+    const k = this.hp / this.maxHp;
+    if (k < 0.5) {
+      this.smokeT -= dt;
+      if (this.smokeT <= 0) { this.smokeT = k < 0.25 ? 0.08 : 0.2; G.fx.smoke(_a.set(this.pos.x + (Math.random() - 0.5) * 2, 4.5, this.pos.z + (Math.random() - 0.5) * 2), 1, 2, 1.6, 0x3a3836, 1, 0.7); }
+    }
+  }
+  dispose() { this.obj.parent && this.obj.parent.remove(this.obj); removeSolid(this.solid); this.alive = false; }
+}
+
 export class Reactor {
   constructor(scene, pos, hp) {
     const S = 1.5;   // the kit is ~10 m; scaled so it reads as the centrepiece next to 6 m mechs
@@ -123,7 +197,7 @@ export class Reactor {
     const dim = new Map();
     this.obj.traverse((m) => { if (!m.isMesh || !m.material || !(m.material.emissiveIntensity > 0)) return; if (!dim.has(m.material)) { const c = m.material.clone(); c.emissiveIntensity *= 0.32; dim.set(m.material, c); } m.material = dim.get(m.material); });
     this.n = nodes(this.obj); this.pos = this.obj.position; this.vel = new V3();
-    this.maxHp = hp; this.hp = hp; this.alive = true; this.flash = 0; this.smokeT = 0;
+    this.maxHp = hp; this.hp = hp; this.alive = true; this.flash = 0; this.smokeT = 0; this.label = '反应堆';
     this.foeW = 0.5; this.foeWAir = 0.85;   // ground units go for the core, flyers split between core and mechs
     this.c = new V3(pos.x, pos.y + 6 * S, pos.z);
     this._ent = { isCore: true, c: this.c, r: 3.6, get alive() { return this.w.alive; }, w: this, hit: (d) => this.damage(d) };

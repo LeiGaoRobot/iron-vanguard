@@ -87,6 +87,8 @@ export function sfx(name, d = 0, pan = 0) {
       case 'warn': tone(t, 'square', 1700, 1700, 0.05, 0.06); tone(t + 0.09, 'square', 1700, 1700, 0.05, 0.06); break;
       case 'rotor': noise(t, 0.12, 'lowpass', 220, 1.5, 0.35 * k, 0.1, pan); break;
       case 'coin': tone(t, 'triangle', 1320, 1760, 0.06, 0.08); break;
+      case 'od': tone(t, 'sawtooth', 90, 900, 0.2, 0.7, 0.02); tone(t + 0.05, 'square', 180, 1800, 0.07, 0.6, 0.02); noise(t, 0.9, 'bandpass', 600, 0.6, 0.5, 0.8, 0, 4000); tone(t + 0.45, 'sine', 70, 30, 0.8, 0.9); break;
+      case 'odend': tone(t, 'sawtooth', 700, 120, 0.08, 0.5); break;
       case 'overheat': tone(t, 'sawtooth', 300, 120, 0.12, 0.4); break;
     }
   } catch (e) { /* ignore */ }

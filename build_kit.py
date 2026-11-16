@@ -567,6 +567,33 @@ def build_reactor():
         box((math.cos(a) * 2.6, math.sin(a) * 2.6, 0), (0.35, 1.3, 0.25), M["Piston"], ring, rot=(0, 0, a))
         box((math.cos(a) * 2.6, math.sin(a) * 2.6, 0), (0.12, 0.8, 0.3), M["Coil"], ring, rot=(0, 0, a))
 
+def build_truck():
+    # friendly 8x8 armored transport for the escort mission: ~10 m long, front = +Y, wheels F_TW0..7 spin about X
+    K = kit("F_Truck")
+    box((0, -0.6, 1.9), (3.4, 7.4, 1.6), M["Armor2"], K, bevel=0.08)            # lower hull
+    wedge((0, 3.85, 1.85), (3.4, 1.4, 1.5), M["Armor2"], K, taper=0.55, bevel=0.05)
+    box((0, 2.25, 3.25), (3.2, 2.2, 1.3), M["Armor"], K, bevel=0.1)              # cab
+    box((0, 3.33, 3.35), (2.7, 0.08, 0.55), M["Visor"], K)                       # windshield strip
+    for sx in (-1, 1):
+        box((sx * 1.62, 2.4, 3.4), (0.06, 1.2, 0.4), M["Visor"], K)
+        box((sx * 1.2, 4.42, 2.1), (0.5, 0.08, 0.26), M["NozzleGlow"], K)        # headlights
+        box((sx * 1.74, -0.6, 2.35), (0.1, 7.0, 0.22), M["Hazard"], K)          # side stripe
+    box((0, -1.7, 3.6), (3.3, 5.0, 2.0), M["Armor"], K, bevel=0.06)              # cargo module
+    for i in range(6):
+        box((0, -3.9 + i * 0.88, 4.62), (3.0, 0.14, 0.06), M["Armor2"], K)
+    box((0, -1.7, 4.68), (1.2, 1.2, 0.08), M["Accent"], K)
+    cyl((0.9, -3.4, 5.1), 0.06, 1.6, M["Frame"], K, verts=6)                    # antenna
+    ball((0.9, -3.4, 5.95), 0.12, M["EEye"], K)
+    box((0, -4.35, 2.4), (2.6, 0.12, 1.0), M["Frame"], K)
+    for sx in (-1, 1):
+        box((sx * 1.05, -4.42, 2.2), (0.4, 0.06, 0.18), M["EEye"], K)          # tail lights
+    for i, y in enumerate((2.6, 1.0, -1.6, -3.2)):
+        for j, sx in enumerate((-1, 1)):
+            w = empty(f"F_TW{i * 2 + j}", (sx * 1.75, y, 0.78), K)
+            cyl((0, 0, 0), 0.78, 0.55, M["Black"], w, rot=(0, math.pi / 2, 0), verts=14)
+            cyl((sx * 0.29, 0, 0), 0.42, 0.04, M["Joint"], w, rot=(0, math.pi / 2, 0), verts=10)
+            box((sx * 0.3, 0, 0), (0.05, 0.9, 0.16), M["Frame"], w)
+
 # ================================================================= PROPS / PICKUPS
 def build_props():
     K = kit("P_Crate")
@@ -599,7 +626,7 @@ def build_props():
 build_mech()
 build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun()
 build_missile(); build_cannon(); build_laser(); build_shield()
-build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout

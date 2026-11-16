@@ -27,9 +27,10 @@ An original third-person mech action game, inspired by the gameplay in x.com/Bey
 | E | Shoulder weapon (missiles lock up to 6 targets) |
 | LMB / RMB with the blade | With a lock: lunge up to 38 m and slash. The blade cuts through Bulwark shields |
 | R | Reload |
+| V | Overdrive (when the OD bar is full) |
 | Esc | Pause |
-| Gamepad (standard mapping) | LS move · RS look (light aim assist toward the primary lock) · RT / LT arm weapons · RB shoulder · A jump / hover · B, LB or LS click boost (tap = quick boost) · X reload · Start pause. On the title screen A sorties and Y opens the hangar; in pause / results A resumes or retries, B goes to the hangar. Moving the mouse switches back to mouse control |
-| Touch | Shown after the first touch. Drag on the left to move (the stick appears where the finger lands), drag anywhere else to look (aim assist toward the primary lock is 1.4× the gamepad's), buttons bottom-right: right arm / left arm / shoulder / jump-hover / boost (tap = quick boost) / reload; ‖ at the top pauses. The HUD moves to the top corners in touch mode |
+| Gamepad (standard mapping) | LS move · RS look (light aim assist toward the primary lock) · RT / LT arm weapons · RB shoulder · A jump / hover · B, LB or LS click boost (tap = quick boost) · X reload · Y overdrive · Start pause. On the title screen A sorties and Y opens the hangar; in pause / results A resumes or retries, B goes to the hangar. Moving the mouse switches back to mouse control |
+| Touch | Shown after the first touch. Drag on the left to move (the stick appears where the finger lands), drag anywhere else to look (aim assist toward the primary lock is 1.4× the gamepad's), buttons bottom-right: right arm / left arm / shoulder / jump-hover / boost (tap = quick boost) / reload / overdrive; ‖ at the top pauses. The HUD moves to the top corners in touch mode |
 
 If the browser refuses pointer lock (for example inside the Artifact iframe), the game falls back to free-mouse mode: the reticle follows the cursor and the camera turns when the cursor is near the screen edge.
 
@@ -65,6 +66,12 @@ If the browser refuses pointer lock (for example inside the Artifact iframe), th
 - **AS-3 Aegis Shield** (shoulder): 3 s, −85% damage from hits within the frontal arc (`shieldBlock`, measured against the aim direction), 9 s cooldown; a curved additive panel in front of the torso flashes on each blocked hit. The weapon panel reads ACTIVE while it is up
 - Enemy-only palettes carry `enemy: true` and are hidden from the hangar
 
+## v6 content (2026-11-16)
+
+- **Overdrive** (`OD` in `combat.js`, `activateOD` / `updateOD` in `main.js`): damage you deal fills the OD bar (2600 damage; allies' damage and hits on the core don't count). V / gamepad Y / the touch 超载 button fires it: a 16 m shockwave (160 damage), a short slow-motion, then 10 s of damage ×1.4, damage taken ×0.65, endless energy, faster reloads and shoulder cooldown. Orange screen-edge glow and a pulsing ring at the feet while it runs. The autopilot uses it when 3+ enemies are within 60 m or a boss is within 80 m
+- **Convoy Escort** (`MISSIONS.convoy`, env `desert`, seed 51): escort the `F_Truck` transport (`Convoy` in `ally.js`, 4200 HP) along a road (`path`, smoothed with Chaikin; `buildArena(..., road)` keeps buildings and props 11 m clear of it and lays asphalt + a dashed centre line). The truck stops at each `stops` distance and a wave spawns ahead of it (late groups come from behind); once the wave is clear it drives on (7 m/s), waiting if you are more than 60 m away, with a pair of drones harassing it on the road. Reaching the end of the road after the final wave wins; losing the truck fails. The convoy reuses the `G.core` slot, so targeting, the HUD bar, the off-screen arrow, the radar and the core-based rank all work unchanged (`label` names it)
+- Mission cards on the title now show only name / English / best; the selected mission's description is under the grid (7 missions fit at 720 p)
+
 ## Structure
 
 - `site/kit.js` — loads the GLB (uses `window.__MA_KIT` first), `cloneKit`, `recolor` (palettes are applied by material name), `bakeStatic` (static props merged per material)
@@ -95,5 +102,6 @@ If the browser refuses pointer lock (for example inside the Artifact iframe), th
 - The autopilot (perfect aim, never uses cover) clears all five loadouts in 110–190 s, with about a 50% win rate
 - Night Raid: the autopilot won 2 of 3 loadouts (130–150 s); its top damage sources are gunship missiles / chin gun and the boss blade. Endless: the autopilot reaches wave 10, where the second boss (Phantom) kills it
 - Reactor Defense (autopilot, no wingman): rifle / gatling / missile wins with the core at 28%; blade / rifle / cannon (light frame) wins with it at ~50%. With the wingman it is clearly easier (the core lost < 15% over the run that was checked). Walker shells are the largest source of core damage (> 50%)
+- Convoy Escort (autopilot, no wingman): rifle / gatling / missile wins in 360 s with the truck down to 977 / 4200 at its lowest; blade / rifle / cannon (light frame) wins in 337 s with the truck at 3442. Bulwark mortars are the largest source of truck damage (~40%), then gunships. First version (6000 HP truck, lighter waves) ended with the truck untouched
 - Storm Hunt (autopilot, no wingman): rifle / gatling / missile wins in 167 s with 273 HP left; shotgun / rifle / shield wins in 178 s with 135 HP (the shield blocked ~780 damage). First version (raider damage ×0.3, 1100 HP, Phantom with two escorts) died at 42 s
 - Snowfield: rifle / gatling / missile wins in 155 s; blade / rifle / cannon (light frame) loses at 144 s with Phantom on 505 HP. With both bosses arriving at once, both loadouts died; staggering Phantom's arrival is what makes it winnable

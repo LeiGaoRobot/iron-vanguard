@@ -53,6 +53,15 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 #hpBar i { background: linear-gradient(90deg, #3fd18a, #8dffb8); }
 #hpBar.low i { background: linear-gradient(90deg, #ff3a2a, #ff8a5a); }
 #enBar i { background: linear-gradient(90deg, #2aa8ff, #8fe8ff); }
+#odBar i { background: linear-gradient(90deg, #ff6a1a, #ffd27a); }
+#odBar.ready i { animation: odPulse 0.8s ease-in-out infinite alternate; }
+#odBar.on i { background: linear-gradient(90deg, #ffb040, #fff2c0); }
+@keyframes odPulse { from { filter: brightness(0.9); } to { filter: brightness(1.6); } }
+#odTxt { color: #ffc27a; }
+#odFx { position: fixed; inset: 0; pointer-events: none; box-shadow: inset 0 0 160px 30px rgba(255, 130, 30, 0.55); opacity: 0; transition: opacity 0.25s; }
+#odFx.on { opacity: 1; }
+#tBtns .od { right: 110px; bottom: 172px; width: 52px; height: 52px; font-size: 12px; border-color: rgba(255, 150, 60, 0.7); color: #ffc27a; }
+#tBtns .od.ready { background: rgba(255, 130, 40, 0.45); }
 #enBar.heat i { background: #ff5a3a; animation: blink 0.25s steps(2) infinite; }
 .barlbl { display: flex; justify-content: space-between; font-family: var(--num); font-size: 13px; letter-spacing: 1px; color: var(--dim); margin-top: 4px; }
 .barlbl b { color: var(--ink); font-weight: 600; }
@@ -115,8 +124,9 @@ button.primary:hover { background: #9af0ff; }
 .rank { font-family: var(--num); font-size: 80px; font-weight: 700; color: var(--amber); line-height: 1; float: right; margin-top: -8px; }
 .row { display: flex; align-items: center; gap: 12px; margin-top: 10px; font-size: 14px; color: var(--dim); }
 .row input[type=range] { flex: 1; }
-.mlist { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; }
-#title .card { max-width: 940px; }
+#tMisDesc { color: var(--dim); font-size: 12px; margin-top: 6px; min-height: 16px; }
+.mlist { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+#title .card { max-width: 1060px; }
 .mis { text-align: left; padding: 9px 10px; letter-spacing: 0; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .mis b { font-size: 15px; }
 .mis .en { font-family: var(--num); font-size: 12px; letter-spacing: 2px; color: var(--cyan); }
@@ -168,8 +178,9 @@ body.touchmode #radar { top: 10px; left: 10px; bottom: auto; width: 96px; height
 body.touchmode #info { display: none; }
 body.touchmode #wingTxt { left: 116px; top: 14px; bottom: auto; }
 body.touchmode #bars { bottom: 8px; width: min(300px, 34vw); }
+body.touchmode #bars .barlbl { font-size: 11px; margin-top: 1px; }
 body.touchmode #crTxt { top: 14px; right: 10px; font-size: 15px; }
-body.touchmode #hint { top: auto; bottom: 100px; font-size: 12px; max-width: 46vw; text-align: center; }
+body.touchmode #hint { top: auto; bottom: 122px; font-size: 12px; max-width: 46vw; text-align: center; }
 body.touchmode #topc { top: 42px; } body.touchmode #waveTitle { font-size: 18px; }
 body.touchmode #mAlert { top: 30%; }
 </style>
@@ -192,7 +203,7 @@ body.touchmode #mAlert { top: 30%; }
   <div id="topc">
     <div id="waveTitle">WAVE 1</div>
     <div id="waveSub"></div>
-    <div id="coreBox" class="hidden"><div class="nm">反应堆 REACTOR <b id="corePct">100%</b></div><div class="bar" id="coreBar"><i style="width:100%"></i></div></div>
+    <div id="coreBox" class="hidden"><div class="nm"><span id="coreName">反应堆 REACTOR</span> <b id="corePct">100%</b></div><div class="bar" id="coreBar"><i style="width:100%"></i></div></div>
     <div id="bossBox" class="hidden"><div class="nm" id="bossName">暴君 TYRANT · 重装指挥机</div><div class="bar" id="bossBar"><i style="width:100%"></i></div></div>
   </div>
   <div id="banner"></div>
@@ -205,10 +216,13 @@ body.touchmode #mAlert { top: 30%; }
     <div class="bar" id="hpBar"><i style="width:100%"></i></div>
     <div class="bar" id="enBar"><i style="width:100%"></i></div>
     <div class="barlbl"><span>能量 EN</span><span id="enTxt"></span></div>
+    <div class="bar" id="odBar"><i style="width:0%"></i></div>
+    <div class="barlbl"><span>超载 OD</span><span id="odTxt"></span></div>
   </div>
   <div id="weapons"></div>
   <div id="wingTxt" class="hidden"></div>
   <div id="hint" class="hidden"></div>
+  <div id="odFx"></div>
 </div>
 
 <div id="touch" class="hidden">
@@ -220,6 +234,7 @@ body.touchmode #mAlert { top: 30%; }
     <button type="button" class="jump" data-k="jump">跳跃<small>悬浮</small></button>
     <button type="button" class="boost" data-k="boost">推进<small>急闪</small></button>
     <button type="button" class="rl" data-k="reload">装填</button>
+    <button type="button" class="od" data-k="od">超载</button>
   </div>
   <button type="button" id="tPause">II</button>
 </div>
@@ -228,7 +243,7 @@ body.touchmode #mAlert { top: 30%; }
     <h1>IRON <span>VANGUARD</span></h1>
     <div class="sub">钢铁先锋 · 机甲作战</div>
     <div style="color: var(--dim); font-size: 14px; line-height: 1.7">驾驶可定制的人形机甲出击。击毁敌机赚取资金，在机库强化机体。</div>
-    <div class="gsec"><h3>选择任务</h3><div class="mlist" id="tMission"></div></div>
+    <div class="gsec"><h3>选择任务</h3><div class="mlist" id="tMission"></div><div id="tMisDesc"></div></div>
     <div class="keys">
       <b>WASD</b><span>移动 · 鼠标转向瞄准</span>
       <b>SHIFT</b><span>按下 = 瞬间推进（急闪），按住 = 地面高速滑行</span>
@@ -236,8 +251,9 @@ body.touchmode #mAlert { top: 30%; }
       <b>左键 / 右键</b><span>右臂 / 左臂武器</span>
       <b>E</b><span>肩部武器（飞弹会锁定准星附近多个目标）</span>
       <b>光束剑</b><span>锁定敌人时按下 = 冲刺斩击，能斩开护盾坦克的护盾</span>
+      <b>V</b><span>超载：伤害积攒，满后发动 10 秒（伤害 ×1.4 · 受伤 −35% · 能量无限）</span>
       <b>R · ESC</b><span>手动换弹 · 暂停</span>
-      <b>手柄</b><span>左摇杆移动 · 右摇杆视角 · RT/LT 双臂 · RB 肩部 · A 跳跃 · B 推进 · X 装填 · Start 暂停（标题页按 A 出击，Y 进机库）</span>
+      <b>手柄</b><span>左摇杆移动 · 右摇杆视角 · RT/LT 双臂 · RB 肩部 · A 跳跃 · B 推进 · X 装填 · Y 超载 · Start 暂停（标题页按 A 出击，Y 进机库）</span>
       <b>触屏</b><span>左侧拖动移动 · 右侧拖动转视角 · 右下按钮射击 / 跳跃 / 推进 · 准星靠近敌人会自动吸附</span>
     </div>
     <div style="color: var(--dim); font-size: 12px; margin-top: 10px">推进、悬浮和急闪都消耗能量 EN；耗尽会过热 2 秒。支持键盘鼠标、手柄和触屏。</div>

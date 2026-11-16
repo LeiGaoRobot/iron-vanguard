@@ -1,5 +1,6 @@
 // Arena: floor, buildings, props, AABB collision and ray queries.
 import * as THREE from 'three';
+import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { cloneKit, bakeStatic } from './kit.js';
 
 export const ARENA = 170;          // playable half-size (m)
@@ -37,8 +38,17 @@ function panelMaterial(color, opts) {
   return m;
 }
 
-export function buildArena(scene, seed = 3, env = 'day') {
-  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm';
+export function buildArena(scene, seed = 3, env = 'day', road = null) {
+  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert';
+  const roadD = (x, z) => {   // distance to the escort road polyline
+    let best = 1e9;
+    for (let i = 0; road && i < road.length - 1; i++) {
+      const [ax, az] = road[i], [bx, bz] = road[i + 1], dx = bx - ax, dz = bz - az, L = dx * dx + dz * dz;
+      const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L));
+      best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
+    }
+    return best;
+  };
   solids.length = 0; barrels.length = 0; relaySites.length = 0;
   if (snow) relaySites.push(new THREE.Vector3(-104, 0, -40), new THREE.Vector3(96, 0, -64), new THREE.Vector3(-8, 0, -132));
   const group = new THREE.Group(); scene.add(group);
@@ -55,7 +65,8 @@ export function buildArena(scene, seed = 3, env = 'day') {
       diffuseColor.rgb *= 1.0 - 0.12 * lane;
       float ed = max(abs(vWP.x), abs(vWP.z));
       float stripe = step(${ARENA.toFixed(1)} - 3.0, ed) * step(ed, ${ARENA.toFixed(1)} - 1.6) * step(0.5, fract((vWP.x + vWP.z) / 4.0));
-      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.62, 0.08), stripe * 0.9);${storm ? `
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.62, 0.08), stripe * 0.9);${desert ? `
+      diffuseColor.rgb *= vec3(1.18, 1.0, 0.74) * (0.94 + 0.12 * h21(floor(vWP.xz / 11.0)));` : ''}${storm ? `
       float wet = smoothstep(0.55, 0.8, h21(floor(vWP.xz / 9.0)) * 0.6 + h21(floor(vWP.xz / 3.0)) * 0.4);
       diffuseColor.rgb *= 0.46 - 0.2 * wet;` : ''}${snow ? `
       float sn = 0.55 + 0.25 * h21(floor(vWP.xz / 7.0)) + 0.2 * h21(floor(vWP.xz / 1.3));
@@ -96,6 +107,7 @@ export function buildArena(scene, seed = 3, env = 'day') {
   const boxes = [];
   const free = (x, z, r) => {
     if (Math.hypot(x, z - 120) < 28 || Math.hypot(x, z) < 26) return false;   // spawn + centre plaza
+    if (road && roadD(x, z) < 11 + r) return false;
     for (const q of relaySites) if (Math.hypot(x - q.x, z - q.z) < 18 + r) return false;
     for (const s of solids) {
       if (x + r > s.min.x - 6 && x - r < s.max.x + 6 && z + r > s.min.z - 6 && z - r < s.max.z + 6) return false;
@@ -160,6 +172,17 @@ export function buildArena(scene, seed = 3, env = 'day') {
     place.push({ kit: 'P_Pillar', matrix: M4(x, 0, z, a) }); addSolid(x, z, 2.4, 2.4, 8, 0, 'pillar');
   }
   group.add(bakeStatic(place));
+  if (road) {   // asphalt strip + dashed centre line, laid just above the floor
+    const geos = [], dash = [];
+    for (let i = 0; i < road.length - 1; i++) {
+      const [ax, az] = road[i], [bx, bz] = road[i + 1], L = Math.hypot(bx - ax, bz - az), yaw = Math.atan2(bx - ax, bz - az);
+      geos.push(new THREE.PlaneGeometry(10, L + 10).rotateX(-Math.PI / 2).rotateY(yaw).translate((ax + bx) / 2, 0.03 + i * 0.002, (az + bz) / 2));
+      for (let d = 4; d < L - 2; d += 9) dash.push(new THREE.PlaneGeometry(0.4, 4).rotateX(-Math.PI / 2).rotateY(yaw).translate(ax + (bx - ax) * d / L, 0.06, az + (bz - az) * d / L));
+    }
+    const rm = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(geos), new THREE.MeshStandardMaterial({ color: desert ? 0x5a5048 : 0x3a3c40, roughness: 0.95 }));
+    rm.receiveShadow = true; group.add(rm);
+    group.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(dash), new THREE.MeshStandardMaterial({ color: 0xd8c070, roughness: 0.8 })));
+  }
   // explosive barrels (dynamic)
   scatter(14, 2, (x, z) => {
     const o = cloneKit('P_Barrel'); o.position.set(x, 0, z); o.rotation.y = rnd() * 6; group.add(o);

@@ -83,11 +83,14 @@ export function rayEnts(o, d, maxT, ents, all = false) {
 }
 export function enemyEnts() { return entsFor('P').filter((e) => !e.isBarrel); }
 
+// overdrive: the meter fills from damage dealt; while active: damage x1.4, damage taken x0.65, free energy, fast reloads
+export const OD = { fill: 2600, dur: 10, dmg: 1.4, armor: 0.65 };
+
 // ------------------------------------------------------------------ damage
 function dealDamage(ent, dmg, team, at, label) {
   if (!ent.alive) return;
   ent.hit(dmg, at, label || G.curLabel);
-  if (team === 'P' && !ent.isBarrel && !isAlly(label || G.curLabel)) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; }
+  if (team === 'P' && !ent.isBarrel && !isAlly(label || G.curLabel)) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; if (G.od && !(G.od.t > 0) && !ent.isCore) G.od.k = Math.min(1, G.od.k + dmg / OD.fill); }
 }
 
 const isAlly = (l) => !!l && l.startsWith('ally');
@@ -95,7 +98,7 @@ function damagePlayer(dmg, src, label) {
   const p = G.player; if (!p || !p.alive || G.godMode) return;
   const blk = shieldBlock(p, src || G.curSrc);
   if (blk) { G.stats.blocked = (G.stats.blocked || 0) + dmg * blk; if (Math.random() < 0.3) sfx('shield', 0); }
-  const d = dmg * G.diff.dmg * p.frame.armor * (1 - blk);
+  const d = dmg * G.diff.dmg * p.frame.armor * (1 - blk) * (G.od && G.od.t > 0 ? OD.armor : 1);
   G.dmgLog = G.dmgLog || {}; G.dmgLog[label || '?'] = (G.dmgLog[label || '?'] || 0) + d;
   p.hit(d); G.stats.dmgTaken += d; G.hud.hurt = Math.min(1, G.hud.hurt + d / 120);
   if (src) G.hud.hurtDir = Math.atan2(src.x - p.pos.x, src.z - p.pos.z);
