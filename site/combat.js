@@ -1,6 +1,6 @@
 // Weapons, projectiles, enemies, damage.  Shared state lives in G.
 import * as THREE from 'three';
-import { barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, ARENA } from './world.js';
+import { barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA } from './world.js';
 import { cloneKit, nodes } from './kit.js';
 import { Mech, angDiff } from './mech.js';
 import { sfx } from './audio.js';
@@ -742,6 +742,47 @@ export class Gunship extends Enemy {
         spawnShot({ p: mp, v: _d.normalize().multiplyScalar(160), dmg: 5.5, team: 'E', kind: 'ebullet', color: 0xff6040, w: 0.3, len: 6, label: 'gunship-gun' });
         G.fx.muzzle(mp, _d, 0xff8a50, 1); sfx('eshot', dist);
       }
+    }
+  }
+}
+
+// Relay: static objective tower. Calls in drones while it stands; an EMP pulse punishes standing next to it.
+export class Relay extends Enemy {
+  constructor(pos) {
+    super('relay', 'E_Relay', pos, 2500, 3.3); this.boom = 2.6; this.isObjective = true;
+    this.c.set(pos.x, pos.y + 3.3, pos.z);
+    this.solids = [addSolid(pos.x, pos.z, 6, 6, 1.4, 0, 'relay'), addSolid(pos.x, pos.z, 1.6, 1.6, 6.6, 6.8, 'relay')]   // the mast only: the core (hit sphere) must stay outside any solid or shots stop on the box;
+    this.callT = 10 + Math.random() * 6; this.empT = 3; this.empArm = 0; this.ph = Math.random() * 6;
+  }
+  die() {
+    for (const s of this.solids) removeSolid(s);
+    this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this);
+    explodeAt(this.c, 10, 40, 'P', 2.8, 0xff7040);
+    G.fx.flash(this.c, 0xff8040, 60, 30, 0.5);
+    for (let k = 0; k < 4; k++) G.queue.push({ label: 'relay', t: 0.25 + k * 0.3, fn: () => explodeAt(new V3(this.pos.x + (Math.random() - 0.5) * 3, 5 + k * 2.5, this.pos.z + (Math.random() - 0.5) * 3), 0, 0, 'P', 1.2) });
+    this.remove();
+  }
+  update(dt) {
+    this.ph += dt;
+    this.n.E_RDish.rotation.y += dt * 0.7;
+    const p = G.player, dist = Math.hypot(p.pos.x - this.pos.x, p.pos.z - this.pos.z);
+    // reinforcements
+    this.callT -= dt;
+    if (this.callT <= 0) {
+      this.callT = 20 + Math.random() * 6;
+      G.onRelayCall && G.onRelayCall(this);
+    }
+    // EMP pulse when the player hugs the tower: warning ring, then a burst
+    if (this.empArm > 0) {
+      this.empArm -= dt;
+      if (this.empArm <= 0) {
+        G.fx.ring(new V3(this.pos.x, 1, this.pos.z), null, 2, 16, 0.5, 0x7fd8ff); G.fx.flash(this.c, 0x60c8ff, 30, 20, 0.25);
+        sfx('shieldbreak', dist);
+        if (dist < 15 && p.pos.y < 14) { G.curLabel = 'relay-emp'; p._ent && p._ent.hit(22, this.c, 'relay-emp'); p.en = Math.max(0, p.en - 30); }
+      }
+    } else {
+      this.empT -= dt;
+      if (this.empT <= 0 && dist < 15) { this.empT = 5.5; this.empArm = 1.1; G.fx.warn(new V3(this.pos.x, groundAt(this.pos.x, this.pos.z, 2), this.pos.z), 15, 1.1); sfx('warn', dist); }
     }
   }
 }

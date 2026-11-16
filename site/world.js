@@ -5,12 +5,13 @@ import { cloneKit, bakeStatic } from './kit.js';
 export const ARENA = 170;          // playable half-size (m)
 export const solids = [];          // {min: V3, max: V3, kind, ref}
 export const barrels = [];         // explosive props {obj, pos, hp, solid}
+export const relaySites = [];      // objective tower spots (snowfield)
 
 export function mulberry32(a) {
   return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 }
 
-function addSolid(cx, cz, w, d, h, y0 = 0, kind = 'block', ref = null) {
+export function addSolid(cx, cz, w, d, h, y0 = 0, kind = 'block', ref = null) {
   const s = { min: new THREE.Vector3(cx - w / 2, y0, cz - d / 2), max: new THREE.Vector3(cx + w / 2, y0 + h, cz + d / 2), kind, ref };
   solids.push(s);
   return s;
@@ -36,9 +37,10 @@ function panelMaterial(color, opts) {
   return m;
 }
 
-export function buildArena(scene, seed = 3, night = false) {
-  const rnd = mulberry32(seed);
-  solids.length = 0; barrels.length = 0;
+export function buildArena(scene, seed = 3, env = 'day') {
+  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow';
+  solids.length = 0; barrels.length = 0; relaySites.length = 0;
+  if (snow) relaySites.push(new THREE.Vector3(-104, 0, -40), new THREE.Vector3(96, 0, -64), new THREE.Vector3(-8, 0, -132));
   const group = new THREE.Group(); scene.add(group);
 
   // ---- floor: 4 m concrete tiles with per-tile tone + seams, 16 m darker lane lines
@@ -53,7 +55,11 @@ export function buildArena(scene, seed = 3, night = false) {
       diffuseColor.rgb *= 1.0 - 0.12 * lane;
       float ed = max(abs(vWP.x), abs(vWP.z));
       float stripe = step(${ARENA.toFixed(1)} - 3.0, ed) * step(ed, ${ARENA.toFixed(1)} - 1.6) * step(0.5, fract((vWP.x + vWP.z) / 4.0));
-      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.62, 0.08), stripe * 0.9);`,
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.62, 0.08), stripe * 0.9);${snow ? `
+      float sn = 0.55 + 0.25 * h21(floor(vWP.xz / 7.0)) + 0.2 * h21(floor(vWP.xz / 1.3));
+      float drift = smoothstep(0.25, 0.75, sin(vWP.x * 0.045 + sin(vWP.z * 0.03) * 2.0) * 0.5 + 0.5);
+      float cover = clamp(0.8 + 0.17 * drift - 0.35 * stripe, 0.0, 0.97);
+      diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(0.74, 0.8, 0.88), vec3(0.88, 0.91, 0.95), drift) * (0.93 + 0.07 * sn), cover);` : ''}`,
     emit: night ? `
       float ed2 = max(abs(vWP.x), abs(vWP.z));
       float st2 = step(${ARENA.toFixed(1)} - 3.0, ed2) * step(ed2, ${ARENA.toFixed(1)} - 1.6) * step(0.5, fract((vWP.x + vWP.z) / 4.0));
@@ -72,7 +78,9 @@ export function buildArena(scene, seed = 3, night = false) {
       float tone = 0.85 + 0.2 * h21(floor(vWP.xz / 6.0) + floor(vWP.y / 3.5));
       diffuseColor.rgb *= tone * (1.0 - 0.35 * max(hl, vl));
       if (n.y < 0.5) { float win = step(0.62, fract(vWP.y / 3.5)) * step(fract(vWP.y / 3.5), 0.82);
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.2, 0.26), win * 0.8); }`,
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.2, 0.26), win * 0.8); }${snow ? `
+      if (vWN.y > 0.5) diffuseColor.rgb = vec3(0.84, 0.88, 0.93) * (0.92 + 0.08 * h21(floor(vWP.xz / 2.0)));
+      else diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.85, 0.9), step(0.5, fract(vWP.y / 3.5 + 0.38)) * step(fract(vWP.y / 3.5 + 0.38), 0.53) * 0.75);` : ''}`,
     emit: night ? `
       if (abs(vWN.y) < 0.5) {
         float fy = fract(vWP.y / 3.5); float wn = step(0.62, fy) * step(fy, 0.82);
@@ -86,6 +94,7 @@ export function buildArena(scene, seed = 3, night = false) {
   const boxes = [];
   const free = (x, z, r) => {
     if (Math.hypot(x, z - 120) < 28 || Math.hypot(x, z) < 26) return false;   // spawn + centre plaza
+    for (const q of relaySites) if (Math.hypot(x - q.x, z - q.z) < 18 + r) return false;
     for (const s of solids) {
       if (x + r > s.min.x - 6 && x - r < s.max.x + 6 && z + r > s.min.z - 6 && z - r < s.max.z + 6) return false;
     }

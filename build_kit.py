@@ -485,6 +485,39 @@ def build_bulwark():
         ball((s * 1.15, 1.45, 0.6), 0.2, M["ShieldEmit"], tur)
     empty("E_BShield", (0, 2.0, 0.4), tur)
 
+def build_relay():
+    # ~15 m comms relay: armored base, four tapering legs, glowing core, spinning dish (E_RDish)
+    K = kit("E_Relay")
+    box((0, 0, 0.6), (6.0, 6.0, 1.2), M["EArmor2"], K, bevel=0.12)
+    box((0, 0, 1.3), (4.6, 4.6, 0.3), M["Hazard"], K)
+    for (x, y) in ((1, 1), (-1, 1), (1, -1), (-1, -1)):
+        box((x * 2.6, y * 2.6, 0.9), (1.1, 1.1, 1.8), M["EArmor"], K, bevel=0.08)
+        a, b = (x * 2.1, y * 2.1, 1.4), (x * 0.7, y * 0.7, 12.5)
+        mid = tuple((a[i] + b[i]) / 2 for i in range(3))
+        dx, dy, dz = b[0] - a[0], b[1] - a[1], b[2] - a[2]
+        L = math.sqrt(dx * dx + dy * dy + dz * dz)
+        tilt = math.acos(dz / L)
+        cyl(mid, 0.22, L, M["Frame"], K, rot=(0, tilt, math.atan2(dy, dx)), verts=8)
+    for z in (4.5, 8.0, 11.0):
+        k = 1 - (z - 1.4) / 11.1 * 0.68
+        for (x, y, rz) in ((0, 1, 0), (0, -1, 0), (1, 0, math.pi / 2), (-1, 0, math.pi / 2)):
+            box((x * 2.1 * k, y * 2.1 * k, z), (4.2 * k, 0.16, 0.16), M["Frame"], K, rot=(0, 0, rz))
+    # core: armored housing with glowing slots (the hit point)
+    cyl((0, 0, 3.2), 1.3, 2.6, M["EArmor"], K, verts=10, smooth=False)
+    for i in range(5):
+        a = i * 2 * math.pi / 5
+        box((math.cos(a) * 1.28, math.sin(a) * 1.28, 3.2), (0.22, 0.22, 1.9), M["EEye"], K, rot=(0, 0, a))
+    cyl((0, 0, 4.6), 1.5, 0.3, M["Hazard"], K, verts=10, smooth=False)
+    cyl((0, 0, 7.5), 0.35, 6.0, M["Frame"], K)
+    ball((0, 0, 12.8), 0.7, M["EEye"], K)
+    dish = empty("E_RDish", (0, 0, 13.4), K)
+    cyl((0, 0, 0.2), 0.25, 0.6, M["Joint"], dish)
+    cyl((0, 0.7, 0.9), 1.9, 0.25, M["EArmor"], dish, rot=(math.radians(70), 0, 0), verts=16, r2=0.6, smooth=False)
+    cyl((0, 1.6, 1.2), 0.06, 1.6, M["Frame"], dish, rot=(math.radians(70), 0, 0))
+    for s in (-1, 1):
+        box((s * 0.9, 0, 0.5), (0.12, 0.12, 0.9), M["Frame"], dish)
+    empty("E_RCore", (0, 0, 3.2), K)
+
 # ================================================================= PROPS / PICKUPS
 def build_props():
     K = kit("P_Crate")
@@ -517,7 +550,7 @@ def build_props():
 build_mech()
 build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade()
 build_missile(); build_cannon(); build_laser()
-build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout

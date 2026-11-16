@@ -28,6 +28,7 @@ An original third-person mech action game, inspired by the gameplay in x.com/Bey
 | LMB / RMB with the blade | With a lock: lunge up to 38 m and slash. The blade cuts through Bulwark shields |
 | R | Reload |
 | Esc | Pause |
+| Gamepad (standard mapping) | LS move · RS look (light aim assist toward the primary lock) · RT / LT arm weapons · RB shoulder · A jump / hover · B, LB or LS click boost (tap = quick boost) · X reload · Start pause. On the title screen A sorties and Y opens the hangar; in pause / results A resumes or retries, B goes to the hangar. Moving the mouse switches back to mouse control |
 
 If the browser refuses pointer lock (for example inside the Artifact iframe), the game falls back to free-mouse mode: the reticle follows the cursor and the camera turns when the cursor is near the screen edge.
 
@@ -38,6 +39,14 @@ If the browser refuses pointer lock (for example inside the Artifact iframe), th
 - **Blade** `blade`: arm weapon. With a lock it lunges at 120 m/s (`Mech.lungeT` holds velocity and skips gravity), then hits everything within 7.5 m; `G.pierce` bypasses shields; hit-stop `G.hitStop`
 - **Bosses** `BOSSES`: tyrant / phantom (light frame, rail + blade + missile → gatling + blade + laser). Enemy blades wind up for 0.45 s with a red flash and ring
 - **Credits / upgrades**: kill rewards `KILL_CR` × difficulty, mission reward × rank. Hangar upgrades armor / generator / thrusters / FCS, 5 levels each (600–4200 C). Save data `ironvanguard.save.v1` (credits, upgrades, best per mission and difficulty)
+
+## v3 content (2026-11-16)
+
+- **Snowfield Strike** (`MISSIONS.snow`, env `snow`, seed 21): wave 1 is an objective. Destroy 3 relay towers at the fixed `relaySites` in `world.js`, which the building scatter keeps clear. Wave 2 is a counter-attack. The final wave starts with Tyrant; Phantom drops in after 45 s or once Tyrant is below 50% HP (`run.boss2`). Their HP bars are combined, and the wave before the final repairs 50% instead of 25%
+- **Relay tower** `Relay` (`combat.js`, kit `E_Relay`, 2500 HP): calls 2 drones every 20–26 s (`G.onRelayCall`, capped at 7 live drones). It fires an EMP when the player stays within 15 m: a 1.1 s ground warning, then 22 damage and −30 EN. Only the base and the upper mast are solids. **The core hit sphere must not sit inside a solid**, otherwise shots stop on the box and the tower can't be damaged (that was the first version)
+- HUD: relays get yellow diamonds on the radar, a yellow off-screen arrow and an on-screen `◆ 中继塔 120m` label; the wave line reads `中继塔 N · 敌机 M`
+- Snow look: `buildArena(scene, seed, env)` now takes the env key; the snow floor covers the tiles, roofs are white, and walls get frost ledges. `snowFx` is 3200 flakes in a 70 m box that follows the camera and wraps around it
+- **Gamepad**: `pollPad()` runs once per rendered frame (menu buttons, edge detection); `step()` folds the stick and button state into the same intent as the keyboard. Test hook: override `navigator.getGamepads`, then call `__iv.pollPad()` + `__iv.step(1)` per frame, because rAF doesn't run in a hidden pane
 
 ## Structure
 
@@ -67,3 +76,4 @@ If the browser refuses pointer lock (for example inside the Artifact iframe), th
 - Between waves: 4.5 s, ammo refilled, 25% HP restored
 - The autopilot (perfect aim, never uses cover) clears all five loadouts in 110–190 s, with about a 50% win rate
 - Night Raid: the autopilot won 2 of 3 loadouts (130–150 s); its top damage sources are gunship missiles / chin gun and the boss blade. Endless: the autopilot reaches wave 10, where the second boss (Phantom) kills it
+- Snowfield: rifle / gatling / missile wins in 155 s; blade / rifle / cannon (light frame) loses at 144 s with Phantom on 505 HP. With both bosses arriving at once, both loadouts died; staggering Phantom's arrival is what makes it winnable

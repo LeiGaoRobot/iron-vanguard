@@ -6,11 +6,11 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadKit } from './kit.js';
-import { buildArena, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine } from './world.js';
-import { FX } from './fx.js';
+import { buildArena, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine, relaySites } from './world.js';
+import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff } from './mech.js';
-import { G, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Boss, BOSSES, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 const V3 = THREE.Vector3;
@@ -32,14 +32,20 @@ const MISSIONS = {
     { title: 'WAVE 3', sub: '全面进攻', spawn: { gunship: 2, bulwark: 2, turret: 3, drone: 3 } },
     { title: 'FINAL WAVE', sub: '击破强袭机「幻影」 · 注意它的光束剑', spawn: { boss: 'phantom', drone: 2 } },
   ] },
+  snow: { name: '雪原 · 中继站强袭', en: 'SNOWFIELD STRIKE', desc: '暴雪 · 摧毁 3 座中继塔 · 双头目「暴君」与「幻影」', seed: 21, env: 'snow', reward: 4400, waves: [
+    { title: 'OBJECTIVE', sub: '摧毁 3 座通讯中继塔 · 塔会持续呼叫增援，贴近会遭电磁脉冲', spawn: { relay: 3, turret: 4, walker: 2, drone: 3 } },
+    { title: 'WAVE 2', sub: '敌军反扑', spawn: { bulwark: 2, gunship: 1, walker: 2, drone: 4 } },
+    { title: 'FINAL WAVE', sub: '双头目来袭：「暴君」与「幻影」', spawn: { boss: 'tyrant', boss2: 'phantom', bossHp: 0.62 } },
+  ] },
   endless: { name: '无尽防线', en: 'ENDLESS', desc: '黄昏 · 无限波次，越来越强 · 每 5 波一个头目', seed: 5, env: 'dusk', endless: true, reward: 0 },
 };
 const ENVS = {
   day: { top: 0x6f98bf, hor: 0xc4cfd8, fog: [90, 560], hemi: [0xdfe9f2, 0x6a6660, 0.6], sun: [0xfff1de, 2.2], env: 0.42, exp: 0.9, dir: [0.45, 0.55, 0.7], disc: 1 },
   dusk: { top: 0x3c4f7c, hor: 0xd99a74, fog: [80, 520], hemi: [0xffd6b8, 0x4c4240, 0.5], sun: [0xffb47a, 2.5], env: 0.34, exp: 0.95, dir: [-0.62, 0.2, 0.46], disc: 1.4 },
+  snow: { top: 0x8ea3b8, hor: 0xd6dee6, fog: [40, 300], hemi: [0xeef4ff, 0x8f99a6, 0.72], sun: [0xf2f6ff, 1.5], env: 0.36, exp: 0.82, dir: [0.35, 0.42, 0.65], disc: 0.35, snow: true },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, boss: 1200 };
+const KILL_CR = { drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -101,17 +107,40 @@ function applyEnv(key) {
   hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2];
   sun.color.set(E.sun[0]); sun.intensity = E.sun[1];
   scene.environmentIntensity = E.env; renderer.toneMappingExposure = E.exp;
+  snowFx.visible = !!E.snow;
 }
 let arenaKey = '';
 function ensureArena() {
   const M = MISSIONS[cfg.mission], key = M.seed + M.env;
   if (key === arenaKey && arenaGroup) return;
   if (arenaGroup) scene.remove(arenaGroup);
-  arenaGroup = buildArena(scene, M.seed, M.env === 'night'); arenaKey = key;
+  arenaGroup = buildArena(scene, M.seed, M.env); arenaKey = key;
   applyEnv(M.env);
 }
 
 const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.1, 2000);
+// falling snow: a box of flakes that follows the camera and wraps around it
+const SNOW_N = 3200, SNOW_BOX = 70;
+const snowFx = (() => {
+  const g = new THREE.BufferGeometry(), a = new Float32Array(SNOW_N * 3);
+  for (let i = 0; i < SNOW_N * 3; i++) a[i] = (Math.random() - 0.5) * SNOW_BOX;
+  g.setAttribute('position', new THREE.BufferAttribute(a, 3));
+  const m = new THREE.PointsMaterial({ color: 0xffffff, size: 0.22, map: TEX.softTex, alphaTest: 0.02, transparent: true, opacity: 0.9, depthWrite: false });
+  const pts = new THREE.Points(g, m); pts.frustumCulled = false; pts.visible = false; scene.add(pts);
+  pts.userData.ph = new Float32Array(SNOW_N).map(() => Math.random() * 6.28);
+  return pts;
+})();
+function updateSnow(dt) {
+  if (!snowFx.visible) return;
+  const a = snowFx.geometry.attributes.position.array, ph = snowFx.userData.ph, c = camera.position, H = SNOW_BOX / 2, t = G.time;
+  const cc = [c.x, c.y, c.z];
+  for (let i = 0; i < SNOW_N; i++) {
+    const j = i * 3;
+    a[j] += (Math.sin(t * 0.9 + ph[i]) * 0.6 + 2.2) * dt; a[j + 1] -= (2.6 + (ph[i] % 1.3)) * dt; a[j + 2] += Math.cos(t * 0.7 + ph[i]) * 0.5 * dt;
+    for (let k = 0; k < 3; k++) { const d = a[j + k] - cc[k]; if (d > H) a[j + k] -= SNOW_BOX; else if (d < -H) a[j + k] += SNOW_BOX; }
+  }
+  snowFx.geometry.attributes.position.needsUpdate = true;
+}
 const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: 4 }));
 composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.7, 0.45, 2.6);
@@ -165,6 +194,7 @@ canvas.addEventListener('mousedown', (e) => {
 addEventListener('mouseup', (e) => { if (e.button === 0) mouse.b0 = false; if (e.button === 2) mouse.b2 = false; gDrag = false; });
 addEventListener('mousemove', (e) => {
   mouse.x = e.clientX; mouse.y = e.clientY;
+  if (pad.active) { pad.moveAcc += Math.abs(e.movementX) + Math.abs(e.movementY); if (pad.moveAcc > 40) { pad.moveAcc = 0; setPadActive(false); } }
   if (pointerLocked) { mouse.dx += e.movementX; mouse.dy += e.movementY; }
   if (gDrag && (state === 'garage' || state === 'title')) gYaw -= e.movementX * 0.008;
 });
@@ -176,8 +206,43 @@ function requestLock() {
 }
 document.addEventListener('pointerlockchange', () => {
   pointerLocked = document.pointerLockElement === canvas;
-  if (!pointerLocked && state === 'play' && !freeMouse) setState('pause');
+  if (!pointerLocked && state === 'play' && !freeMouse && !pad.active) setState('pause');
 });
+
+// ------------------------------------------------------------------ gamepad (standard mapping)
+// LS move · RS look · RT / LT arm weapons · RB shoulder · A jump / hover · B or LB boost (tap = quick boost) · X reload · Start pause
+const pad = { active: false, b: [], prev: [], lx: 0, ly: 0, rx: 0, ry: 0, moveAcc: 0 };
+const padDz = (v, d) => { const a = Math.abs(v); return a < d ? 0 : Math.sign(v) * Math.pow((a - d) / (1 - d), 1.6); };
+const padHit = (i) => !!pad.b[i] && !pad.prev[i];
+function setPadActive(on) {
+  if (pad.active === on) return;
+  pad.active = on;
+  if (G.pw && G.pw.R) buildWeaponPanel();
+  $('keyHints') && $('keyHints').classList.toggle('pad', on);
+  if (on && state === 'play') showHint('手柄：左摇杆移动 · 右摇杆视角 · RT/LT 双臂 · RB 肩部 · A 跳跃 · B 推进 · X 装填', 4);
+}
+function pollPad() {
+  let gp = null;
+  try { for (const g of (navigator.getGamepads ? navigator.getGamepads() : [])) if (g && g.connected) { gp = g; break; } } catch (e) { /* blocked by permissions policy */ }
+  pad.prev = pad.b;
+  if (!gp) { pad.b = []; pad.lx = pad.ly = pad.rx = pad.ry = 0; return; }
+  pad.b = gp.buttons.map((x) => x.value > 0.4);
+  const ax = gp.axes;
+  pad.lx = padDz(ax[0] || 0, 0.2); pad.ly = padDz(ax[1] || 0, 0.2); pad.rx = padDz(ax[2] || 0, 0.12); pad.ry = padDz(ax[3] || 0, 0.12);
+  if (!pad.active && (pad.b.some(Boolean) || Math.abs(pad.lx) + Math.abs(pad.ly) + Math.abs(pad.rx) + Math.abs(pad.ry) > 0.2)) setPadActive(true);
+  // menu buttons
+  if (state === 'title' && padHit(0)) sortie();
+  else if (state === 'title' && padHit(3)) { initAudio(); setState('garage'); }
+  else if (state === 'garage' && padHit(0)) sortie();
+  else if (state === 'garage' && padHit(1)) { saveCfg(); setState('title'); }
+  else if (state === 'pause' && (padHit(9) || padHit(0))) resume();
+  else if (state === 'pause' && padHit(1)) { clearWorld(); makePlayer(); setState('garage'); }
+  else if (state === 'result' && padHit(0)) sortie();
+  else if (state === 'result' && padHit(1)) { clearWorld(); makePlayer(); setState('garage'); }
+  else if (state === 'play' && padHit(9)) setState('pause');
+  if (state === 'play' && padHit(2)) manualReload();
+}
+addEventListener('gamepadconnected', () => { pollPad(); });
 document.addEventListener('pointerlockerror', () => { freeMouse = true; showHint('浏览器不允许锁定鼠标：准星跟随光标，光标靠近屏幕边缘会转动视角', 4); });
 document.addEventListener('visibilitychange', () => { if (document.hidden && state === 'play') setState('pause'); });
 
@@ -218,7 +283,7 @@ function garageCamera(dt, auto) {
 // ------------------------------------------------------------------ aiming + locks
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), _sp = new V3();
 const lockR = () => innerHeight * 0.16, mslR = () => innerHeight * 0.3;
-function reticlePx() { return freeMouse && state === 'play' ? { x: mouse.x, y: mouse.y } : { x: innerWidth / 2, y: innerHeight / 2 }; }
+function reticlePx() { return freeMouse && !pad.active && state === 'play' ? { x: mouse.x, y: mouse.y } : { x: innerWidth / 2, y: innerHeight / 2 }; }
 function updateAim() {
   const p = G.player; const rp = reticlePx();
   ndc.set(rp.x / innerWidth * 2 - 1, -(rp.y / innerHeight) * 2 + 1);
@@ -305,8 +370,8 @@ function newGame() {
   makePlayer();
   Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
   const M = MISSIONS[cfg.mission];
-  Object.assign(run, { wave: -1, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0, cr: 0, msslT: 0, waves: M.endless ? [] : M.waves, endless: !!M.endless });
-  G.boss = null;
+  Object.assign(run, { wave: -1, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0, cr: 0, msslT: 0, boss2: null, relayHintT: 0, waves: M.endless ? [] : M.waves, endless: !!M.endless });
+  G.boss = null; G.bosses = [];
   $('bossBox').classList.add('hidden');
 }
 
@@ -343,8 +408,11 @@ function startWave(i) {
   for (let k = 0; k < (S.walker || 0); k++) new Walker(spot(80, 140));
   for (let k = 0; k < (S.bulwark || 0); k++) new Bulwark(spot(75, 130));
   for (let k = 0; k < (S.gunship || 0); k++) new Gunship(spot(100, 150, true));
+  for (let k = 0; k < (S.relay || 0); k++) new Relay(relaySites[k].clone());
+  G.bosses = [];
   if (S.boss) {
-    G.boss = new Boss(spot(90, 120), mctx, S.boss, S.bossHp || 1);
+    G.boss = new Boss(spot(90, 120), mctx, S.boss, S.bossHp || 1); G.bosses.push(G.boss);
+    run.boss2 = S.boss2 ? { type: S.boss2, hp: S.bossHp || 1, t: 0 } : null;   // the second boss drops in mid-fight
     $('bossName').textContent = BOSSES[S.boss].name;
     $('bossBox').classList.remove('hidden');
   }
@@ -360,8 +428,15 @@ G.onKill = (e) => {
   else if (e.kind === 'drone' && Math.random() < 0.12) dropRepair(e.c);
   else if (e.kind === 'turret' && Math.random() < 0.2) dropRepair(e.c);
   if (e.kind === 'boss') { fx.trauma = 1; timeScaleT = 1.6; }
+  if (e.kind === 'relay') { fx.trauma = Math.min(1, fx.trauma + 0.6); const n = G.enemies.filter((x) => x.kind === 'relay' && x.alive).length; banner('中继塔已摧毁', n ? `剩余 ${n} 座` : '全部中继塔已摧毁 · 清除残敌', false); }
 };
 G.onBossPhase = (b) => { banner(b.B.phase2[0], b.B.phase2[1], true); sfx('alarm'); for (let k = 0; k < 3; k++) new Drone(spot(50, 90, true)); };
+G.onRelayCall = (r) => {
+  if (G.enemies.filter((e) => e.kind === 'drone' && e.alive).length >= 7) return;
+  for (let k = 0; k < 2; k++) { const a = Math.random() * 6.28; new Drone(new V3(r.pos.x + Math.cos(a) * 8, 15 + Math.random() * 4, r.pos.z + Math.sin(a) * 8)); }
+  G.fx.ring(new V3(r.pos.x, 13.5, r.pos.z), null, 1, 10, 0.6, 0xff6040);
+  if (!run.relayHintT || run.t - run.relayHintT > 40) { run.relayHintT = run.t; showHint('中继塔正在呼叫增援 · 优先摧毁中继塔', 2.5); }
+};
 G.onEnemyMissile = () => { if (run.msslT <= 0) { sfx('warn'); run.msslT = 1; } };
 G.onPlayerHit = () => {};
 let timeScaleT = 0;
@@ -383,18 +458,31 @@ function waveLogic(dt) {
   }
   const alive = G.enemies.filter((e) => !e.gone).length;
   run.msslT -= dt;
-  if (G.boss && G.boss.phase === 2 && G.boss.alive) {
+  if (run.boss2 && G.boss) {
+    run.boss2.t += dt;
+    if (run.boss2.t > 45 || G.boss.hp < G.boss.maxHp * 0.5 || !G.boss.alive) {
+      const T = run.boss2.type; run.boss2 = null;
+      G.bosses.push(new Boss(spot(70, 100), mctx, T, curWave().spawn.bossHp || 1));
+      $('bossName').textContent = G.bosses.map((b) => b.B.name.split(' · ')[0]).join(' ＆ ');
+      $('bossBox').classList.remove('hidden');
+      banner('增援头目出现', BOSSES[T].name, true); sfx('alarm');
+      return;
+    }
+  }
+  if (G.bosses && G.bosses.some((b) => b.phase === 2 && b.alive)) {
     run.droneT -= dt;
     if (run.droneT <= 0) { run.droneT = 22; if (G.enemies.filter((e) => e.kind === 'drone' && e.alive).length < 3) for (let k = 0; k < 2; k++) new Drone(spot(60, 100, true)); }
   }
   if (alive === 0) {
     if (!run.endless && run.wave >= run.waves.length - 1) { if (!run.won) { run.won = true; banner('MISSION COMPLETE', '头目已击破', false); run.deathT = 3.5; } run.deathT -= dt; if (run.deathT <= 0) finish(true); return; }
     if (run.endless) { const b = Math.round(150 * (run.wave + 1) * DIFFS[cfg.diff].cr); run.cr += b; }
-    G.boss = null;
-    banner('WAVE CLEAR', run.endless ? `第 ${run.wave + 1} 波完成 · 弹药补满 · 修复 25% 装甲` : '短暂整备 · 弹药补满 · 修复 25% 装甲', false);
+    G.boss = null; G.bosses = [];
+    banner(run.waves[run.wave].spawn.relay ? 'OBJECTIVE CLEAR' : 'WAVE CLEAR', run.endless ? `第 ${run.wave + 1} 波完成 · 弹药补满 · 修复 25% 装甲` : '短暂整备 · 弹药补满 · 修复 25% 装甲', false);
     sfx('repair');
     for (const k of ['R', 'L', 'S']) { const w = G.pw[k]; w.ammo = w.d.mag || 0; w.reloadT = 0; w.cd = 0; }
-    p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.25);
+    const nx = run.waves[run.wave + 1], big = nx && nx.spawn.boss2;
+    p.hp = Math.min(p.maxHp, p.hp + p.maxHp * (big ? 0.5 : 0.25));
+    if (big) showHint('下一波是双头目 · 已额外修复装甲', 3);
     run.breakT = 4.5;
   }
 }
@@ -449,7 +537,7 @@ function sortie() {
   initAudio(); saveCfg();
   newGame();
   setState('play');
-  requestLock();
+  if (!pad.active) requestLock(); else { freeMouse = true; showHint('手柄：左摇杆移动 · 右摇杆视角 · RT/LT 双臂 · RB 肩部 · A 跳跃 · B 推进 · X 装填', 4); }
 }
 function resume() { setState('play'); if (!freeMouse) requestLock(); }
 $('btnSortie').onclick = sortie;
@@ -527,7 +615,7 @@ function rebuildPreview() { makePlayer(); }
 const wrows = {};
 function buildWeaponPanel() {
   const el = $('weapons'); el.innerHTML = '';
-  for (const [slot, key] of [['R', 'LMB'], ['L', 'RMB'], ['S', 'E']]) {
+  for (const [slot, key] of pad.active ? [['R', 'RT'], ['L', 'LT'], ['S', 'RB']] : [['R', 'LMB'], ['L', 'RMB'], ['S', 'E']]) {
     const w = G.pw[slot];
     const d = document.createElement('div'); d.className = 'wrow';
     d.innerHTML = `<div class="top"><span class="key">${key}</span><span class="nm">${w.d.name}</span><span class="am"></span></div><div class="wb"><i></i></div>`;
@@ -535,7 +623,7 @@ function buildWeaponPanel() {
     wrows[slot] = { d, am: d.querySelector('.am'), bar: d.querySelector('.wb i') };
   }
 }
-const lockPool = [], markPool = [];
+const lockPool = [], markPool = [], objPool = [];
 function poolEl(pool, parent, cls) { const d = document.createElement('div'); d.className = cls; parent.appendChild(d); pool.push(d); return d; }
 let bannerT = 0, hintT = 0;
 function banner(t, sub, warn) { const b = $('banner'); b.innerHTML = `${t}<small>${sub || ''}</small>`; b.classList.toggle('warn', !!warn); b.classList.add('show'); bannerT = 2.8; }
@@ -598,11 +686,21 @@ function drawHUD(dt) {
     const ang = Math.atan2(-y, x);
     const k = Math.min((innerWidth / 2 - 30) / Math.abs(Math.cos(ang) || 1e-6), (innerHeight / 2 - 30) / Math.abs(Math.sin(ang) || 1e-6));
     const d = markPool[mi] || poolEl(markPool, M, 'mark'); mi++;
-    d.style.display = ''; d.className = 'mark' + (e.kind === 'boss' ? ' boss' : '');
+    d.style.display = ''; d.className = 'mark' + (e.kind === 'boss' ? ' boss' : e.kind === 'relay' ? ' obj' : '');
     d.style.left = (cx + Math.cos(ang) * k) + 'px'; d.style.top = (cy + Math.sin(ang) * k) + 'px';
     d.style.transform = `rotate(${ang + Math.PI / 2}rad)`;
   }
   for (; mi < markPool.length; mi++) markPool[mi].style.display = 'none';
+  let oi = 0;
+  for (const e of G.enemies) {
+    if (e.kind !== 'relay' || !e.alive) continue;
+    _sp.set(e.pos.x, e.pos.y + 15.5, e.pos.z).project(camera);
+    if (_sp.z > 1 || Math.abs(_sp.x) > 1 || Math.abs(_sp.y) > 1) continue;
+    const d = objPool[oi] || poolEl(objPool, M, 'objm'); oi++;
+    d.style.display = ''; d.style.left = ((_sp.x + 1) / 2 * innerWidth) + 'px'; d.style.top = ((1 - _sp.y) / 2 * innerHeight) + 'px';
+    d.textContent = `◆ 中继塔 ${Math.round(e.pos.distanceTo(p.pos))}m`;
+  }
+  for (; oi < objPool.length; oi++) objPool[oi].style.display = 'none';
   // hurt vignette
   G.hud.hurt = Math.max(0, G.hud.hurt - dt * 1.2);
   $('hurt').style.opacity = Math.min(0.9, G.hud.hurt + (hpK < 0.25 ? 0.25 + Math.sin(performance.now() / 180) * 0.1 : 0)).toFixed(2);
@@ -610,9 +708,11 @@ function drawHUD(dt) {
   if (run.wave >= 0) {
     $('waveTitle').textContent = curWave().title;
     const left = G.enemies.filter((e) => e.alive).length;
-    $('waveSub').textContent = run.breakT > 0 ? '整备中…' : `剩余敌机 ${left}`;
+    const rl = G.enemies.filter((e) => e.kind === 'relay' && e.alive).length;
+    $('waveSub').textContent = run.breakT > 0 ? '整备中…' : (rl ? `中继塔 ${rl} · 敌机 ${left - rl}` : `剩余敌机 ${left}`);
   } else { $('waveTitle').textContent = 'STANDBY'; $('waveSub').textContent = ''; }
-  if (G.boss && !G.boss.gone) $('bossBar').firstElementChild.style.width = (G.boss.hp / G.boss.maxHp * 100).toFixed(1) + '%';
+  const bl = (G.bosses || []).filter((b) => !b.gone);
+  if (bl.length) $('bossBar').firstElementChild.style.width = (bl.reduce((a, b) => a + b.hp, 0) / G.bosses.reduce((a, b) => a + b.maxHp, 0) * 100).toFixed(1) + '%';
   else $('bossBox').classList.add('hidden');
   // incoming enemy missiles + credits ticker
   let inc = 0;
@@ -639,6 +739,7 @@ function drawHUD(dt) {
   for (const e of G.enemies) {
     if (!e.alive) continue;
     const x = (e.c.x - p.pos.x) * K, z = (e.c.z - p.pos.z) * K;
+    if (e.kind === 'relay') { rctx.fillStyle = '#ffd23a'; rctx.save(); rctx.translate(x, z); rctx.rotate(Math.PI / 4); rctx.fillRect(-6, -6, 12, 12); rctx.restore(); continue; }
     rctx.fillStyle = e.kind === 'boss' ? '#ff8a1a' : '#ff4a3a';
     const s = e.kind === 'boss' ? 9 : e.kind === 'gunship' ? 8 : e.kind === 'walker' || e.kind === 'bulwark' ? 7 : 5;
     rctx.fillRect(x - s / 2, z - s / 2, s, s);
@@ -656,7 +757,7 @@ function drawHUD(dt) {
 const auto = { on: false, st: 1, stT: 0, jT: 3, hover: 0, sT: 0 };
 function autoIntent(dt) {
   const p = G.player; let tgt = null, bd = 1e9;
-  for (const e of G.enemies) { if (!e.alive || e.dying) continue; const d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : 0); if (d < bd) { bd = d; tgt = e; } }
+  for (const e of G.enemies) { if (!e.alive || e.dying) continue; const d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : 0); if (d < bd) { bd = d; tgt = e; } }
   // pick up repairs when hurt
   let goal = null;
   if (p.hp < p.maxHp * 0.6) for (const k of G.pickups) { const d = k.o.position.distanceTo(p.pos); if (d < 70) { goal = k.o.position; break; } }
@@ -699,18 +800,29 @@ function step(dt) {
   // look
   if (pointerLocked) {
     cam.yaw -= mouse.dx * 0.0022 * cfg.sens; cam.pitch -= mouse.dy * 0.0022 * cfg.sens * (cfg.invY ? -1 : 1);
-  } else if (freeMouse && innerWidth > 0 && innerHeight > 0) {
+  } else if (freeMouse && !pad.active && innerWidth > 0 && innerHeight > 0) {
     const ex = (mouse.x / innerWidth - 0.5) * 2, ey = (mouse.y / innerHeight - 0.5) * 2;
     const band = (v) => Math.sign(v) * Math.max(0, Math.abs(v) - 0.55) / 0.45;
     cam.yaw -= band(ex) * 2.4 * cfg.sens * dt; cam.pitch -= band(ey) * 1.4 * cfg.sens * dt * (cfg.invY ? -1 : 1);
   }
   mouse.dx = mouse.dy = 0;
+  if (pad.active) {
+    cam.yaw -= pad.rx * 2.7 * cfg.sens * dt; cam.pitch -= pad.ry * 1.7 * cfg.sens * dt * (cfg.invY ? -1 : 1);
+    // light aim assist: drift toward the primary lock while the right stick is gentle
+    const lt = G.lockTarget;
+    if (lt && lt.sx !== undefined && Math.abs(pad.rx) + Math.abs(pad.ry) < 0.6) {
+      const ox = (lt.sx - innerWidth / 2) / innerHeight, oy = (lt.sy - innerHeight / 2) / innerHeight;
+      cam.yaw -= ox * 2.2 * dt; cam.pitch -= oy * 1.6 * dt;
+    }
+  }
   let A;
   if (auto.on) A = autoIntent(dt);
   else {
-    const shift = keys.has('ShiftLeft') || keys.has('ShiftRight'), space = keys.has('Space');
-    A = { f: (keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0), s: (keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0),
-      boost: shift, qboost: shift && !lastShift, jump: space && !lastSpace, hover: space, b0: mouse.b0, b2: mouse.b2, e: ePressed };
+    const B = pad.b;
+    const shift = keys.has('ShiftLeft') || keys.has('ShiftRight') || !!B[1] || !!B[4] || !!B[10], space = keys.has('Space') || !!B[0];
+    const cl = (v) => Math.max(-1, Math.min(1, v));
+    A = { f: cl((keys.has('KeyW') ? 1 : 0) - (keys.has('KeyS') ? 1 : 0) - pad.ly), s: cl((keys.has('KeyD') ? 1 : 0) - (keys.has('KeyA') ? 1 : 0) + pad.lx),
+      boost: shift, qboost: shift && !lastShift, jump: space && !lastSpace, hover: space, b0: mouse.b0 || !!B[7], b2: mouse.b2 || !!B[6], e: ePressed || !!B[5] };
     lastShift = shift; lastSpace = space;
   }
   cam.pitch = Math.max(-0.75, Math.min(0.95, cam.pitch));
@@ -738,9 +850,10 @@ function step(dt) {
   if (p.alive && p.grounded && p.thrustLv > 0.5 && Math.random() < 0.6) fx.dust(p.pos, 1, 1.8, 3);
   if (p.alive && !p.grounded && p.hoverLv > 0.3 && p.pos.y - groundAt(p.pos.x, p.pos.z, p.pos.y) < 6 && Math.random() < 0.5) fx.dust(new V3(p.pos.x, groundAt(p.pos.x, p.pos.z, p.pos.y), p.pos.z), 1, 2.2, 6);
   fx.update(dt, camera);
+  updateSnow(dt);
   waveLogic(dt);
   thrust(p.alive ? Math.max(p.thrustLv, p.hoverLv * 0.7) : 0);
-  const inten = run.wave < 0 ? 0 : (G.boss && G.boss.alive) ? 1 : Math.min(0.9, 0.45 + run.wave * 0.15);
+  const inten = run.wave < 0 ? 0 : (G.bosses && G.bosses.some((b) => b.alive)) ? 1 : Math.min(0.9, 0.45 + run.wave * 0.15);
   musicTick(run.over ? 0 : inten);
   // shadow camera follows the player
   sun.position.copy(p.pos).addScaledVector(SUN_DIR, 200); sun.target.position.copy(p.pos); sun.target.updateMatrixWorld();
@@ -752,6 +865,7 @@ function frame(now) {
   requestAnimationFrame(frame);
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
   if (state === 'loading') return;
+  pollPad();
   acc += dt;
   const STEP = 1 / 60;
   let n = 0;
@@ -781,13 +895,13 @@ window.__iv = {
   setState,
   wave: (i) => { clearWorld(); run.breakT = 0; startWave(i); },
   save, MISSIONS, ensureArena, applyEnv, writeSave,
-  mouse,
+  mouse, pad, setPadActive, pollPad,
 };
 
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=2');
+    await loadKit('./assets/kit.glb?v=3');
     ensureArena();
     makePlayer();
     setState('title');
