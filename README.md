@@ -25,10 +25,19 @@ An original third-person mech action game, inspired by the gameplay in x.com/Bey
 | Space | Jump; hold in the air to hover |
 | LMB / RMB | Right-arm / left-arm weapon |
 | E | Shoulder weapon (missiles lock up to 6 targets) |
+| LMB / RMB with the blade | With a lock: lunge up to 38 m and slash. The blade cuts through Bulwark shields |
 | R | Reload |
 | Esc | Pause |
 
 If the browser refuses pointer lock (for example inside the Artifact iframe), the game falls back to free-mouse mode: the reticle follows the cursor and the camera turns when the cursor is near the screen edge.
+
+## v2 content (2026-11-16)
+
+- **Missions** (`MISSIONS` in `main.js`): Proving Ground (day, boss Tyrant) / Night Raid (night, seed 11, Bulwark + Gunship, boss Phantom) / Endless (dusk, `endlessWave(i)` spends a growing budget on a random mix, boss every 5 waves, enemy HP +5% per wave). Lighting presets in `ENVS`, switched by `applyEnv`; `ensureArena` rebuilds the arena per mission seed
+- **New enemies** (`combat.js`): `Bulwark` shielded tank (frontal arc blocks hits: dot > 0.32 between the hit direction and the turret's forward; 560 shield HP, regenerates; down for 7 s when broken; mortar lobs with a ground warning `fx.warn`); `Gunship` (orbits at 22–30 m, chin-gun bursts, 4 slow homing missiles at turn rate 1.55; the HUD shows MISSILE ×N)
+- **Blade** `blade`: arm weapon. With a lock it lunges at 120 m/s (`Mech.lungeT` holds velocity and skips gravity), then hits everything within 7.5 m; `G.pierce` bypasses shields; hit-stop `G.hitStop`
+- **Bosses** `BOSSES`: tyrant / phantom (light frame, rail + blade + missile → gatling + blade + laser). Enemy blades wind up for 0.45 s with a red flash and ring
+- **Credits / upgrades**: kill rewards `KILL_CR` × difficulty, mission reward × rank. Hangar upgrades armor / generator / thrusters / FCS, 5 levels each (600–4200 C). Save data `ironvanguard.save.v1` (credits, upgrades, best per mission and difficulty)
 
 ## Structure
 
@@ -57,3 +66,4 @@ If the browser refuses pointer lock (for example inside the Artifact iframe), th
 - W1 5 turrets + 6 drones → W2 3 walkers + 6 drones + 3 turrets → W3 4 walkers + 8 drones + 4 turrets → FINAL boss (5200 HP, heavy frame ×1.35, phase 2 below 50% HP switches to coil + laser and calls 2 drones every 22 s)
 - Between waves: 4.5 s, ammo refilled, 25% HP restored
 - The autopilot (perfect aim, never uses cover) clears all five loadouts in 110–190 s, with about a 50% win rate
+- Night Raid: the autopilot won 2 of 3 loadouts (130–150 s); its top damage sources are gunship missiles / chin gun and the boss blade. Endless: the autopilot reaches wave 10, where the second boss (Phantom) kills it

@@ -10,6 +10,7 @@ export const PALETTES = {
   ronin: { name: '浪人 绿', en: 'Ronin', Armor: '#6d7350', Armor2: '#40453a', Accent: '#e07a2a' },
   specter: { name: '幽灵 黑', en: 'Specter', Armor: '#2b2e34', Armor2: '#585d66', Accent: '#2fd0ff' },
   sakura: { name: '樱 粉', en: 'Sakura', Armor: '#f1e4e9', Armor2: '#c595a6', Accent: '#7a3cc8' },
+  phantom: { name: '幻影', en: 'Phantom', Armor: '#1e2026', Armor2: '#3c3f48', Accent: '#d01840', Visor: '#ff3a5a', VisorEmit: '#ff1030', NozzleGlow: '#ff8aa0', NozzleGlowEmit: '#ff2050' },
   tyrant: { name: '暴君', en: 'Tyrant', Armor: '#3b2627', Armor2: '#1d1e22', Accent: '#ff3a20', Visor: '#ff5a3a', VisorEmit: '#ff2a10', NozzleGlow: '#ffb070', NozzleGlowEmit: '#ff6a20' },
 };
 export const FRAMES = {
@@ -36,7 +37,9 @@ const flameMat = (c) => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).
 export class Mech {
   constructor(scene, ctx, opts) {
     this.ctx = ctx;
-    this.frame = FRAMES[opts.frame || 'std'];
+    const M = opts.mods || {};
+    this.frame = { ...FRAMES[opts.frame || 'std'] };
+    this.frame.hp *= M.hp || 1; this.frame.en *= M.en || 1; this.frame.regen *= M.regen || 1; this.frame.boost *= M.boost || 1; this.frame.speed *= M.speed || 1;
     this.scale = (opts.scale || 1) * this.frame.scale;
     this.isBoss = !!opts.isBoss;
     this.root = new THREE.Group(); scene.add(this.root);
@@ -64,7 +67,7 @@ export class Mech {
     this.legYaw = opts.yaw || 0; this.aimYaw = this.legYaw; this.aimPitch = 0; this.torsoYaw = 0;
     this.grounded = true; this.maxHp = Math.round(this.frame.hp * (opts.hpMul || 1)); this.hp = this.maxHp;
     this.maxEn = this.frame.en; this.en = this.maxEn; this.overheat = 0; this.drainT = 0;
-    this.qbT = 0; this.landC = 0; this.phase = 0; this.backward = false; this.thrustLv = 0; this.hoverLv = 0; this.boosting = false;
+    this.qbT = 0; this.lungeT = 0; this.landC = 0; this.phase = 0; this.backward = false; this.thrustLv = 0; this.hoverLv = 0; this.boosting = false;
     this.alive = true; this.flinch = 0; this.lastStep = 0;
     this.pose = {};
     this.root.rotation.y = this.legYaw;
@@ -81,7 +84,7 @@ export class Mech {
     for (const s of Object.values(this.slots)) for (const m of s.models) m.parent && m.parent.remove(m);
     this.slots = {};
     this.loadout = { ...loadout };
-    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser' };
+    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade' };
     const mk = (slot, key, mounts) => {
       const models = [], muzzles = [];
       for (const mt of mounts) {
@@ -89,7 +92,7 @@ export class Mech {
         this.n[mt].add(m); recolor(m, PALETTES[this.paletteKey], this.paletteKey);
         models.push(m); muzzles.push(find(m, 'Muzzle'));
       }
-      this.slots[slot] = { key, models, muzzles, spin: find(models[0], 'G_Spin'), alt: 0 };
+      this.slots[slot] = { key, models, muzzles, spin: find(models[0], 'G_Spin'), blade: find(models[0], 'B_Blade'), alt: 0, slashT: 0, slashSide: 1, bladeOn: 0, bladeLv: 0 };
     };
     mk('R', loadout.R, ['W_HandR']);
     mk('L', loadout.L, ['W_HandL']);
@@ -122,11 +125,17 @@ export class Mech {
       this.en -= 18; this.qbT = 0.28; this.drainT = 0;
       this.ctx.onQuickBoost && this.ctx.onQuickBoost(this);
     }
+    if (this.lungeT > 0) {
+      this.lungeT -= dt;
+      if (this.lungeT <= 0) { this.vel.multiplyScalar(0.2); }
+      this.boosting = true;
+    }
+    const lunging = this.lungeT > 0;
     const top = (this.boosting ? BOOST * F.boost : WALK * F.speed) * mlen;
     const acc = this.grounded ? (this.boosting ? 70 : 55) : (this.boosting ? 32 : 12);
     const tx = dx * top, tz = dz * top;
     const k = this.qbT > 0 ? 1 - Math.exp(-2.2 * dt) : 1 - Math.exp(-acc / Math.max(6, top + 6) * dt * 1.6);
-    this.vel.x += (tx - this.vel.x) * k; this.vel.z += (tz - this.vel.z) * k;
+    if (!lunging) { this.vel.x += (tx - this.vel.x) * k; this.vel.z += (tz - this.vel.z) * k; }
     if (this.boosting) drain += this.grounded ? 14 : 20;
     this.qbT = Math.max(0, this.qbT - dt);
     // vertical
@@ -136,7 +145,7 @@ export class Mech {
       hovering = true; drain += 26;
       this.vel.y += (GRAV + 20) * dt; if (this.vel.y > 9) this.vel.y = 9;
     }
-    this.vel.y -= GRAV * dt;
+    if (!lunging) this.vel.y -= GRAV * dt;
     if (this.grounded && this.vel.y < 0) this.vel.y = 0;
     // energy
     if (drain > 0) { this.en -= drain * dt; this.drainT = 0; }
@@ -167,7 +176,7 @@ export class Mech {
     }
     if (p.y > 60) { p.y = 60; this.vel.y = Math.min(0, this.vel.y); }
     // thrust levels for visuals / audio
-    const thr = this.qbT > 0 ? 1 : (this.boosting ? 0.85 : hovering ? 0.7 : 0);
+    const thr = this.qbT > 0 || lunging ? 1 : (this.boosting ? 0.85 : hovering ? 0.7 : 0);
     this.thrustLv += (thr - this.thrustLv) * (1 - Math.exp(-14 * dt));
     this.hoverLv += ((hovering ? 1 : 0) - this.hoverLv) * (1 - Math.exp(-12 * dt));
     this.hovering = hovering;
@@ -228,13 +237,33 @@ export class Mech {
     n.M_FootL.rotation.x = P.fl; n.M_FootR.rotation.x = P.fr;
     n.M_Torso.rotation.set(P.torX - this.flinch * 0.2, this.torsoYaw, 0, 'YXZ');
     const pitch = this.aimPitch - P.torX;
+    let twist = 0;
     for (const side of ['L', 'R']) {
       const slot = this.slots[side];
-      n['M_Arm' + side].rotation.x = Math.max(-0.9, Math.min(1.2, pitch + (slot.recoil || 0) * 0.5));
-      n['M_Arm' + side].rotation.z = 0;
-      n['M_Fore' + side].rotation.x = (slot.recoil || 0);
+      const A = n['M_Arm' + side];
+      if (slot.slashT > 0) {
+        // wind up high to the outside, sweep down and across the body
+        const k = 1 - slot.slashT / 0.5, e = k < 0.25 ? k / 0.25 * 0.15 : 0.15 + (1 - Math.pow(1 - (k - 0.25) / 0.75, 3)) * 0.85;
+        const out = side === 'L' ? 1 : -1, sd = slot.slashSide;
+        A.rotation.x = 1.5 - e * 2.3;
+        A.rotation.z = out * (0.9 - e * 1.7) * (sd > 0 ? 1 : 0.6);
+        n['M_Fore' + side].rotation.x = 0.5 - e * 0.4;
+        twist += out * (0.55 - e * 1.1);
+        slot.slashT = Math.max(0, slot.slashT - dt);
+      } else {
+        A.rotation.x = Math.max(-0.9, Math.min(1.2, pitch + (slot.recoil || 0) * 0.5));
+        A.rotation.z = 0;
+        n['M_Fore' + side].rotation.x = (slot.recoil || 0);
+      }
       slot.recoil = Math.max(0, (slot.recoil || 0) - dt * 3);
+      if (slot.blade) {
+        const on = slot.slashT > 0 || slot.bladeOn > 0 ? 1 : 0.14;
+        slot.bladeOn = Math.max(0, slot.bladeOn - dt);
+        slot.bladeLv += (on - slot.bladeLv) * (1 - Math.exp(-(on > slot.bladeLv ? 30 : 8) * dt));
+        slot.blade.scale.set(1 + slot.bladeLv * 0.5, slot.bladeLv, 1 + slot.bladeLv * 0.5);
+      }
     }
+    if (twist) n.M_Torso.rotation.y = this.torsoYaw + twist;
     n.M_Head.rotation.x = Math.max(-0.4, Math.min(0.5, pitch * 0.6));
     const ss = this.slots.S; if (ss) { ss.recoil = Math.max(0, (ss.recoil || 0) - dt * 3); for (const m of ss.models) m.position.z = (ss.recoil || 0) * 0.4; }
     // weapon spin

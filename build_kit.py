@@ -69,6 +69,9 @@ M = dict(
     Concrete=mat("Concrete", "#8d9096", 0.9), Barrel=mat("Barrel", "#b8402e", 0.5, metal=0.3),
     Repair=mat("Repair", "#8dffb0", 0.2, emit="#3cff86", strength=5.0),
     Ammo=mat("Ammo", "#ffe58a", 0.2, emit="#ffc23c", strength=5.0),
+    Blade=mat("Blade", "#d8fbff", 0.1, emit="#7ff6ff", strength=9.0),
+    Glass=mat("Glass", "#1c2a33", 0.15, metal=0.6),
+    ShieldEmit=mat("ShieldEmit", "#9fe8ff", 0.2, emit="#4fd8ff", strength=6.0),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -337,6 +340,19 @@ def build_rail():
     cyl((0, 0.1, 0.3), 0.12, 0.6, M["Rail"], K, rot=ALONG_Y)
     muzzle("Muzzle_Rail", (0, 1.95, 0), K)
 
+def build_blade():
+    K = kit("W_Blade")
+    # forearm-mounted emitter; the beam itself lives under B_Blade so the page can extend it
+    box((0, 0.15, 0), (0.4, 0.8, 0.42), M["Frame"], K, bevel=0.05)
+    box((0, 0.1, 0.26), (0.3, 0.6, 0.08), M["Armor"], K, bevel=0.02)
+    box((0.22, 0.1, 0), (0.04, 0.55, 0.2), M["Accent"], K)
+    cyl((0, 0.65, 0), 0.17, 0.3, M["Joint"], K, rot=ALONG_Y)
+    torus((0, 0.82, 0), 0.15, 0.04, M["Blade"], K, rot=(math.pi / 2, 0, 0))
+    b = empty("B_Blade", (0, 0.85, 0), K)
+    box((0, 1.5, 0), (0.08, 3.0, 0.22), M["Blade"], b)
+    box((0, 3.05, 0), (0.06, 0.18, 0.14), M["Blade"], b)
+    muzzle("Muzzle_Blade", (0, 1.0, 0), K)
+
 # ================================================================= SHOULDER WEAPONS
 def build_missile():
     K = kit("S_Missile")
@@ -417,6 +433,58 @@ def build_walker():
         box((0.15, 0, -1.2), (0.26, 0.26, 2.4), M["Frame"], kn, rot=(0, math.radians(-8), 0), bevel=0.03)
         box((0.32, 0, -2.45), (0.5, 0.5, 0.18), M["EArmor2"], kn, bevel=0.03)
 
+def build_gunship():
+    K = kit("E_Gunship")
+    # fuselage along +Y, ~7 m long
+    box((0, 0, 0), (1.9, 4.6, 1.5), M["EArmor"], K, bevel=0.12)
+    wedge((0, 2.7, -0.05), (1.6, 1.2, 1.2), M["EArmor2"], K, taper=0.4, bevel=0.08)
+    box((0, 3.05, 0.25), (0.9, 0.5, 0.35), M["Glass"], K, bevel=0.05)
+    box((0, 3.25, 0.05), (0.7, 0.08, 0.14), M["EEye"], K)
+    box((0, -2.9, 0.3), (0.6, 2.0, 0.5), M["EArmor2"], K, bevel=0.05)
+    box((0, -3.8, 0.9), (0.12, 0.8, 1.1), M["EArmor"], K, bevel=0.03)
+    box((0, -0.4, 0.8), (1.2, 2.0, 0.2), M["Hazard"], K)
+    box((0, -0.4, -0.85), (1.4, 3.0, 0.3), M["Frame"], K)
+    for s in (-1, 1):
+        side = "L" if s < 0 else "R"
+        box((s * 1.8, 0.2, 0.2), (1.8, 0.6, 0.18), M["Frame"], K)
+        # rotor nacelle
+        cyl((s * 2.9, 0.2, 0.2), 0.75, 0.7, M["EArmor2"], K, verts=16, smooth=False)
+        torus((s * 2.9, 0.2, 0.55), 1.45, 0.08, M["Frame"], K)
+        r = empty(f"E_GRotor{side}", (s * 2.9, 0.2, 0.62), K)
+        for a in (0, math.pi / 3, 2 * math.pi / 3):
+            box((0, 0, 0), (2.7, 0.18, 0.04), M["Black"], r, rot=(0, 0, a))
+        # missile pod
+        box((s * 1.25, 0.9, -0.55), (0.55, 1.3, 0.55), M["EArmor2"], K, bevel=0.05)
+        for i in range(2):
+            for j in range(2):
+                cyl((s * 1.25 - 0.12 + i * 0.24, 1.56, -0.67 + j * 0.24), 0.08, 0.04, M["EEye"], K, rot=ALONG_Y, verts=8)
+        muzzle(f"Muzzle_Gunship{side}", (s * 1.25, 1.7, -0.55), K)
+    cyl((0, 2.3, -0.9), 0.22, 0.4, M["Frame"], K)
+    cyl((0, 2.75, -1.05), 0.08, 0.9, M["Joint"], K, rot=ALONG_Y)
+    muzzle("Muzzle_GunshipC", (0, 3.25, -1.05), K)
+
+def build_bulwark():
+    K = kit("E_Bulwark")
+    box((0, 0, 0.95), (3.2, 4.6, 1.1), M["EArmor"], K, bevel=0.1)
+    wedge((0, 2.0, 1.15), (2.8, 0.9, 0.8), M["EArmor2"], K, taper=0.5, bevel=0.06)
+    for s in (-1, 1):
+        box((s * 1.85, 0, 0.6), (0.7, 5.0, 1.2), M["Black"], K, bevel=0.15)
+        for i in range(5):
+            cyl((s * 1.85, -1.9 + i * 0.95, 0.55), 0.42, 0.75, M["Frame"], K, rot=(0, math.pi / 2, 0), verts=12)
+        box((s * 1.85, 0, 1.25), (0.78, 4.6, 0.12), M["EArmor2"], K)
+    box((0, -1.6, 1.55), (2.0, 1.0, 0.15), M["Hazard"], K)
+    tur = empty("E_BTurret", (0, -0.2, 1.5), K)
+    cyl((0, 0, 0.35), 1.15, 0.7, M["EArmor2"], tur, verts=10, smooth=False)
+    box((0, 0.4, 0.75), (1.2, 1.4, 0.5), M["EArmor"], tur, bevel=0.06)
+    box((0, 1.1, 0.8), (0.6, 0.08, 0.14), M["EEye"], tur)
+    cyl((0, 1.3, 1.25), 0.22, 1.6, M["Frame"], tur, rot=(-math.pi / 2 + 0.55, 0, 0))
+    muzzle("Muzzle_Bulwark", (0, 1.75, 1.95), tur)
+    # shield emitter arms at the front of the turret; the page hangs the shield off E_BShield
+    for s in (-1, 1):
+        box((s * 0.9, 1.0, 0.55), (0.2, 0.9, 0.2), M["Frame"], tur, rot=(0, 0, s * -0.4))
+        ball((s * 1.15, 1.45, 0.6), 0.2, M["ShieldEmit"], tur)
+    empty("E_BShield", (0, 2.0, 0.4), tur)
+
 # ================================================================= PROPS / PICKUPS
 def build_props():
     K = kit("P_Crate")
@@ -447,9 +515,9 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade()
 build_missile(); build_cannon(); build_laser()
-build_turret(); build_drone(); build_walker()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout

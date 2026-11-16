@@ -21,16 +21,17 @@ export const WEAPONS = {
   gatling: { slot: 'arm', name: 'GX-6 加特林', en: 'GX-6 Gatling', desc: '需预转 · 高射速 · 散布大', type: 'bullet', rate: 0.042, spinUp: 0.45, dmg: 8.5, speed: 290, spread: 0.022, mag: 200, reload: 3.0, color: 0xffb860, w: 0.18, len: 6, sfx: 'gatling', recoil: 0.08 },
   coil: { slot: 'arm', name: 'LC-3 闪电线圈', en: 'LC-3 Arc Coil', desc: '自动索敌 · 连锁 3 个目标', type: 'chain', rate: 0.5, dmg: 44, range: 60, chains: 3, chainR: 18, mag: 14, reload: 2.2, sfx: 'coil', recoil: 0.3 },
   rail: { slot: 'arm', name: 'RG-9 磁轨炮', en: 'RG-9 Railgun', desc: '按住蓄力 · 松开贯穿', type: 'charge', charge: 1.1, dmg: [45, 280], rate: 0.6, mag: 6, reload: 2.6, sfx: 'rail', recoil: 0.9 },
+  blade: { slot: 'arm', name: 'LB-0 光束剑', en: 'LB-0 Pulse Blade', desc: '近战 · 锁定时冲刺斩击 · 耗 EN', type: 'blade', dmg: 310, range: 7.5, lunge: 38, cd: 0.95, cost: 16, sfx: 'blade' },
   missile: { slot: 'shoulder', name: 'MS-6 飞弹巢', en: 'MS-6 Missile Pods', desc: '多重锁定 · 6 发追踪', type: 'missile', count: 6, dmg: 40, splash: 5, cd: 6.5, sfx: 'missile' },
   cannon: { slot: 'shoulder', name: 'PC-2 等离子炮', en: 'PC-2 Plasma Cannon', desc: '大范围爆炸 · 弹速慢', type: 'plasma', dmg: 165, splash: 9, speed: 105, cd: 3.4, sfx: 'cannon' },
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
 };
-export const ARM_KEYS = ['rifle', 'gatling', 'coil', 'rail'];
+export const ARM_KEYS = ['rifle', 'gatling', 'coil', 'rail', 'blade'];
 export const SHOULDER_KEYS = ['missile', 'cannon', 'laser'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
-  return { key, d, ammo: d.mag || 0, reloadT: 0, cd: 0, spin: 0, chargeT: 0, wasHeld: false, beamT: 0, sndT: 0, fired: 0 };
+  return { key, d, ammo: d.mag || 0, reloadT: 0, cd: 0, spin: 0, chargeT: 0, wasHeld: false, beamT: 0, sndT: 0, fired: 0, windT: 0, side: 1 };
 }
 
 const _a = new V3(), _b = new V3(), _c = new V3(), _d = new V3();
@@ -120,7 +121,7 @@ export function explodeAt(pos, radius, dmg, team, size = 1, color) {
 // kind: bullet | ebullet | shell | missile | plasma
 export function spawnShot(o) {
   const s = { x: o.p.x, y: o.p.y, z: o.p.z, v: o.v.clone(), life: o.life ?? 2.5, dmg: o.dmg, team: o.team, kind: o.kind, splash: o.splash || 0,
-    label: o.label || G.curLabel || o.kind, color: o.color ?? 0xffd27a, w: o.w ?? 0.2, len: o.len ?? 6, target: o.target || null, aim: o.aim ? o.aim.clone() : null, age: 0, speed: o.v.length(), maxSpeed: o.maxSpeed || 0, size: o.size || 1 };
+    label: o.label || G.curLabel || o.kind, color: o.color ?? 0xffd27a, w: o.w ?? 0.2, len: o.len ?? 6, target: o.target || null, aim: o.aim ? o.aim.clone() : null, age: 0, speed: o.v.length(), maxSpeed: o.maxSpeed || 0, size: o.size || 1, turn: o.turn || 5.5, grav: o.grav ?? 6 };
   G.shots.push(s);
   return s;
 }
@@ -150,15 +151,15 @@ function updateShots(dt) {
         _a.set(tgt.x - s.x, tgt.y - s.y, tgt.z - s.z).normalize();
         _b.copy(s.v).normalize();
         const ang = Math.acos(Math.max(-1, Math.min(1, _a.dot(_b))));
-        const turn = Math.min(1, (5.5 * dt) / Math.max(ang, 1e-3));
+        const turn = Math.min(1, (s.turn * dt) / Math.max(ang, 1e-3));
         _b.lerp(_a, turn).normalize();
         s.speed = Math.min(s.maxSpeed, s.speed + 120 * dt);
         s.v.copy(_b).multiplyScalar(s.speed);
       } else s.v.y -= 12 * dt;
       fx.emit('smoke', { x: s.x, y: s.y, z: s.z, vx: (Math.random() - 0.5), vy: 0.5, vz: (Math.random() - 0.5), life: 0.9, s0: 0.6, s1: 2.2, c0: 0xc8c6c0, c1: 0xa09e98, a0: 0.5, drag: 2 });
-      fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.05, s0: 1.3, c0: 0xffc070 });
+      fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.05, s0: s.team === 'E' ? 1.8 : 1.3, c0: s.team === 'E' ? 0xff5030 : 0xffc070 });
     } else if (s.kind === 'shell') {
-      s.v.y -= 6 * dt;
+      s.v.y -= s.grav * dt;
       fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.12, s0: 1.2, s1: 0.4, c0: 0xff8050 });
     } else if (s.kind === 'plasma') {
       fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.06, s0: 4.2, c0: 0xffb060 });
@@ -202,6 +203,7 @@ function updateShots(dt) {
 // owner: Mech; team 'P'|'E'; held: trigger; aim: world point; target: entity or null; locks: entities for missiles
 export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, dmgMul = 1) {
   const d = ws.d, fx = G.fx, mslot = owner.slots[slot];
+  G.curSrc = owner.pos;
   const isP = team === 'P';
   const dist = G.player ? G.player.pos.distanceTo(owner.pos) : 0;
   ws.cd = Math.max(0, ws.cd - dt);
@@ -308,6 +310,19 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
       if (ws.ammo <= 0) startReload();
     }
     if (!held && ws.chargeT > 0 && ws.chargeT <= 0.12) ws.chargeT = 0;
+  } else if (d.type === 'blade') {
+    if (ws.windT > 0) { ws.windT -= dt; if (ws.windT <= 0) bladeLunge(owner, slot, ws, team, dmgMul); }
+    else if (held && ws.cd <= 0 && owner.en >= d.cost * 0.5) {
+      ws.cd = d.cd; owner.en = Math.max(0, owner.en - d.cost); owner.drainT = 0;
+      const c = owner.center(_b);
+      ws.tgt = target && target.alive && !target.isBarrel && !target.dying && target.c.distanceTo(c) < d.lunge && clearLine(c, target.c) ? target : null;
+      if (isP) bladeLunge(owner, slot, ws, team, dmgMul);
+      else {   // enemies telegraph the slash
+        ws.windT = 0.45; mslot.bladeOn = 0.6; sfx('charge', dist);
+        fx.flash(owner.center(_c), 0xff3020, 30, 18, 0.45);
+        fx.ring(owner.pos, null, 6, 1.5, 0.45, 0xff4020);
+      }
+    }
   } else if (d.type === 'missile') {
     if (pressed && ws.cd <= 0) {
       ws.cd = d.cd;
@@ -317,7 +332,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
         const k = i % 2; const mp = owner.muzzlePos(slot, _a, k).clone();
         const fwd = new V3(-Math.sin(owner.aimYaw), 0, -Math.cos(owner.aimYaw));
         const v = fwd.multiplyScalar(26).add(new V3((Math.random() - 0.5) * 10, 14 + Math.random() * 6, (Math.random() - 0.5) * 10));
-        spawnShot({ p: mp, v, dmg: d.dmg * dmgMul, team, kind: 'missile', splash: d.splash, target: tg.length ? tg[i % tg.length] : null, aim, life: 4, maxSpeed: 95 });
+        spawnShot({ p: mp, v, dmg: d.dmg * dmgMul, team, kind: 'missile', splash: d.splash, target: tg.length ? tg[i % tg.length] : null, aim, life: isP ? 4 : 6, maxSpeed: isP ? 95 : 62, turn: isP ? 5.5 : 1.9 });
         fx.muzzle(mp, v.clone().normalize(), 0xffc070, 0.8);
         owner.slots.S.recoil = 0.4;
         sfx('missile', dist);
@@ -367,6 +382,55 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
   }
 }
 
+// ------------------------------------------------------------------ blade: dash to the target, then a wide slash
+function bladeLunge(owner, slot, ws, team, dmgMul) {
+  const d = ws.d, mslot = owner.slots[slot], isP = team === 'P';
+  const c = owner.center(new V3());
+  const tgt = ws.tgt && ws.tgt.alive && !ws.tgt.dying ? ws.tgt : null;
+  const dir = new V3();
+  if (tgt) dir.subVectors(tgt.c, c); else dir.set(-Math.sin(owner.aimYaw), 0, -Math.cos(owner.aimYaw));
+  const dist = dir.length(); dir.normalize();
+  const travel = tgt ? Math.max(0, dist - 3.2 - tgt.r * 0.6) : 6;
+  const T = Math.max(0.1, travel / 120);
+  owner.vel.copy(dir).multiplyScalar(travel / T);
+  if (owner.grounded && dir.y < 0.15) owner.vel.y = 0; else owner.grounded = false;
+  owner.lungeT = T;
+  ws.side = -ws.side; mslot.slashT = 0.5; mslot.slashSide = ws.side; mslot.bladeOn = 0.9;
+  ws.tgt = null;
+  const dist2 = G.player ? G.player.pos.distanceTo(owner.pos) : 0;
+  sfx('blade', isP ? 0 : dist2);
+  owner.ctx.onQuickBoost && travel > 4 && owner.ctx.onQuickBoost(owner);
+  G.queue.push({ label: G.curLabel, t: T * 0.85, fn: () => {
+    if (!owner.alive) return;
+    const fwd = new V3(-Math.sin(owner.aimYaw), 0, -Math.cos(owner.aimYaw));
+    const oc = owner.center(new V3());
+    const hc = oc.clone().addScaledVector(fwd, 3.2 * owner.scale);
+    if (tgt) hc.lerp(tgt.c, 0.5);
+    const R = d.range * owner.scale;
+    let hits = 0;
+    for (const e of entsFor(team === 'P' ? 'P' : 'E')) {
+      if (e.c.distanceTo(hc) > R + e.r) continue;
+      G.curSrc = owner.pos; G.pierce = true;
+      dealDamage(e, d.dmg * dmgMul, team, e.c.clone().lerp(oc, 0.3));
+      G.pierce = false;
+      G.fx.sparks(e.c, fwd, 26, 0xbff8ff, 26, 1.1, 0.45, 0.32);
+      G.fx.flash(e.c, 0x80f0ff, 40, 20, 0.15);
+      hits++;
+    }
+    // the slash arc: a fan of streaks sweeping across the front
+    const up = new V3(0, 1, 0), right = new V3().crossVectors(fwd, up).normalize();
+    const tilt = mslot.slashSide * 0.45;
+    let prev = null;
+    for (let i = 0; i <= 10; i++) {
+      const a = (i / 10 - 0.5) * 2.6;
+      const p = oc.clone().addScaledVector(fwd, Math.cos(a) * R * 0.85).addScaledVector(right, Math.sin(a) * R * 0.85 * mslot.slashSide).addScaledVector(up, Math.sin(a) * tilt * R * 0.5 + 0.3);
+      if (prev) { G.fx.streak(prev, p, 1.1, 0x48d8ff, 0.16); G.fx.streak(prev, p, 0.35, 0xf0ffff, 0.12); }
+      prev = p;
+    }
+    if (hits) { sfx('bladehit', isP ? 0 : dist2); if (isP) { G.fx.trauma = Math.min(1, G.fx.trauma + 0.3); G.hitStop = 0.07; } }
+  } });
+}
+
 // ------------------------------------------------------------------ enemies
 const playerC = new V3();
 function lead(from, speed, out) {
@@ -402,10 +466,10 @@ export class Turret extends Enemy {
   update(dt) {
     const p = G.player; const pc = p.center(playerC);
     const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz);
-    const yaw = Math.atan2(dx, dz);
+    const yaw = Math.atan2(-dx, -dz);   // kit fronts point down -Z
     const Y = this.n.E_TYaw; Y.rotation.y += angDiff(yaw, Y.rotation.y) * Math.min(1, dt * 2.4);
     const pitch = Math.atan2(pc.y - this.c.y, dist);
-    this.n.E_TPitch.rotation.x = -pitch;
+    this.n.E_TPitch.rotation.x = pitch;
     if (dist < 125 && this.checkLos(dt)) {
       this.fireT -= dt;
       if (this.fireT <= 0) { this.burst = 5; this.burstT = 0; this.fireT = 2.2 + Math.random(); }
@@ -459,8 +523,8 @@ export class Drone extends Enemy {
     // keep out of buildings
     const s = pointInSolid(this.pos, 1.5); if (s) { this.pos.y = s.max.y + 2.5; this.vel.y = Math.max(this.vel.y, 2); }
     this.pos.x = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.x)); this.pos.z = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.z));
-    this.obj.rotation.y = Math.atan2(pc.x - this.pos.x, pc.z - this.pos.z);
-    this.obj.rotation.x = this.vel.z * 0.01; this.obj.rotation.z = -this.vel.x * 0.01;
+    this.obj.rotation.y = Math.atan2(this.pos.x - pc.x, this.pos.z - pc.z);
+    this.obj.rotation.x = -this.vel.z * 0.01; this.obj.rotation.z = this.vel.x * 0.01;
     this.c.copy(this.pos);
     if (this.checkLos(dt) && this.pos.distanceTo(pc) < 90) {
       this.fireT -= dt;
@@ -498,7 +562,7 @@ export class Walker extends Enemy {
     const sp = Math.hypot(this.vel.x, this.vel.z);
     this.ph += dt * (1.5 + sp * 0.9);
     const body = this.n.E_WBody;
-    this.yaw += angDiff(Math.atan2(this.vel.x, this.vel.z) || this.yaw, this.yaw) * Math.min(1, dt * 1.5) * (sp > 0.5 ? 1 : 0);
+    this.yaw += angDiff(Math.atan2(-this.vel.x, -this.vel.z) || this.yaw, this.yaw) * Math.min(1, dt * 1.5) * (sp > 0.5 ? 1 : 0);
     this.obj.rotation.y = this.yaw;
     body.position.y = 2.2 + Math.sin(this.ph * 2) * 0.08 * Math.min(1, sp / 3);
     for (let i = 1; i <= 4; i++) {
@@ -506,7 +570,7 @@ export class Walker extends Enemy {
       this.n['E_Leg' + i].rotation.y = s * 0.25 * Math.min(1, sp / 3);
       this.n['E_Knee' + i].rotation.z = Math.max(0, Math.cos(this.ph + o)) * 0.25 * Math.min(1, sp / 3);
     }
-    const gy = Math.atan2(dx, dz) - this.yaw;
+    const gy = Math.atan2(-dx, -dz) - this.yaw;
     const gun = this.n.E_WGun; gun.rotation.y += angDiff(gy, gun.rotation.y) * Math.min(1, dt * 2);
     this.c.set(this.pos.x, this.pos.y + 2.4, this.pos.z);
     if (dist < 110 && this.checkLos(dt)) {
@@ -527,14 +591,178 @@ export class Walker extends Enemy {
   }
 }
 
-// Boss: an enemy mech run by the same Mech physics + weapons as the player.
+// Bulwark: slow shielded tank. The shield in front of the turret blocks hits from the front (attack from the side, above or behind).
+export class Bulwark extends Enemy {
+  constructor(pos) {
+    super('bulwark', 'E_Bulwark', pos, 900, 3.3); this.boom = 1.5;
+    this.vel = new V3(); this.yaw = Math.random() * 6.28; this.obj.rotation.y = this.yaw; this.stT = 2; this.strafe = Math.random() < 0.5 ? 1 : -1;
+    this.maxShp = 560 * G.diff.hp; this.shp = this.maxShp; this.down = 0; this.sflash = 0; this.fwd = new V3(0, 0, -1); this.ph0 = Math.random() * 6;
+    const g = new THREE.CylinderGeometry(4.1, 4.1, 3.8, 28, 4, true, Math.PI - 1.05, 2.1);
+    this.shMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x3cc8ff).multiplyScalar(1.4), transparent: true, opacity: 0.16, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false, toneMapped: false });
+    this.shWire = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x9ff0ff).multiplyScalar(1.6), wireframe: true, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+    this.shield = new THREE.Group(); this.shield.add(new THREE.Mesh(g, this.shMat), new THREE.Mesh(g, this.shWire));
+    this.shield.position.set(0, 0.8, 0); this.n.E_BTurret.add(this.shield);
+    this.c.set(pos.x, pos.y + 2, pos.z);
+  }
+  hit(dmg, at) {
+    if (!this.alive || this.dying) return;
+    if (this.down <= 0 && !G.pierce) {   // the blade cuts straight through
+      const src = at && at.distanceTo(this.c) > 0.6 ? at : G.curSrc;
+      if (src) {
+        _a.set(src.x - this.c.x, (src.y - this.c.y) * 1.6, src.z - this.c.z).normalize();
+        if (_a.dot(this.fwd) > 0.32) {   // blocked
+          this.shp -= dmg; this.sflash = 0.12;
+          if (Math.random() < 0.5) G.fx.sparks(_b.copy(this.c).addScaledVector(this.fwd, 4).setY(this.c.y + (Math.random() - 0.3) * 2), this.fwd, 4, 0x8ff0ff, 12, 1, 0.25, 0.25);
+          if (Math.random() < 0.25) sfx('shield', G.player.pos.distanceTo(this.pos));
+          if (this.shp <= 0) {
+            this.down = 7; this.shield.visible = false; sfx('shieldbreak', G.player.pos.distanceTo(this.pos));
+            G.fx.sparks(this.c, this.fwd, 40, 0x8ff0ff, 30, 1.2, 0.6, 0.35); G.fx.flash(this.c, 0x60e0ff, 40, 24, 0.3);
+          }
+          G.stats.blocked = (G.stats.blocked || 0) + dmg;
+          return;
+        }
+      }
+    }
+    super.hit(dmg);
+  }
+  update(dt) {
+    const p = G.player, pc = p.center(playerC);
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz);
+    // slow advance to mid range, turning the hull toward the player
+    const toward = dist > 55 ? 1 : dist < 30 ? -0.6 : 0;
+    this.stT -= dt; if (this.stT <= 0) { this.stT = 4 + Math.random() * 3; this.strafe *= -1; }
+    const fx_ = dx / dist, fz = dz / dist;
+    const tx = (fx_ * toward - fz * this.strafe * 0.4) * 3.6, tz = (fz * toward + fx_ * this.strafe * 0.4) * 3.6;
+    this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-1.5 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-1.5 * dt));
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 3.0, 3)) { this.strafe *= -1; this.stT = 2; }
+    this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6, 2.5);
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    if (sp > 0.4) this.yaw += angDiff(Math.atan2(-this.vel.x, -this.vel.z), this.yaw) * Math.min(1, dt * 0.9);
+    this.obj.rotation.y = this.yaw;
+    const T = this.n.E_BTurret; const ty = angDiff(Math.atan2(-dx, -dz), this.yaw);
+    T.rotation.y += angDiff(ty, T.rotation.y) * Math.min(1, dt * 1.6);
+    this.fwd.set(-Math.sin(this.yaw + T.rotation.y), 0, -Math.cos(this.yaw + T.rotation.y));
+    this.c.set(this.pos.x, this.pos.y + 2, this.pos.z);
+    // shield
+    if (this.down > 0) { this.down -= dt; if (this.down <= 0) { this.shp = this.maxShp; this.shield.visible = true; } }
+    else this.shp = Math.min(this.maxShp, this.shp + this.maxShp * 0.05 * dt);
+    this.sflash = Math.max(0, this.sflash - dt);
+    const pulse = 0.5 + 0.5 * Math.sin(G.time * 3 + this.ph0);
+    this.shMat.opacity = 0.1 + pulse * 0.05 + this.sflash * 2.2;
+    this.shWire.opacity = 0.18 + this.sflash * 3 + (1 - this.shp / this.maxShp) * 0.2 * pulse;
+    // mortar: two lobbed shells; the landing spot is marked on the ground
+    if (dist < 130 && this.checkLos(dt)) {
+      this.fireT -= dt;
+      if (this.fireT <= 0) {
+        this.fireT = 3.6 + Math.random() * 1.2;
+        for (let k = 0; k < 2; k++) G.queue.push({ label: 'bulwark-mortar', t: k * 0.45, fn: () => {
+          if (!this.alive) return;
+          const mp = this.n.Muzzle_Bulwark.getWorldPosition(_a).clone();
+          const D = Math.hypot(G.player.pos.x - mp.x, G.player.pos.z - mp.z), Tf = 1.5 + D / 70, g = 22;
+          const aim = new V3().copy(G.player.pos).addScaledVector(G.player.vel, Tf * 0.55);
+          aim.x += (Math.random() - 0.5) * 5; aim.z += (Math.random() - 0.5) * 5; aim.y = groundAt(aim.x, aim.z, aim.y + 1);
+          const v = new V3((aim.x - mp.x) / Tf, (aim.y - mp.y + 0.5 * g * Tf * Tf) / Tf, (aim.z - mp.z) / Tf);
+          spawnShot({ p: mp, v, dmg: 30, team: 'E', kind: 'shell', splash: 6.5, life: Tf + 1, grav: g, label: 'bulwark-mortar' });
+          G.fx.warn(aim, 6.5, Tf);
+          G.fx.muzzle(mp, _d.copy(v).normalize(), 0xff9050, 1.8); sfx('eshell', dist);
+        } });
+      }
+    }
+  }
+}
+
+// Gunship: heavy flyer that circles high, strafes with a chin gun and fires slow homing missile salvos (quick boost to dodge).
+export class Gunship extends Enemy {
+  constructor(pos) {
+    super('gunship', 'E_Gunship', pos, 1400, 4.2); this.boom = 2;
+    this.vel = new V3(); this.orbit = Math.random() < 0.5 ? 1 : -1; this.alt = 22 + Math.random() * 8; this.radius = 50 + Math.random() * 20;
+    this.ph = Math.random() * 6; this.fall = false; this.msT = 3 + Math.random() * 2; this.gunT = 2; this.burst = 0; this.burstT = 0; this.sndT = 0;
+    this.obj.scale.setScalar(1.15);
+  }
+  die() {
+    this.alive = false; this.dying = true; G.stats.kills++; G.onKill && G.onKill(this);
+    this.fall = true; this.vel.y = 1; this.spinV = (Math.random() < 0.5 ? -1 : 1) * 2.5;
+    G.fx.explosion(this.c, 1.2); sfx('bigboom', G.player.pos.distanceTo(this.pos));
+  }
+  update(dt) {
+    for (const s of ['L', 'R']) this.n['E_GRotor' + s].rotation.y += dt * (this.fall ? 6 : 26) * (s === 'L' ? 1 : -1);
+    const p = G.player, pc = p.center(playerC);
+    const dist = this.pos.distanceTo(pc);
+    this.sndT -= dt; if (this.sndT <= 0) { this.sndT = 0.12; if (dist < 90 && !this.fall) sfx('rotor', dist); }
+    if (this.fall) {
+      this.vel.y -= 16 * dt; this.pos.addScaledVector(this.vel, dt);
+      this.obj.rotation.y += this.spinV * dt; this.obj.rotation.z += 0.4 * dt;
+      G.fx.smoke(this.pos, 2, 2.2, 1.4, 0x2e2c2a, 1, 0.7);
+      if (Math.random() < 0.5) G.fx.emit('add', { x: this.pos.x + (Math.random() - 0.5) * 3, y: this.pos.y, z: this.pos.z + (Math.random() - 0.5) * 3, life: 0.25, s0: 2.4, c0: 0xff8040 });
+      if (this.pos.y <= groundAt(this.pos.x, this.pos.z, this.pos.y) + 1 || pointInSolid(this.pos)) {
+        this.c.copy(this.pos); explodeAt(this.c, 9, 60, 'P', 2.2); this.remove();
+      }
+      return;
+    }
+    this.ph += dt;
+    const ang = Math.atan2(this.pos.z - p.pos.z, this.pos.x - p.pos.x) + this.orbit * dt * 0.16;
+    const tx = p.pos.x + Math.cos(ang) * this.radius, tz = p.pos.z + Math.sin(ang) * this.radius;
+    const ty = Math.max(groundAt(this.pos.x, this.pos.z, 99) + 8, p.pos.y + this.alt) + Math.sin(this.ph * 0.7) * 2;
+    _a.set(tx - this.pos.x, ty - this.pos.y, tz - this.pos.z);
+    const L = _a.length(); if (L > 0) _a.multiplyScalar(Math.min(13, L * 0.8) / L);
+    this.vel.lerp(_a, 1 - Math.exp(-1.2 * dt));
+    this.pos.addScaledVector(this.vel, dt);
+    const s = pointInSolid(this.pos, 3); if (s) { this.pos.y = s.max.y + 4; this.vel.y = Math.max(this.vel.y, 3); }
+    this.pos.x = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.x)); this.pos.z = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.z));
+    const face = Math.atan2(this.pos.x - pc.x, this.pos.z - pc.z);
+    this.obj.rotation.y += angDiff(face, this.obj.rotation.y) * Math.min(1, dt * 1.2);
+    this.obj.rotation.x = -0.12; this.obj.rotation.z = this.orbit * 0.1;
+    this.c.copy(this.pos);
+    if (!this.checkLos(dt) || dist > 140) return;
+    // missile salvo
+    this.msT -= dt;
+    if (this.msT <= 0) {
+      this.msT = 7 + Math.random() * 2;
+      G.onEnemyMissile && G.onEnemyMissile();
+      for (let k = 0; k < 4; k++) G.queue.push({ label: 'gunship-missile', t: k * 0.22, fn: () => {
+        if (!this.alive) return;
+        const mp = this.n[k % 2 ? 'Muzzle_GunshipR' : 'Muzzle_GunshipL'].getWorldPosition(_a).clone();
+        const fwd = _d.set(-Math.sin(this.obj.rotation.y), -0.2, -Math.cos(this.obj.rotation.y));
+        const v = fwd.clone().multiplyScalar(22).add(new V3((Math.random() - 0.5) * 8, 6 + Math.random() * 4, (Math.random() - 0.5) * 8));
+        spawnShot({ p: mp, v, dmg: 28, team: 'E', kind: 'missile', splash: 4, target: G.player._ent, aim: G.player.center(new V3()), life: 6, maxSpeed: 56, turn: 1.55, label: 'gunship-missile' });
+        G.fx.muzzle(mp, v.clone().normalize(), 0xff7040, 1); sfx('missile', dist);
+      } });
+    }
+    // chin gun bursts
+    this.gunT -= dt;
+    if (this.gunT <= 0 && this.burst <= 0) { this.gunT = 2.6 + Math.random(); this.burst = 8; }
+    if (this.burst > 0) {
+      this.burstT -= dt;
+      if (this.burstT <= 0) {
+        this.burst--; this.burstT = 0.08;
+        const mp = this.n.Muzzle_GunshipC.getWorldPosition(_a).clone();
+        const aim = lead(mp, 160, _b);
+        _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.07; _d.y += (Math.random() - 0.5) * 0.05; _d.z += (Math.random() - 0.5) * 0.07;
+        spawnShot({ p: mp, v: _d.normalize().multiplyScalar(160), dmg: 5.5, team: 'E', kind: 'ebullet', color: 0xff6040, w: 0.3, len: 6, label: 'gunship-gun' });
+        G.fx.muzzle(mp, _d, 0xff8a50, 1); sfx('eshot', dist);
+      }
+    }
+  }
+}
+
+// Boss mechs: enemy Mech run by the same physics + weapons as the player.
+export const BOSSES = {
+  tyrant: { name: '暴君 TYRANT · 重装指挥机', palette: 'tyrant', frame: 'heavy', scale: 1.35, hp: 5200, want: [45, 32],
+    phases: [{ R: 'gatling', L: 'rifle', S: 'cannon' }, { R: 'gatling', L: 'coil', S: 'laser' }], mul: { gatling: 0.32, rifle: 0.35, coil: 0.3, cannon: 0.6, laser: 0.45 },
+    phase2: ['暴君 · 第二形态', '武装切换：光束炮 / 闪电线圈'] },
+  phantom: { name: '幻影 PHANTOM · 强袭机', palette: 'phantom', frame: 'light', scale: 1.22, hp: 4300, want: [34, 20], agile: true,
+    phases: [{ R: 'rail', L: 'blade', S: 'missile' }, { R: 'gatling', L: 'blade', S: 'laser' }], mul: { rail: 0.25, blade: 0.34, missile: 0.5, gatling: 0.3, laser: 0.42 },
+    phase2: ['幻影 · 解除限制', '机动全开：光束炮 / 加特林'] },
+};
 export class Boss {
-  constructor(pos, ctx) {
-    this.kind = 'boss'; this.r = 3.3; this.c = new V3(); this.alive = true; this.dying = false; this.flash = 0;
-    this.mech = new Mech(G.scene, ctx, { palette: 'tyrant', frame: 'heavy', scale: 1.35, isBoss: true, loadout: { R: 'gatling', L: 'rifle', S: 'cannon' }, yaw: Math.PI });
+  constructor(pos, ctx, type = 'tyrant', hpMul = 1) {
+    const B = this.B = BOSSES[type];
+    this.kind = 'boss'; this.type = type; this.r = 2.5 * B.scale; this.c = new V3(); this.alive = true; this.dying = false; this.flash = 0;
+    this.mech = new Mech(G.scene, ctx, { palette: B.palette, frame: B.frame, scale: B.scale, isBoss: true, loadout: B.phases[0], yaw: Math.PI });
     this.mech.pos.copy(pos);
-    this.maxHp = 5200 * G.diff.hp; this.hp = this.maxHp; this.phase = 1;
-    this.ws = { R: weaponState('gatling'), L: weaponState('rifle'), S: weaponState('cannon') };
+    this.maxHp = B.hp * G.diff.hp * hpMul; this.hp = this.maxHp; this.phase = 1;
+    this.ws = { R: weaponState(B.phases[0].R), L: weaponState(B.phases[0].L), S: weaponState(B.phases[0].S) };
     this.ai = { t: 0, strafe: 1, qbT: 2, jumpT: 4, hover: 0, burst: 0, burstT: 0, sT: 3, railT: 0 };
     this.pos = this.mech.pos;
     G.enemies.push(this);
@@ -543,15 +771,16 @@ export class Boss {
     if (!this.alive) return;
     this.hp -= dmg; this.mech.flinch = Math.min(1, this.mech.flinch + dmg / 300);
     if (this.phase === 1 && this.hp < this.maxHp * 0.5) {
-      this.phase = 2; this.mech.mount({ R: 'gatling', L: 'coil', S: 'laser' });
-      this.ws.L = weaponState('coil'); this.ws.S = weaponState('laser'); this.ws.S.cd = 2;
+      this.phase = 2; const L = this.B.phases[1]; this.mech.mount(L);
+      for (const k of ['R', 'L', 'S']) if (this.ws[k].key !== L[k]) this.ws[k] = weaponState(L[k]);
+      this.ws.S.cd = 2;
       G.onBossPhase && G.onBossPhase(this);
     }
     if (this.hp <= 0) { this.hp = 0; this.alive = false; this.dying = true; this.deathT = 2.2; G.stats.kills++; G.onKill && G.onKill(this); }
   }
   update(dt) {
-    const m = this.mech, p = G.player, A = this.ai;
-    this.c.set(m.pos.x, m.pos.y + 3.6, m.pos.z);
+    const m = this.mech, p = G.player, A = this.ai, B = this.B;
+    this.c.set(m.pos.x, m.pos.y + 2.7 * B.scale, m.pos.z);
     if (this.dying) {
       this.deathT -= dt;
       if (Math.random() < 0.25) explodeAt(_a.set(this.c.x + (Math.random() - 0.5) * 5, this.c.y + (Math.random() - 0.5) * 5, this.c.z + (Math.random() - 0.5) * 5).clone(), 0, 0, 'P', 0.6);
@@ -563,28 +792,33 @@ export class Boss {
     const dx = pc.x - m.pos.x, dz = pc.z - m.pos.z, dist = Math.hypot(dx, dz);
     const aimYaw = Math.atan2(-dx, -dz);
     const aimPitch = Math.atan2(pc.y - this.c.y, dist);
-    A.sT -= dt; if (A.sT <= 0) { A.sT = 2 + Math.random() * 3; A.strafe = Math.random() < 0.5 ? 1 : -1; }
-    const want = this.phase === 1 ? 45 : 32;
+    A.sT -= dt; if (A.sT <= 0) { A.sT = (B.agile ? 1.2 : 2) + Math.random() * 2.5; A.strafe = Math.random() < 0.5 ? 1 : -1; }
+    const want = B.want[this.phase - 1];
     const fwd = dist > want + 12 ? 1 : dist < want - 12 ? -1 : 0;
     const fx_ = dx / dist, fz = dz / dist;
-    let mx = fx_ * fwd + -fz * A.strafe, mz = fz * fwd + fx_ * A.strafe;
-    A.qbT -= dt; const qb = A.qbT <= 0 && m.en > 40; if (qb) A.qbT = (this.phase === 1 ? 2.8 : 1.8) + Math.random() * 2;
+    const mx = fx_ * fwd + -fz * A.strafe, mz = fz * fwd + fx_ * A.strafe;
+    A.qbT -= dt; const qb = A.qbT <= 0 && m.en > 40; if (qb) A.qbT = (this.phase === 1 ? 2.8 : 1.8) * (B.agile ? 0.6 : 1) + Math.random() * 2;
     A.jumpT -= dt; let jump = false;
-    if (A.jumpT <= 0 && m.grounded) { A.jumpT = 5 + Math.random() * 4; jump = true; A.hover = 1.2 + Math.random(); }
+    if (A.jumpT <= 0 && m.grounded) { A.jumpT = (B.agile ? 3 : 5) + Math.random() * 4; jump = true; A.hover = 1.2 + Math.random(); }
     A.hover -= dt;
-    m.update(dt, { mx, mz, boost: m.en > 30 && (dist > want + 20 || this.phase === 2), qboost: qb, jump, hover: A.hover > 0, aimYaw, aimPitch });
+    m.update(dt, { mx, mz, boost: m.en > 30 && (dist > want + 20 || this.phase === 2 || !!B.agile), qboost: qb, jump, hover: A.hover > 0, aimYaw, aimPitch });
     // weapons
     const ent = p._ent; const aim = lead(this.c, 200, _c).clone();
     aim.x += (Math.random() - 0.5) * 2.5; aim.y += (Math.random() - 0.5) * 2; aim.z += (Math.random() - 0.5) * 2.5;
     const los = clearLine(this.c, pc) && dist < 140;
     A.burstT -= dt; if (A.burstT <= 0) { A.burst = A.burst > 0 ? 0 : 1; A.burstT = A.burst ? 1.4 + Math.random() : 1 + Math.random() * 1.5; }
-    const mul = 0.32;
-    G.curLabel = 'boss-' + this.ws.R.key;
-    weaponTick(dt, m, 'R', this.ws.R, los && A.burst > 0, aim, ent, 'E', null, mul);
-    G.curLabel = 'boss-' + this.ws.L.key;
-    weaponTick(dt, m, 'L', this.ws.L, los && A.burst === 0 && Math.random() < 0.6, aim, ent, 'E', null, this.phase === 2 ? 0.3 : 0.35);
-    G.curLabel = 'boss-' + this.ws.S.key;
-    weaponTick(dt, m, 'S', this.ws.S, los && this.ws.S.cd <= 0 && Math.random() < 0.02, aim, ent, 'E', null, this.phase === 2 ? 0.45 : 0.6);
+    const trig = (k) => {
+      const t = this.ws[k].d.type;
+      if (!los) return false;
+      if (t === 'blade') return dist < 30 && Math.random() < 0.04;
+      if (t === 'charge') return true;            // enemies release automatically at full charge
+      if (k === 'S') return this.ws.S.cd <= 0 && Math.random() < 0.02;
+      return k === 'R' ? A.burst > 0 : A.burst === 0 && Math.random() < 0.6;
+    };
+    for (const k of ['R', 'L', 'S']) {
+      G.curLabel = 'boss-' + this.ws[k].key;
+      weaponTick(dt, m, k, this.ws[k], trig(k), aim, ent, 'E', ent ? [ent] : null, B.mul[this.ws[k].key] ?? 0.4);
+    }
   }
   remove() { this.mech.dispose(); this.gone = true; }
 }

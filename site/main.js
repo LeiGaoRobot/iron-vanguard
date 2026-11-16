@@ -10,23 +10,58 @@ import { buildArena, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine
 import { FX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff } from './mech.js';
-import { G, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Boss, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Boss, BOSSES, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 const V3 = THREE.Vector3;
 const DIFFS = {
-  easy: { name: '新兵', desc: '受到伤害 ×0.5 · 敌方耐久 ×0.8', dmg: 0.5, hp: 0.8 },
-  normal: { name: '正规', desc: '标准', dmg: 0.8, hp: 1 },
-  hard: { name: '王牌', desc: '受到伤害 ×1.6 · 敌方耐久 ×1.25', dmg: 1.25, hp: 1.25 },
+  easy: { name: '新兵', desc: '受到伤害 ×0.5 · 敌方耐久 ×0.8 · 报酬 ×0.7', dmg: 0.5, hp: 0.8, cr: 0.7 },
+  normal: { name: '正规', desc: '标准 · 报酬 ×1', dmg: 0.8, hp: 1, cr: 1 },
+  hard: { name: '王牌', desc: '受到伤害 ×1.6 · 敌方耐久 ×1.25 · 报酬 ×1.5', dmg: 1.25, hp: 1.25, cr: 1.5 },
 };
+const MISSIONS = {
+  drill: { name: '演习场', en: 'PROVING GROUND', desc: '白天 · 炮台 / 无人机 / 步行机 · 头目「暴君」', seed: 3, env: 'day', reward: 2000, waves: [
+    { title: 'WAVE 1', sub: '清除外围炮台与无人机', spawn: { turret: 5, drone: 6 } },
+    { title: 'WAVE 2', sub: '装甲步行机接近', spawn: { walker: 3, drone: 6, turret: 3 } },
+    { title: 'WAVE 3', sub: '全面进攻', spawn: { walker: 4, drone: 8, turret: 4 } },
+    { title: 'FINAL WAVE', sub: '击破重装指挥机「暴君」', spawn: { boss: 'tyrant', drone: 3 } },
+  ] },
+  harbor: { name: '夜袭 · 港湾区', en: 'NIGHT RAID', desc: '夜间 · 护盾坦克 / 武装直升机 · 头目「幻影」', seed: 11, env: 'night', reward: 3200, waves: [
+    { title: 'WAVE 1', sub: '护盾坦克推进 · 从侧面、背后、上方攻击，或用光束剑斩开', spawn: { bulwark: 2, drone: 5, turret: 3 } },
+    { title: 'WAVE 2', sub: '武装直升机来袭 · 导弹警报时急闪躲避', spawn: { gunship: 1, walker: 2, drone: 4 } },
+    { title: 'WAVE 3', sub: '全面进攻', spawn: { gunship: 2, bulwark: 2, turret: 3, drone: 3 } },
+    { title: 'FINAL WAVE', sub: '击破强袭机「幻影」 · 注意它的光束剑', spawn: { boss: 'phantom', drone: 2 } },
+  ] },
+  endless: { name: '无尽防线', en: 'ENDLESS', desc: '黄昏 · 无限波次，越来越强 · 每 5 波一个头目', seed: 5, env: 'dusk', endless: true, reward: 0 },
+};
+const ENVS = {
+  day: { top: 0x6f98bf, hor: 0xc4cfd8, fog: [90, 560], hemi: [0xdfe9f2, 0x6a6660, 0.6], sun: [0xfff1de, 2.2], env: 0.42, exp: 0.9, dir: [0.45, 0.55, 0.7], disc: 1 },
+  dusk: { top: 0x3c4f7c, hor: 0xd99a74, fog: [80, 520], hemi: [0xffd6b8, 0x4c4240, 0.5], sun: [0xffb47a, 2.5], env: 0.34, exp: 0.95, dir: [-0.62, 0.2, 0.46], disc: 1.4 },
+  night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
+};
+const KILL_CR = { drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, boss: 1200 };
+const UPGRADES = {
+  armor: { name: '装甲强化', desc: 'AP +8%' },
+  gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
+  thr: { name: '推进器', desc: '推进与急闪速度 +4%' },
+  fcs: { name: '火控系统', desc: '全武器伤害 +6%' },
+};
+const UP_COST = [600, 1200, 2000, 3000, 4200];
+const SAVE_KEY = 'ironvanguard.save.v1';
+const save = { cr: 0, up: { armor: 0, gen: 0, thr: 0, fcs: 0 }, best: {}, bestWave: 0, earned: 0 };
+try { const o = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (o) { Object.assign(save, o); save.up = { armor: 0, gen: 0, thr: 0, fcs: 0, ...(o.up || {}) }; } } catch (e) { /* storage unavailable */ }
+const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } };
+const playerMods = () => { const u = save.up; return { hp: 1 + 0.08 * u.armor, en: 1 + 0.08 * u.gen, regen: 1 + 0.08 * u.gen, boost: 1 + 0.04 * u.thr, speed: 1 + 0.02 * u.thr }; };
+const dmgMul = () => 1 + 0.06 * save.up.fcs;
 
 // ------------------------------------------------------------------ config (per-viewer convenience only)
 const CFG_KEY = 'ironvanguard.cfg.v1';
-const cfg = { palette: 'vanguard', frame: 'std', R: 'rifle', L: 'gatling', S: 'missile', diff: 'normal', sens: 1, vol: 0.7, invY: false };
+const cfg = { palette: 'vanguard', frame: 'std', R: 'rifle', L: 'gatling', S: 'missile', diff: 'normal', mission: 'drill', sens: 1, vol: 0.7, invY: false };
 try { Object.assign(cfg, JSON.parse(localStorage.getItem(CFG_KEY) || '{}')); } catch (e) { /* storage unavailable */ }
 const saveCfg = () => { try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg)); } catch (e) { /* ignore */ } };
-let best = {};
-try { best = JSON.parse(localStorage.getItem('ironvanguard.best') || '{}'); } catch (e) { /* ignore */ }
+// migrate the v1 per-difficulty best times (proving ground only)
+try { const old = JSON.parse(localStorage.getItem('ironvanguard.best') || '{}'); for (const k in old) if (!save.best['drill.' + k]) save.best['drill.' + k] = old[k]; } catch (e) { /* ignore */ }
+if (!MISSIONS[cfg.mission]) cfg.mission = 'drill';
 
 // ------------------------------------------------------------------ renderer / scene
 const canvas = $('c');
@@ -44,11 +79,11 @@ scene.environmentIntensity = 0.42;
 // sky dome
 const sky = new THREE.Mesh(new THREE.SphereGeometry(1200, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
-  uniforms: { top: { value: new THREE.Color(0x6f98bf) }, hor: { value: HORIZON }, sun: { value: new V3(0.45, 0.55, 0.7).normalize() } },
+  uniforms: { top: { value: new THREE.Color(0x6f98bf) }, hor: { value: HORIZON }, sun: { value: new V3(0.45, 0.55, 0.7).normalize() }, disc: { value: 1 } },
   vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position.z = gl_Position.w; }',
-  fragmentShader: `uniform vec3 top; uniform vec3 hor; uniform vec3 sun; varying vec3 vD;
+  fragmentShader: `uniform vec3 top; uniform vec3 hor; uniform vec3 sun; uniform float disc; varying vec3 vD;
     void main(){ float h = clamp(vD.y, 0.0, 1.0); vec3 c = mix(hor, top, pow(h, 0.55));
-      float s = max(dot(vD, sun), 0.0); c += vec3(1.0, 0.92, 0.8) * (pow(s, 600.0) * 4.0 + pow(s, 8.0) * 0.15);
+      float s = max(dot(vD, sun), 0.0); c += vec3(1.0, 0.92, 0.8) * (pow(s, 600.0) * 4.0 + pow(s, 8.0) * 0.15 * disc);
       if (vD.y < 0.0) c = hor; gl_FragColor = vec4(c, 1.0); }`,
 }));
 sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
@@ -59,6 +94,22 @@ const SC = sun.shadow.camera; SC.left = -70; SC.right = 70; SC.top = 70; SC.bott
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6;
 scene.add(sun, sun.target);
 const SUN_DIR = new V3(0.45, 0.55, 0.7).normalize();
+function applyEnv(key) {
+  const E = ENVS[key] || ENVS.day, U = sky.material.uniforms;
+  U.top.value.set(E.top); HORIZON.set(E.hor); scene.fog.color.copy(HORIZON); scene.fog.near = E.fog[0]; scene.fog.far = E.fog[1];
+  SUN_DIR.set(...E.dir).normalize(); U.sun.value.copy(SUN_DIR); U.disc.value = E.disc;
+  hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2];
+  sun.color.set(E.sun[0]); sun.intensity = E.sun[1];
+  scene.environmentIntensity = E.env; renderer.toneMappingExposure = E.exp;
+}
+let arenaKey = '';
+function ensureArena() {
+  const M = MISSIONS[cfg.mission], key = M.seed + M.env;
+  if (key === arenaKey && arenaGroup) return;
+  if (arenaGroup) scene.remove(arenaGroup);
+  arenaGroup = buildArena(scene, M.seed, M.env === 'night'); arenaKey = key;
+  applyEnv(M.env);
+}
 
 const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.1, 2000);
 const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: 4 }));
@@ -207,17 +258,33 @@ function updateAim() {
 
 // ------------------------------------------------------------------ game flow
 let state = 'loading', arenaGroup = null;
-const run = { wave: -1, breakT: 0, t: 0, over: false, deathT: 0, won: false, bossPhaseT: 0, droneT: 0 };
-const WAVES = [
-  { title: 'WAVE 1', sub: '清除外围炮台与无人机', spawn: { turret: 5, drone: 6 } },
-  { title: 'WAVE 2', sub: '装甲步行机接近', spawn: { walker: 3, drone: 6, turret: 3 } },
-  { title: 'WAVE 3', sub: '全面进攻', spawn: { walker: 4, drone: 8, turret: 4 } },
-  { title: 'FINAL WAVE', sub: '击破重装指挥机「暴君」', spawn: { boss: 1, drone: 3 } },
-];
+const run = { wave: -1, breakT: 0, t: 0, over: false, deathT: 0, won: false, bossPhaseT: 0, droneT: 0, waves: [], cr: 0, msslT: 0 };
+
+// endless: each wave spends a growing budget on a random mix; every 5th wave brings a boss
+function endlessWave(i) {
+  const n = i + 1;
+  if (n % 5 === 0) {
+    const type = (n / 5) % 2 ? 'tyrant' : 'phantom';
+    return { title: `WAVE ${n}`, sub: `头目来袭：${BOSSES[type].name}`, boss: true, spawn: { boss: type, bossHp: 0.75 + 0.15 * (n / 5 - 1), drone: Math.min(6, 1 + n / 5), turret: n >= 10 ? 2 : 0 } };
+  }
+  const pool = [['drone', 1, 99], ['turret', 1.5, 8]];
+  if (n >= 2) pool.push(['walker', 3, 6]);
+  if (n >= 3) pool.push(['bulwark', 3.5, 4]);
+  if (n >= 4) pool.push(['gunship', 5, 3]);
+  const sp = {}; let budget = 5 + n * 2.6, total = 0;
+  while (budget > 0.9 && total < 24) {
+    const [k, c, max] = pool[Math.floor(Math.random() * pool.length)];
+    if ((sp[k] || 0) >= max || c > budget + 0.5) { if (pool.every(([kk, cc, mm]) => (sp[kk] || 0) >= mm || cc > budget + 0.5)) break; continue; }
+    sp[k] = (sp[k] || 0) + 1; budget -= c; total++;
+  }
+  const subs = ['敌军增援抵达', '更多敌机接近', '防线承压', '坚守阵地'];
+  return { title: `WAVE ${n}`, sub: subs[i % subs.length] + ` · 敌方耐久 +${Math.round(i * 5)}%`, spawn: sp };
+}
+const curWave = () => run.waves[run.wave];
 
 function makePlayer() {
   if (G.player) G.player.dispose();
-  G.player = new Mech(scene, mctx, { palette: cfg.palette, frame: cfg.frame, loadout: { R: cfg.R, L: cfg.L, S: cfg.S }, yaw: 0 });
+  G.player = new Mech(scene, mctx, { palette: cfg.palette, frame: cfg.frame, loadout: { R: cfg.R, L: cfg.L, S: cfg.S }, yaw: 0, mods: playerMods() });
   G.player.pos.set(0, 0, 128);
   G.pw = { R: weaponState(cfg.R), L: weaponState(cfg.L), S: weaponState(cfg.S) };
   cam.yaw = 0; cam.pitch = -0.05;
@@ -233,12 +300,13 @@ function clearWorld() {
 
 function newGame() {
   clearWorld();
-  if (arenaGroup) scene.remove(arenaGroup);
-  arenaGroup = buildArena(scene, 3);
+  arenaKey = ''; ensureArena();   // rebuild so barrels and props are fresh
   G.diff = { key: cfg.diff, ...DIFFS[cfg.diff] };
   makePlayer();
-  Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0 });
-  Object.assign(run, { wave: -1, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0 });
+  Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
+  const M = MISSIONS[cfg.mission];
+  Object.assign(run, { wave: -1, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0, cr: 0, msslT: 0, waves: M.endless ? [] : M.waves, endless: !!M.endless });
+  G.boss = null;
   $('bossBox').classList.add('hidden');
 }
 
@@ -264,27 +332,37 @@ function roofSpot(minD, maxD) {
 }
 
 function startWave(i) {
-  run.wave = i; const W = WAVES[i];
-  banner(W.title, W.sub, i === 3);
-  sfx(i === 3 ? 'alarm' : 'wave');
+  if (run.endless && !run.waves[i]) run.waves[i] = endlessWave(i);
+  run.wave = i; const W = run.waves[i];
+  if (run.endless) G.diff.hp = DIFFS[cfg.diff].hp * (1 + 0.05 * i);
   const S = W.spawn;
+  banner(W.title, W.sub, !!S.boss);
+  sfx(S.boss ? 'alarm' : 'wave');
   for (let k = 0; k < (S.turret || 0); k++) new Turret((Math.random() < 0.45 && roofSpot(50, 150)) || spot(55, 140));
   for (let k = 0; k < (S.drone || 0); k++) new Drone(spot(70, 140, true));
   for (let k = 0; k < (S.walker || 0); k++) new Walker(spot(80, 140));
+  for (let k = 0; k < (S.bulwark || 0); k++) new Bulwark(spot(75, 130));
+  for (let k = 0; k < (S.gunship || 0); k++) new Gunship(spot(100, 150, true));
   if (S.boss) {
-    G.boss = new Boss(spot(90, 120), mctx);
+    G.boss = new Boss(spot(90, 120), mctx, S.boss, S.bossHp || 1);
+    $('bossName').textContent = BOSSES[S.boss].name;
     $('bossBox').classList.remove('hidden');
   }
 }
 
 G.onKill = (e) => {
   G.hud.kill = 0.3;
+  const cr = Math.round((KILL_CR[e.kind] || 50) * DIFFS[cfg.diff].cr);
+  run.cr += cr; G.hud.cr = 1.2; G.hud.crLast = cr;
+  if (e.kind === 'bulwark' && Math.random() < 0.5) dropRepair(e.c);
+  if (e.kind === 'gunship') dropRepair(e.c);
   if (e.kind === 'walker' && Math.random() < 0.6) dropRepair(e.c);
   else if (e.kind === 'drone' && Math.random() < 0.12) dropRepair(e.c);
   else if (e.kind === 'turret' && Math.random() < 0.2) dropRepair(e.c);
   if (e.kind === 'boss') { fx.trauma = 1; timeScaleT = 1.6; }
 };
-G.onBossPhase = () => { banner('暴君 · 第二形态', '武装切换：光束炮 / 闪电线圈', true); sfx('alarm'); for (let k = 0; k < 3; k++) new Drone(spot(50, 90, true)); };
+G.onBossPhase = (b) => { banner(b.B.phase2[0], b.B.phase2[1], true); sfx('alarm'); for (let k = 0; k < 3; k++) new Drone(spot(50, 90, true)); };
+G.onEnemyMissile = () => { if (run.msslT <= 0) { sfx('warn'); run.msslT = 1; } };
 G.onPlayerHit = () => {};
 let timeScaleT = 0;
 
@@ -304,13 +382,16 @@ function waveLogic(dt) {
     return;
   }
   const alive = G.enemies.filter((e) => !e.gone).length;
-  if (run.wave === 3 && G.boss && G.boss.phase === 2 && G.boss.alive) {
+  run.msslT -= dt;
+  if (G.boss && G.boss.phase === 2 && G.boss.alive) {
     run.droneT -= dt;
     if (run.droneT <= 0) { run.droneT = 22; if (G.enemies.filter((e) => e.kind === 'drone' && e.alive).length < 3) for (let k = 0; k < 2; k++) new Drone(spot(60, 100, true)); }
   }
   if (alive === 0) {
-    if (run.wave >= WAVES.length - 1) { if (!run.won) { run.won = true; banner('MISSION COMPLETE', '指挥机已击破', false); run.deathT = 3.5; } run.deathT -= dt; if (run.deathT <= 0) finish(true); return; }
-    banner('WAVE CLEAR', '短暂整备 · 弹药补满 · 修复 25% 装甲', false);
+    if (!run.endless && run.wave >= run.waves.length - 1) { if (!run.won) { run.won = true; banner('MISSION COMPLETE', '头目已击破', false); run.deathT = 3.5; } run.deathT -= dt; if (run.deathT <= 0) finish(true); return; }
+    if (run.endless) { const b = Math.round(150 * (run.wave + 1) * DIFFS[cfg.diff].cr); run.cr += b; }
+    G.boss = null;
+    banner('WAVE CLEAR', run.endless ? `第 ${run.wave + 1} 波完成 · 弹药补满 · 修复 25% 装甲` : '短暂整备 · 弹药补满 · 修复 25% 装甲', false);
     sfx('repair');
     for (const k of ['R', 'L', 'S']) { const w = G.pw[k]; w.ammo = w.d.mag || 0; w.reloadT = 0; w.cd = 0; }
     p.hp = Math.min(p.maxHp, p.hp + p.maxHp * 0.25);
@@ -323,18 +404,27 @@ function finish(win) {
   const p = G.player, s = G.stats;
   const acc = s.shots ? Math.round((s.hits / s.shots) * 100) : 0;
   const tm = run.t;
-  let rank = 'C';
-  if (win) {
+  const M = MISSIONS[cfg.mission], D = DIFFS[cfg.diff], bk = cfg.mission + '.' + cfg.diff;
+  let rank = 'C', bonus = 0, newBest = false;
+  const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+  if (run.endless) {
+    const cleared = Math.max(0, run.wave);   // the wave you died on does not count
+    rank = cleared >= 15 ? 'S' : cleared >= 10 ? 'A' : cleared >= 5 ? 'B' : 'C';
+    if (cleared > (save.best[bk] || 0)) { save.best[bk] = cleared; newBest = true; }
+  } else if (win) {
     const dmgK = s.dmgTaken / p.maxHp;
     rank = dmgK < 0.6 && tm < 420 ? 'S' : dmgK < 1.4 && tm < 600 ? 'A' : 'B';
-    const k = cfg.diff;
-    if (!best[k] || tm < best[k]) { best[k] = Math.round(tm); try { localStorage.setItem('ironvanguard.best', JSON.stringify(best)); } catch (e) { /* ignore */ } }
+    bonus = Math.round(M.reward * D.cr * ({ S: 1.5, A: 1.2, B: 1 }[rank]));
+    if (!save.best[bk] || tm < save.best[bk]) { save.best[bk] = Math.round(tm); newBest = true; }
   }
+  const earned = run.cr + bonus;
+  save.cr += earned; save.earned = (save.earned || 0) + earned; writeSave();
   $('rRank').textContent = rank;
-  $('rTitle').textContent = win ? 'MISSION COMPLETE' : 'MISSION FAILED';
-  $('rSub').textContent = win ? `演习完成 · ${DIFFS[cfg.diff].name}` : `在第 ${run.wave + 1} 波被击毁 · ${DIFFS[cfg.diff].name}`;
-  const fmt = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
-  $('rStats').innerHTML = `<span>用时</span><b>${fmt(tm)}</b><span>击毁</span><b>${s.kills}</b><span>命中率</span><b>${acc}%</b><span>造成伤害</span><b>${Math.round(s.dmgDealt)}</b><span>承受伤害</span><b>${Math.round(s.dmgTaken)}</b><span>最佳用时</span><b>${best[cfg.diff] ? fmt(best[cfg.diff]) : '—'}</b>`;
+  $('rTitle').textContent = run.endless ? 'LINE BROKEN' : win ? 'MISSION COMPLETE' : 'MISSION FAILED';
+  $('rSub').textContent = `${M.name} · ${D.name} · ` + (run.endless ? `坚守 ${Math.max(0, run.wave)} 波` : win ? '任务完成' : `在第 ${run.wave + 1} 波被击毁`);
+  const bestTxt = run.endless ? (save.best[bk] ? `${save.best[bk]} 波` : '—') : (save.best[bk] ? fmt(save.best[bk]) : '—');
+  $('rStats').innerHTML = `<span>用时</span><b>${fmt(tm)}</b><span>击毁</span><b>${s.kills}</b><span>命中率</span><b>${acc}%</b><span>造成伤害</span><b>${Math.round(s.dmgDealt)}</b><span>承受伤害</span><b>${Math.round(s.dmgTaken)}</b><span>${run.endless ? '最佳波数' : '最佳用时'}</span><b>${bestTxt}${newBest ? ' <em>NEW</em>' : ''}</b>`
+    + `<span class="cr">击毁报酬</span><b class="cr">${run.cr} C</b>` + (bonus ? `<span class="cr">任务报酬 · 评级 ${rank}</span><b class="cr">${bonus} C</b>` : '') + `<span class="cr">持有资金</span><b class="cr">${save.cr} C</b>`;
   setState('result');
 }
 
@@ -351,7 +441,7 @@ function setState(s) {
   if (s !== 'play' && document.pointerLockElement) document.exitPointerLock();
   if (s !== 'play') { mouse.b0 = mouse.b2 = false; thrust(0); }
   if (s === 'garage') buildGarage();
-  if (s === 'title') $('bestTxt').textContent = Object.keys(best).length ? '最佳用时 ' + Object.entries(best).map(([k, v]) => `${DIFFS[k].name} ${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`).join(' · ') : '';
+  if (s === 'title') buildTitle();
   if (s === 'garage' || s === 'title') camera.setViewOffset(innerWidth, innerHeight, s === 'garage' && innerWidth > 760 ? innerWidth * 0.2 : 0, 0, innerWidth, innerHeight);
   else camera.clearViewOffset();
 }
@@ -377,15 +467,54 @@ $('vol').oninput = (e) => { cfg.vol = +e.target.value; setVolume(cfg.vol); saveC
 $('invY').onchange = (e) => { cfg.invY = e.target.checked; saveCfg(); };
 setVolume(cfg.vol);
 
+// ------------------------------------------------------------------ title: mission select
+function bestLine(mk) {
+  const parts = [];
+  for (const dk of Object.keys(DIFFS)) {
+    const v = save.best[mk + '.' + dk]; if (!v) continue;
+    parts.push(`${DIFFS[dk].name} ${MISSIONS[mk].endless ? v + ' 波' : `${Math.floor(v / 60)}:${String(v % 60).padStart(2, '0')}`}`);
+  }
+  return parts.join(' · ');
+}
+function buildTitle() {
+  const el = $('tMission'); el.innerHTML = '';
+  for (const [k, M] of Object.entries(MISSIONS)) {
+    const d = document.createElement('button'); d.type = 'button'; d.className = 'mis' + (cfg.mission === k ? ' on' : '');
+    const b = bestLine(k);
+    d.innerHTML = `<b>${M.name}</b><span class="en">${M.en}</span><small>${M.desc}</small>${b ? `<small class="best">最佳 ${b}</small>` : ''}`;
+    d.onclick = () => { initAudio(); sfx('ui'); cfg.mission = k; saveCfg(); ensureArena(); buildTitle(); };
+    el.appendChild(d);
+  }
+  $('bestTxt').textContent = `资金 ${save.cr} C` + (Object.values(save.up).some((v) => v) ? ' · 机库强化 ' + Object.entries(save.up).filter(([, v]) => v).map(([k, v]) => `${UPGRADES[k].name} ${v}`).join(' / ') : '');
+}
+
 // ------------------------------------------------------------------ hangar
+function buildUpgrades() {
+  $('gCr').textContent = `${save.cr} C`;
+  const el = $('gUp'); el.innerHTML = '';
+  for (const [k, U] of Object.entries(UPGRADES)) {
+    const lv = save.up[k], cost = UP_COST[lv];
+    const row = document.createElement('div'); row.className = 'uprow';
+    row.innerHTML = `<div class="un"><b>${U.name}</b><small>${U.desc} / 级</small></div><div class="pips">${[0, 1, 2, 3, 4].map((i) => `<i class="${i < lv ? 'on' : ''}"></i>`).join('')}</div>`;
+    const btn = document.createElement('button'); btn.type = 'button';
+    if (lv >= 5) { btn.textContent = 'MAX'; btn.disabled = true; }
+    else { btn.textContent = `${cost} C`; btn.disabled = save.cr < cost; }
+    btn.onclick = () => {
+      if (lv >= 5 || save.cr < cost) return;
+      save.cr -= cost; save.up[k]++; writeSave(); sfx('coin'); makePlayer(); buildGarage();
+    };
+    row.appendChild(btn); el.appendChild(row);
+  }
+}
 function buildGarage() {
+  buildUpgrades();
   const opt = (html, on, fn, cls = '') => { const d = document.createElement('div'); d.className = 'opt ' + cls + (on ? ' on' : ''); d.innerHTML = html; d.onclick = () => { sfx('ui'); fn(); saveCfg(); buildGarage(); }; return d; };
   const fill = (id, items) => { const el = $(id); el.innerHTML = ''; items.forEach((i) => el.appendChild(i)); };
   fill('gPaint', Object.entries(PALETTES).filter(([k]) => k !== 'tyrant').map(([k, p]) =>
     opt(`<i style="background:linear-gradient(135deg, ${p.Armor} 0 55%, ${p.Accent} 55% 75%, ${p.Armor2} 75%)"></i>`, cfg.palette === k, () => { cfg.palette = k; G.player.setPalette(k); }, 'sw')));
   fill('gFrame', Object.entries(FRAMES).map(([k, f]) => opt(`${f.name}<small>${f.en}</small>`, cfg.frame === k, () => { cfg.frame = k; rebuildPreview(); })));
-  const F = FRAMES[cfg.frame];
-  $('gStats').innerHTML = `AP <b>${F.hp}</b> · 速度 <b>×${F.speed}</b> · EN <b>${F.en}</b> · 推进 <b>×${F.boost}</b> · 受伤 <b>×${F.armor}</b>`;
+  const F = G.player.frame;
+  $('gStats').innerHTML = `AP <b>${Math.round(F.hp)}</b> · 速度 <b>×${F.speed.toFixed(2)}</b> · EN <b>${Math.round(F.en)}</b> · 推进 <b>×${F.boost.toFixed(2)}</b> · 受伤 <b>×${F.armor}</b>` + (save.up.fcs ? ` · 伤害 <b>×${dmgMul().toFixed(2)}</b>` : '');
   const wopt = (slot, k) => opt(`${WEAPONS[k].name}<small>${WEAPONS[k].desc}</small>`, cfg[slot] === k, () => { cfg[slot] = k; G.player.mount({ R: cfg.R, L: cfg.L, S: cfg.S }); G.pw = { R: weaponState(cfg.R), L: weaponState(cfg.L), S: weaponState(cfg.S) }; buildWeaponPanel(); });
   fill('gR', ARM_KEYS.map((k) => wopt('R', k)));
   fill('gL', ARM_KEYS.map((k) => wopt('L', k)));
@@ -479,12 +608,18 @@ function drawHUD(dt) {
   $('hurt').style.opacity = Math.min(0.9, G.hud.hurt + (hpK < 0.25 ? 0.25 + Math.sin(performance.now() / 180) * 0.1 : 0)).toFixed(2);
   // waves / boss
   if (run.wave >= 0) {
-    $('waveTitle').textContent = WAVES[run.wave].title;
+    $('waveTitle').textContent = curWave().title;
     const left = G.enemies.filter((e) => e.alive).length;
     $('waveSub').textContent = run.breakT > 0 ? '整备中…' : `剩余敌机 ${left}`;
   } else { $('waveTitle').textContent = 'STANDBY'; $('waveSub').textContent = ''; }
   if (G.boss && !G.boss.gone) $('bossBar').firstElementChild.style.width = (G.boss.hp / G.boss.maxHp * 100).toFixed(1) + '%';
   else $('bossBox').classList.add('hidden');
+  // incoming enemy missiles + credits ticker
+  let inc = 0;
+  for (const sh of G.shots) if (sh.team === 'E' && sh.kind === 'missile' && sh.target && sh.target.isPlayer && Math.hypot(sh.x - p.pos.x, sh.z - p.pos.z) < 90) inc++;
+  const ma = $('mAlert'); ma.classList.toggle('hidden', !inc); if (inc) ma.textContent = `MISSILE ×${inc} · SHIFT 急闪`;
+  G.hud.cr = Math.max(0, (G.hud.cr || 0) - dt);
+  $('crTxt').innerHTML = `${run.cr} C` + (G.hud.cr > 0 ? ` <em>+${G.hud.crLast}</em>` : '');
   bannerT -= dt; if (bannerT <= 0) $('banner').classList.remove('show');
   hintT -= dt; if (hintT <= 0) $('hint').classList.add('hidden');
   // radar
@@ -505,7 +640,7 @@ function drawHUD(dt) {
     if (!e.alive) continue;
     const x = (e.c.x - p.pos.x) * K, z = (e.c.z - p.pos.z) * K;
     rctx.fillStyle = e.kind === 'boss' ? '#ff8a1a' : '#ff4a3a';
-    const s = e.kind === 'boss' ? 9 : e.kind === 'walker' ? 7 : 5;
+    const s = e.kind === 'boss' ? 9 : e.kind === 'gunship' ? 8 : e.kind === 'walker' || e.kind === 'bulwark' ? 7 : 5;
     rctx.fillRect(x - s / 2, z - s / 2, s, s);
   }
   rctx.fillStyle = '#5dff9a';
@@ -537,11 +672,14 @@ function autoIntent(dt) {
   auto.hover -= dt;
   if (tgt && tgt.c.y - p.pos.y > 7 && tgt.c.distanceTo(p.pos) < 70 && p.en > 25) { if (p.grounded) jump = true; auto.hover = 0.3; }
   const d = tgt ? tgt.c.distanceTo(p.pos) : 0;
-  let f = tgt ? (d > 45 ? 1 : d < 22 ? -1 : 0) : 0, s = tgt ? auto.st : 0;
+  const melee = G.pw.R.d.type === 'blade' || G.pw.L.d.type === 'blade';
+  let f = tgt ? (melee ? (d > 24 ? 1 : 0) : (d > 45 ? 1 : d < 22 ? -1 : 0)) : 0, s = tgt ? auto.st : 0;
   if (goal) { const gx = goal.x - p.pos.x, gz = goal.z - p.pos.z; const yaw = cam.yaw; const fw = [-Math.sin(yaw), -Math.cos(yaw)], rt = [Math.cos(yaw), -Math.sin(yaw)]; f = Math.sign(gx * fw[0] + gz * fw[1]); s = Math.sign(gx * rt[0] + gz * rt[1]); }
   const los = tgt && clearLine(p.center(new V3()), tgt.c);
   auto.sT -= dt; const sPress = auto.sT <= 0 && los; if (sPress) auto.sT = 0.6;
-  return { f, s, boost: d > 70 || !!goal, qboost: G.hud.hurt > 0.35 && Math.random() < 0.05, jump, hover: auto.hover > 0, b0: !!los, b2: !!los && (G.pw.L.d.type !== 'charge' || Math.random() < 0.985), e: sPress };
+  const incoming = G.shots.some((sh) => sh.team === 'E' && sh.kind === 'missile' && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 22);
+  const fire = (slot) => !!los && (G.pw[slot].d.type !== 'blade' || d < 36) && (G.pw[slot].d.type !== 'charge' || Math.random() < 0.985);
+  return { f, s, boost: d > 70 || !!goal, qboost: (G.hud.hurt > 0.35 && Math.random() < 0.05) || (incoming && Math.random() < 0.25), jump, hover: auto.hover > 0, b0: fire('R'), b2: fire('L'), e: sPress };
 }
 
 // ------------------------------------------------------------------ simulation step
@@ -556,11 +694,12 @@ function step(dt) {
   }
   if (state !== 'play') return;
   if (timeScaleT > 0) { timeScaleT -= dt; dt *= 0.35; }
+  if (G.hitStop > 0) { G.hitStop -= dt; dt *= 0.12; }
   G.time += dt; simTime += dt;
   // look
   if (pointerLocked) {
     cam.yaw -= mouse.dx * 0.0022 * cfg.sens; cam.pitch -= mouse.dy * 0.0022 * cfg.sens * (cfg.invY ? -1 : 1);
-  } else if (freeMouse) {
+  } else if (freeMouse && innerWidth > 0 && innerHeight > 0) {
     const ex = (mouse.x / innerWidth - 0.5) * 2, ey = (mouse.y / innerHeight - 0.5) * 2;
     const band = (v) => Math.sign(v) * Math.max(0, Math.abs(v) - 0.55) / 0.45;
     cam.yaw -= band(ex) * 2.4 * cfg.sens * dt; cam.pitch -= band(ey) * 1.4 * cfg.sens * dt * (cfg.invY ? -1 : 1);
@@ -587,9 +726,11 @@ function step(dt) {
   camera.updateMatrixWorld();
   updateAim();
   if (p.alive && !run.won) {
-    weaponTick(dt, p, 'R', G.pw.R, A.b0, G.aimPoint, G.lockTarget, 'P', G.locks);
-    weaponTick(dt, p, 'L', G.pw.L, A.b2, G.aimPoint, G.lockTarget, 'P', G.locks);
-    weaponTick(dt, p, 'S', G.pw.S, A.e, G.aimPoint, G.lockTarget, 'P', G.locks);
+    const dm = dmgMul();
+    G.curLabel = 'p-' + G.pw.R.key; weaponTick(dt, p, 'R', G.pw.R, A.b0, G.aimPoint, G.lockTarget, 'P', G.locks, dm);
+    G.curLabel = 'p-' + G.pw.L.key; weaponTick(dt, p, 'L', G.pw.L, A.b2, G.aimPoint, G.lockTarget, 'P', G.locks, dm);
+    G.curLabel = 'p-' + G.pw.S.key; weaponTick(dt, p, 'S', G.pw.S, A.e, G.aimPoint, G.lockTarget, 'P', G.locks, dm);
+    G.curLabel = null;
     if (G.pw.S.d.type !== 'beam' && G.pw.S.cd > 0 && A.e && G.pw.S.cd < G.pw.S.d.cd - 0.3 && !auto.on && Math.random() < 0.02) sfx('empty');
   }
   updateCombat(dt);
@@ -599,7 +740,7 @@ function step(dt) {
   fx.update(dt, camera);
   waveLogic(dt);
   thrust(p.alive ? Math.max(p.thrustLv, p.hoverLv * 0.7) : 0);
-  const inten = run.wave < 0 ? 0 : run.wave === 3 ? 1 : 0.45 + run.wave * 0.15;
+  const inten = run.wave < 0 ? 0 : (G.boss && G.boss.alive) ? 1 : Math.min(0.9, 0.45 + run.wave * 0.15);
   musicTick(run.over ? 0 : inten);
   // shadow camera follows the player
   sun.position.copy(p.pos).addScaledVector(SUN_DIR, 200); sun.target.position.copy(p.pos); sun.target.updateMatrixWorld();
@@ -639,14 +780,15 @@ window.__iv = {
   },
   setState,
   wave: (i) => { clearWorld(); run.breakT = 0; startWave(i); },
+  save, MISSIONS, ensureArena, applyEnv, writeSave,
   mouse,
 };
 
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=1');
-    arenaGroup = buildArena(scene, 3);
+    await loadKit('./assets/kit.glb?v=2');
+    ensureArena();
     makePlayer();
     setState('title');
     camera.position.set(10, 6, 140);

@@ -79,6 +79,13 @@ export function sfx(name, d = 0, pan = 0) {
       case 'alarm': for (let i = 0; i < 3; i++) { tone(t + i * 0.5, 'sawtooth', 440, 440, 0.12, 0.3, 0.02); tone(t + i * 0.5 + 0.25, 'sawtooth', 330, 330, 0.12, 0.2, 0.02); } break;
       case 'ui': tone(t, 'triangle', 880, 990, 0.08, 0.06); break;
       case 'wave': [392, 523, 659, 784].forEach((f, i) => tone(t + i * 0.09, 'square', f, f, 0.06, 0.18)); break;
+      case 'blade': noise(t, 0.28, 'bandpass', 2200, 0.7, 0.45 * k, 0.25, pan, 5000); tone(t, 'sawtooth', 300, 1400, 0.08 * k, 0.2); tone(t, 'sine', 180, 90, 0.2 * k, 0.25); break;
+      case 'bladehit': noise(t, 0.2, 'highpass', 2500, 0.8, 0.5 * k, 0.18, pan); tone(t, 'square', 900, 200, 0.15 * k, 0.18); tone(t, 'sine', 70, 30, 0.6 * k, 0.3); break;
+      case 'shield': tone(t, 'sine', 1300, 900, 0.07 * k, 0.12); tone(t, 'triangle', 2600, 2000, 0.03 * k, 0.08); break;
+      case 'shieldbreak': noise(t, 0.6, 'highpass', 1800, 0.6, 0.5 * k, 0.5, pan); tone(t, 'sawtooth', 1200, 100, 0.2 * k, 0.5); break;
+      case 'warn': tone(t, 'square', 1700, 1700, 0.05, 0.06); tone(t + 0.09, 'square', 1700, 1700, 0.05, 0.06); break;
+      case 'rotor': noise(t, 0.12, 'lowpass', 220, 1.5, 0.35 * k, 0.1, pan); break;
+      case 'coin': tone(t, 'triangle', 1320, 1760, 0.06, 0.08); break;
       case 'overheat': tone(t, 'sawtooth', 300, 120, 0.12, 0.4); break;
     }
   } catch (e) { /* ignore */ }

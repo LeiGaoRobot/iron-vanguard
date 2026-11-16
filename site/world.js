@@ -19,6 +19,7 @@ function addSolid(cx, cz, w, d, h, y0 = 0, kind = 'block', ref = null) {
 // world-space panel shader for buildings / floor
 function panelMaterial(color, opts) {
   const m = new THREE.MeshStandardMaterial({ color, roughness: opts.rough ?? 0.85, metalness: opts.metal ?? 0.1 });
+  m.customProgramCacheKey = () => 'panel|' + opts.frag + '|' + (opts.emit || '');   // day / night variants must not share a program
   m.onBeforeCompile = (sh) => {
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;')
@@ -28,12 +29,14 @@ function panelMaterial(color, opts) {
         float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float gridLine(float x, float s, float w){ float f = abs(fract(x / s + 0.5) - 0.5) * s; return 1.0 - smoothstep(w * 0.5, w, f); }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
-        ${opts.frag}`);
+        ${opts.frag}`)
+      .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
+        ${opts.emit || ''}`);
   };
   return m;
 }
 
-export function buildArena(scene, seed = 3) {
+export function buildArena(scene, seed = 3, night = false) {
   const rnd = mulberry32(seed);
   solids.length = 0; barrels.length = 0;
   const group = new THREE.Group(); scene.add(group);
@@ -51,6 +54,11 @@ export function buildArena(scene, seed = 3) {
       float ed = max(abs(vWP.x), abs(vWP.z));
       float stripe = step(${ARENA.toFixed(1)} - 3.0, ed) * step(ed, ${ARENA.toFixed(1)} - 1.6) * step(0.5, fract((vWP.x + vWP.z) / 4.0));
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.62, 0.08), stripe * 0.9);`,
+    emit: night ? `
+      float ed2 = max(abs(vWP.x), abs(vWP.z));
+      float st2 = step(${ARENA.toFixed(1)} - 3.0, ed2) * step(ed2, ${ARENA.toFixed(1)} - 1.6) * step(0.5, fract((vWP.x + vWP.z) / 4.0));
+      float ln = max(gridLine(vWP.x, 32.0, 0.25), gridLine(vWP.z, 32.0, 0.25));
+      totalEmissiveRadiance += vec3(1.0, 0.62, 0.12) * st2 * 1.6 + vec3(0.25, 0.6, 0.9) * ln * 0.06;` : '',
   });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), floorMat);
   floor.receiveShadow = true; group.add(floor);
@@ -65,6 +73,15 @@ export function buildArena(scene, seed = 3) {
       diffuseColor.rgb *= tone * (1.0 - 0.35 * max(hl, vl));
       if (n.y < 0.5) { float win = step(0.62, fract(vWP.y / 3.5)) * step(fract(vWP.y / 3.5), 0.82);
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.2, 0.26), win * 0.8); }`,
+    emit: night ? `
+      if (abs(vWN.y) < 0.5) {
+        float fy = fract(vWP.y / 3.5); float wn = step(0.62, fy) * step(fy, 0.82);
+        float hx = fract((vWP.x + vWP.z) / 2.0); wn *= step(0.18, hx) * step(hx, 0.82);
+        vec2 cid = vec2(floor((vWP.x + vWP.z) / 2.0), floor(vWP.y / 3.5));
+        float lit = step(0.6, h21(cid));
+        vec3 wc = mix(vec3(1.0, 0.72, 0.38), vec3(0.55, 0.82, 1.0), step(0.55, h21(cid + 7.3)));
+        totalEmissiveRadiance += wc * wn * lit * (0.35 + 0.55 * h21(cid + 3.1));
+      }` : '',
   });
   const boxes = [];
   const free = (x, z, r) => {

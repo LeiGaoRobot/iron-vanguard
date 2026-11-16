@@ -208,6 +208,22 @@ export class FX {
     if (normal) R.m.lookAt(this._v.copy(pos).add(normal)); else R.m.rotation.set(-Math.PI / 2, 0, 0);
     R.m.position.y = Math.max(R.m.position.y, 0.15);
   }
+  // ground warning for incoming shells: a thin red circle whose inner disc fills as impact nears
+  warn(pos, r, life) {
+    if (!this.warns) this.warns = [];
+    let W = this.warns.find((w) => !w.g.visible);
+    if (!W) {
+      if (this.warns.length >= 12) W = this.warns[0];
+      else {
+        const mk = (geo, op) => new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff3a20).multiplyScalar(1.6), transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide }));
+        const g = new THREE.Group(); g.rotation.x = -Math.PI / 2;
+        const edge = mk(new THREE.RingGeometry(0.93, 1, 48), 0.8), fill = mk(new THREE.CircleGeometry(1, 40), 0.18);
+        g.add(edge, fill); this.scene.add(g);
+        W = { g, edge, fill }; this.warns.push(W);
+      }
+    }
+    W.g.visible = true; W.t = 0; W.life = life; W.g.position.set(pos.x, pos.y + 0.12, pos.z); W.g.scale.setScalar(r);
+  }
   decal(pos, r) {
     const i = this.decalN % this.decalCap; this.decalN++;
     this._m.compose(this._v.set(pos.x, 0.03 + (i % 7) * 0.002, pos.z), this._q.setFromAxisAngle(new THREE.Vector3(0, 1, 0), Math.random() * 6.28), this._s.set(r, 1, r));
@@ -275,6 +291,13 @@ export class FX {
       const r = R.r0 + (R.r1 - R.r0) * (1 - (1 - k) * (1 - k));
       R.m.scale.set(r * 2, r * 2, 1);
       R.m.material.opacity = 1 - k;
+    }
+    if (this.warns) for (const W of this.warns) {
+      if (!W.g.visible) continue;
+      W.t += dt; const k = W.t / W.life;
+      if (k >= 1) { W.g.visible = false; continue; }
+      W.fill.scale.setScalar(Math.max(0.01, k));
+      W.edge.material.opacity = 0.55 + 0.35 * Math.sin(W.t * 18);
     }
     // decals fade back to white over 25 s
     let any = false;
