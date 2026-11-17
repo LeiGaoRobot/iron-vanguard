@@ -11,7 +11,7 @@ import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 const V3 = THREE.Vector3;
@@ -48,7 +48,7 @@ const MISSIONS = {
   storm: { name: '暴雨 · 机甲猎杀', en: 'STORM HUNT', desc: '雷暴夜雨 · 敌方机甲小队「掠夺者」「枪骑兵」 · 头目「幻影」', seed: 41, env: 'storm', reward: 4200, waves: [
     { title: 'WAVE 1', sub: '掠夺者小队接近 · 它们和你一样会推进、急闪', spawn: { raider: 2, drone: 4, turret: 3 } },
     { title: 'WAVE 2', sub: '枪骑兵加入 · 光束剑冲刺前会红光预警 · 雨中有隐形狙击机', spawn: { raider: 2, lancer: 1, walker: 2, drone: 3, stalker: 1 } },
-    { title: 'WAVE 3', sub: '机甲猎杀队', spawn: { lancer: 1, raider: 2, gunship: 1 }, late: { lancer: 1, drone: 3 } },
+    { title: 'WAVE 3', sub: '机甲猎杀队 · 干扰机随行，靠近它锁定会失效', spawn: { lancer: 1, raider: 2, gunship: 1, jammer: 1 }, late: { lancer: 1, drone: 3 } },
     { title: 'FINAL WAVE', sub: '猎杀队队长「幻影」亲自出击', spawn: { boss: 'phantom' } },
   ] },
   convoy: { name: '沙漠 · 运输车护送', en: 'CONVOY ESCORT', desc: '白天 · 护送装甲运输车穿越敌区 · 头目「暴君」', seed: 51, env: 'desert', reward: 4000, convoy: true, coreHp: 4200,
@@ -69,7 +69,7 @@ const MISSIONS = {
     zones: [[-100, 30], [96, 10], [-4, -104]], waves: [
     { title: 'CAPTURE', sub: '占领 A / B / C 据点 · 站进圈内，并清除圈内的敌方地面单位', spawn: { drone: 4, mender: 1 }, zoneDef: { turret: 1, walker: 2 } },
     { title: 'COUNTERATTACK', sub: '敌军反攻据点 · 维修无人机随行', spawn: { walker: 3, bulwark: 2, drone: 4, mender: 1 }, at: 0.3 },
-    { title: 'COUNTERATTACK', sub: '掠夺者小队前来夺点 · 当心隐形狙击机', spawn: { raider: 2, lancer: 1, walker: 2, drone: 3, stalker: 1, mender: 1 }, at: 0.65 },
+    { title: 'COUNTERATTACK', sub: '掠夺者小队前来夺点 · 当心隐形狙击机与干扰机', spawn: { raider: 2, lancer: 1, walker: 2, drone: 3, stalker: 1, mender: 1, jammer: 1 }, at: 0.65 },
     { title: 'FINAL WAVE', sub: '上行链路完成 · 击破来袭的「暴君」', spawn: { boss: 'tyrant', drone: 3, mender: 1 } },
   ] },
   extract: { name: '废城 · 数据撤离', en: 'EXTRACTION', desc: '黎明 · 下载 3 处数据终端，再到撤离点坚守 30 秒等待回收 · 自爆蜘蛛群 · 头目「幻影」追击', seed: 81, env: 'dawn', reward: 5000, extract: true,
@@ -79,6 +79,12 @@ const MISSIONS = {
     { title: 'AMBUSH', sub: '掠夺者追踪信号而来 · 维修无人机随行', spawn: { crawler: 12, raider: 1, walker: 1, mender: 1 } },
     { title: 'AMBUSH', sub: '全面追击 · 当心隐形狙击机', spawn: { crawler: 14, bulwark: 1, lancer: 1, stalker: 1 } },
     { title: 'EXTRACT', sub: '数据已全部取得 · 前往撤离点坚守 30 秒 · 「幻影」正在追击', spawn: { crawler: 8, drone: 3 }, lateBoss: { type: 'phantom', hp: 0.5, t: 8 } },
+  ] },
+  gauntlet: { name: '头目连战', en: 'GAUNTLET', desc: '日蚀 · 连续四场头目战，最后「暴君」与「幻影」同时出击 · 每场之间修复 50% 装甲 · 当心干扰机', seed: 91, env: 'eclipse', reward: 6000, gauntlet: true, waves: [
+    { title: 'ROUND 1', sub: '击破「暴君」', spawn: { boss: 'tyrant', drone: 2 } },
+    { title: 'ROUND 2', sub: '击破「幻影」 · 干扰机随行，靠近它锁定与雷达失效', spawn: { boss: 'phantom', jammer: 1 } },
+    { title: 'ROUND 3', sub: '巨像 · 先毁武器舱再打核心', spawn: { colossus: 1, bossHp: 0.8, drone: 2 } },
+    { title: 'FINAL ROUND', sub: '「暴君」与「幻影」同时出击', spawn: { boss: 'tyrant', boss2: 'phantom', bossHp: 0.55, jammer: 1 } },
   ] },
   endless: { name: '无尽防线', en: 'ENDLESS', desc: '黄昏 · 无限波次，越来越强 · 每 5 波一个头目', seed: 5, env: 'dusk', endless: true, reward: 0 },
 };
@@ -90,9 +96,10 @@ const ENVS = {
   ash: { top: 0x1f1716, hor: 0x7a4a36, fog: [45, 360], hemi: [0xffc0a0, 0x2a2020, 0.42], sun: [0xff9060, 1.5], env: 0.22, exp: 1.02, dir: [-0.45, 0.32, 0.6], disc: 0.8, ash: true },
   storm: { top: 0x1c232c, hor: 0x46505c, fog: [30, 230], hemi: [0x9aacc0, 0x26282c, 0.42], sun: [0xc0cce0, 0.8], env: 0.2, exp: 1.02, dir: [0.25, 0.7, 0.4], disc: 0.05, rain: true },
   dawn: { top: 0x56658f, hor: 0xf0b49c, fog: [70, 480], hemi: [0xffd8cc, 0x4a4250, 0.52], sun: [0xffc49a, 2.1], env: 0.34, exp: 0.95, dir: [0.75, 0.16, -0.25], disc: 1.6 },
+  eclipse: { top: 0x120c1c, hor: 0x5c2a40, fog: [55, 420], hemi: [0xd8c0ff, 0x1c1620, 0.36], sun: [0xff9a80, 1.25], env: 0.18, exp: 1.04, dir: [-0.3, 0.38, 0.7], disc: 0.5 },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
+const KILL_CR = { jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -478,6 +485,7 @@ function updateAim() {
     locks.push({ e, sd });
   }
   locks.sort((a, b) => a.sd - b.sd);
+  if (G.jammed) locks.length = 0;
   const prevPrim = G.lockTarget;
   G.lockTarget = locks.length && locks[0].sd < lockR() ? locks[0].e : null;
   G.locks = locks.slice(0, 6).map((l) => l.e);
@@ -515,7 +523,7 @@ function mixWave(n, rnd) {
   if (n >= 4) pool.push(['mender', 2.5, 2]);
   if (n >= 3) pool.push(['crawler', 0.7, 10]);
   if (n >= 4) pool.push(['sapper', 3, 2]);
-  if (n >= 5) pool.push(['stalker', 4, 2]);
+  if (n >= 5) pool.push(['stalker', 4, 2], ['jammer', 3.5, 1]);
   if (n >= 6) pool.push(['raider', 4.5, 3], ['lancer', 4.5, 2]);
   const sp = {}; let budget = 5 + n * 2.6, total = 0;
   while (budget > 0.9 && total < 24) {
@@ -540,7 +548,7 @@ function clearWorld() {
   if (G.wing) G.wing.dispose(); if (G.core) G.core.dispose();
   G.wing = null; G.core = null; G.friends.length = 0;
   for (const e of G.enemies) e.remove ? e.remove() : null;
-  G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0; clearMinis(); clearMines(); snipeSaid = false; G.mendSaid = false; G.mineSaid = false; clearZones();
+  G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0; clearMinis(); clearMines(); snipeSaid = false; G.mendSaid = false; G.mineSaid = false; G.jamSaid = false; G.jammed = null; clearZones();
   for (const k of G.pickups) scene.remove(k.o);
   G.pickups.length = 0;
 }
@@ -570,7 +578,7 @@ function newGame() {
   run.coreLost = false;
   run.extract = !!M.extract; run.dlN = 0; run.got = 0; run.evac = null; run.lateBoss = null;
   run.capture = !!M.capture; run.zones = M.capture ? makeZones(M.zones) : M.extract ? makeZones(M.zones, { R: 8, kind: 'cache' }) : []; run.up = 0; run.finalOn = false; run.trickT = 22; run.zoneWarnT = {}; run.spotC = null;
-  Object.assign(run, { escort: !!M.convoy, stops: M.stops || [], driving: false, harT: 8, waitSaid: 0, wave: -1, defense: !!M.defense, coreWarnT: -99, coreLowSaid: false, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0, cr: 0, msslT: 0, boss2: null, relayHintT: 0, waves: M.endless ? [] : M.waves, endless: !!M.endless });
+  Object.assign(run, { gauntlet: !!M.gauntlet, escort: !!M.convoy, stops: M.stops || [], driving: false, harT: 8, waitSaid: 0, wave: -1, defense: !!M.defense, coreWarnT: -99, coreLowSaid: false, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0, cr: 0, msslT: 0, boss2: null, relayHintT: 0, waves: M.endless ? [] : M.waves, endless: !!M.endless });
   G.boss = null; G.bosses = [];
   $('bossBox').classList.add('hidden');
 }
@@ -642,6 +650,7 @@ function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.stalker || 0); k++) new Stalker(spot(80 * R, 130 * R, false, b));
   for (let k = 0; k < (S.mender || 0); k++) new Mender(spot(90 * R, 140 * R, true, b));
   for (let k = 0; k < (S.sapper || 0); k++) new Sapper(spot(90 * R, 140 * R, true, b));
+  for (let k = 0; k < (S.jammer || 0); k++) new Jammer(spot(70 * R, 110 * R, true, b));
   for (let k = 0; k < (S.crawler || 0); k += 6) {   // crawlers come in packs of up to 6
     const c0 = spot(55 * R, 95 * R, false, b);
     for (let j = 0; j < Math.min(6, S.crawler - k); j++) { const a = Math.random() * 6.28, r = Math.random() * 4; new Crawler(new V3(c0.x + Math.cos(a) * r, 0, c0.z + Math.sin(a) * r)); }
@@ -777,15 +786,16 @@ function waveLogic(dt) {
     if (!run.endless && !run.escort && run.wave >= run.waves.length - 1) { if (!run.won) { run.won = true; banner('MISSION COMPLETE', '头目已击破', false); run.deathT = 3.5; } run.deathT -= dt; if (run.deathT <= 0) finish(true); return; }
     if (run.endless) { const b = Math.round(150 * (run.wave + 1) * DIFFS[cfg.diff].cr); run.cr += b; }
     G.boss = null; G.bosses = [];
-    banner(run.waves[run.wave].spawn.relay ? 'OBJECTIVE CLEAR' : run.escort && run.wave >= run.waves.length - 1 ? 'AREA CLEAR' : 'WAVE CLEAR', run.endless ? `第 ${run.wave + 1} 波完成 · 弹药补满 · 修复 25% 装甲` : (G.noRepair ? '短暂整备 · 弹药补满' : '短暂整备 · 弹药补满 · 修复 25% 装甲'), false);
+    banner(run.gauntlet ? 'ROUND CLEAR' : run.waves[run.wave].spawn.relay ? 'OBJECTIVE CLEAR' : run.escort && run.wave >= run.waves.length - 1 ? 'AREA CLEAR' : 'WAVE CLEAR', run.endless ? `第 ${run.wave + 1} 波完成 · 弹药补满 · 修复 25% 装甲` : (G.noRepair ? '短暂整备 · 弹药补满' : '短暂整备 · 弹药补满 · 修复 25% 装甲'), false);
     sfx('repair');
     for (const k of ['R', 'L', 'S']) { const w = G.pw[k]; w.ammo = w.d.mag || 0; w.reloadT = 0; w.cd = 0; }
-    const nx = run.waves[run.wave + 1], big = nx && nx.spawn.boss2;
+    const nx = run.waves[run.wave + 1], big = nx && (nx.spawn.boss2 || run.gauntlet);
     if (!G.noRepair) p.hp = Math.min(p.maxHp, p.hp + p.maxHp * (big ? 0.5 : 0.25));
-    if (big) showHint('下一波是双头目 · 已额外修复装甲', 3);
+    if (big) showHint(nx.spawn.boss2 ? '下一波是双头目 · 已额外修复装甲' : '连战整备 · 修复 50% 装甲', 3);
     if (G.wing) G.wing.repair(0.4);
+    if (run.gauntlet) G.od.k = Math.min(1, G.od.k + 0.35);
     if (G.core && G.core.alive) { G.core.hp = Math.min(G.core.maxHp, G.core.hp + G.core.maxHp * 0.15); if (G.core.hp > G.core.maxHp * 0.3) run.coreLowSaid = false; }
-    run.breakT = 4.5;
+    run.breakT = run.gauntlet ? 6 : 4.5;
   }
 }
 
@@ -1089,6 +1099,8 @@ const MEDALS = [
   { id: 'boss10', name: '头目猎人', desc: '累计击破 10 台头目（含巨像）', cr: 1500, tally: 'boss', need: 10 },
   { id: 'bug', name: '灭虫', desc: '累计击毁 100 只自爆蜘蛛', cr: 800, tally: 'crawler', need: 100 },
   { id: 'k1000', name: '千机斩', desc: '累计击毁 1000 台敌机', cr: 2000, tally: 'all', need: 1000 },
+  { id: 'gauntlet', name: '连战制霸', desc: '赢下「头目连战」', cr: 2500, test: (r) => r.win && cfg.mission === 'gauntlet' },
+  { id: 'ecm', name: '电子战', desc: '累计击落 10 台干扰机', cr: 800, tally: 'jammer', need: 10 },
   { id: 'maxed', name: '满改机体', desc: '四项机库强化全部升满', cr: 1000, test: () => Object.values(save.up).every((v) => v >= 5), prog: () => [Object.values(save.up).reduce((a, v) => a + v, 0), 20] },
 ];
 function checkMedals(r) {
@@ -1335,8 +1347,9 @@ function drawHUD(dt) {
   rctx.strokeStyle = 'rgba(255, 200, 60, 0.6)'; rctx.lineWidth = 3;
   rctx.strokeRect((-ARENA - p.pos.x) * K, (-ARENA - p.pos.z) * K, ARENA * 2 * K, ARENA * 2 * K);
   for (const e of G.enemies) {
-    if (!e.alive || e.cloaked) continue;
+    if (!e.alive || e.cloaked || (G.jammed && e.kind !== 'boss')) continue;
     const x = (e.c.x - p.pos.x) * K, z = (e.c.z - p.pos.z) * K;
+    if (e.kind === 'jammer') { rctx.fillStyle = '#c070ff'; rctx.beginPath(); rctx.arc(x, z, 5, 0, Math.PI * 2); rctx.fill(); continue; }
     if (e.kind === 'relay') { rctx.fillStyle = '#ffd23a'; rctx.save(); rctx.translate(x, z); rctx.rotate(Math.PI / 4); rctx.fillRect(-6, -6, 12, 12); rctx.restore(); continue; }
     rctx.fillStyle = e.kind === 'boss' ? '#ff8a1a' : '#ff4a3a';
     if (e.kind === 'raider') rctx.fillStyle = '#ff9a5a';
@@ -1344,12 +1357,18 @@ function drawHUD(dt) {
     rctx.fillRect(x - s / 2, z - s / 2, s, s);
   }
   if (run.capture || run.extract) for (const z of run.zones) { const x = (z.x - p.pos.x) * K, y = (z.z - p.pos.z) * K; rctx.strokeStyle = z.kind === 'evac' ? '#6dff9a' : z.own === 'P' ? '#5fe3ff' : z.own === 'E' ? '#ff4a3a' : z.kind === 'cache' ? '#ffd23a' : '#e8e8e8'; rctx.lineWidth = 3; rctx.beginPath(); rctx.arc(x, y, Math.max(6, z.R * K), 0, Math.PI * 2); rctx.stroke(); rctx.fillStyle = rctx.strokeStyle; rctx.font = 'bold 13px system-ui'; rctx.textAlign = 'center'; rctx.textBaseline = 'middle'; rctx.fillText(z.name, x, y); }
-  rctx.fillStyle = '#ffb040'; for (const m of G.mines) if (m.alive) rctx.fillRect((m.pos.x - p.pos.x) * K - 2, (m.pos.z - p.pos.z) * K - 2, 4, 4);
+  rctx.fillStyle = '#ffb040'; if (!G.jammed) for (const m of G.mines) if (m.alive) rctx.fillRect((m.pos.x - p.pos.x) * K - 2, (m.pos.z - p.pos.z) * K - 2, 4, 4);
   if (G.core && G.core.alive) { rctx.fillStyle = '#5fe3ff'; const x = (G.core.pos.x - p.pos.x) * K, z = (G.core.pos.z - p.pos.z) * K; rctx.beginPath(); rctx.arc(x, z, 9, 0, Math.PI * 2); rctx.fill(); rctx.strokeStyle = '#e8fbff'; rctx.lineWidth = 2; rctx.stroke(); }
   if (G.wing && G.wing.alive) { rctx.fillStyle = '#9fffd0'; const x = (G.wing.pos.x - p.pos.x) * K, z = (G.wing.pos.z - p.pos.z) * K; rctx.beginPath(); rctx.moveTo(x, z - 8); rctx.lineTo(x - 6, z + 6); rctx.lineTo(x + 6, z + 6); rctx.fill(); }
   rctx.fillStyle = '#5dff9a';
   for (const k of G.pickups) rctx.fillRect((k.o.position.x - p.pos.x) * K - 3, (k.o.position.z - p.pos.z) * K - 3, 6, 6);
   rctx.restore();
+  if (G.jammed) {   // ECM static: speckle + band
+    for (let i = 0; i < 260; i++) { rctx.fillStyle = `rgba(${190 + Math.random() * 60 | 0}, ${150 + Math.random() * 60 | 0}, 255, ${Math.random() * 0.5})`; rctx.fillRect(Math.random() * W, Math.random() * W, 3, 3); }
+    const by = (performance.now() * 0.12) % W; rctx.fillStyle = 'rgba(176, 96, 255, 0.18)'; rctx.fillRect(0, by, W, 18);
+    rctx.fillStyle = '#d8a8ff'; rctx.font = 'bold 22px system-ui'; rctx.textAlign = 'center'; rctx.textBaseline = 'middle'; rctx.fillText('ECM', R, R * 0.45);
+  }
+  $('ecm').classList.toggle('hidden', !G.jammed || !p.alive);
   rctx.strokeStyle = 'rgba(95, 227, 255, 0.25)'; rctx.lineWidth = 2;
   for (const rr of [R * 0.33, R * 0.66]) { rctx.beginPath(); rctx.arc(R, R, rr, 0, Math.PI * 2); rctx.stroke(); }
   rctx.fillStyle = '#e8f8ff'; rctx.beginPath(); rctx.moveTo(R, R - 10); rctx.lineTo(R - 7, R + 8); rctx.lineTo(R + 7, R + 8); rctx.fill();
@@ -1360,7 +1379,7 @@ function drawHUD(dt) {
 const auto = { on: false, st: 1, stT: 0, jT: 3, hover: 0, sT: 0 };
 function autoIntent(dt) {
   const p = G.player; let tgt = null, bd = 1e9;
-  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : e.kind === 'mender' ? -35 : e.kind === 'crawler' && e.c.distanceTo(p.pos) < 35 ? -30 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
+  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : e.kind === 'mender' ? -35 : e.kind === 'jammer' ? (G.jammed === e ? -45 : -15) : e.kind === 'crawler' && e.c.distanceTo(p.pos) < 35 ? -30 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
   // pick up repairs when hurt
   let goal = null;
   if (p.hp < p.maxHp * 0.6) for (const k of G.pickups) { const d = k.o.position.distanceTo(p.pos); if (d < 70) { goal = k.o.position; break; } }
@@ -1396,7 +1415,8 @@ function autoIntent(dt) {
   let f = tgt ? (melee ? (d > (flamer ? 13 : 24) ? 1 : 0) : (d > 45 ? 1 : d < 22 ? -1 : 0)) : 0, s = tgt ? auto.st : 0;
   if (goal) { const gx = goal.x - p.pos.x, gz = goal.z - p.pos.z; const yaw = cam.yaw; const fw = [-Math.sin(yaw), -Math.cos(yaw)], rt = [Math.cos(yaw), -Math.sin(yaw)]; f = Math.sign(gx * fw[0] + gz * fw[1]); s = Math.sign(gx * rt[0] + gz * rt[1]); }
   const los = tgt && clearLine(p.center(new V3()), tgt.c);
-  auto.sT -= dt; const sPress = auto.sT <= 0 && los; if (sPress) auto.sT = 0.6;
+  const empK = G.pw.S.d.type === 'emp', empNear = empK && (G.enemies.some((e) => e.alive && !e.dying && e.c.distanceTo(p.pos) < 22) || G.shots.some((sh) => sh.team === 'E' && sh.kind !== 'bullet' && sh.kind !== 'ebullet' && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 20));
+  auto.sT -= dt; const sPress = auto.sT <= 0 && (empK ? empNear : los); if (sPress) auto.sT = 0.6;
   const sniped = G.enemies.some((e) => e.kind === 'stalker' && e.st === 'aim' && e.lockOn === p && e.stT < 0.5);
   const incoming = G.shots.some((sh) => sh.team === 'E' && sh.kind === 'missile' && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 22);
   const leapNear = G.enemies.some((e) => e.kind === 'crawler' && e.st === 'leap' && e.c.distanceTo(p.pos) < 12);
@@ -1533,7 +1553,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=12');
+    await loadKit('./assets/kit.glb?v=13');
     ensureArena();
     makePlayer();
     setState('title');

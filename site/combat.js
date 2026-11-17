@@ -31,10 +31,11 @@ export const WEAPONS = {
   cannon: { slot: 'shoulder', name: 'PC-2 等离子炮', en: 'PC-2 Plasma Cannon', desc: '大范围爆炸 · 弹速慢', type: 'plasma', dmg: 165, splash: 9, speed: 105, cd: 3.4, sfx: 'cannon' },
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
   drones: { slot: 'shoulder', name: 'DP-4 攻击无人机', en: 'DP-4 Drone Pod', desc: '放出 2 架无人机 · 自动攻击 14 秒', type: 'drones', count: 2, dur: 14, dmg: 6, rate: 0.17, range: 80, cd: 18, sfx: 'drone' },
+  emp: { slot: 'shoulder', name: 'EP-5 电磁脉冲', en: 'EP-5 EMP Burst', desc: '周围 26 m 敌机瘫痪 2.5 秒（头目 0.8 秒）· 瘫痪中受伤 +30% · 清除来袭弹药与地雷', type: 'emp', radius: 26, dmg: 85, stun: 2.5, bossStun: 0.8, cd: 11, sfx: 'emp' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'grenade', 'coil', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -94,11 +95,12 @@ export const OD = { fill: 2600, dur: 10, dmg: 1.4, armor: 0.65 };
 // ------------------------------------------------------------------ damage
 function dealDamage(ent, dmg, team, at, label) {
   if (!ent.alive) return;
+  if (team === 'P') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.stunT > 0) dmg *= STUN_VULN; }   // EMP-stunned targets take extra damage
   ent.hit(dmg, at, label || G.curLabel);
   if (team === 'P' && !ent.isBarrel && !isAlly(label || G.curLabel)) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; if (G.od && !(G.od.t > 0) && !ent.isCore) G.od.k = Math.min(1, G.od.k + dmg / OD.fill); }
 }
 
-const BURN_WEAK = 0.75;
+const BURN_WEAK = 0.75, STUN_VULN = 1.3;
 const isAlly = (l) => !!l && l.startsWith('ally');
 function damagePlayer(dmg, src, label) {
   const p = G.player; if (!p || !p.alive || G.godMode) return;
@@ -433,6 +435,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     }
     const out = G.minis.some((m) => m.owner === owner);
     for (const m of mslot.models) { const dk = m._dock || (m._dock = find(m, 'D_Dock')); if (dk) dk.visible = !out; }
+  } else if (d.type === 'emp') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; empPulse(owner, d, dmgMul); if (me) G.stats.shots++; }
   } else if (d.type === 'shield') {
     if (pressed && ws.cd <= 0) { ws.cd = d.cd; ws.beamT = d.dur; sfx('shield', dist); if (me) G.stats.shots++; }
     if (ws.beamT > 0) ws.beamT = Math.max(0, ws.beamT - dt);
@@ -463,6 +467,38 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
       ws.sndT -= dt; if (ws.sndT <= 0) { ws.sndT = 0.11; sfx('laser', dist); }
     }
   }
+}
+
+// ------------------------------------------------------------------ EP-5 EMP: damage + stun everything nearby, wipe incoming shots and mines
+function empPulse(owner, d, dmgMul) {
+  const fx = G.fx, c = owner.center(new V3()), R = d.radius;
+  fx.ring(new V3(owner.pos.x, owner.pos.y + 0.4, owner.pos.z), null, 1, R, 0.5, 0x78c8ff);
+  fx.ring(c, null, 1, R * 0.7, 0.3, 0x6fb8e8);
+  fx.flash(c, 0x78c8ff, 30, R * 1.4, 0.18);
+  for (let k = 0; k < 24; k++) { const a = k / 24 * 6.283; fx.sparks(new V3(c.x + Math.cos(a) * R * 0.6, c.y, c.z + Math.sin(a) * R * 0.6), { x: Math.cos(a), y: 0.2, z: Math.sin(a) }, 2, 0x9fe0ff, 14, 0.9, 0.35, 0.2); }
+  G.fx.trauma = Math.min(1, G.fx.trauma + 0.3);
+  sfx('emp', 0);
+  let n = 0;
+  const prev = G.curLabel; G.curLabel = 'p-emp';
+  for (const e of entsFor('P')) {
+    if (e.isBarrel || e.isPlayer) continue;
+    const dist = e.c.distanceTo(c) - (e.r || 1) * 0.6;
+    if (dist > R) continue;
+    if (e.isMine) { e.alive = false; e.obj.parent && e.obj.parent.remove(e.obj); fx.sparks(e.c, null, 6, 0x9fe0ff, 8, 1, 0.4, 0.2); continue; }
+    dealDamage(e, d.dmg * dmgMul, 'P', e.c, 'p-emp');
+    const host = e.kind === 'cpart' ? e.owner : e;   // colossus parts stun the whole colossus
+    if (!host.alive || host.dying || host.kind === 'relay') continue;
+    const big = host.kind === 'boss' || host.kind === 'raider';
+    host.stunT = Math.max(host.stunT || 0, big ? d.bossStun : d.stun); host.stunMax = host.stunT; n++;
+  }
+  G.curLabel = prev;
+  for (let i = G.shots.length - 1; i >= 0; i--) {
+    const sh = G.shots[i];
+    if (sh.team !== 'E' || Math.hypot(sh.x - c.x, sh.y - c.y, sh.z - c.z) > R + 4) continue;
+    fx.emit('add', { x: sh.x, y: sh.y, z: sh.z, life: 0.2, s0: 1.6, c0: 0x9fe0ff });
+    G.shots.splice(i, 1);
+  }
+  G.empHits = (G.empHits || 0) + n;
 }
 
 // ------------------------------------------------------------------ DP-4 attack drones (shoulder weapon)
@@ -1606,6 +1642,38 @@ class Mine {
 }
 export function clearMines() { for (const m of G.mines) m.obj.parent && m.obj.parent.remove(m.obj); G.mines.length = 0; G.burning.clear(); }
 
+// Jammer: hovering ECM platform. Keeps ~34 m from the player; while the player is within JAM_R, lock-on, missile
+// homing and the radar's enemy dots stop working. Unarmed, 380 HP. Stunned (EMP) jammers stop jamming.
+export const JAM_R = 50;
+export class Jammer extends Enemy {
+  constructor(pos) {
+    super('jammer', 'E_Jammer', pos, 380, 2.8); this.boom = 1; this.obj.scale.setScalar(1.3);
+    this.vel = new V3(); this.ph = Math.random() * 6; this.orbit = Math.random() < 0.5 ? 1 : -1; this.ringT = 0; this.c.copy(pos);
+  }
+  update(dt) {
+    this.ph += dt;
+    this.n.E_JDish.rotation.y += dt * 1.8;
+    this.n.E_JCore.scale.setScalar(1 + 0.25 * Math.sin(this.ph * 7));
+    const p = G.player, pc = p.center(playerC);
+    _a.set(this.pos.x - pc.x, 0, this.pos.z - pc.z); const L = _a.length() || 1;
+    const ang = Math.atan2(_a.z, _a.x) + this.orbit * dt * 0.2;
+    const want = 34, tx = pc.x + Math.cos(ang) * want, tz = pc.z + Math.sin(ang) * want;
+    const ty = Math.max(groundAt(this.pos.x, this.pos.z, 99), groundAt(tx, tz, 99)) + 7 + Math.sin(this.ph * 1.3) * 0.7;
+    _b.set(tx - this.pos.x, ty - this.pos.y, tz - this.pos.z);
+    const Lb = _b.length(); if (Lb > 0) _b.multiplyScalar(Math.min(9, Lb * 0.8) / Lb);
+    if (L < 20) { _a.multiplyScalar(1 / L); _b.addScaledVector(_a, 8 * (1 - L / 20)); }
+    this.vel.lerp(_b, 1 - Math.exp(-1.5 * dt));
+    this.pos.addScaledVector(this.vel, dt);
+    const s = pointInSolid(this.pos, 2.2); if (s) { this.pos.y = s.max.y + 3; this.vel.y = Math.max(this.vel.y, 2); }
+    this.pos.x = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.x)); this.pos.z = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.z));
+    this.c.set(this.pos.x, this.pos.y + 0.4, this.pos.z);
+    this.obj.rotation.y = Math.atan2(this.pos.x - pc.x, this.pos.z - pc.z);
+    this.obj.rotation.x = -this.vel.z * 0.01; this.obj.rotation.z = this.vel.x * 0.01;
+    this.ringT -= dt;
+    if (this.ringT <= 0) { this.ringT = 1.3; G.fx.ring(new V3(this.pos.x, this.pos.y - 0.4, this.pos.z), null, 1.5, 12, 0.9, 0xb060ff); if (G.jammed === this) sfx('jam', 0); }
+  }
+}
+
 export function dropRepair(pos) {
   if (G.noRepair) return;
   const o = cloneKit('P_Repair'); o.position.copy(pos); o.position.y = Math.max(1.5, groundAt(pos.x, pos.z, pos.y) + 1.5);
@@ -1617,9 +1685,18 @@ export function updateCombat(dt) {
   for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; q.fn(); } }
   for (const e of G.enemies) {
     G.curLabel = e.kind;
+    if (e.stunT > 0 && e.alive && !e.dying) {
+      e.stunT -= dt;
+      if (Math.random() < 0.3) G.fx.sparks(_a.copy(e.c).add(_b.set((Math.random() - 0.5) * 3, (Math.random() - 0.3) * 3, (Math.random() - 0.5) * 3)), null, 2, 0x9fe0ff, 7, 0.9, 0.3, 0.18);
+      if (e.flash > 0) e.flash -= dt;
+      continue;
+    }
     G.curShooter = e; e.update(dt); G.curShooter = null;
     if (e.flash > 0) e.flash -= dt;
   }
+  const pp = G.player; G.jammed = null;
+  if (pp && pp.alive) for (const e of G.enemies) if (e.kind === 'jammer' && e.alive && !e.dying && !(e.stunT > 0) && e.c.distanceTo(pp.pos) < JAM_R) { G.jammed = e; break; }
+  if (G.jammed && !G.jamSaid) { G.jamSaid = true; G.onHint && G.onHint('电子干扰 · 锁定与雷达失效 · 击落紫色的干扰机，或用电磁脉冲瘫痪它', 4); }
   for (let i = G.enemies.length - 1; i >= 0; i--) if (G.enemies[i].gone) G.enemies.splice(i, 1);
   G.curLabel = null;
   updateBurning(dt);
