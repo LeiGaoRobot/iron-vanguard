@@ -7,6 +7,14 @@ export const ARENA = 170;          // playable half-size (m)
 export const solids = [];          // {min: V3, max: V3, kind, ref}
 export const barrels = [];         // explosive props {obj, pos, hp, solid}
 export const relaySites = [];      // objective tower spots (snowfield)
+// magma forge: two winding lava rivers (same formula in JS and in the floor shader)
+export const LAVA = { on: false, W: 5, uT: { value: 0 } };
+export function lavaD(x, z) {
+  const fa = 55 * Math.sin(x / 62 + 0.6) - 60, da = Math.abs(z - fa) / Math.sqrt(1 + (55 / 62 * Math.cos(x / 62 + 0.6)) ** 2);
+  const fb = 40 * Math.sin(z / 50 + 1.8) + 60, db = Math.abs(x - fb) / Math.sqrt(1 + (40 / 50 * Math.cos(z / 50 + 1.8)) ** 2);
+  return Math.min(da, db);
+}
+export function lavaAt(x, z) { return LAVA.on && lavaD(x, z) < LAVA.W; }
 
 export function mulberry32(a) {
   return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
@@ -23,11 +31,14 @@ function panelMaterial(color, opts) {
   const m = new THREE.MeshStandardMaterial({ color, roughness: opts.rough ?? 0.85, metalness: opts.metal ?? 0.1 });
   m.customProgramCacheKey = () => 'panel|' + opts.frag + '|' + (opts.emit || '');   // day / night variants must not share a program
   m.onBeforeCompile = (sh) => {
+    sh.uniforms.uT = LAVA.uT;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;')
       .replace('#include <project_vertex>', '#include <project_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vWP; varying vec3 vWN;
+      .replace('#include <common>', `#include <common>\nvarying vec3 vWP; varying vec3 vWN; uniform float uT;
+        float lavaD(vec2 p){ float fa = 55.0 * sin(p.x / 62.0 + 0.6) - 60.0; float da = abs(p.y - fa) / sqrt(1.0 + pow(55.0 / 62.0 * cos(p.x / 62.0 + 0.6), 2.0));
+          float fb = 40.0 * sin(p.y / 50.0 + 1.8) + 60.0; float db = abs(p.x - fb) / sqrt(1.0 + pow(40.0 / 50.0 * cos(p.y / 50.0 + 1.8), 2.0)); return min(da, db); }
         float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float gridLine(float x, float s, float w){ float f = abs(fract(x / s + 0.5) - 0.5) * s; return 1.0 - smoothstep(w * 0.5, w, f); }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
@@ -39,7 +50,8 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash', lunar = env === 'lunar';
+  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge';
+  LAVA.on = forge;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
     for (let i = 0; road && i < road.length - 1; i++) {
@@ -78,7 +90,12 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
         float bowl = smoothstep(1.0, 0.45, dd) * 0.32, rim = smoothstep(0.75, 1.0, dd) * smoothstep(1.4, 1.0, dd) * 0.22;
         rc *= 1.0 - bowl + rim;
       }
-      diffuseColor.rgb = mix(rc, diffuseColor.rgb * 0.85, 0.16 + 0.7 * stripe);` : ''}${storm ? `
+      diffuseColor.rgb = mix(rc, diffuseColor.rgb * 0.85, 0.16 + 0.7 * stripe);` : ''}${forge ? `
+      float ld = lavaD(vWP.xz);
+      vec3 bas = vec3(0.13, 0.11, 0.105) * (0.75 + 0.2 * h21(floor(vWP.xz / 1.3)) + 0.15 * h21(floor(vWP.xz / 7.0)));
+      bas = mix(bas, vec3(0.12, 0.09, 0.08), smoothstep(9.0, 5.0, ld));
+      diffuseColor.rgb = mix(bas, diffuseColor.rgb * 0.6, 0.65 * stripe);
+      diffuseColor.rgb *= 1.0 - 0.9 * smoothstep(5.2, 4.6, ld);` : ''}${storm ? `
       float wet = smoothstep(0.55, 0.8, h21(floor(vWP.xz / 9.0)) * 0.6 + h21(floor(vWP.xz / 3.0)) * 0.4);
       diffuseColor.rgb *= 0.46 - 0.2 * wet;` : ''}${snow ? `
       float sn = 0.55 + 0.25 * h21(floor(vWP.xz / 7.0)) + 0.2 * h21(floor(vWP.xz / 1.3));
@@ -89,7 +106,16 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float ed2 = max(abs(vWP.x), abs(vWP.z));
       float st2 = step(${ARENA.toFixed(1)} - 3.0, ed2) * step(ed2, ${ARENA.toFixed(1)} - 1.6) * step(0.5, fract((vWP.x + vWP.z) / 4.0));
       float ln = max(gridLine(vWP.x, 32.0, 0.25), gridLine(vWP.z, 32.0, 0.25));
-      totalEmissiveRadiance += vec3(1.0, 0.62, 0.12) * st2 * 1.6 + vec3(0.25, 0.6, 0.9) * ln * 0.06;` : '',
+      totalEmissiveRadiance += vec3(1.0, 0.62, 0.12) * st2 * 1.6 + vec3(0.25, 0.6, 0.9) * ln * 0.06;` : forge ? `
+      float lv = lavaD(vWP.xz);
+      vec2 fq = vWP.xz * 0.35 + vec2(uT * 0.25, uT * 0.17);
+      float fl = 0.55 + 0.25 * sin(fq.x * 2.1 + sin(fq.y * 1.7 + uT * 0.6) * 1.5) + 0.08 * h21(floor(vWP.xz * 1.2 + floor(uT * 2.0)));
+      float molten = smoothstep(5.0, 3.6, lv);
+      float crust = smoothstep(0.62, 0.9, h21(floor(vWP.xz / 1.6 + vec2(floor(uT * 0.4), 0.0)))) * smoothstep(4.0, 1.5, lv);
+      vec3 lc = mix(vec3(0.95, 0.16, 0.02), vec3(1.0, 0.5, 0.1), fl * fl) * (0.75 + 0.7 * fl) * (1.0 - 0.6 * crust);
+      float edge = smoothstep(8.0, 5.0, lv) * (1.0 - molten);
+      float crack = (1.0 - smoothstep(0.0, 0.06, abs(fract(vWP.x / 5.3 + sin(vWP.z * 0.21) * 0.7) - 0.5))) * step(0.86, h21(floor(vWP.xz / 10.0))) * step(9.0, lv);
+      totalEmissiveRadiance += lc * molten + vec3(1.0, 0.32, 0.06) * (edge * 0.25 + crack * 0.45);` : '',
   });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), floorMat);
   floor.receiveShadow = true; group.add(floor);
@@ -120,6 +146,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   const free = (x, z, r) => {
     if (Math.hypot(x, z - 120) < 28 || Math.hypot(x, z) < 26) return false;   // spawn + centre plaza
     if (road && roadD(x, z) < 11 + r) return false;
+    if (forge && lavaD(x, z) < 9 + r) return false;
     for (const q of relaySites) if (Math.hypot(x - q.x, z - q.z) < 18 + r) return false;
     for (const s of solids) {
       if (x + r > s.min.x - 6 && x - r < s.max.x + 6 && z + r > s.min.z - 6 && z - r < s.max.z + 6) return false;

@@ -74,6 +74,8 @@ M = dict(
     ShieldEmit=mat("ShieldEmit", "#9fe8ff", 0.2, emit="#4fd8ff", strength=6.0),
     Jam=mat("Jam", "#d8a8ff", 0.2, emit="#b060ff", strength=7.0), EmpGlow=mat("EmpGlow", "#c8f0ff", 0.2, emit="#78c8ff", strength=6.0),
     DomeEmit=mat("DomeEmit", "#ffd8a0", 0.2, emit="#ffa030", strength=6.0), Grav=mat("Grav", "#c8b8ff", 0.2, emit="#8a6cff", strength=7.0),
+    Magma=mat("Magma", "#ffb070", 0.2, emit="#ff5010", strength=7.0), Ice=mat("Ice", "#d8f6ff", 0.15, emit="#7ad8ff", strength=5.0),
+    BArmor=mat("BArmor", "#5a4436", 0.65, metal=0.3), BArmor2=mat("BArmor2", "#2c2420", 0.6, metal=0.4),
     MendEmit=mat("MendEmit", "#a8ffc8", 0.2, emit="#3dff8a", strength=6.0), MArmor=mat("MArmor", "#d8dcd6", 0.45, metal=0.2),
     SArmor=mat("SArmor", "#3a3d48", 0.45, metal=0.45), SArmor2=mat("SArmor2", "#22242b", 0.5, metal=0.5),
 )
@@ -661,6 +663,50 @@ def build_warden():
     cyl((0, 0, 4.55), 0.32, 0.4, M["EArmor"], K, verts=8, r2=0.12)
     ball((0, 0, 4.85), 0.16, M["DomeEmit"], K)
 
+def build_burrower():
+    # Burrower: armoured drill-worm that surfaces from the ground. Body segments stacked on +Z, drill head E_BDrill on top,
+    # three mandible plates E_BJaw1-3 hinge open around it. front = +Y
+    K = kit("E_Burrower")
+    body = empty("E_BBody", (0, 0, 0), K)
+    for i in range(5):
+        z = 0.3 + i * 0.78; r = 1.35 - i * 0.1
+        cyl((0, 0, z), r, 0.62, M["BArmor"], body, verts=10, smooth=False)
+        cyl((0, 0, z + 0.36), r * 0.86, 0.14, M["Magma"], body, verts=10)
+        for k in range(5):
+            a = k * 2 * math.pi / 5 + i * 0.6
+            box((math.cos(a) * r * 0.98, math.sin(a) * r * 0.98, z), (0.34, 0.5, 0.5), M["BArmor2"], body, rot=(0, 0, a), bevel=0.05)
+    box((0, 1.05, 3.0), (0.7, 0.16, 0.2), M["EEye"], body)
+    head = empty("E_BHead", (0, 0, 4.15), body)
+    cyl((0, 0, 0.0), 1.0, 0.4, M["BArmor2"], head, verts=10, smooth=False)
+    for k in range(3):
+        a = k * 2 * math.pi / 3 + math.pi / 2
+        j = empty("E_BJaw%d" % (k + 1), (math.cos(a) * 0.85, math.sin(a) * 0.85, 0.15), head, rot=(0, 0, a))
+        wedge((0.15, 0, 0.75), (0.32, 0.9, 1.5), M["BArmor"], j, taper=0.25, bevel=0.04)
+        box((0.32, 0, 0.6), (0.06, 0.5, 0.9), M["Magma"], j)
+    drill = empty("E_BDrill", (0, 0, 0.2), head)
+    cyl((0, 0, 0.9), 0.78, 1.8, M["Joint"], drill, verts=12, r2=0.05)
+    for k in range(4):
+        a = k * math.pi / 2
+        for t in range(4):
+            z = 0.35 + t * 0.38; rr = 0.72 - t * 0.17
+            box((math.cos(a + t * 0.5) * rr, math.sin(a + t * 0.5) * rr, z), (0.16, 0.36, 0.12), M["Piston"], drill, rot=(0, 0, a + t * 0.5 + 0.5))
+    ball((0, 0, 1.85), 0.12, M["Magma"], drill)
+
+def build_cryo():
+    K = kit("W_Cryo")
+    # cryo lance: boxy receiver with two frost canisters, long finned emitter ending in a glowing ice-blue crystal
+    box((0, 0.1, 0.04), (0.4, 0.95, 0.42), M["Frame"], K, bevel=0.05)
+    box((0, 0.05, 0.28), (0.32, 0.7, 0.1), M["Armor"], K, bevel=0.02)
+    for s_ in (-1, 1):
+        cyl((s_ * 0.24, 0.1, -0.24), 0.13, 0.7, M["Ice"], K, rot=ALONG_Y, verts=10)
+        cyl((s_ * 0.24, 0.1, -0.24), 0.145, 0.08, M["Frame"], K, rot=ALONG_Y, verts=10)
+    cyl((0, 0.95, 0.04), 0.11, 0.9, M["Piston"], K, rot=ALONG_Y, verts=10)
+    for i in range(4):
+        box((0, 0.68 + i * 0.17, 0.04), (0.34, 0.04, 0.34), M["Joint"], K, rot=(0, math.pi / 4, 0))
+    ball((0, 1.45, 0.04), 0.1, M["Ice"], K, scale=(1, 1.6, 1))
+    box((0.22, 0.3, 0.04), (0.04, 0.5, 0.2), M["Accent"], K)
+    muzzle("Muzzle_Cryo", (0, 1.58, 0.04), K)
+
 def build_grav():
     K = kit("S_Grav")
     # shoulder gravity-well launcher: armoured cradle holding a dark singularity sphere inside violet rings
@@ -1037,9 +1083,9 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
-build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout
