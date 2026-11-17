@@ -80,6 +80,7 @@ M = dict(
     SArmor=mat("SArmor", "#3a3d48", 0.45, metal=0.45), SArmor2=mat("SArmor2", "#22242b", 0.5, metal=0.5),
     TArmor=mat("TArmor", "#6e5f4a", 0.6, metal=0.35), TArmor2=mat("TArmor2", "#2f2d2a", 0.55, metal=0.5),
     Orbit=mat("Orbit", "#e8fbff", 0.2, emit="#9fe8ff", strength=7.0),
+    DiscEdge=mat("DiscEdge", "#ffd0f4", 0.2, emit="#ff4ad8", strength=7.0),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -801,6 +802,24 @@ def build_orbital():
     box((0, -0.5, 0.2), (0.46, 0.03, 0.18), M["Hazard"], K)
     muzzle("Muzzle_Orbital", (0, 0.32, 1.08), K)
 
+def build_disc():
+    K = kit("W_Disc")
+    # disc launcher: flat armoured cradle with a spring arm; the loaded blade disc DS_Disc rides on top (hidden while thrown)
+    box((0, 0.15, 0.0), (0.44, 1.0, 0.36), M["Frame"], K, bevel=0.05)
+    box((0, 0.05, 0.22), (0.36, 0.7, 0.08), M["Armor"], K, bevel=0.02)
+    box((0, 0.75, -0.05), (0.5, 0.5, 0.12), M["Armor2"], K, bevel=0.03)
+    for s_ in (-1, 1):
+        box((s_ * 0.3, 0.8, 0.05), (0.06, 0.6, 0.2), M["Joint"], K)
+        box((s_ * 0.24, 0.3, -0.2), (0.05, 0.5, 0.12), M["Hazard"], K)
+    d = empty("DS_Disc", (0, 0.85, 0.12), K)
+    cyl((0, 0, 0), 0.42, 0.06, M["Joint"], d, verts=20, smooth=False)
+    torus((0, 0, 0), 0.42, 0.035, M["DiscEdge"], d)
+    cyl((0, 0, 0), 0.12, 0.1, M["DiscEdge"], d, verts=10)
+    for k in range(6):
+        a = k * math.pi / 3
+        box((math.cos(a) * 0.44, math.sin(a) * 0.44, 0), (0.12, 0.05, 0.05), M["Frame"], d, rot=(0, 0, a + 0.6))
+    muzzle("Muzzle_Disc", (0, 1.15, 0.12), K)
+
 def build_cryo():
     K = kit("W_Cryo")
     # cryo lance: boxy receiver with two frost canisters, long finned emitter ending in a glowing ice-blue crystal
@@ -1192,7 +1211,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

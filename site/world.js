@@ -50,7 +50,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn';
+  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber';
   LAVA.on = forge;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
@@ -85,7 +85,8 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       vec2 lc = floor(vWP.xz / 0.5);
       vec3 leafC = mix(vec3(0.55, 0.16, 0.05), vec3(0.8, 0.52, 0.12), h21(lc + 7.3)) * (0.7 + 0.3 * h21(lc + 2.1));
       diffuseColor.rgb *= vec3(0.78, 0.72, 0.64) * (0.9 + 0.12 * h21(floor(vWP.xz / 9.0)));
-      diffuseColor.rgb = mix(diffuseColor.rgb, leafC, lfk * step(0.45, h21(lc)) * (1.0 - stripe) * 0.75);` : ''}${lunar ? `
+      diffuseColor.rgb = mix(diffuseColor.rgb, leafC, lfk * step(0.45, h21(lc)) * (1.0 - stripe) * 0.75);` : ''}${cyber ? `
+      diffuseColor.rgb = mix(vec3(0.035, 0.03, 0.06) * (0.8 + 0.4 * h21(floor(vWP.xz / 8.0))), diffuseColor.rgb * 0.3, stripe);` : ''}${lunar ? `
       vec3 rc = vec3(0.5, 0.5, 0.49) * (0.74 + 0.1 * h21(floor(vWP.xz / 0.7)) + 0.1 * h21(floor(vWP.xz / 5.0)));
       for (int q = 0; q < 2; q++) {
         float sz = q == 0 ? 26.0 : 9.0;
@@ -111,7 +112,12 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float ed2 = max(abs(vWP.x), abs(vWP.z));
       float st2 = step(${ARENA.toFixed(1)} - 3.0, ed2) * step(ed2, ${ARENA.toFixed(1)} - 1.6) * step(0.5, fract((vWP.x + vWP.z) / 4.0));
       float ln = max(gridLine(vWP.x, 32.0, 0.25), gridLine(vWP.z, 32.0, 0.25));
-      totalEmissiveRadiance += vec3(1.0, 0.62, 0.12) * st2 * 1.6 + vec3(0.25, 0.6, 0.9) * ln * 0.06;` : forge ? `
+      totalEmissiveRadiance += vec3(1.0, 0.62, 0.12) * st2 * 1.6 + vec3(0.25, 0.6, 0.9) * ln * 0.06;` : cyber ? `
+      float cg8 = max(gridLine(vWP.x, 8.0, 0.1), gridLine(vWP.z, 8.0, 0.1));
+      float cg32 = max(gridLine(vWP.x, 32.0, 0.22), gridLine(vWP.z, 32.0, 0.22));
+      float cpl = 0.5 + 0.5 * sin(length(vWP.xz) * 0.06 - uT * 1.6);
+      vec2 ccell = floor(vWP.xz / 8.0); float cblk = step(0.93, h21(ccell + floor(uT * 0.5)));
+      totalEmissiveRadiance += vec3(0.1, 0.7, 1.0) * cg8 * 0.28 + vec3(1.0, 0.18, 0.8) * cg32 * (0.35 + 0.65 * cpl) + vec3(0.1, 0.5, 0.9) * cblk * 0.05;` : forge ? `
       float lv = lavaD(vWP.xz);
       vec2 fq = vWP.xz * 0.35 + vec2(uT * 0.25, uT * 0.17);
       float fl = 0.55 + 0.25 * sin(fq.x * 2.1 + sin(fq.y * 1.7 + uT * 0.6) * 1.5) + 0.08 * h21(floor(vWP.xz * 1.2 + floor(uT * 2.0)));
@@ -134,7 +140,8 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float tone = 0.85 + 0.2 * h21(floor(vWP.xz / 6.0) + floor(vWP.y / 3.5));
       diffuseColor.rgb *= tone * (1.0 - 0.35 * max(hl, vl));
       if (n.y < 0.5) { float win = step(0.62, fract(vWP.y / 3.5)) * step(fract(vWP.y / 3.5), 0.82);
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.2, 0.26), win * 0.8); }${snow ? `
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.2, 0.26), win * 0.8); }${cyber ? `
+      diffuseColor.rgb *= 0.3;` : ''}${snow ? `
       if (vWN.y > 0.5) diffuseColor.rgb = vec3(0.84, 0.88, 0.93) * (0.92 + 0.08 * h21(floor(vWP.xz / 2.0)));
       else diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.85, 0.9), step(0.5, fract(vWP.y / 3.5 + 0.38)) * step(fract(vWP.y / 3.5 + 0.38), 0.53) * 0.75);` : ''}`,
     emit: night ? `
@@ -145,7 +152,13 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
         float lit = step(0.6, h21(cid));
         vec3 wc = mix(vec3(1.0, 0.72, 0.38), vec3(0.55, 0.82, 1.0), step(0.55, h21(cid + 7.3)));
         totalEmissiveRadiance += wc * wn * lit * (0.35 + 0.55 * h21(cid + 3.1));
-      }` : '',
+      }` : cyber ? `
+      vec3 cn2 = abs(vWN);
+      float ch2 = gridLine(vWP.y, 3.5, 0.07);
+      float cv2 = cn2.x > 0.5 ? gridLine(vWP.z, 4.0, 0.06) : (cn2.z > 0.5 ? gridLine(vWP.x, 4.0, 0.06) : 0.0);
+      vec2 ccid = vec2(floor((vWP.x + vWP.z) / 4.0), floor(vWP.y / 3.5));
+      vec3 clc = mix(vec3(0.1, 0.7, 1.0), vec3(1.0, 0.2, 0.8), step(0.72, h21(ccid)));
+      totalEmissiveRadiance += clc * max(ch2, cv2) * (0.12 + 0.45 * step(0.55, h21(ccid + 2.0)));` : '',
   });
   const boxes = [];
   const free = (x, z, r) => {

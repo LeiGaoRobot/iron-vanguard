@@ -27,6 +27,7 @@ export const WEAPONS = {
   grenade: { slot: 'arm', name: 'GL-4 榴弹发射器', en: 'GL-4 Grenade Launcher', desc: '抛物线弹道 · 范围爆炸 · 可越过掩体', type: 'bullet', grenade: true, rate: 0.55, dmg: 78, splash: 6.5, speed: 88, grav: 30, spread: 0.004, mag: 8, reload: 2.5, color: 0xffa050, sfx: 'grenade', recoil: 0.55 },
   flamer: { slot: 'arm', name: 'FT-2 火焰喷射器', en: 'FT-2 Flamethrower', desc: '近距离持续喷射 · 点燃敌人持续灼烧 · 燃烧中的敌人伤害 −25%', type: 'flame', rate: 0.04, dmg: 8, speed: 60, spread: 0.08, life: 0.42, mag: 120, reload: 2, burn: 22, burnT: 2.5, sfx: 'flame' },
   cryo: { slot: 'arm', name: 'CR-3 冷冻枪', en: 'CR-3 Cryo Lance', desc: '冰晶连射 · 射程 70 m · 命中累积寒冷让敌人变慢 · 冻满后冰封 1.5 秒（瘫痪、受伤 +30%）', type: 'bullet', rate: 0.085, dmg: 8.5, speed: 230, spread: 0.007, life: 0.3, mag: 60, reload: 2.2, color: 0x9fe8ff, w: 0.26, len: 5, sfx: 'cryo', recoil: 0.1, chill: 5.5 },
+  disc: { slot: 'arm', name: 'DS-7 回旋刃', en: 'DS-7 Ripper Disc', desc: '掷出贯穿锯刃 · 飞到 48 m 或撞墙后飞回手中 · 去程回程各命中一次 · 同时最多 2 片', type: 'disc', rate: 0.32, dmg: 56, speed: 72, range: 48, mag: 2, reload: 0, sfx: 'disc', recoil: 0.25 },
   pile: { slot: 'arm', name: 'PB-9 打桩机', en: 'PB-9 Pile Bunker', desc: '近战 · 锁定时冲刺 · 单体重击 · 贯穿护盾', type: 'pile', dmg: 430, range: 5.5, lunge: 26, cd: 1.3, cost: 20, sfx: 'pile' },
   missile: { slot: 'shoulder', name: 'MS-6 飞弹巢', en: 'MS-6 Missile Pods', desc: '多重锁定 · 6 发追踪', type: 'missile', count: 6, dmg: 40, splash: 5, cd: 6.5, sfx: 'missile' },
   cannon: { slot: 'shoulder', name: 'PC-2 等离子炮', en: 'PC-2 Plasma Cannon', desc: '大范围爆炸 · 弹速慢', type: 'plasma', dmg: 165, splash: 9, speed: 105, cd: 3.4, sfx: 'cannon' },
@@ -38,7 +39,7 @@ export const WEAPONS = {
   orbital: { slot: 'shoulder', name: 'OS-1 轨道打击', en: 'OS-1 Orbital Strike', desc: '标记落点 · 1.4 秒后卫星光柱从天而降 · 半径 9 m 重击 · 落点灼烧 2 秒 · 锁定时卫星跟踪目标直到落下前 0.4 秒', type: 'orbital', dmg: 360, R: 9, delay: 1.4, dps: 40, burnT: 2, range: 170, cd: 13, sfx: 'orbital' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital'];
 
 export function weaponState(key) {
@@ -458,6 +459,9 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Decoy(owner, slot, d, dmgMul); sfx('decoy', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'grav') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; launchWell(owner, slot, d, dmgMul, aim); sfx('cannon', dist); if (me) G.stats.shots++; }
+  } else if (d.type === 'disc') {
+    if (held && ws.cd <= 0 && ws.ammo > 0 && isP) { ws.cd = d.rate; ws.ammo--; throwDisc(owner, slot, ws, d, dmgMul, aim); if (me) G.stats.shots++; mslot.recoil = 1; }
+    for (const m of mslot.models) { const dk = m._disc || (m._disc = find(m, 'DS_Disc')); if (dk) { dk.visible = ws.ammo > 0; dk.rotation.y += dt * 8; } }
   } else if (d.type === 'orbital') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; launchStrike(owner, slot, d, dmgMul, aim, target); if (me) G.stats.shots++; }
   } else if (d.type === 'emp') {
@@ -732,6 +736,63 @@ function updateStrikes(dt) {
     if (S.burn <= 0 && S.age > 0.7) { S.o.parent && S.o.parent.remove(S.o); G.strikes.splice(i, 1); }
   }
 }
+// ripper disc: a spinning blade thrown along the aim; it flies out to `range` (or the first wall), then homes back to the
+// launcher. Pierces everything on the way, hitting each target once going out and once coming back. Ammo returns on catch.
+G.discs = [];
+const discGeo = { body: new THREE.CylinderGeometry(0.72, 0.72, 0.08, 20), edge: new THREE.TorusGeometry(0.74, 0.07, 6, 28).rotateX(Math.PI / 2), hub: new THREE.CylinderGeometry(0.2, 0.2, 0.14, 10) };
+const discMat = { body: new THREE.MeshStandardMaterial({ color: 0x8a8f9a, metalness: 0.8, roughness: 0.3 }), edge: new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff4ad8).multiplyScalar(2.4), toneMapped: false }) };
+function throwDisc(owner, slot, ws, d, mul, aim) {
+  const mp = owner.muzzlePos(slot, new V3(), 0).clone();
+  _d.subVectors(aim, mp); const L = Math.max(16, Math.min(d.range, _d.length() + 6)); _d.normalize();
+  const o = new THREE.Group();
+  o.add(new THREE.Mesh(discGeo.body, discMat.body), new THREE.Mesh(discGeo.edge, discMat.edge), new THREE.Mesh(discGeo.hub, discMat.edge));
+  o.rotation.z = (Math.random() - 0.5) * 0.4; o.position.copy(mp); G.scene.add(o);
+  G.discs.push({ o, owner, slot, ws, d, mul, dir: _d.clone(), left: L, back: false, hit: new Set(), t: 0, prev: mp.clone(), sndT: 0 });
+  sfx('disc', G.player ? G.player.pos.distanceTo(mp) : 0);
+}
+function updateDiscs(dt) {
+  const fx = G.fx;
+  for (let i = G.discs.length - 1; i >= 0; i--) {
+    const D = G.discs[i], P = D.o.position, d = D.d;
+    D.t += dt; D.prev.copy(P); D.o.rotateY(dt * 32);
+    let done = false;
+    if (!D.back) {
+      const st = d.speed * dt, w = raySolids(P, D.dir, st + 0.6);
+      if (w.t < st + 0.6) { P.addScaledVector(D.dir, Math.max(0, w.t - 0.6)); D.back = true; D.hit.clear(); fx.sparks(P, null, 10, 0xff9ae8, 14, 1, 0.3, 0.2); sfx('ric', G.player.pos.distanceTo(P)); }
+      else { P.addScaledVector(D.dir, st); D.left -= st; if (D.left <= 0) { D.back = true; D.hit.clear(); } }
+    } else {
+      if (!D.owner.alive || D.t > 5) done = true;
+      else {
+        const tg = D.owner.muzzlePos(D.slot, _a, 0); _b.subVectors(tg, P);
+        const dist = _b.length(), st = d.speed * (1 + Math.min(0.7, D.t * 0.35)) * dt;
+        if (dist < Math.max(1.6, st)) { done = true; if (D.owner === G.player) sfx('catch', 0); }
+        else P.addScaledVector(_b.multiplyScalar(1 / dist), st);
+      }
+    }
+    if (!done) {
+      _c.subVectors(P, D.prev); const L2 = _c.lengthSq();
+      const prev = G.curLabel; G.curLabel = 'p-disc';
+      for (const e of entsFor('P')) {
+        if (D.hit.has(e) || e.isMine) continue;
+        _d.subVectors(e.c, D.prev); let k = L2 > 0 ? _d.dot(_c) / L2 : 0; k = Math.max(0, Math.min(1, k));
+        const dx = D.prev.x + _c.x * k - e.c.x, dy = D.prev.y + _c.y * k - e.c.y, dz = D.prev.z + _c.z * k - e.c.z;
+        const r = (e.r || 1) + 0.8;
+        if (dx * dx + dy * dy + dz * dz < r * r) {
+          D.hit.add(e); dealDamage(e, d.dmg * D.mul, 'P', e.c, 'p-disc');
+          fx.sparks(_a.set(e.c.x + dx * 0.5, e.c.y + dy * 0.5, e.c.z + dz * 0.5), null, 7, 0xffb0f0, 12, 1, 0.25, 0.2);
+          G.discHits = (G.discHits || 0) + 1;
+        }
+      }
+      G.curLabel = prev;
+      fx.emit('add', { x: P.x, y: P.y, z: P.z, life: 0.16, s0: 1.3, s1: 0.2, c0: 0xff5ae0 });
+      D.sndT -= dt; if (D.sndT <= 0) { D.sndT = 0.16; if (Math.random() < 0.5) sfx('whirr', G.player.pos.distanceTo(P)); }
+      continue;
+    }
+    D.ws.ammo = Math.min(d.mag, D.ws.ammo + 1);
+    D.o.parent && D.o.parent.remove(D.o); G.discs.splice(i, 1);
+  }
+}
+export function clearDiscs() { for (const D of G.discs) D.o.parent && D.o.parent.remove(D.o); G.discs.length = 0; }
 export function clearStrikes() { for (const S of G.strikes) S.o.parent && S.o.parent.remove(S.o); G.strikes.length = 0; }
 export function clearWells() { for (const w of G.wells) { w.o.parent && w.o.parent.remove(w.o); w.area.parent && w.area.parent.remove(w.area); } G.wells.length = 0; }
 export function updateDecoys(dt) { for (const f of G.friends.slice()) if (f instanceof Decoy) f.update(dt); }
@@ -1310,6 +1371,16 @@ export const RAIDERS = {
   raider: { name: '掠夺者 RAIDER', palette: 'raider', frame: 'std', scale: 1.0, hp: 900, want: [36, 36], phases: [{ R: 'rifle', L: 'shotgun', S: 'missile' }], mul: { rifle: 0.1, shotgun: 0.15, missile: 0.14 } },
   lancer: { name: '枪骑兵 LANCER', palette: 'lancer', frame: 'light', scale: 0.96, hp: 700, want: [24, 24], agile: true, phases: [{ R: 'blade', L: 'gatling', S: 'cannon' }], mul: { blade: 0.13, gatling: 0.1, cannon: 0.2 } },
 };
+// Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
+// Phase 2 splits off two weak Shards with the same weapons.
+const ECHO_SUB = { pile: 'blade', disc: 'rifle', decoy: 'missile', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
+export function setEcho(L) {
+  const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
+  BOSSES.echo = { name: '镜像 ECHO · 复制体', palette: 'echo', frame: L.frame || 'std', scale: 1.15, hp: 6000, want: [32, 26], agile: true, phases: [lo, lo], mul: ECHO_MUL, phase2: ['镜像 · 分裂', '两台镜像碎片加入战斗'] };
+  RAIDERS.shard = { name: '镜像碎片 SHARD', palette: 'echo', frame: 'light', scale: 0.85, hp: 500, want: [28, 28], agile: true, phases: [lo], mul: Object.fromEntries(Object.entries(ECHO_MUL).map(([k, v]) => [k, v * 0.35])) };
+  return lo;
+}
 export class Boss {
   constructor(pos, ctx, type = 'tyrant', hpMul = 1) {
     const B = this.B = BOSSES[type] || RAIDERS[type];
@@ -2044,7 +2115,6 @@ export function clearChill() { for (const e of G.chilled) if (e.ice) { e.ice.par
 const LAVA_DPS = 40;
 function updateForge(dt) {
   const p = G.player; if (!p || !p.alive) return;
-  LAVA.uT.value = G.time;
   if (p.grounded && lavaAt(p.pos.x, p.pos.z)) {
     G.curSrc = null; damagePlayer(LAVA_DPS * dt, null, 'lava'); G.lavaT = (G.lavaT || 0) + dt;
     if (Math.random() < 0.5) G.fx.emit('add', { x: p.pos.x + (Math.random() - 0.5) * 3, y: p.pos.y + 0.4, z: p.pos.z + (Math.random() - 0.5) * 3, vy: 3, life: 0.4, s0: 0.8, s1: 1.6, c0: 0xffb060, c1: 0xff3010 });
@@ -2562,6 +2632,7 @@ export function updateCombat(dt) {
   if (G.jammed && !G.jamSaid) { G.jamSaid = true; G.onHint && G.onHint('电子干扰 · 锁定与雷达失效 · 击落紫色的干扰机，或用电磁脉冲瘫痪它', 4); }
   for (let i = G.enemies.length - 1; i >= 0; i--) if (G.enemies[i].gone) G.enemies.splice(i, 1);
   G.curLabel = null;
+  LAVA.uT.value = G.time;
   updateBurning(dt);
   updateChill(dt);
   if (LAVA.on) updateForge(dt);
@@ -2572,6 +2643,7 @@ export function updateCombat(dt) {
   updateDecoys(dt);
   updateWells(dt);
   updateStrikes(dt);
+  updateDiscs(dt);
   updateShots(dt);
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
