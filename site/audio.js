@@ -91,6 +91,8 @@ export function sfx(name, d = 0, pan = 0) {
       case 'minebeep': for (let i = 0; i < 4; i++) tone(t + i * 0.11, 'square', 2600, 2600, 0.08 * Math.max(0.5, k), 0.05); break;
       case 'artillery': { const q = Math.max(0.4, k); tone(t, 'sine', 75, 28, 0.7 * q, 0.9); noise(t, 0.9, 'lowpass', 500, 0.8, 0.8 * q, 0.9, pan); tone(t, 'square', 140, 40, 0.15 * q, 0.25); break; }
       case 'decoy': tone(t, 'sine', 500, 1500, 0.16, 0.45); tone(t + 0.06, 'triangle', 800, 2200, 0.1, 0.4); noise(t, 0.3, 'highpass', 3000, 0.5, 0.15, 0.3); break;
+      case 'orbital': for (let i = 0; i < 4; i++) tone(t + i * 0.12, 'sine', 900 + i * 260, 1400 + i * 260, 0.07 * k, 0.12); noise(t + 0.4, 1.0, 'bandpass', 2200, 3, 0.12 * k, 0.9, pan, 5000); break;
+      case 'horn': tone(t, 'sawtooth', 233, 228, 0.16 * k, 1.1, 0.06); tone(t, 'sawtooth', 294, 290, 0.13 * k, 1.1, 0.06); tone(t, 'square', 117, 115, 0.05 * k, 1.1, 0.06); break;
       case 'cryo': noise(t, 0.09, 'highpass', 3500, 1, 0.14 * k, 0.08, pan); tone(t, 'triangle', 2400, 1600, 0.04 * k, 0.06); break;
       case 'freeze': noise(t, 0.5, 'highpass', 2500, 2, 0.3 * k, 0.45, pan, 6000); for (let i = 0; i < 5; i++) tone(t + i * 0.04, 'sine', 2600 + i * 400, 1800 + i * 300, 0.06 * k, 0.15); break;
       case 'rumble': noise(t, 0.7, 'lowpass', 140, 1, 0.3 * k, 0.6, pan, 90); tone(t, 'sine', 48, 36, 0.14 * k, 0.6, 0.08); break;

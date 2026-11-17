@@ -11,9 +11,11 @@ import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff, PHYS } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, domeAt, clearWells, clearChill, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, domeAt, clearWells, clearChill, clearStrikes, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
+// rail loop for the train mission: a 118 x 82 m oval, closed (last point == first)
+const TRACK = (() => { const a = []; for (let i = 0; i <= 96; i++) { const t = i / 96 * Math.PI * 2; a.push([118 * Math.cos(t), 82 * Math.sin(t)]); } a[96] = a[0]; a.rail = true; return a; })();
 const V3 = THREE.Vector3;
 const DIFFS = {
   easy: { name: '新兵', desc: '受到伤害 ×0.5 · 敌方耐久 ×0.8 · 报酬 ×0.7', dmg: 0.5, hp: 0.8, cr: 0.7 },
@@ -86,6 +88,11 @@ const MISSIONS = {
     { title: 'WAVE 3', sub: '重装部队在熔岩对岸推进', spawn: { bulwark: 1, raider: 2, burrower: 3, drone: 3, howitzer: 1 } },
     { title: 'FINAL WAVE', sub: '「暴君」踏着熔岩而来', spawn: { boss: 'tyrant', burrower: 3, drone: 3 } },
   ] },
+  rail: { name: '铁道 · 装甲列车拦截', en: 'RAIL INTERCEPT', desc: '秋日午后 · 装甲列车沿环形铁轨巡行 · 先毁三节武装车厢，再打车头反应堆 · 三圈内不击毁就让它逃了', seed: 141, env: 'autumn', reward: 5200, track: TRACK, waves: [
+    { title: 'WAVE 1', sub: '铁道沿线的守备部队 · 别在铁轨上停留', spawn: { turret: 2, walker: 3, drone: 4, crawler: 4 } },
+    { title: 'WAVE 2', sub: '护卫部队 · 列车即将进站', spawn: { walker: 3, bulwark: 1, gunship: 2, raider: 2 } },
+    { title: 'FINAL WAVE', sub: '装甲列车 IRONCLAD · 三圈内击毁它 · 先打武装车厢', spawn: { train: 1, drone: 3, walker: 2, raider: 1 } },
+  ] },
   lunar: { name: '月面 · 静海基地', en: 'LUNAR BASE', desc: '低重力 · 跳得更高、滞空更久 · 穹盾发生器护住敌群，从外面打不进去 · 冲进护罩内作战 · 头目「幻影」', seed: 121, env: 'lunar', grav: 0.4, reward: 4800, waves: [
     { title: 'WAVE 1', sub: '低重力 · 跳得更高、落得更慢 · 琥珀色穹盾从外面打不进去', spawn: { turret: 2, walker: 3, drone: 3, warden: 1 } },
     { title: 'WAVE 2', sub: '两座穹盾 · 冲进护罩，或用电磁脉冲 / 重力井破局', spawn: { walker: 3, bulwark: 1, warden: 2, drone: 3, crawler: 5 } },
@@ -122,12 +129,13 @@ const ENVS = {
   dawn: { top: 0x56658f, hor: 0xf0b49c, fog: [70, 480], hemi: [0xffd8cc, 0x4a4250, 0.52], sun: [0xffc49a, 2.1], env: 0.34, exp: 0.95, dir: [0.75, 0.16, -0.25], disc: 1.6 },
   haze: { top: 0x8a7468, hor: 0xe2aa7c, fog: [55, 400], hemi: [0xffe2c4, 0x5e4232, 0.6], sun: [0xffc890, 2.2], env: 0.32, exp: 0.94, dir: [-0.5, 0.42, 0.35], disc: 1.1 },
   forge: { top: 0x1c0d0a, hor: 0x7a2e16, fog: [50, 380], hemi: [0xffb090, 0x3a1810, 0.42], sun: [0xffa070, 1.45], env: 0.2, exp: 1.0, dir: [0.4, 0.34, -0.6], disc: 0.3, ash: true, ember: true },
+  autumn: { top: 0x4673a8, hor: 0xe2a46a, fog: [110, 620], hemi: [0xffdcb0, 0x5a3a22, 0.48], sun: [0xffb878, 2.5], env: 0.3, exp: 0.84, dir: [-0.5, 0.34, 0.62], disc: 1.3, leaves: true },
   lunar: { top: 0x020308, hor: 0x0c0f16, fog: [160, 950], hemi: [0xa8b4cc, 0x1c1c20, 0.28], sun: [0xfffaf2, 2.5], env: 0.2, exp: 0.95, dir: [0.55, 0.36, -0.5], disc: 0.15, stars: true, earth: [-0.42, 0.55, -0.72] },
   overcast: { top: 0x7a8590, hor: 0xb4bcc4, fog: [60, 420], hemi: [0xe0e6ec, 0x5a5c5e, 0.7], sun: [0xf0f2f4, 1.25], env: 0.4, exp: 0.92, dir: [0.3, 0.75, 0.4], disc: 0.15 },
   eclipse: { top: 0x120c1c, hor: 0x5c2a40, fog: [55, 420], hemi: [0xd8c0ff, 0x1c1620, 0.36], sun: [0xff9a80, 1.25], env: 0.18, exp: 1.04, dir: [-0.3, 0.38, 0.7], disc: 0.5 },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
+const KILL_CR = { train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -251,8 +259,8 @@ function applyEnv(key) {
   sun.color.set(E.sun[0]); sun.intensity = E.sun[1];
   U.stars.value = E.stars ? 1 : 0; if (E.earth) U.earth.value.set(...E.earth).normalize();
   scene.environmentIntensity = E.env; renderer.toneMappingExposure = E.exp;
-  snowFx.visible = !!(E.snow || E.ash); rainFx.visible = !!E.rain;
-  snowFx.material.color.set(E.ember ? 0xff8a40 : E.ash ? 0x6a605a : 0xffffff); snowFx.userData.k = E.ash ? 0.35 : 1;
+  snowFx.visible = !!(E.snow || E.ash || E.leaves); rainFx.visible = !!E.rain;
+  snowFx.material.color.set(E.leaves ? 0xd0782a : E.ember ? 0xff8a40 : E.ash ? 0x6a605a : 0xffffff); snowFx.userData.k = E.leaves ? 0.22 : E.ash ? 0.35 : 1;
   storm.on = !!E.rain; storm.hemi = E.hemi[2]; storm.top.set(E.top); storm.k = 0; storm.t = 4 + Math.random() * 6;
 }
 let arenaKey = '';
@@ -260,7 +268,7 @@ function ensureArena() {
   const M = MISSIONS[cfg.mission], key = M.seed + M.env;
   if (key === arenaKey && arenaGroup) return;
   if (arenaGroup) scene.remove(arenaGroup);
-  arenaGroup = buildArena(scene, M.seed, M.env, M.path || null, M.zones ? (M.evac ? [...M.zones, M.evac] : M.zones) : null); arenaKey = key;
+  arenaGroup = buildArena(scene, M.seed, M.env, M.path || M.track || null, M.zones ? (M.evac ? [...M.zones, M.evac] : M.zones) : null); arenaKey = key;
   applyEnv(M.env);
 }
 
@@ -607,7 +615,7 @@ function makePlayer() {
 const wingOn = () => !!(save.wing && cfg.wing);
 function clearWorld() {
   if (G.wing) G.wing.dispose(); if (G.core) G.core.dispose();
-  clearDecoys(); clearWells(); clearChill(); G.wing = null; G.core = null; G.friends.length = 0;
+  clearDecoys(); clearWells(); clearChill(); clearStrikes(); G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
   for (const e of G.enemies) e.remove ? e.remove() : null;
   G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0; clearMinis(); clearMines(); snipeSaid = false; G.mendSaid = false; G.mineSaid = false; G.jamSaid = false; G.jammed = null; clearZones();
   for (const k of G.pickups) scene.remove(k.o);
@@ -637,7 +645,7 @@ function newGame() {
   G.od = { k: 0, t: 0, ringT: 0, dur: OD.dur + (chipOn('cap') ? 3 : 0) }; G.odGain = chipOn('cap') ? 1.4 : 1; G.hurtAt = -99;
   $('coreName').textContent = G.core ? (M.convoy ? '运输车 CONVOY' : '反应堆 REACTOR') : '';
   if (wingOn()) { G.wing = new Wingman(scene, mctx, cfg.palette === 'kestrel' ? 'vanguard' : 'kestrel'); G.friends.push(G.wing); }
-  run.coreLost = false;
+  run.coreLost = false; run.trainLost = false;
   run.extract = !!M.extract; run.dlN = 0; run.got = 0; run.evac = null; run.lateBoss = null;
   run.capture = !!M.capture; run.zones = M.capture ? makeZones(M.zones) : M.extract ? makeZones(M.zones, { R: 8, kind: 'cache' }) : []; run.up = 0; run.finalOn = false; run.trickT = 22; run.zoneWarnT = {}; run.spotC = null;
   Object.assign(run, { dropSaid: false, gauntlet: !!M.gauntlet, escort: !!M.convoy, stops: M.stops || [], driving: false, harT: 8, waitSaid: 0, wave: -1, defense: !!M.defense, coreWarnT: -99, coreLowSaid: false, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0, cr: 0, msslT: 0, boss2: null, relayHintT: 0, waves: M.endless ? [] : M.waves, endless: !!M.endless });
@@ -671,7 +679,7 @@ function startWave(i) {
   run.wave = i; const W = run.waves[i];
   if (run.endless) G.diff.hp = DIFFS[cfg.diff].hp * (1 + 0.05 * i) * (modOn('elite') ? 1.3 : 1);
   const S = W.spawn, R = run.defense ? 1.15 : 1;
-  banner(W.title, W.sub, !!(S.boss || S.colossus));
+  banner(W.title, W.sub, !!(S.boss || S.colossus || S.train));
   sfx(S.boss ? 'alarm' : 'wave');
   // defense: the first group comes from one side; a second group follows from the opposite side
   const b0 = run.defense ? Math.atan2(G.player.pos.z, G.player.pos.x) + Math.PI * (0.5 + Math.random()) : run.escort && G.core ? G.core.heading() : undefined;
@@ -690,6 +698,11 @@ function startWave(i) {
   run.late = W.late || null; run.lateT = run.t + 20; run.lateB = b0 === undefined ? undefined : b0 + Math.PI;
   for (let k = 0; k < (S.relay || 0); k++) new Relay(relaySites[k].clone());
   G.bosses = [];
+  if (S.train) {
+    G.boss = G.train = new Train(TRACK, S.bossHp || 1); G.bosses.push(G.boss);
+    $('bossName').textContent = G.boss.B.name; $('bossBox').classList.remove('hidden');
+    sfx('alarm'); sfx('horn', 60);
+  }
   if (S.colossus) {
     G.boss = new Colossus(spot(110, 140), S.bossHp || 1); G.bosses.push(G.boss);
     $('bossName').textContent = G.boss.B.name; $('bossBox').classList.remove('hidden');
@@ -756,9 +769,10 @@ G.onKill = (e) => {
   G.hud.kill = 0.3;
   const T = save.tally; T.all = (T.all || 0) + 1; T[e.kind] = (T[e.kind] || 0) + 1;
   if (e.isColossus) T.colossus = (T.colossus || 0) + 1;
+  if (e.isTrain) T.train = (T.train || 0) + 1;
   if (e.kind === 'dropship' && e.full) T.dropFull = (T.dropFull || 0) + 1;
   if (chipOn('leech') && G.player.alive) G.player.hp = Math.min(G.player.maxHp, G.player.hp + G.player.maxHp * 0.025);
-  const cr = Math.round((KILL_CR[e.kind] || 50) * DIFFS[cfg.diff].cr);
+  const cr = Math.round((KILL_CR[e.isTrain ? 'train' : e.kind] || 50) * DIFFS[cfg.diff].cr);
   run.cr += cr; G.hud.cr = 1.2; G.hud.crLast = cr;
   if (e.kind === 'bulwark' && Math.random() < 0.5) dropRepair(e.c);
   if (e.kind === 'gunship') dropRepair(e.c);
@@ -768,7 +782,7 @@ G.onKill = (e) => {
   if (e.kind === 'boss') { fx.trauma = 1; timeScaleT = 1.6; }
   if (e.kind === 'relay') { fx.trauma = Math.min(1, fx.trauma + 0.6); const n = G.enemies.filter((x) => x.kind === 'relay' && x.alive).length; banner('中继塔已摧毁', n ? `剩余 ${n} 座` : '全部中继塔已摧毁 · 清除残敌', false); }
 };
-G.onBossPhase = (b) => { banner(b.B.phase2[0], b.B.phase2[1], true); sfx('alarm'); for (let k = 0; k < 3; k++) new Drone(spot(50, 90, true)); };
+G.onBossPhase = (b) => { banner(b.B.phase2[0], b.B.phase2[1], true); sfx('alarm'); if (!b.isTrain) for (let k = 0; k < 3; k++) new Drone(spot(50, 90, true)); };
 G.onRelayCall = (r) => {
   if (G.enemies.filter((e) => e.kind === 'drone' && e.alive).length >= 7) return;
   for (let k = 0; k < 2; k++) { const a = Math.random() * 6.28; new Drone(new V3(r.pos.x + Math.cos(a) * 8, 15 + Math.random() * 4, r.pos.z + Math.sin(a) * 8)); }
@@ -824,6 +838,12 @@ function waveLogic(dt) {
   }
   if (G.core && !G.core.alive) {
     if (!run.deathT) { run.deathT = 3.2; run.coreLost = true; fx.trauma = 1; sfx('bigboom'); banner(G.core.label + '被摧毁', run.escort ? 'CONVOY LOST' : 'REACTOR LOST', true); }
+    run.deathT -= dt;
+    if (run.deathT <= 0) finish(false);
+    return;
+  }
+  if (G.train && G.train.escaped) {
+    if (!run.deathT) { run.deathT = 3.2; run.trainLost = true; sfx('horn', 30); banner('装甲列车逃脱', 'TARGET ESCAPED', true); }
     run.deathT -= dt;
     if (run.deathT <= 0) finish(false);
     return;
@@ -1088,7 +1108,7 @@ function finish(win) {
   writeSave();
   $('rRank').textContent = rank;
   $('rTitle').textContent = run.endless ? 'LINE BROKEN' : win ? 'MISSION COMPLETE' : 'MISSION FAILED';
-  $('rSub').textContent = `${M.name} · ${D.name} · ` + (run.endless ? `坚守 ${Math.max(0, run.wave)} 波` : win ? (G.core ? `任务完成 · ${G.core.label}剩余 ${Math.ceil(G.core.hp / G.core.maxHp * 100)}%` : '任务完成') : run.coreLost ? `${G.core ? G.core.label : '反应堆'}在第 ${run.wave + 1} 波被摧毁` : `在第 ${run.wave + 1} 波被击毁`) + (G.wing ? ' · 僚机随行（报酬 ×0.85）' : '') + (mm > 1 ? ` · 挑战 ×${mm.toFixed(2)}` : '');
+  $('rSub').textContent = `${M.name} · ${D.name} · ` + (run.endless ? `坚守 ${Math.max(0, run.wave)} 波` : win ? (G.core ? `任务完成 · ${G.core.label}剩余 ${Math.ceil(G.core.hp / G.core.maxHp * 100)}%` : '任务完成') : run.coreLost ? `${G.core ? G.core.label : '反应堆'}在第 ${run.wave + 1} 波被摧毁` : run.trainLost ? '装甲列车逃脱' : `在第 ${run.wave + 1} 波被击毁`) + (G.wing ? ' · 僚机随行（报酬 ×0.85）' : '') + (mm > 1 ? ` · 挑战 ×${mm.toFixed(2)}` : '');
   const bestTxt = run.endless ? (save.best[bk] ? `${save.best[bk]} 波` : '—') : (save.best[bk] ? fmt(save.best[bk]) : '—');
   $('rStats').innerHTML = `<span>用时</span><b>${fmt(tm)}</b><span>击毁</span><b>${s.kills}</b><span>命中率</span><b>${acc}%</b><span>造成伤害</span><b>${Math.round(s.dmgDealt)}</b><span>承受伤害</span><b>${Math.round(s.dmgTaken)}</b><span>${run.endless ? '最佳波数' : '最佳用时'}</span><b>${bestTxt}${newBest ? ' <em>NEW</em>' : ''}</b>`
     + `<span class="cr">击毁报酬</span><b class="cr">${run.cr} C</b>` + (bonus ? `<span class="cr">任务报酬 · 评级 ${rank}</span><b class="cr">${bonus} C</b>` : '') + `<span class="cr">持有资金</span><b class="cr">${save.cr} C</b>`
@@ -1197,6 +1217,7 @@ const MEDALS = [
   { id: 'k1000', name: '千机斩', desc: '累计击毁 1000 台敌机', cr: 2000, tally: 'all', need: 1000 },
   { id: 'gauntlet', name: '连战制霸', desc: '赢下「头目连战」', cr: 2500, test: (r) => r.win && cfg.mission === 'gauntlet' },
   { id: 'ecm', name: '电子战', desc: '累计击落 10 台干扰机', cr: 800, tally: 'jammer', need: 10 },
+  { id: 'derail', name: '脱轨', desc: '击毁装甲列车', cr: 1200, tally: 'train', need: 1 },
   { id: 'digger', name: '地心猎人', desc: '累计击毁 10 只钻地虫', cr: 1000, tally: 'burrower', need: 10 },
   { id: 'breaker', name: '破穹者', desc: '累计摧毁 8 台穹盾发生器', cr: 1000, tally: 'warden', need: 8 },
   { id: 'counter', name: '反炮兵', desc: '累计摧毁 12 门自走炮', cr: 1000, tally: 'howitzer', need: 12 },
@@ -1433,7 +1454,7 @@ function drawHUD(dt) {
     $('waveTitle').textContent = curWave().title;
     const left = G.enemies.filter((e) => e.alive).length;
     const rl = G.enemies.filter((e) => e.kind === 'relay' && e.alive).length;
-    $('waveSub').textContent = run.breakT > 0 ? '整备中…' : run.extract ? (run.evac ? `撤离 ${Math.floor(run.evac.k * 100)}%` : `数据 ${run.got}/3`) + ` · 敌机 ${left}` : run.capture ? run.zones.map((z) => `${z.name}${z.own === 'P' ? '◆' : z.own === 'E' ? '✕' : '○'}`).join(' ') + ` · 敌机 ${left}` : (rl ? `中继塔 ${rl} · 敌机 ${left - rl}` : `剩余敌机 ${left}`);
+    $('waveSub').textContent = run.breakT > 0 ? '整备中…' : run.extract ? (run.evac ? `撤离 ${Math.floor(run.evac.k * 100)}%` : `数据 ${run.got}/3`) + ` · 敌机 ${left}` : run.capture ? run.zones.map((z) => `${z.name}${z.own === 'P' ? '◆' : z.own === 'E' ? '✕' : '○'}`).join(' ') + ` · 敌机 ${left}` : (G.train && G.train.alive ? `逃脱 ${Math.floor(G.train.timeLeft() / 60)}:${String(Math.floor(G.train.timeLeft() % 60)).padStart(2, '0')} · 车厢 ${G.train.parts.filter((q) => q.alive && q.key !== 'loco').length}/3 · 敌机 ${left - 1}` : rl ? `中继塔 ${rl} · 敌机 ${left - rl}` : `剩余敌机 ${left}`);
   } else { $('waveTitle').textContent = 'STANDBY'; $('waveSub').textContent = ''; }
   const cb = $('coreBox'); cb.classList.toggle('hidden', !G.core && !run.capture && !run.extract);
   if (run.extract && !G.core) {
@@ -1523,6 +1544,15 @@ function autoIntent(dt) {
     if (zb && !busy && Math.hypot(zb.x - p.pos.x, zb.z - p.pos.z) > zb.R * 0.5) goal = zb.pos;
   }
   if (!goal && tgt) { const wd = domeAt(tgt.c); if (wd && p.pos.distanceTo(wd.pos) > wd.R * 0.55 && wd.dp > wd.maxDp * 0.35) goal = wd.pos; }
+  if (G.train && G.train.alive) {
+    const T = G.train;
+    for (const C of T.cars) {
+      const dx = p.pos.x - C.pos.x, dz = p.pos.z - C.pos.z, al = dx * C.tan.x + dz * C.tan.z, sd = dx * -C.tan.z + dz * C.tan.x;
+      const inWay = C === T.cars[0] ? al > -8 && al < 40 : Math.abs(al) < C.len / 2 + 4;
+      if (inWay && Math.abs(sd) < 6.5 && p.pos.y < 6) { const sg = sd >= 0 ? 1 : -1; auto.trackGoal = new V3(p.pos.x - C.tan.z * sg * 16, 0, p.pos.z + C.tan.x * sg * 16); auto.trackT = 1.0; break; }
+    }
+  }
+  if (auto.trackT > 0) { auto.trackT -= dt; goal = auto.trackGoal; }
   if (!goal && G.core && G.core.alive && Math.hypot(p.pos.x - G.core.pos.x, p.pos.z - G.core.pos.z) > (run.escort ? (run.driving ? 22 : G.enemies.filter((e) => e.alive).length <= 2 ? 999 : 45) : 70)) goal = G.core.pos;
   if (tgt) {
     const pc = p.center(new V3());
@@ -1546,7 +1576,7 @@ function autoIntent(dt) {
   if (goal) { const gx = goal.x - p.pos.x, gz = goal.z - p.pos.z; const yaw = cam.yaw; const fw = [-Math.sin(yaw), -Math.cos(yaw)], rt = [Math.cos(yaw), -Math.sin(yaw)]; f = Math.sign(gx * fw[0] + gz * fw[1]); s = Math.sign(gx * rt[0] + gz * rt[1]); }
   const los = tgt && clearLine(p.center(new V3()), tgt.c);
   const empK = G.pw.S.d.type === 'emp', empNear = empK && (G.enemies.some((e) => e.alive && !e.dying && e.c.distanceTo(p.pos) < 22) || G.shots.some((sh) => sh.team === 'E' && sh.kind !== 'bullet' && sh.kind !== 'ebullet' && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 20));
-  auto.sT -= dt; const sPress = auto.sT <= 0 && (empK ? empNear : los); if (sPress) auto.sT = 0.6;
+  auto.sT -= dt; const sPress = auto.sT <= 0 && (empK ? empNear : los) && (G.pw.S.d.type !== 'orbital' || (!!G.lockTarget && d < 150)); if (sPress) auto.sT = 0.6;
   const sniped = G.enemies.some((e) => e.kind === 'stalker' && e.st === 'aim' && e.lockOn === p && e.stT < 0.5);
   const incoming = G.shots.some((sh) => sh.team === 'E' && sh.kind === 'missile' && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 22);
   const leapNear = G.enemies.some((e) => (e.kind === 'crawler' && e.st === 'leap' && e.c.distanceTo(p.pos) < 12) || (e.kind === 'burrower' && e.st === 'warn' && Math.hypot(e.spot.x - p.pos.x, e.spot.z - p.pos.z) < 7));
@@ -1684,7 +1714,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=17');
+    await loadKit('./assets/kit.glb?v=18');
     ensureArena();
     makePlayer();
     setState('title');

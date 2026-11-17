@@ -50,7 +50,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge';
+  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn';
   LAVA.on = forge;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
@@ -80,7 +80,12 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float stripe = step(${ARENA.toFixed(1)} - 3.0, ed) * step(ed, ${ARENA.toFixed(1)} - 1.6) * step(0.5, fract((vWP.x + vWP.z) / 4.0));
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.62, 0.08), stripe * 0.9);${desert ? `
       diffuseColor.rgb *= vec3(1.18, 1.0, 0.74) * (0.94 + 0.12 * h21(floor(vWP.xz / 11.0)));` : ''}${ash ? `
-      diffuseColor.rgb *= vec3(0.62, 0.55, 0.52) * (0.85 + 0.25 * h21(floor(vWP.xz / 6.0)));` : ''}${lunar ? `
+      diffuseColor.rgb *= vec3(0.62, 0.55, 0.52) * (0.85 + 0.25 * h21(floor(vWP.xz / 6.0)));` : ''}${autumn ? `
+      float lfk = smoothstep(0.55, 0.85, h21(floor(vWP.xz / 7.0)) * 0.65 + h21(floor(vWP.xz / 2.3)) * 0.35);
+      vec2 lc = floor(vWP.xz / 0.5);
+      vec3 leafC = mix(vec3(0.55, 0.16, 0.05), vec3(0.8, 0.52, 0.12), h21(lc + 7.3)) * (0.7 + 0.3 * h21(lc + 2.1));
+      diffuseColor.rgb *= vec3(0.78, 0.72, 0.64) * (0.9 + 0.12 * h21(floor(vWP.xz / 9.0)));
+      diffuseColor.rgb = mix(diffuseColor.rgb, leafC, lfk * step(0.45, h21(lc)) * (1.0 - stripe) * 0.75);` : ''}${lunar ? `
       vec3 rc = vec3(0.5, 0.5, 0.49) * (0.74 + 0.1 * h21(floor(vWP.xz / 0.7)) + 0.1 * h21(floor(vWP.xz / 5.0)));
       for (int q = 0; q < 2; q++) {
         float sz = q == 0 ? 26.0 : 9.0;
@@ -211,7 +216,19 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
     place.push({ kit: 'P_Pillar', matrix: M4(x, 0, z, a) }); addSolid(x, z, 2.4, 2.4, 8, 0, 'pillar');
   }
   group.add(bakeStatic(place));
-  if (road) {   // asphalt strip + dashed centre line, laid just above the floor
+  if (road && road.rail) {   // rail loop: gravel ballast bed, timber sleepers, two steel rails
+    const bal = [], slp = [], rl = [];
+    for (let i = 0; i < road.length - 1; i++) {
+      const [ax, az] = road[i], [bx, bz] = road[i + 1], L = Math.hypot(bx - ax, bz - az), yaw = Math.atan2(bx - ax, bz - az);
+      const cx = (ax + bx) / 2, cz = (az + bz) / 2, px = Math.cos(yaw), pz = -Math.sin(yaw);
+      bal.push(new THREE.BoxGeometry(5.2, 0.22, L + 0.6).rotateY(yaw).translate(cx, 0.08, cz));
+      for (const sd of [-0.75, 0.75]) rl.push(new THREE.BoxGeometry(0.16, 0.2, L + 0.12).rotateY(yaw).translate(cx + px * sd, 0.36, cz + pz * sd));
+      for (let d = 0.4; d < L; d += 1.25) slp.push(new THREE.BoxGeometry(2.7, 0.14, 0.32).rotateY(yaw).translate(ax + (bx - ax) * d / L, 0.24, az + (bz - az) * d / L));
+    }
+    const bm = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(bal), new THREE.MeshStandardMaterial({ color: 0x6a645c, roughness: 1 })); bm.receiveShadow = true; group.add(bm);
+    const sm = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(slp), new THREE.MeshStandardMaterial({ color: 0x4a3a2c, roughness: 0.95 })); sm.receiveShadow = true; group.add(sm);
+    const rm = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(rl), new THREE.MeshStandardMaterial({ color: 0x9a9ca0, roughness: 0.35, metalness: 0.85 })); rm.castShadow = true; group.add(rm);
+  } else if (road) {   // asphalt strip + dashed centre line, laid just above the floor
     const geos = [], dash = [];
     for (let i = 0; i < road.length - 1; i++) {
       const [ax, az] = road[i], [bx, bz] = road[i + 1], L = Math.hypot(bx - ax, bz - az), yaw = Math.atan2(bx - ax, bz - az);

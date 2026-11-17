@@ -35,10 +35,11 @@ export const WEAPONS = {
   emp: { slot: 'shoulder', name: 'EP-5 电磁脉冲', en: 'EP-5 EMP Burst', desc: '周围 26 m 敌机瘫痪 2.5 秒（头目 0.8 秒）· 瘫痪中受伤 +30% · 清除来袭弹药与地雷', type: 'emp', radius: 26, dmg: 85, stun: 2.5, bossStun: 0.8, cd: 11, sfx: 'emp' },
   grav: { slot: 'shoulder', name: 'GW-1 重力井', en: 'GW-1 Gravity Well', desc: '发射奇点 · 3 秒内把周围敌机拖向中心并吞掉敌弹 · 结束时坍缩爆炸', type: 'grav', speed: 75, range: 95, R: 20, pull: 15, dur: 3, dps: 26, burst: 150, burstR: 11, cd: 14, sfx: 'grav' },
   decoy: { slot: 'shoulder', name: 'HD-1 全息诱饵', en: 'HD-1 Holo Decoy', desc: '投射机体全息影像 6 秒 · 吸引敌方火力（头目不易上当）· 被打碎时放出电磁冲击', type: 'decoy', hp: 380, dur: 6, cd: 20, burst: 70, burstR: 11, sfx: 'decoy' },
+  orbital: { slot: 'shoulder', name: 'OS-1 轨道打击', en: 'OS-1 Orbital Strike', desc: '标记落点 · 1.4 秒后卫星光柱从天而降 · 半径 9 m 重击 · 落点灼烧 2 秒 · 锁定时卫星跟踪目标直到落下前 0.4 秒', type: 'orbital', dmg: 360, R: 9, delay: 1.4, dps: 40, burnT: 2, range: 170, cd: 13, sfx: 'orbital' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -457,6 +458,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Decoy(owner, slot, d, dmgMul); sfx('decoy', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'grav') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; launchWell(owner, slot, d, dmgMul, aim); sfx('cannon', dist); if (me) G.stats.shots++; }
+  } else if (d.type === 'orbital') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; launchStrike(owner, slot, d, dmgMul, aim, target); if (me) G.stats.shots++; }
   } else if (d.type === 'emp') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; empPulse(owner, d, dmgMul); if (me) G.stats.shots++; }
   } else if (d.type === 'shield') {
@@ -629,7 +632,7 @@ function updateWells(dt) {
     }
     const prev = G.curLabel; G.curLabel = 'p-grav';
     for (const e of G.enemies) {
-      if (!e.alive || e.dying || NO_PULL.has(e.kind) || e.isColossus) continue;
+      if (!e.alive || e.dying || NO_PULL.has(e.kind) || e.isColossus || e.isTrain) continue;
       const dx = P.x - e.pos.x, dz = P.z - e.pos.z, dist = Math.hypot(dx, dz, (P.y - e.c.y) * 0.5);
       if (dist > d.R || dist < 1.5) continue;
       const k = (PULL_RES[e.kind] ?? 1) * d.pull * (1 - dist / d.R * 0.45);
@@ -657,6 +660,79 @@ function updateWells(dt) {
     }
   }
 }
+// orbital strike: mark a point (leading a locked target by the delay), a thin designator beam flickers from the sky,
+// then a wide column slams down: heavy splash to everything under it (air included) and a short burning patch on the ground
+G.strikes = [];
+const strikeMat = (c, op) => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(2.2), transparent: true, opacity: op, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+const strikeGeo = { col: new THREE.CylinderGeometry(1, 1, 1, 24, 1, true).translate(0, 0.5, 0), ring: new THREE.RingGeometry(0.92, 1, 48).rotateX(-Math.PI / 2), disc: new THREE.CircleGeometry(1, 40).rotateX(-Math.PI / 2) };
+function launchStrike(owner, slot, d, dmgMul, aim, target) {
+  const P = new V3();
+  const host = target && (target.kind === 'cpart' ? target : target);
+  if (host && host.c) {
+    const v = host.vel || (host.owner && host.owner.vel) || null;
+    P.copy(host.c); if (v) P.addScaledVector(v, d.delay);
+  } else P.copy(aim);
+  _d.set(P.x - owner.pos.x, 0, P.z - owner.pos.z); const L = _d.length();
+  if (L > d.range) P.set(owner.pos.x + _d.x / L * d.range, P.y, owner.pos.z + _d.z / L * d.range);
+  P.x = Math.max(-ARENA + 2, Math.min(ARENA - 2, P.x)); P.z = Math.max(-ARENA + 2, Math.min(ARENA - 2, P.z));
+  P.y = groundAt(P.x, P.z, 200);
+  const o = new THREE.Group(); o.position.copy(P); G.scene.add(o);
+  const ring = new THREE.Mesh(strikeGeo.ring, strikeMat(0x7fe8ff, 0.9)); ring.scale.setScalar(d.R); ring.position.y = 0.15;
+  const disc = new THREE.Mesh(strikeGeo.disc, strikeMat(0x7fe8ff, 0.12)); disc.scale.setScalar(d.R); disc.position.y = 0.12;
+  const beam = new THREE.Mesh(strikeGeo.col, strikeMat(0xaff4ff, 0.5)); beam.scale.set(0.25, 260, 0.25);
+  const col = new THREE.Mesh(strikeGeo.col, strikeMat(0x8fe4ff, 0)); col.scale.set(d.R * 0.5, 260, d.R * 0.5); col.visible = false;
+  o.add(ring, disc, beam, col);
+  G.strikes.push({ o, ring, disc, beam, col, t: d.delay, d, mul: dmgMul, hit: false, age: 0, burn: d.burnT, tgt: host && host.c && !host.isBarrel ? host : null, from: owner.pos });
+  sfx('orbital', G.player ? G.player.pos.distanceTo(P) * 0.5 : 0);
+  G.fx.muzzle(owner.muzzlePos(slot, _a, 0).clone(), _b.set(0, 1, 0), 0x9fe8ff, 1.4);
+}
+function updateStrikes(dt) {
+  const fx = G.fx;
+  for (let i = G.strikes.length - 1; i >= 0; i--) {
+    const S = G.strikes[i], d = S.d, P = S.o.position;
+    if (!S.hit) {
+      S.t -= dt; const k = 1 - Math.max(0, S.t) / d.delay;
+      if (S.tgt && S.tgt.alive && S.t > 0.4) {   // the satellite keeps tracking a locked target until the last 0.4 s
+        const v = S.tgt.vel || (S.tgt.owner && S.tgt.owner.vel); _a.copy(S.tgt.c); if (v) _a.addScaledVector(v, S.t);
+        P.x += (_a.x - P.x) * Math.min(1, dt * 8); P.z += (_a.z - P.z) * Math.min(1, dt * 8);
+        P.x = Math.max(-ARENA + 2, Math.min(ARENA - 2, P.x)); P.z = Math.max(-ARENA + 2, Math.min(ARENA - 2, P.z)); P.y = groundAt(P.x, P.z, 200);
+      }
+      S.ring.rotation.y += dt * 2; S.disc.material.opacity = 0.08 + 0.22 * k; S.disc.scale.setScalar(d.R * (0.25 + 0.75 * k));
+      S.beam.material.opacity = (0.25 + 0.4 * k) * (0.7 + 0.3 * Math.sin(G.time * 60));
+      if (Math.random() < 0.5) fx.emit('add', { x: P.x + (Math.random() - 0.5) * d.R, y: P.y + 0.3, z: P.z + (Math.random() - 0.5) * d.R, vy: 6 + 10 * k, life: 0.4, s0: 0.4, s1: 0.1, c0: 0x9fe8ff });
+      if (S.t > 0) continue;
+      S.hit = true; S.beam.visible = false; S.col.visible = true; S.ring.material.opacity = 0;
+      const prev = G.curLabel; G.curLabel = 'p-orbital';
+      for (const e of entsFor('P')) {
+        const hd = Math.hypot(e.c.x - P.x, e.c.z - P.z) - (e.r || 1) * 0.5;
+        if (hd < d.R) { const dm = d.dmg * S.mul * (1 - 0.45 * Math.max(0, hd) / d.R); if (!e.isBarrel && e.alive) { G.strikeDmg = (G.strikeDmg || 0) + dm; S.landed = true; } dealDamage(e, dm, 'P', e.c, 'p-orbital'); }
+      }
+      G.curLabel = prev;
+      fx.explosion(P.clone().setY(P.y + 1), 2.4, 0x9fe8ff); fx.flash(P.clone().setY(P.y + 6), 0xaff0ff, 90, 70, 0.5);
+      fx.ring(P.clone(), null, 1, d.R * 1.6, 0.5, 0x9fe8ff); fx.ring(P.clone(), null, 1, d.R * 0.9, 0.35, 0xffffff); fx.dust(P.clone(), 3, 3, 12);
+      fx.decal(P, d.R * 0.8);
+      const pd = G.player ? G.player.pos.distanceTo(P) : 99;
+      fx.trauma = Math.min(1, (fx.trauma || 0) + Math.max(0.15, 0.6 - pd / 150));
+      sfx('bigboom', pd); G.strikeHits = (G.strikeHits || 0) + 1; if (S.landed) G.strikeLanded = (G.strikeLanded || 0) + 1;
+      continue;
+    }
+    S.age += dt; S.burn -= dt;
+    const a = Math.max(0, 1 - S.age / 0.7);
+    S.col.material.opacity = 0.5 * a * a; S.col.scale.set(d.R * (0.5 + 0.25 * (1 - a)) * a + 0.01, 260, d.R * (0.5 + 0.25 * (1 - a)) * a + 0.01);
+    S.disc.material.color.set(0xff9040).multiplyScalar(2); S.disc.material.opacity = 0.18 * Math.min(1, S.burn * 2); S.disc.scale.setScalar(d.R * 0.75);
+    if (S.burn > 0) {
+      for (let k = 0; k < 2; k++) { const r = Math.random() * d.R * 0.75, an = Math.random() * 6.283; fx.emit('add', { x: P.x + Math.cos(an) * r, y: P.y + 0.3, z: P.z + Math.sin(an) * r, vy: 3 + Math.random() * 3, life: 0.5, s0: 0.9, s1: 0.2, c0: 0xffa040, c1: 0xff4010 }); }
+      const prev = G.curLabel; G.curLabel = 'p-orbital';
+      for (const e of entsFor('P')) {
+        if (e.isBarrel || e.isMine) continue;
+        if (Math.hypot(e.c.x - P.x, e.c.z - P.z) < d.R * 0.75 && e.c.y - P.y < 7) { G.strikeDmg = (G.strikeDmg || 0) + d.dps * S.mul * dt; dealDamage(e, d.dps * S.mul * dt, 'P', e.c, 'p-orbital'); }
+      }
+      G.curLabel = prev;
+    }
+    if (S.burn <= 0 && S.age > 0.7) { S.o.parent && S.o.parent.remove(S.o); G.strikes.splice(i, 1); }
+  }
+}
+export function clearStrikes() { for (const S of G.strikes) S.o.parent && S.o.parent.remove(S.o); G.strikes.length = 0; }
 export function clearWells() { for (const w of G.wells) { w.o.parent && w.o.parent.remove(w.o); w.area.parent && w.area.parent.remove(w.area); } G.wells.length = 0; }
 export function updateDecoys(dt) { for (const f of G.friends.slice()) if (f instanceof Decoy) f.update(dt); }
 export function clearDecoys() { for (const f of G.friends.slice()) if (f instanceof Decoy) { f.alive = false; f.obj.parent && f.obj.parent.remove(f.obj); G.friends.splice(G.friends.indexOf(f), 1); } }
@@ -837,7 +913,7 @@ export function pickTarget(self) {
   const from = self.pos || self.c;
   for (const f of [G.player, ...G.friends]) {
     if (!f || !f.alive) continue;
-    const w = f === G.player ? 1 : f.foeWBoss && (self.kind === 'boss' || self.kind === 'raider' || self.isColossus) ? f.foeWBoss : (self.kind === 'drone' || self.kind === 'gunship' ? f.foeWAir ?? f.foeW : f.foeW) ?? 1.15;
+    const w = f === G.player ? 1 : f.foeWBoss && (self.kind === 'boss' || self.kind === 'raider' || self.isColossus || self.isTrain) ? f.foeWBoss : (self.kind === 'drone' || self.kind === 'gunship' ? f.foeWAir ?? f.foeW : f.foeW) ?? 1.15;
     const sc = Math.hypot(f.pos.x - from.x, f.pos.z - from.z) * w;
     if (sc < bs) { bs = sc; best = f; }
   }
@@ -1475,6 +1551,210 @@ export class Colossus {
   }
 }
 
+// Armoured train: locomotive + gun / carrier / missile cars running laps of a closed rail loop. Every car is a breakable
+// part; the locomotive's roof reactor is armoured (x0.15) until all three weapon cars are wrecked. Anything standing on the
+// track gets rammed. If it is not stopped within TRAIN.laps laps it escapes and the mission is lost.
+export const TRAIN = { speed: 11, fast: 14, gap: 12.4, laps: 3, ram: 55 };
+export class Train {
+  constructor(track, hpMul = 1, d0 = null) {
+    this.kind = 'boss'; this.isTrain = true;
+    this.B = { name: '装甲列车 IRONCLAD', phase2: ['列车核心暴露', '武装车厢全毁 · 攻击车头顶部的反应堆'] };
+    this.pts = track.map(([x, z]) => new V3(x, 0, z)); this.cum = [0];
+    for (let i = 1; i < this.pts.length; i++) this.cum.push(this.cum[i - 1] + this.pts[i].distanceTo(this.pts[i - 1]));
+    this.total = this.cum[this.cum.length - 1];
+    const H = G.diff.hp * hpMul;
+    const defs = [['loco', 'E_TrainLoco', 7000, 3.6, 'E_TLCore'], ['gun', 'E_TrainGun', 4000, 4.4], ['carrier', 'E_TrainCarrier', 3400, 4.4], ['missile', 'E_TrainMsl', 4000, 4.4]];
+    this.cars = defs.map(([key, kn, hp, r, node], i) => {
+      const obj = cloneKit(kn); G.scene.add(obj); const n = nodes(obj);
+      const pt = { kind: 'cpart', key, node: node ? n[node] : null, owner: this, c: new V3(), r, hp: hp * H, maxHp: hp * H, alive: true, vel: new V3() };
+      pt.hit = (dmg) => this.hitPart(pt, dmg);
+      return { key, obj, n, pt, pos: new V3(), tan: new V3(), len: i ? 11 : 12, smokeT: 0, tilt: 0 };
+    });
+    this.parts = this.cars.map((c) => c.pt); this.core = this.parts[0];
+    this.maxHp = this.parts.reduce((a, p) => a + p.maxHp, 0); this.hp = this.maxHp;
+    this.c = new V3(); this.r = 4; this.alive = true; this.dying = false; this.phase = 1;
+    // start on the stretch of track farthest from the player
+    if (d0 === null) { let best = -1; d0 = 0; for (let i = 0; i < this.pts.length - 1; i++) { const q = this.pts[i].distanceTo(G.player.pos); if (q > best) { best = q; d0 = this.cum[i]; } } }
+    this.d = d0 + this.total; this.d0 = this.d; this.v = TRAIN.speed;
+    this.pos = this.cars[0].pos; this.vel = new V3();
+    this.gunT = 3; this.gunSide = 0; this.mslT = 6; this.carT = 5; this.hatch = 0; this.hatchT = 0; this.plT = 2; this.ramCD = 0; this.hornT = 0; this.armorSaid = 0; this.rams = 0;
+    this.place(0);
+    G.enemies.push(this);
+  }
+  sample(d, out, tan) {
+    d = ((d % this.total) + this.total) % this.total;
+    let lo = 1, hi = this.cum.length - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (this.cum[m] < d) lo = m + 1; else hi = m; }
+    const a = this.pts[lo - 1], b = this.pts[lo], k = (d - this.cum[lo - 1]) / Math.max(1e-6, this.cum[lo] - this.cum[lo - 1]);
+    out.copy(a).lerp(b, k); if (tan) tan.subVectors(b, a).normalize();
+    return out;
+  }
+  lapsLeft() { return TRAIN.laps - (this.d - this.d0) / this.total; }
+  timeLeft() { return this.lapsLeft() * this.total / Math.max(1, this.v); }
+  place(dt) {
+    for (let i = 0; i < this.cars.length; i++) {
+      const C = this.cars[i];
+      // sample the car's two bogies so it sits on the curve instead of hanging off it
+      this.sample(this.d - i * TRAIN.gap + C.len * 0.32, _a, null); this.sample(this.d - i * TRAIN.gap - C.len * 0.32, _b, null);
+      C.pos.addVectors(_a, _b).multiplyScalar(0.5); C.tan.subVectors(_a, _b).normalize();
+      C.obj.position.copy(C.pos); C.obj.rotation.set(0, Math.atan2(-C.tan.x, -C.tan.z), 0);
+      if (C.tilt) { C.obj.rotateZ(C.tilt); }
+      C.pt.vel.copy(C.tan).multiplyScalar(this.v);
+    }
+    this.vel.copy(this.cars[0].pt.vel);
+    for (const C of this.cars) C.obj.updateMatrixWorld(true);
+    for (const C of this.cars) {
+      if (C.pt.node) C.pt.node.getWorldPosition(C.pt.c); else C.pt.c.set(C.pos.x, 2.9, C.pos.z);
+    }
+    const lead = this.parts.find((p) => p.alive && p.key !== 'loco') || this.core;
+    this.c.copy(lead.c);
+  }
+  hitPart(pt, dmg) {
+    if (!pt.alive || !this.alive) return;
+    if (pt.key === 'loco' && this.phase === 1) {
+      dmg *= 0.15;
+      if (Math.random() < 0.3) G.fx.sparks(pt.c, null, 4, 0xffd080, 14, 1, 0.25, 0.25);
+      if (G.time - this.armorSaid > 12) { this.armorSaid = G.time; G.onHint && G.onHint('车头反应堆有装甲 · 先摧毁三节武装车厢', 2.4); }
+    }
+    pt.hp -= dmg;
+    this.hp = this.parts.reduce((a, p) => a + Math.max(0, p.hp), 0);
+    if (pt.hp > 0) return;
+    pt.alive = false; pt.hp = 0;
+    if (pt.key === 'loco') { this.die(); return; }
+    const C = this.cars.find((c) => c.pt === pt);
+    G.fx.explosion(pt.c, 2.4); G.fx.flash(pt.c, 0xff8040, 60, 40, 0.4); sfx('bigboom', G.player.pos.distanceTo(pt.c));
+    G.fx.trauma = Math.min(1, (G.fx.trauma || 0) + 0.4);
+    C.tilt = (Math.random() < 0.5 ? -1 : 1) * 0.06; C.wreck = true;
+    for (const nn of ['E_TGTurret', 'E_TMPod', 'E_TCHatchL', 'E_TCHatchR']) if (C.n[nn]) C.n[nn].visible = false;
+    G.onHint && G.onHint({ gun: '炮塔车已摧毁', carrier: '无人机母车已摧毁', missile: '导弹车已摧毁' }[pt.key], 2);
+    if (this.parts.every((p) => p.key === 'loco' || !p.alive)) { this.phase = 2; G.onBossPhase && G.onBossPhase(this); }
+  }
+  die() {
+    this.alive = false; this.dying = true; this.deathT = 3.6; this.hp = 0;
+    G.stats.kills++; G.onKill && G.onKill(this);
+  }
+  remove() { for (const C of this.cars) C.obj.parent && C.obj.parent.remove(C.obj); this.gone = true; }
+  tg() { return pickTarget(this); }
+  update(dt) {
+    const fx = G.fx, p = G.player;
+    if (this.escaped) { this.d += this.v * dt; this.place(dt); return; }   // gone: keeps running, can no longer be hit
+    if (this.dying) {   // derails: brakes hard, cars buckle, explosions run down the train
+      this.deathT -= dt; this.v = Math.max(0, this.v - 7 * dt); this.d += this.v * dt;
+      this.cars.forEach((C, i) => { C.tilt += (i % 2 ? 1 : -1) * dt * 0.12; });
+      this.place(dt);
+      if (Math.random() < 0.25) { const C = this.cars[Math.floor(Math.random() * 4)]; _a.copy(C.pos).add(_b.set((Math.random() - 0.5) * 6, 2 + Math.random() * 4, (Math.random() - 0.5) * 6)); fx.explosion(_a, 1.3 + Math.random()); if (Math.random() < 0.5) sfx('boom', p.pos.distanceTo(_a)); }
+      if (this.deathT <= 0) { for (const C of this.cars) explodeAt(C.pos.clone().setY(2.5), 12, 0, 'P', 2.6, 0xff7030); fx.flash(this.core.c, 0xffa060, 120, 90, 0.8); fx.trauma = 1; this.remove(); }
+      return;
+    }
+    const tv = this.phase === 2 ? TRAIN.fast : TRAIN.speed;
+    this.v += (tv - this.v) * Math.min(1, dt * 0.4);
+    this.d += this.v * dt;
+    this.place(dt);
+    if (!this.warnSaid && this.timeLeft() < 30) { this.warnSaid = true; G.onHint && G.onHint('列车 30 秒后逃脱 · 集中火力打车头！', 3); sfx('warn', 0); }
+    if (this.lapsLeft() <= 0) { this.escaped = true; this.alive = false; for (const q of this.parts) q.alive = false; return; }
+    // smoke from wrecked cars, steam from the loco
+    for (const C of this.cars) {
+      C.smokeT -= dt;
+      if (C.smokeT <= 0) { C.smokeT = C.wreck ? 0.08 : 0.25; if (C.wreck || C.key === 'loco') fx.emit('smoke', { x: C.pos.x + (Math.random() - 0.5) * 2, y: C.wreck ? 4 : 5.6, z: C.pos.z + (Math.random() - 0.5) * 2, vy: 3, vx: -C.tan.x * 2, vz: -C.tan.z * 2, life: C.wreck ? 2.2 : 1.4, s0: 1.6, s1: C.wreck ? 5 : 3.5, c0: C.wreck ? 0x2a2624 : 0x8a8680, a0: 0.55 }); }
+      if (C.wreck && Math.random() < 0.15) fx.emit('add', { x: C.pos.x + (Math.random() - 0.5) * 3, y: 3.2, z: C.pos.z + (Math.random() - 0.5) * 3, vy: 3, life: 0.4, s0: 1, s1: 0.2, c0: 0xff8a30 });
+    }
+    // ram: anything inside a car's footprint is thrown clear
+    this.ramCD -= dt;
+    for (const f of [p, ...G.friends]) {
+      if (!f || !f.alive || !f.vel || f.isCore) continue;
+      for (const C of this.cars) {
+        const dx = f.pos.x - C.pos.x, dz = f.pos.z - C.pos.z, al = dx * C.tan.x + dz * C.tan.z, sd = dx * -C.tan.z + dz * C.tan.x;
+        if (Math.abs(al) > C.len / 2 + 0.6 || Math.abs(sd) > 3.0 || f.pos.y > 4.4) continue;
+        const sg = sd >= 0 ? 1 : -1;
+        f.pos.x += -C.tan.z * sg * (3.05 - Math.abs(sd)); f.pos.z += C.tan.x * sg * (3.05 - Math.abs(sd));
+        if (f === p && this.ramCD <= 0 && this.v > 3) {
+          this.ramCD = 1.1; this.rams++;
+          f.vel.x += -C.tan.z * sg * 16 + C.tan.x * this.v * 0.8; f.vel.z += C.tan.x * sg * 16 + C.tan.z * this.v * 0.8; f.vel.y = Math.max(f.vel.y, 8);
+          G.curSrc = C.pos; damagePlayer(TRAIN.ram, C.pos, 'train-ram');
+          fx.sparks(f.center(_a), null, 16, 0xffc070, 18, 1, 0.4, 0.3); fx.trauma = Math.min(1, fx.trauma + 0.6); sfx('pile', 0);
+        }
+      }
+    }
+    // horn when the player stands on the track ahead
+    this.hornT -= dt;
+    const L = this.cars[0];
+    { const dx = p.pos.x - L.pos.x, dz = p.pos.z - L.pos.z, al = dx * L.tan.x + dz * L.tan.z, sd = Math.abs(dx * -L.tan.z + dz * L.tan.x);
+      if (al > 4 && al < 70 && sd < 4 && p.pos.y < 6 && this.hornT <= 0) { this.hornT = 5; sfx('horn', p.pos.distanceTo(L.pos) * 0.4); if (!G.hornSaid) { G.hornSaid = true; G.onHint && G.onHint('列车驶来 · 离开铁轨！', 2.2); } } }
+    const t = this.tg(), tc = t.center(playerC);
+    const car = (k) => this.cars.find((c) => c.key === k && c.pt.alive);
+    // gun car: the turret tracks the target and fires bursts of twin cannon rounds
+    const G1 = car('gun');
+    if (G1) {
+      const tur = G1.n.E_TGTurret, tp = tur.getWorldPosition(_c), dist = tp.distanceTo(tc);
+      const want = Math.atan2(-(tc.x - tp.x), -(tc.z - tp.z)) - G1.obj.rotation.y;
+      tur.rotation.y += Math.max(-1.6 * dt, Math.min(1.6 * dt, angDiff(want, tur.rotation.y)));
+      this.gunT -= dt;
+      if (this.gunT <= 0 && dist < 130 && Math.abs(angDiff(want, tur.rotation.y)) < 0.25 && clearLine(tp, tc)) {
+        this.gunT = 2.3 + Math.random() * 0.6;
+        for (let k = 0; k < 8; k++) G.queue.push({ label: 'train-gun', t: k * 0.09, fn: () => {
+          if (!G1.pt.alive || !this.alive) return;
+          const mp = G1.n.Muzzle_TGun.getWorldPosition(new V3()), f = this.tg(), aim = lead(mp, 170, _b, f);
+          _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.y += (Math.random() - 0.5) * 0.03; _d.z += (Math.random() - 0.5) * 0.05;
+          spawnShot({ p: mp, v: _d.normalize().multiplyScalar(170), dmg: 7, team: 'E', kind: 'ebullet', color: 0xffa050, w: 0.34, len: 6, label: 'train-gun' });
+          G.fx.muzzle(mp, _d, 0xffa050, 1.4); sfx('eshot', p.pos.distanceTo(mp));
+        } });
+      }
+    }
+    // missile car: homing salvo
+    const M1 = car('missile');
+    if (M1) {
+      this.mslT -= dt;
+      if (this.mslT <= 0 && M1.pos.distanceTo(tc) < 170) {
+        this.mslT = 8 + Math.random() * 2;
+        if (t === p) G.onEnemyMissile && G.onEnemyMissile();
+        for (let k = 0; k < 6; k++) G.queue.push({ label: 'train-missile', t: k * 0.16, fn: () => {
+          if (!M1.pt.alive || !this.alive) return;
+          const mp = M1.n.Muzzle_TMsl.getWorldPosition(new V3()), f = this.tg();
+          const v = new V3((Math.random() - 0.5) * 8, 18 + Math.random() * 5, (Math.random() - 0.5) * 8).addScaledVector(M1.tan, this.v);
+          spawnShot({ p: mp, v, dmg: 18, team: 'E', kind: 'missile', splash: 4, target: f._ent, aim: f.center(new V3()), life: 7, maxSpeed: 50, turn: 1.6, label: 'train-missile' });
+          G.fx.muzzle(mp, v.clone().normalize(), 0xff7040, 1.2); sfx('missile', p.pos.distanceTo(mp));
+        } });
+      }
+    }
+    // carrier: opens its roof and launches a pair of drones
+    const C1 = car('carrier');
+    if (C1) {
+      this.carT -= dt;
+      if (this.carT <= 0) {
+        this.carT = 15 + Math.random() * 3;
+        if (G.enemies.filter((e) => e.kind === 'drone' && e.alive).length < 4) {
+          this.hatchT = 2.2;
+          for (let k = 0; k < 2; k++) G.queue.push({ label: 'train-carrier', t: 0.5 + k * 0.4, fn: () => {
+            if (!C1.pt.alive || !this.alive) return;
+            const mp = C1.n.Muzzle_TCar.getWorldPosition(new V3()); mp.y += 1.5;
+            const dr = new Drone(mp); dr.alt = 9 + Math.random() * 6;
+            G.fx.ring(mp, null, 0.5, 4, 0.3, 0xff8a50); sfx('drone', p.pos.distanceTo(mp));
+          } });
+        }
+      }
+      this.hatchT -= dt; const ho = this.hatchT > 0 ? 1 : 0;
+      this.hatch += (ho - this.hatch) * Math.min(1, dt * 5);
+      if (C1.n.E_TCHatchL) C1.n.E_TCHatchL.rotation.z = this.hatch * 1.5;
+      if (C1.n.E_TCHatchR) C1.n.E_TCHatchR.rotation.z = -this.hatch * 1.5;
+    }
+    // phase 2: the exposed reactor fires plasma while the loco runs for it
+    if (this.phase === 2) {
+      this.plT -= dt;
+      const mp0 = L.n.Muzzle_TLoco.getWorldPosition(_c);
+      if (this.plT <= 0 && mp0.distanceTo(tc) < 140 && clearLine(mp0, tc)) {
+        this.plT = 2.4;
+        for (let k = 0; k < 3; k++) G.queue.push({ label: 'train-plasma', t: k * 0.22, fn: () => {
+          if (!this.alive) return;
+          const mp = L.n.Muzzle_TLoco.getWorldPosition(new V3()), f = this.tg(), aim = lead(mp, 75, _b, f);
+          _d.subVectors(aim, mp).normalize();
+          spawnShot({ p: mp, v: _d.clone().multiplyScalar(75), dmg: 22, team: 'E', kind: 'plasma', splash: 5, life: 3, size: 1.1, label: 'train-plasma' });
+          G.fx.muzzle(mp, _d, 0xff8a30, 2); sfx('cannon', p.pos.distanceTo(mp));
+        } });
+      }
+    }
+  }
+}
+
 // Stalker: cloaked sniper. Moves invisibly to a firing spot, decloaks, paints the target with a red laser
 // (tracks for 1.2 s, then freezes for 0.45 s), fires a hitscan rail shot along the frozen line, then cloaks and relocates.
 // Hits reveal it; ~90 damage while it is aiming interrupts the shot.
@@ -1732,7 +2012,7 @@ const iceGeo = new THREE.IcosahedronGeometry(1, 1), iceMat = new THREE.MeshStand
 const FREEZE = { t: 1.5, big: 0.5, bigK: 0.35, cd: 2 };
 function chillAdd(e, v) {
   if (!e || !e.alive || e.dying || e.frozen || (e.frozeCD > 0)) return;
-  const big = e.kind === 'boss' || e.kind === 'raider' || e.isColossus;
+  const big = e.kind === 'boss' || e.kind === 'raider' || e.isColossus || e.isTrain;
   e.chill = Math.min(100, (e.chill || 0) + v * (big ? FREEZE.bigK : 1)); e.chillQ = 0.6; G.chilled.add(e);
   if (e.chill >= 100) {
     e.chill = 0; e.frozen = true; e.stunT = Math.max(e.stunT || 0, big ? FREEZE.big : FREEZE.t); e.stunMax = e.stunT;
@@ -2291,6 +2571,7 @@ export function updateCombat(dt) {
   updateMinis(dt);
   updateDecoys(dt);
   updateWells(dt);
+  updateStrikes(dt);
   updateShots(dt);
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

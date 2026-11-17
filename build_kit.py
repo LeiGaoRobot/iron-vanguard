@@ -78,6 +78,8 @@ M = dict(
     BArmor=mat("BArmor", "#5a4436", 0.65, metal=0.3), BArmor2=mat("BArmor2", "#2c2420", 0.6, metal=0.4),
     MendEmit=mat("MendEmit", "#a8ffc8", 0.2, emit="#3dff8a", strength=6.0), MArmor=mat("MArmor", "#d8dcd6", 0.45, metal=0.2),
     SArmor=mat("SArmor", "#3a3d48", 0.45, metal=0.45), SArmor2=mat("SArmor2", "#22242b", 0.5, metal=0.5),
+    TArmor=mat("TArmor", "#6e5f4a", 0.6, metal=0.35), TArmor2=mat("TArmor2", "#2f2d2a", 0.55, metal=0.5),
+    Orbit=mat("Orbit", "#e8fbff", 0.2, emit="#9fe8ff", strength=7.0),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -692,6 +694,113 @@ def build_burrower():
             box((math.cos(a + t * 0.5) * rr, math.sin(a + t * 0.5) * rr, z), (0.16, 0.36, 0.12), M["Piston"], drill, rot=(0, 0, a + t * 0.5 + 0.5))
     ball((0, 0, 1.85), 0.12, M["Magma"], drill)
 
+def bogie(y, parent):
+    # two-axle bogie under a rail car: frame + four wheels (rails are 1.5 m apart)
+    box((0, y, 0.55), (1.9, 2.4, 0.35), M["Frame"], parent, bevel=0.04)
+    for wy in (-0.75, 0.75):
+        for sx in (-0.78, 0.78):
+            cyl((sx, y + wy, 0.48), 0.46, 0.18, M["Black"], parent, rot=(0, math.pi / 2, 0), verts=12)
+            cyl((sx * 1.06, y + wy, 0.48), 0.16, 0.06, M["Joint"], parent, rot=(0, math.pi / 2, 0), verts=8)
+
+def car_base(K, L=11.0):
+    # common rail-car chassis: deck, side skirts, couplers, bogies. front = +Y, deck top at z 1.5
+    box((0, 0, 1.2), (3.6, L, 0.6), M["TArmor2"], K, bevel=0.06)
+    for sx in (-1, 1):
+        box((sx * 1.86, 0, 1.05), (0.12, L - 1.6, 0.7), M["TArmor"], K)
+        box((sx * 1.93, 0, 1.26), (0.04, L - 2.2, 0.12), M["Hazard"], K)
+    for sy in (-1, 1):
+        box((0, sy * (L / 2 + 0.25), 1.05), (0.5, 0.6, 0.35), M["Joint"], K)
+        bogie(sy * (L / 2 - 2.1), K)
+
+def build_train():
+    # Armoured train: locomotive + three weapon cars. Each car is its own kit; JS lays them along the track.
+    # Locomotive: wedge nose, cab, engine block, reactor core E_TLCore on the roof (weak point once the cars are gone)
+    K = kit("E_TrainLoco")
+    car_base(K, 12.0)
+    box((0, -1.0, 3.1), (3.4, 8.6, 3.2), M["TArmor"], K, bevel=0.15)
+    wedge((0, 4.6, 2.6), (3.4, 2.6, 2.2), M["TArmor2"], K, taper=0.35, bevel=0.1)
+    box((0, 5.95, 1.55), (3.0, 0.5, 0.9), M["Hazard"], K, rot=(0.5, 0, 0))   # cow-catcher
+    box((0, 2.2, 4.95), (3.0, 2.4, 1.1), M["TArmor2"], K, bevel=0.1)          # cab
+    box((0, 3.42, 5.0), (2.4, 0.06, 0.5), M["EEye"], K)
+    for sx in (-1, 1):
+        ball((sx * 1.1, 5.6, 2.75), 0.32, M["EEye"], K)
+        box((sx * 1.74, -1.6, 3.4), (0.06, 6.0, 1.6), M["Frame"], K)
+        for j in range(6):
+            box((sx * 1.78, -4.0 + j * 1.0, 3.4), (0.06, 0.3, 1.3), M["Black"], K)
+    for i in range(3):
+        cyl((0, -4.2 + i * 1.3, 4.9), 0.42, 0.9, M["Nozzle"], K, verts=10)
+        cyl((0, -4.2 + i * 1.3, 5.38), 0.3, 0.06, M["NozzleGlow"], K, verts=10)
+    core = empty("E_TLCore", (0, -0.6, 5.5), K)
+    ball((0, 0, 0), 1.0, M["Plasma"], core, sub=2)
+    torus((0, 0, 0), 1.25, 0.14, M["Frame"], core)
+    torus((0, 0, 0), 1.25, 0.14, M["Frame"], core, rot=(math.pi / 2, 0, 0))
+    empty("Muzzle_TLoco", (0, -0.6, 6.7), K)
+
+    # Gun car: armoured flatbed with a twin-cannon turret E_TGTurret (yaws about Z)
+    K = kit("E_TrainGun")
+    car_base(K)
+    box((0, 0, 2.2), (3.4, 9.6, 1.4), M["TArmor"], K, bevel=0.12)
+    for sy in (-1, 1):
+        wedge((0, sy * 4.2, 3.2), (3.2, 1.2, 0.7), M["TArmor2"], K, rot=(0, 0, 0 if sy > 0 else math.pi), taper=0.4)
+    cyl((0, 0, 3.05), 1.9, 0.3, M["TArmor2"], K, verts=16)
+    tur = empty("E_TGTurret", (0, 0, 3.3), K)
+    box((0, -0.2, 0.75), (2.6, 3.0, 1.5), M["TArmor"], tur, bevel=0.15)
+    box((0, 1.25, 1.05), (1.8, 0.3, 0.3), M["EEye"], tur)
+    for sx in (-0.55, 0.55):
+        cyl((sx, 2.8, 0.75), 0.22, 3.4, M["Frame"], tur, rot=ALONG_Y, verts=10)
+        cyl((sx, 4.45, 0.75), 0.3, 0.4, M["Joint"], tur, rot=ALONG_Y, verts=10)
+    box((0, -1.75, 0.75), (2.2, 0.1, 1.0), M["Hazard"], tur)
+    empty("Muzzle_TGun", (0, 4.8, 0.75), tur)
+
+    # Missile car: box wagon with a raised 4x2 launcher E_TMPod pitched up
+    K = kit("E_TrainMsl")
+    car_base(K)
+    box((0, 0, 2.8), (3.4, 9.6, 2.6), M["TArmor"], K, bevel=0.12)
+    for j in range(5):
+        box((0, -3.8 + j * 1.9, 4.16), (3.5, 0.2, 0.12), M["Frame"], K)
+    pod = empty("E_TMPod", (0, 0.6, 4.6), K, rot=(0.5, 0, 0))
+    box((0, 0, 0), (2.8, 3.4, 1.4), M["TArmor2"], pod, bevel=0.1)
+    for ix in range(4):
+        for iz in range(2):
+            cyl((-1.05 + ix * 0.7, 1.72, -0.3 + iz * 0.6), 0.24, 0.12, M["Black"], pod, rot=ALONG_Y, verts=8)
+            cyl((-1.05 + ix * 0.7, 1.76, -0.3 + iz * 0.6), 0.12, 0.06, M["EEye"], pod, rot=ALONG_Y, verts=8)
+    box((1.42, 0, 0), (0.06, 3.0, 1.0), M["Hazard"], pod)
+    empty("Muzzle_TMsl", (0, 2.0, 0.2), pod)
+
+    # Carrier car: drone hangar with two roof hatches E_TCHatchL/R that swing open (about Y) when drones launch
+    K = kit("E_TrainCarrier")
+    car_base(K)
+    box((0, 0, 2.9), (3.4, 9.6, 2.8), M["TArmor"], K, bevel=0.12)
+    box((0, 0, 4.32), (2.6, 6.4, 0.1), M["Black"], K)
+    for sx in (-1, 1):
+        h = empty("E_TCHatch" + ("L" if sx < 0 else "R"), (sx * 1.3, 0, 4.36), K)
+        box((-sx * 0.65, 0, 0.06), (1.3, 6.2, 0.12), M["TArmor2"], h, bevel=0.03)
+        box((-sx * 0.65, 0, 0.13), (0.08, 5.6, 0.04), M["Hazard"], h)
+        for j in range(3):
+            box((sx * 1.74, -3 + j * 3, 3.0), (0.06, 1.6, 1.6), M["Frame"], K)
+            box((sx * 1.76, -3 + j * 3, 3.6), (0.04, 1.2, 0.12), M["EEye"], K)
+    for sy in (-1, 1):
+        cyl((0, sy * 3.9, 4.6), 0.12, 0.6, M["Frame"], K, verts=6)
+        ball((0, sy * 3.9, 4.95), 0.14, M["EEye"], K)
+    empty("Muzzle_TCar", (0, 0, 4.6), K)
+
+def build_orbital():
+    K = kit("S_Orbital")
+    # shoulder orbital-strike uplink: armoured base, tilting dish with a glowing feed horn and a target-designator lens
+    box((0, -0.15, 0.2), (0.6, 0.8, 0.3), M["Armor2"], K, bevel=0.05)
+    box((0.31, -0.15, 0.26), (0.04, 0.7, 0.2), M["Accent"], K)
+    cyl((0, 0.0, 0.42), 0.1, 0.3, M["Frame"], K, verts=8)
+    cyl((0, 0.12, 0.72), 0.42, 0.14, M["Armor"], K, rot=(-1.0, 0, 0), verts=20, r2=0.12)
+    cyl((0, 0.16, 0.76), 0.3, 0.04, M["Black"], K, rot=(-1.0, 0, 0), verts=20)
+    for k in range(3):
+        a = k * 2 * math.pi / 3
+        box((math.cos(a) * 0.16, 0.25 + math.sin(a) * 0.08, 0.86 + math.sin(a) * 0.1), (0.03, 0.03, 0.4), M["Frame"], K, rot=(-1.0 + math.sin(a) * 0.3, math.cos(a) * 0.3, 0))
+    ball((0, 0.32, 1.02), 0.08, M["Orbit"], K)
+    box((-0.22, 0.25, 0.25), (0.12, 0.18, 0.12), M["Frame"], K)
+    ball((-0.22, 0.35, 0.25), 0.05, M["Orbit"], K)
+    box((0, -0.5, 0.2), (0.46, 0.03, 0.18), M["Hazard"], K)
+    muzzle("Muzzle_Orbital", (0, 0.32, 1.08), K)
+
 def build_cryo():
     K = kit("W_Cryo")
     # cryo lance: boxy receiver with two frost canisters, long finned emitter ending in a glowing ice-blue crystal
@@ -1085,7 +1194,7 @@ def build_props():
 build_mech()
 build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
-build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout
