@@ -9,9 +9,9 @@ import { loadKit, cloneKit } from './kit.js';
 import { buildArena, addSolid, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine, relaySites, mulberry32 } from './world.js';
 import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
-import { Mech, PALETTES, FRAMES, angDiff } from './mech.js';
+import { Mech, PALETTES, FRAMES, angDiff, PHYS } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, domeAt, clearWells, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 const V3 = THREE.Vector3;
@@ -80,6 +80,12 @@ const MISSIONS = {
     { title: 'AMBUSH', sub: '全面追击 · 当心隐形狙击机', spawn: { crawler: 14, bulwark: 1, lancer: 1, stalker: 1 } },
     { title: 'EXTRACT', sub: '数据已全部取得 · 前往撤离点坚守 30 秒 · 「幻影」正在追击', spawn: { crawler: 8, drone: 3 }, lateBoss: { type: 'phantom', hp: 0.5, t: 8 } },
   ] },
+  lunar: { name: '月面 · 静海基地', en: 'LUNAR BASE', desc: '低重力 · 跳得更高、滞空更久 · 穹盾发生器护住敌群，从外面打不进去 · 冲进护罩内作战 · 头目「幻影」', seed: 121, env: 'lunar', grav: 0.4, reward: 4800, waves: [
+    { title: 'WAVE 1', sub: '低重力 · 跳得更高、落得更慢 · 琥珀色穹盾从外面打不进去', spawn: { turret: 2, walker: 3, drone: 3, warden: 1 } },
+    { title: 'WAVE 2', sub: '两座穹盾 · 冲进护罩，或用电磁脉冲 / 重力井破局', spawn: { walker: 3, bulwark: 1, warden: 2, drone: 3, crawler: 5 } },
+    { title: 'WAVE 3', sub: '掠夺者小队在穹盾下推进', spawn: { raider: 2, warden: 1, mender: 1, drone: 3 } },
+    { title: 'FINAL WAVE', sub: '「幻影」在穹盾掩护下现身', spawn: { boss: 'phantom', warden: 1, drone: 2 } },
+  ] },
   canyon: { name: '峡谷 · 炮火压制', en: 'BOMBARDMENT', desc: '沙尘 · 自走炮在远处隔山轰击 · 红圈是落点 · 找到并摧毁炮兵 · 头目「暴君」', seed: 111, env: 'haze', reward: 4600, waves: [
     { title: 'WAVE 1', sub: '炮击来袭 · 地面红圈是落点 · 自走炮躲在远处，不需要视线', spawn: { turret: 3, drone: 3, walker: 1, howitzer: 2 } },
     { title: 'WAVE 2', sub: '炮兵阵地推进 · 无人机在为炮兵校射', spawn: { walker: 2, bulwark: 1, drone: 4, turret: 2, howitzer: 2, sapper: 1 } },
@@ -109,11 +115,12 @@ const ENVS = {
   storm: { top: 0x1c232c, hor: 0x46505c, fog: [30, 230], hemi: [0x9aacc0, 0x26282c, 0.42], sun: [0xc0cce0, 0.8], env: 0.2, exp: 1.02, dir: [0.25, 0.7, 0.4], disc: 0.05, rain: true },
   dawn: { top: 0x56658f, hor: 0xf0b49c, fog: [70, 480], hemi: [0xffd8cc, 0x4a4250, 0.52], sun: [0xffc49a, 2.1], env: 0.34, exp: 0.95, dir: [0.75, 0.16, -0.25], disc: 1.6 },
   haze: { top: 0x8a7468, hor: 0xe2aa7c, fog: [55, 400], hemi: [0xffe2c4, 0x5e4232, 0.6], sun: [0xffc890, 2.2], env: 0.32, exp: 0.94, dir: [-0.5, 0.42, 0.35], disc: 1.1 },
+  lunar: { top: 0x020308, hor: 0x0c0f16, fog: [160, 950], hemi: [0xa8b4cc, 0x1c1c20, 0.28], sun: [0xfffaf2, 2.5], env: 0.2, exp: 0.95, dir: [0.55, 0.36, -0.5], disc: 0.15, stars: true, earth: [-0.42, 0.55, -0.72] },
   overcast: { top: 0x7a8590, hor: 0xb4bcc4, fog: [60, 420], hemi: [0xe0e6ec, 0x5a5c5e, 0.7], sun: [0xf0f2f4, 1.25], env: 0.4, exp: 0.92, dir: [0.3, 0.75, 0.4], disc: 0.15 },
   eclipse: { top: 0x120c1c, hor: 0x5c2a40, fog: [55, 420], hemi: [0xd8c0ff, 0x1c1620, 0.36], sun: [0xff9a80, 1.25], env: 0.18, exp: 1.04, dir: [-0.3, 0.38, 0.7], disc: 0.5 },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
+const KILL_CR = { warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -202,11 +209,23 @@ scene.environmentIntensity = 0.42;
 // sky dome
 const sky = new THREE.Mesh(new THREE.SphereGeometry(1200, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
-  uniforms: { top: { value: new THREE.Color(0x6f98bf) }, hor: { value: HORIZON }, sun: { value: new V3(0.45, 0.55, 0.7).normalize() }, disc: { value: 1 } },
+  uniforms: { top: { value: new THREE.Color(0x6f98bf) }, hor: { value: HORIZON }, sun: { value: new V3(0.45, 0.55, 0.7).normalize() }, disc: { value: 1 }, stars: { value: 0 }, earth: { value: new V3(-0.45, 0.32, -0.83).normalize() } },
   vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position.z = gl_Position.w; }',
-  fragmentShader: `uniform vec3 top; uniform vec3 hor; uniform vec3 sun; uniform float disc; varying vec3 vD;
+  fragmentShader: `uniform vec3 top; uniform vec3 hor; uniform vec3 sun; uniform float disc; uniform float stars; uniform vec3 earth; varying vec3 vD;
+    float hs(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
     void main(){ float h = clamp(vD.y, 0.0, 1.0); vec3 c = mix(hor, top, pow(h, 0.55));
       float s = max(dot(vD, sun), 0.0); c += vec3(1.0, 0.92, 0.8) * (pow(s, 600.0) * 4.0 + pow(s, 8.0) * 0.15 * disc);
+      if (stars > 0.5) {
+        vec3 q = floor(vD * 220.0); float st = hs(q); c += vec3(0.85, 0.9, 1.0) * step(0.9965, st) * (0.4 + 2.2 * fract(st * 97.0)) * smoothstep(0.0, 0.12, vD.y);
+        float e = dot(vD, earth);
+        if (e > 0.9975) {   // earth: blue disc with cloud bands, lit from the sun side
+          vec3 n = normalize(vD - earth * e); float r = sqrt(max(0.0, 1.0 - e * e)) / 0.0707;
+          vec3 l = normalize(sun - earth * dot(sun, earth)); float lit = smoothstep(-0.35, 0.45, dot(n, l) * r);
+          float cl = smoothstep(0.55, 0.8, hs(floor(vD * 900.0)) * 0.5 + 0.5 * sin(vD.y * 700.0 + vD.x * 300.0));
+          vec3 ec = mix(vec3(0.08, 0.22, 0.5), vec3(0.15, 0.4, 0.25), step(0.7, hs(floor(vD * 500.0))));
+          c = mix(ec, vec3(0.92), cl * 0.75) * (0.04 + 1.3 * lit) + vec3(0.3, 0.5, 1.0) * smoothstep(0.7, 1.0, r) * 0.5 * lit;
+        } else c += vec3(0.25, 0.45, 1.0) * smoothstep(0.9965, 0.9975, e) * 0.35;
+      }
       if (vD.y < 0.0) c = hor; gl_FragColor = vec4(c, 1.0); }`,
 }));
 sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
@@ -223,6 +242,7 @@ function applyEnv(key) {
   SUN_DIR.set(...E.dir).normalize(); U.sun.value.copy(SUN_DIR); U.disc.value = E.disc;
   hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2];
   sun.color.set(E.sun[0]); sun.intensity = E.sun[1];
+  U.stars.value = E.stars ? 1 : 0; if (E.earth) U.earth.value.set(...E.earth).normalize();
   scene.environmentIntensity = E.env; renderer.toneMappingExposure = E.exp;
   snowFx.visible = !!(E.snow || E.ash); rainFx.visible = !!E.rain;
   snowFx.material.color.set(E.ash ? 0x6a605a : 0xffffff); snowFx.userData.k = E.ash ? 0.35 : 1;
@@ -556,7 +576,7 @@ function mixWave(n, rnd) {
   if (n >= 4) pool.push(['gunship', 5, 3]);
   if (n >= 4) pool.push(['mender', 2.5, 2]);
   if (n >= 3) pool.push(['crawler', 0.7, 10]);
-  if (n >= 4) pool.push(['sapper', 3, 2]);
+  if (n >= 4) pool.push(['sapper', 3, 2], ['warden', 3.5, 1]);
   if (n >= 5) pool.push(['stalker', 4, 2], ['jammer', 3.5, 1], ['howitzer', 4, 2]);
   if (n >= 6) pool.push(['raider', 4.5, 3], ['lancer', 4.5, 2], ['dropship', 5, 2]);
   const sp = {}; let budget = 5 + n * 2.6, total = 0;
@@ -580,7 +600,7 @@ function makePlayer() {
 const wingOn = () => !!(save.wing && cfg.wing);
 function clearWorld() {
   if (G.wing) G.wing.dispose(); if (G.core) G.core.dispose();
-  clearDecoys(); G.wing = null; G.core = null; G.friends.length = 0;
+  clearDecoys(); clearWells(); G.wing = null; G.core = null; G.friends.length = 0;
   for (const e of G.enemies) e.remove ? e.remove() : null;
   G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0; clearMinis(); clearMines(); snipeSaid = false; G.mendSaid = false; G.mineSaid = false; G.jamSaid = false; G.jammed = null; clearZones();
   for (const k of G.pickups) scene.remove(k.o);
@@ -598,6 +618,7 @@ function newGame() {
   if (modOn('glass')) { G.player.maxHp = Math.round(G.player.maxHp * 0.6); G.player.hp = G.player.maxHp; }
   Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
   const M = MISSIONS[cfg.mission];
+  PHYS.g = M.grav || 1; clearWells();
   if (M.defense) {
     G.core = new Reactor(scene, new V3(0, 0, 0), M.coreHp); G.friends.push(G.core);
     G.player.pos.set(0, 0, 22);
@@ -712,6 +733,7 @@ function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.sapper || 0); k++) new Sapper(spot(90 * R, 140 * R, true, b));
   for (let k = 0; k < (S.jammer || 0); k++) new Jammer(spot(70 * R, 110 * R, true, b));
   for (let k = 0; k < (S.howitzer || 0); k++) new Howitzer(spot(115 * R, 150 * R, false, b));
+  for (let k = 0; k < (S.warden || 0); k++) new Warden(spot(80 * R, 105 * R, false, b));
   const drops = (S.drops || []).concat(Array.from({ length: S.dropship || 0 }, () => ({ walker: 2 })));
   drops.forEach((cg, k) => new Dropship(dropEntry(k, b), cg, false));
   if (S.dropBoss) new Dropship(dropEntry(drops.length + 0.5, b), { boss: S.dropBoss, hp: S.bossHp || 1 }, true);
@@ -1167,6 +1189,7 @@ const MEDALS = [
   { id: 'k1000', name: '千机斩', desc: '累计击毁 1000 台敌机', cr: 2000, tally: 'all', need: 1000 },
   { id: 'gauntlet', name: '连战制霸', desc: '赢下「头目连战」', cr: 2500, test: (r) => r.win && cfg.mission === 'gauntlet' },
   { id: 'ecm', name: '电子战', desc: '累计击落 10 台干扰机', cr: 800, tally: 'jammer', need: 10 },
+  { id: 'breaker', name: '破穹者', desc: '累计摧毁 8 台穹盾发生器', cr: 1000, tally: 'warden', need: 8 },
   { id: 'counter', name: '反炮兵', desc: '累计摧毁 12 门自走炮', cr: 1000, tally: 'howitzer', need: 12 },
   { id: 'intercept', name: '防空专家', desc: '累计在投放前击落 10 架运输机', cr: 1000, tally: 'dropFull', need: 10 },
   { id: 'maxed', name: '满改机体', desc: '四项机库强化全部升满', cr: 1000, test: () => Object.values(save.up).every((v) => v >= 5), prog: () => [Object.values(save.up).reduce((a, v) => a + v, 0), 20] },
@@ -1442,6 +1465,7 @@ function drawHUD(dt) {
     if (!e.alive || e.cloaked || (G.jammed && e.kind !== 'boss')) continue;
     const x = (e.c.x - p.pos.x) * K, z = (e.c.z - p.pos.z) * K;
     if (e.kind === 'dropship') { rctx.fillStyle = e.cargo ? '#ffcc40' : '#8a7a50'; rctx.save(); rctx.translate(x, z); rctx.rotate(-e.yaw); rctx.beginPath(); rctx.moveTo(0, -9); rctx.lineTo(-7, 7); rctx.lineTo(7, 7); rctx.fill(); rctx.restore(); continue; }
+    if (e.kind === 'warden') { if (e.domeOn()) { rctx.strokeStyle = 'rgba(255, 176, 80, 0.55)'; rctx.lineWidth = 1.5; rctx.beginPath(); rctx.arc(x, z, e.R * K, 0, Math.PI * 2); rctx.stroke(); } rctx.fillStyle = '#ffb050'; rctx.beginPath(); rctx.moveTo(x, z - 6); rctx.lineTo(x + 6, z); rctx.lineTo(x, z + 6); rctx.lineTo(x - 6, z); rctx.fill(); continue; }
     if (e.kind === 'howitzer') { rctx.fillStyle = '#ff9a40'; rctx.fillRect(x - 5, z - 5, 10, 10); rctx.strokeStyle = '#2a1a10'; rctx.lineWidth = 1.5; rctx.strokeRect(x - 5, z - 5, 10, 10); continue; }
     if (e.kind === 'jammer') { rctx.fillStyle = '#c070ff'; rctx.beginPath(); rctx.arc(x, z, 5, 0, Math.PI * 2); rctx.fill(); continue; }
     if (e.kind === 'relay') { rctx.fillStyle = '#ffd23a'; rctx.save(); rctx.translate(x, z); rctx.rotate(Math.PI / 4); rctx.fillRect(-6, -6, 12, 12); rctx.restore(); continue; }
@@ -1473,7 +1497,7 @@ function drawHUD(dt) {
 const auto = { on: false, st: 1, stT: 0, jT: 3, hover: 0, sT: 0 };
 function autoIntent(dt) {
   const p = G.player; let tgt = null, bd = 1e9;
-  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : e.kind === 'mender' ? -35 : e.kind === 'jammer' ? (G.jammed === e ? -45 : -15) : e.kind === 'dropship' ? (e.cargo && e.st !== 'in' ? -60 : e.cargo ? -20 : 400) : e.kind === 'howitzer' ? -25 : e.kind === 'crawler' && e.c.distanceTo(p.pos) < 35 ? -30 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
+  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : e.kind === 'mender' ? -35 : e.kind === 'jammer' ? (G.jammed === e ? -45 : -15) : e.kind === 'dropship' ? (e.cargo && e.st !== 'in' ? -60 : e.cargo ? -20 : 400) : e.kind === 'howitzer' ? -25 : e.kind === 'warden' ? (domeAt(p.pos) === e ? -90 : -30) : e.kind === 'crawler' && e.c.distanceTo(p.pos) < 35 ? -30 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
   // pick up repairs when hurt
   let goal = null;
   if (p.hp < p.maxHp * 0.6) for (const k of G.pickups) { const d = k.o.position.distanceTo(p.pos); if (d < 70) { goal = k.o.position; break; } }
@@ -1488,6 +1512,7 @@ function autoIntent(dt) {
     const busy = !run.evac && !(zb && zb.k > 0) && G.enemies.filter((e) => e.alive && !e.cloaked && e.kind !== 'crawler' && e.c.distanceTo(p.pos) < (e.kind === 'turret' ? 60 : 90)).length >= 2;   // clear the area before the next cache
     if (zb && !busy && Math.hypot(zb.x - p.pos.x, zb.z - p.pos.z) > zb.R * 0.5) goal = zb.pos;
   }
+  if (!goal && tgt) { const wd = domeAt(tgt.c); if (wd && p.pos.distanceTo(wd.pos) > wd.R * 0.55 && wd.dp > wd.maxDp * 0.35) goal = wd.pos; }
   if (!goal && G.core && G.core.alive && Math.hypot(p.pos.x - G.core.pos.x, p.pos.z - G.core.pos.z) > (run.escort ? (run.driving ? 22 : G.enemies.filter((e) => e.alive).length <= 2 ? 999 : 45) : 70)) goal = G.core.pos;
   if (tgt) {
     const pc = p.center(new V3());
@@ -1648,7 +1673,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=15');
+    await loadKit('./assets/kit.glb?v=16');
     ensureArena();
     makePlayer();
     setState('title');

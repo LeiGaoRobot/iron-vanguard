@@ -39,7 +39,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash';
+  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash', lunar = env === 'lunar';
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
     for (let i = 0; road && i < road.length - 1; i++) {
@@ -68,7 +68,17 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float stripe = step(${ARENA.toFixed(1)} - 3.0, ed) * step(ed, ${ARENA.toFixed(1)} - 1.6) * step(0.5, fract((vWP.x + vWP.z) / 4.0));
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.62, 0.08), stripe * 0.9);${desert ? `
       diffuseColor.rgb *= vec3(1.18, 1.0, 0.74) * (0.94 + 0.12 * h21(floor(vWP.xz / 11.0)));` : ''}${ash ? `
-      diffuseColor.rgb *= vec3(0.62, 0.55, 0.52) * (0.85 + 0.25 * h21(floor(vWP.xz / 6.0)));` : ''}${storm ? `
+      diffuseColor.rgb *= vec3(0.62, 0.55, 0.52) * (0.85 + 0.25 * h21(floor(vWP.xz / 6.0)));` : ''}${lunar ? `
+      vec3 rc = vec3(0.5, 0.5, 0.49) * (0.74 + 0.1 * h21(floor(vWP.xz / 0.7)) + 0.1 * h21(floor(vWP.xz / 5.0)));
+      for (int q = 0; q < 2; q++) {
+        float sz = q == 0 ? 26.0 : 9.0;
+        vec2 cc = floor(vWP.xz / sz) + float(q) * 17.0; vec2 ctr = (floor(vWP.xz / sz) + 0.25 + vec2(h21(cc), h21(cc + 3.7)) * 0.5) * sz;
+        float cr = sz * (0.12 + 0.2 * h21(cc + 9.1)) * step(0.35, h21(cc + 5.3));
+        float dd = length(vWP.xz - ctr) / max(cr, 0.01);
+        float bowl = smoothstep(1.0, 0.45, dd) * 0.32, rim = smoothstep(0.75, 1.0, dd) * smoothstep(1.4, 1.0, dd) * 0.22;
+        rc *= 1.0 - bowl + rim;
+      }
+      diffuseColor.rgb = mix(rc, diffuseColor.rgb * 0.85, 0.16 + 0.7 * stripe);` : ''}${storm ? `
       float wet = smoothstep(0.55, 0.8, h21(floor(vWP.xz / 9.0)) * 0.6 + h21(floor(vWP.xz / 3.0)) * 0.4);
       diffuseColor.rgb *= 0.46 - 0.2 * wet;` : ''}${snow ? `
       float sn = 0.55 + 0.25 * h21(floor(vWP.xz / 7.0)) + 0.2 * h21(floor(vWP.xz / 1.3));

@@ -22,6 +22,7 @@ export const FRAMES = {
 };
 
 const WALK = 10, BOOST = 25, GRAV = 27, JUMP = 13;
+export const PHYS = { g: 1 };   // gravity multiplier (lunar mission 0.4)
 export const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
 
 
@@ -86,7 +87,7 @@ export class Mech {
     for (const s of Object.values(this.slots)) for (const m of s.models) m.parent && m.parent.remove(m);
     this.slots = {};
     this.loadout = { ...loadout };
-    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', grenade: 'W_Grenade', pile: 'W_Pile', flamer: 'W_Flamer', shield: 'S_Shield', drones: 'S_Drones', emp: 'S_Emp', decoy: 'S_Decoy' };
+    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', grenade: 'W_Grenade', pile: 'W_Pile', flamer: 'W_Flamer', shield: 'S_Shield', drones: 'S_Drones', emp: 'S_Emp', decoy: 'S_Decoy', grav: 'S_Grav' };
     const mk = (slot, key, mounts) => {
       const models = [], muzzles = [];
       for (const mt of mounts) {
@@ -145,9 +146,9 @@ export class Mech {
     if (I.jump && this.grounded) { this.vel.y = JUMP; this.grounded = false; this.ctx.onJump && this.ctx.onJump(this); }
     if (!this.grounded && I.hover && canBoost) {
       hovering = true; drain += 26;
-      this.vel.y += (GRAV + 20) * dt; if (this.vel.y > 9) this.vel.y = 9;
+      this.vel.y += (GRAV * PHYS.g + 20) * dt; if (this.vel.y > 9) this.vel.y = 9;
     }
-    if (!lunging) this.vel.y -= GRAV * dt;
+    if (!lunging) this.vel.y -= GRAV * PHYS.g * dt;
     if (this.grounded && this.vel.y < 0) this.vel.y = 0;
     // energy
     if (drain > 0) { this.en -= drain * dt; this.drainT = 0; }

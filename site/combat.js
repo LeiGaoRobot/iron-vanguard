@@ -32,11 +32,12 @@ export const WEAPONS = {
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
   drones: { slot: 'shoulder', name: 'DP-4 攻击无人机', en: 'DP-4 Drone Pod', desc: '放出 2 架无人机 · 自动攻击 14 秒', type: 'drones', count: 2, dur: 14, dmg: 6, rate: 0.17, range: 80, cd: 18, sfx: 'drone' },
   emp: { slot: 'shoulder', name: 'EP-5 电磁脉冲', en: 'EP-5 EMP Burst', desc: '周围 26 m 敌机瘫痪 2.5 秒（头目 0.8 秒）· 瘫痪中受伤 +30% · 清除来袭弹药与地雷', type: 'emp', radius: 26, dmg: 85, stun: 2.5, bossStun: 0.8, cd: 11, sfx: 'emp' },
+  grav: { slot: 'shoulder', name: 'GW-1 重力井', en: 'GW-1 Gravity Well', desc: '发射奇点 · 3 秒内把周围敌机拖向中心并吞掉敌弹 · 结束时坍缩爆炸', type: 'grav', speed: 75, range: 95, R: 20, pull: 15, dur: 3, dps: 26, burst: 150, burstR: 11, cd: 14, sfx: 'grav' },
   decoy: { slot: 'shoulder', name: 'HD-1 全息诱饵', en: 'HD-1 Holo Decoy', desc: '投射机体全息影像 6 秒 · 吸引敌方火力（头目不易上当）· 被打碎时放出电磁冲击', type: 'decoy', hp: 380, dur: 6, cd: 20, burst: 70, burstR: 11, sfx: 'decoy' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'grenade', 'coil', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -97,6 +98,10 @@ export const OD = { fill: 2600, dur: 10, dmg: 1.4, armor: 0.65 };
 function dealDamage(ent, dmg, team, at, label) {
   if (!ent.alive) return;
   if (team === 'P') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.stunT > 0) dmg *= STUN_VULN; }   // EMP-stunned targets take extra damage
+  if ((team === 'P' || team === 'X') && !G.pierce && !ent.isBarrel && !ent.isMine && !ent.isPlayer && !ent.isAlly && G.player) {   // warden dome: hits from outside are absorbed
+    const w = domeAt(ent.c);
+    if (w && G.player.pos.distanceTo(w.pos) > w.R) { w.absorb(dmg, domeEntry(w, G.player.center(_c), ent.c, new V3())); if (team === 'P' && !isAlly(label || G.curLabel)) G.stats.hits++; return; }
+  }
   ent.hit(dmg, at, label || G.curLabel);
   if (team === 'P' && !ent.isBarrel && !isAlly(label || G.curLabel)) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; if (G.od && !(G.od.t > 0) && !ent.isCore) G.od.k = Math.min(1, G.od.k + dmg / OD.fill * (G.odGain || 1)); }
 }
@@ -202,6 +207,16 @@ function updateShots(dt) {
     }
     _a.set(s.x, s.y, s.z);
     _b.set(s.x + s.v.x * dt, s.y + s.v.y * dt, s.z + s.v.z * dt);
+    if (s.team === 'P') {   // warden domes stop player shots coming in from outside
+      const wd = domeAt(_b);
+      if (wd && _a.distanceTo(wd.pos) >= wd.R) {
+        const at = domeEntry(wd, _a, _b, new V3());
+        wd.absorb(s.dmg * (s.splash ? 1.3 : 1), at);
+        if (s.splash) G.fx.explosion(at, 0.6, 0xffb050);
+        if (!isAlly(s.label)) G.stats.hits++;
+        G.shots.splice(i, 1); continue;
+      }
+    }
     // vs entities
     const h = segHit(_a, _b, s.team === 'P' ? entsP : entsE, s.kind === 'plasma' ? 0.6 : s.kind === 'flame' ? 0.4 + s.age * 2.5 : 0);
     // vs world
@@ -438,6 +453,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     for (const m of mslot.models) { const dk = m._dock || (m._dock = find(m, 'D_Dock')); if (dk) dk.visible = !out; }
   } else if (d.type === 'decoy') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Decoy(owner, slot, d, dmgMul); sfx('decoy', dist); if (me) G.stats.shots++; }
+  } else if (d.type === 'grav') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; launchWell(owner, slot, d, dmgMul, aim); sfx('cannon', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'emp') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; empPulse(owner, d, dmgMul); if (me) G.stats.shots++; }
   } else if (d.type === 'shield') {
@@ -567,6 +584,78 @@ export class Decoy {
     if (Math.random() < 0.25) G.fx.emit('add', { x: this.pos.x + (Math.random() - 0.5) * 3, y: this.pos.y + Math.random() * 5 * this.sc, z: this.pos.z + (Math.random() - 0.5) * 3, vy: 1.5, life: 0.4, s0: 0.5, c0: 0x58d8ff });
   }
 }
+
+// ------------------------------------------------------------------ GW-1 gravity well: a slow singularity that opens where it lands,
+// drags enemies (and their shots) in for a few seconds, then collapses in a blast
+G.wells = [];
+const wellCore = new THREE.MeshBasicMaterial({ color: 0x050308 });
+const wellGlow = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x8a6cff).multiplyScalar(1.6), transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, side: THREE.DoubleSide });
+const PULL_RES = { boss: 0.15, raider: 0.3, bulwark: 0.45, howitzer: 0.45, walker: 0.75, warden: 0.6 };
+const NO_PULL = new Set(['turret', 'relay', 'dropship']);
+function launchWell(owner, slot, d, dmgMul, aim) {
+  const mp = owner.muzzlePos(slot, new V3(), 0).clone();
+  _d.subVectors(aim, mp); let L = Math.min(d.range, _d.length()); _d.normalize();
+  const w = raySolids(mp, _d, L); if (w.t < L) L = Math.max(2, w.t - 1.5);
+  const end = mp.clone().addScaledVector(_d, L);
+  const o = new THREE.Group();
+  o.add(new THREE.Mesh(new THREE.SphereGeometry(1.0, 16, 10), wellCore));
+  const halo = new THREE.Mesh(new THREE.SphereGeometry(1.45, 16, 10), wellGlow.clone()); o.add(halo);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(2.8, 0.12, 6, 48), wellGlow.clone()); ring.rotation.x = Math.PI / 2; o.add(ring);
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(2.2, 0.08, 6, 48), wellGlow.clone()); ring2.rotation.x = 1.0; o.add(ring2);
+  const area = new THREE.Mesh(new THREE.SphereGeometry(1, 28, 14), wellGlow.clone()); area.material.opacity = 0; area.visible = false; G.scene.add(area);
+  o.position.copy(mp); G.scene.add(o);
+  G.wells.push({ o, halo, ring, ring2, area, from: mp, end, fly: L / d.speed, flyT: 0, t: d.dur, d, dmgMul, open: false, owner });
+}
+function updateWells(dt) {
+  const fx = G.fx;
+  for (let i = G.wells.length - 1; i >= 0; i--) {
+    const w = G.wells[i], d = w.d, P = w.o.position;
+    if (!w.open) {
+      w.flyT += dt; P.lerpVectors(w.from, w.end, Math.min(1, w.flyT / w.fly));
+      fx.emit('add', { x: P.x, y: P.y, z: P.z, life: 0.2, s0: 1.6, s1: 0.3, c0: 0x8a6cff });
+      if (w.flyT >= w.fly) { w.open = true; w.age = 0; sfx('grav', G.player.pos.distanceTo(P)); fx.flash(P, 0x8a6cff, 20, 24, 0.2); G.wellsOpened = (G.wellsOpened || 0) + 1; }
+      continue;
+    }
+    w.age += dt; w.t -= dt;
+    const grow = Math.min(1, w.age * 3), s = 1 + Math.sin(w.age * 20) * 0.08;
+    w.o.scale.setScalar(grow * 1.9 * s); w.ring.rotation.z += dt * 6; w.ring.scale.setScalar(1 + 0.15 * Math.sin(w.age * 9));
+    w.halo.material.opacity = 0.35 + 0.15 * Math.sin(w.age * 13); w.ring2.rotation.y += dt * 4;
+    w.area.visible = true; w.area.position.copy(P); w.area.scale.setScalar(d.R * 0.7 * grow * (1 - 0.06 * Math.sin(w.age * 6))); w.area.material.opacity = (0.045 + 0.02 * Math.sin(w.age * 11)) * Math.min(1, w.t * 2);
+    for (let k = 0; k < 3; k++) {   // dust streaming inward
+      const a = Math.random() * 6.283, r = d.R * (0.6 + Math.random() * 0.4), h = (Math.random() - 0.3) * 6;
+      fx.emit('add', { x: P.x + Math.cos(a) * r, y: P.y + h, z: P.z + Math.sin(a) * r, vx: -Math.cos(a) * r * 1.4, vy: -h * 1.4, vz: -Math.sin(a) * r * 1.4, life: 0.6, s0: 0.5, s1: 0.15, c0: 0xb8a0ff, drag: 0 });
+    }
+    const prev = G.curLabel; G.curLabel = 'p-grav';
+    for (const e of G.enemies) {
+      if (!e.alive || e.dying || NO_PULL.has(e.kind) || e.isColossus) continue;
+      const dx = P.x - e.pos.x, dz = P.z - e.pos.z, dist = Math.hypot(dx, dz, (P.y - e.c.y) * 0.5);
+      if (dist > d.R || dist < 1.5) continue;
+      const k = (PULL_RES[e.kind] ?? 1) * d.pull * (1 - dist / d.R * 0.45);
+      const m = Math.min(dist - 1.5, k * dt), hd = Math.hypot(dx, dz) || 1;
+      _a.set(e.pos.x + dx / hd * m, e.pos.y, e.pos.z + dz / hd * m);
+      if (!pointInSolid(_a.clone().setY(e.pos.y + 1.5), (e.r || 2) * 0.6)) { e.pos.x = _a.x; e.pos.z = _a.z; }
+      if (e.kind === 'drone' || e.kind === 'gunship' || e.kind === 'sapper' || e.kind === 'jammer' || e.kind === 'mender' || e.kind === 'stalker') e.pos.y += (P.y - e.pos.y) * Math.min(1, dt * (PULL_RES[e.kind] ?? 1) * 1.5);
+      if (e.vel) e.vel.multiplyScalar(1 - Math.min(1, dt * 3));
+    }
+    for (const e of entsFor('P')) {
+      if (e.isBarrel || e.isMine) continue;
+      if (e.c.distanceTo(P) - (e.r || 1) * 0.6 < d.R * 0.7) dealDamage(e, d.dps * w.dmgMul * dt, 'P', e.c, 'p-grav');
+    }
+    G.curLabel = prev;
+    for (let j = G.shots.length - 1; j >= 0; j--) {   // swallows enemy shots that pass close
+      const sh = G.shots[j];
+      if (sh.team === 'E' && Math.hypot(sh.x - P.x, sh.y - P.y, sh.z - P.z) < 7) { fx.emit('add', { x: sh.x, y: sh.y, z: sh.z, life: 0.2, s0: 1.4, c0: 0xb8a0ff }); G.shots.splice(j, 1); }
+    }
+    if (w.t <= 0) {
+      G.curLabel = 'p-grav';
+      explodeAt(P.clone(), d.burstR, d.burst * w.dmgMul, 'P', 1.6, 0x9a7cff);
+      fx.ring(P.clone(), null, 1, d.burstR * 1.4, 0.45, 0xb8a0ff);
+      G.curLabel = prev;
+      w.o.parent && w.o.parent.remove(w.o); w.area.parent && w.area.parent.remove(w.area); G.wells.splice(i, 1);
+    }
+  }
+}
+export function clearWells() { for (const w of G.wells) { w.o.parent && w.o.parent.remove(w.o); w.area.parent && w.area.parent.remove(w.area); } G.wells.length = 0; }
 export function updateDecoys(dt) { for (const f of G.friends.slice()) if (f instanceof Decoy) f.update(dt); }
 export function clearDecoys() { for (const f of G.friends.slice()) if (f instanceof Decoy) { f.alive = false; f.obj.parent && f.obj.parent.remove(f.obj); G.friends.splice(G.friends.indexOf(f), 1); } }
 
@@ -1808,6 +1897,110 @@ export class Howitzer extends Enemy {
   }
 }
 
+
+// ------------------------------------------------------------------ Warden: tripod dome projector. Its dome stops everything the player fires
+// from outside (shots break on the surface, other damage is absorbed); step inside, break the dome, or EMP the warden.
+const _w1 = new V3(), _w2 = new V3();
+const domeVS = 'varying vec3 vN; varying vec3 vV; varying vec3 vP; void main(){ vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = -mv.xyz; vP = position; gl_Position = projectionMatrix * mv; }';
+const domeFS = `uniform float t; uniform float fl; uniform float k; uniform vec3 col; varying vec3 vN; varying vec3 vV; varying vec3 vP;
+  void main(){ float f = 1.0 - abs(dot(normalize(vN), normalize(vV))); f = pow(f, 2.2);
+    float band = smoothstep(0.82, 1.0, fract(vP.y * 0.22 - t * 0.35));
+    vec2 hx = vec2(atan(vP.z, vP.x) * 9.0, vP.y * 0.9); float grid = max(smoothstep(0.9, 1.0, abs(fract(hx.x) * 2.0 - 1.0)), smoothstep(0.9, 1.0, abs(fract(hx.y) * 2.0 - 1.0)));
+    float base = smoothstep(1.2, 0.0, vP.y);
+    float a = (0.035 + f * 0.5 + band * 0.12 + grid * 0.06 + base * 0.3) * (0.55 + 0.45 * k) + fl;
+    gl_FragColor = vec4(col * a, 1.0); }`;
+export function domeAt(p) {   // a live dome that contains point p
+  for (const e of G.enemies) if (e.kind === 'warden' && e.domeOn() && p.distanceTo(e.pos) < e.R) return e;
+  return null;
+}
+function domeEntry(w, a, b, out) {   // where segment a->b crosses the dome sphere (fallback: surface point toward b)
+  _w1.subVectors(b, a); const L = _w1.length() || 1; _w1.divideScalar(L);
+  _w2.subVectors(a, w.pos); const B = _w2.dot(_w1), C = _w2.lengthSq() - w.R * w.R, D = B * B - C;
+  if (D >= 0) { const t = -B - Math.sqrt(D); if (t >= 0 && t <= L) return out.copy(a).addScaledVector(_w1, t); }
+  return out.subVectors(b, w.pos).normalize().multiplyScalar(w.R).add(w.pos);
+}
+export class Warden extends Enemy {
+  constructor(pos) {
+    super('warden', 'E_Warden', pos, 620, 2.4); this.boom = 1.3;
+    this.vel = new V3(); this.R = 15; this.maxDp = 1600 * G.diff.hp; this.dp = this.maxDp; this.down = 0; this.quiet = 0; this.pulseT = 2.5; this.warnT = 0; this.goalT = 0; this.goal = pos.clone();
+    this.mat = new THREE.ShaderMaterial({ uniforms: { t: { value: 0 }, fl: { value: 0 }, k: { value: 1 }, col: { value: new THREE.Color(0xffa63a).multiplyScalar(1.3) } },
+      vertexShader: domeVS, fragmentShader: domeFS, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, toneMapped: false });
+    this.dome = new THREE.Mesh(new THREE.SphereGeometry(this.R, 40, 14, 0, Math.PI * 2, 0, Math.PI / 2), this.mat);
+    this.dome.renderOrder = 2; this.dome.position.copy(pos); G.scene.add(this.dome);
+    this.obj.scale.setScalar(1.3); this.c.set(pos.x, pos.y + 4, pos.z);
+  }
+  domeOn() { return this.alive && !this.dying && this.down <= 0 && !(this.stunT > 0); }
+  absorb(dmg, at) {
+    this.dp -= dmg; this.quiet = 0; this.mat.uniforms.fl.value = Math.min(0.5, this.mat.uniforms.fl.value + 0.12);
+    G.stats.blocked = (G.stats.blocked || 0) + dmg; G.domeAbs = (G.domeAbs || 0) + dmg;
+    if (at && Math.random() < 0.6) G.fx.sparks(at, _w1.subVectors(at, this.pos).normalize(), 4, 0xffc070, 12, 1, 0.25, 0.25);
+    if (Math.random() < 0.2) sfx('shield', G.player.pos.distanceTo(this.pos));
+    if (!G.domeSaid) { G.domeSaid = true; G.onHint && G.onHint('穹盾 · 从外面打不进去 · 冲进护罩内部，或击破护罩 / 用电磁脉冲瘫痪发生器', 4.5); }
+    if (this.dp <= 0) {
+      this.down = 8; this.dome.visible = false; sfx('shieldbreak', G.player.pos.distanceTo(this.pos));
+      G.fx.flash(this.c, 0xffa040, 50, 40, 0.35); G.fx.ring(new V3(this.pos.x, this.pos.y + 0.4, this.pos.z), null, this.R, this.R + 6, 0.5, 0xffb050);
+      for (let k = 0; k < 30; k++) { const a = Math.random() * 6.283, b = Math.random() * 1.4; G.fx.sparks(_w2.set(this.pos.x + Math.cos(a) * Math.cos(b) * this.R, this.pos.y + Math.sin(b) * this.R, this.pos.z + Math.sin(a) * Math.cos(b) * this.R), null, 2, 0xffc070, 8, 1, 0.5, 0.25); }
+      G.domeBroken = (G.domeBroken || 0) + 1;
+    }
+  }
+  remove() { super.remove(); this.dome.parent && this.dome.parent.remove(this.dome); }
+  update(dt) {
+    const pl = G.player, pc = pl.center(playerC);
+    // drift toward the middle of the ground units it protects
+    this.goalT -= dt;
+    if (this.goalT <= 0) {
+      this.goalT = 1.2; let n = 0, sx = 0, sz = 0, near = null, nd = 1e9;
+      for (const e of G.enemies) {
+        if (e === this || !e.alive || e.dying || e.kind === 'warden' || e.kind === 'drone' || e.kind === 'gunship' || e.kind === 'crawler' || e.kind === 'sapper' || e.kind === 'jammer' || e.kind === 'dropship' || e.kind === 'mender' || e.cloaked) continue;
+        const d = Math.hypot(e.pos.x - this.pos.x, e.pos.z - this.pos.z);
+        if (d < nd) { nd = d; near = e; }
+        if (d < 70) { sx += e.pos.x; sz += e.pos.z; n++; }
+      }
+      if (n) this.goal.set(sx / n, 0, sz / n); else if (near) this.goal.set(near.pos.x, 0, near.pos.z);
+    }
+    let gx = this.goal.x - this.pos.x, gz = this.goal.z - this.pos.z; const gd = Math.hypot(gx, gz);
+    let tx = 0, tz = 0;
+    if (gd > 5) { tx = gx / gd * 4; tz = gz / gd * 4; }
+    const dpx = this.pos.x - pl.pos.x, dpz = this.pos.z - pl.pos.z, pd = Math.hypot(dpx, dpz) || 1;
+    if (pd < 9) { tx += dpx / pd * 3; tz += dpz / pd * 3; }   // shy of the player at point blank
+    this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-1.5 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-1.5 * dt));
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    this.pos.x = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.x)); this.pos.z = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.z));
+    if (collideCyl(this.pos, 2.4, 3)) this.vel.multiplyScalar(0.3);
+    this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6, 2);
+    this.c.set(this.pos.x, this.pos.y + 4, this.pos.z);
+    this.n.E_WdRing.rotation.z += dt * (this.domeOn() ? 2.4 : 0.5);
+    const pulse = 0.5 + 0.5 * Math.sin(G.time * 4);
+    this.n.E_WdCore.scale.setScalar(this.domeOn() ? 0.9 + pulse * 0.2 : 0.7);
+    // dome: follows, regenerates after 2.5 s without hits, down for 8 s when broken
+    this.dome.position.copy(this.pos);
+    this.quiet += dt;
+    if (this.down > 0) { this.down -= dt; if (this.down <= 0) { this.dp = this.maxDp * 0.6; G.fx.ring(new V3(this.pos.x, this.pos.y + 0.4, this.pos.z), null, 2, this.R, 0.5, 0xffb050); } }
+    else if (this.quiet > 2.5) this.dp = Math.min(this.maxDp, this.dp + this.maxDp * 0.08 * dt);
+    this.dome.visible = this.domeOn();
+    const U = this.mat.uniforms; U.t.value = G.time; U.fl.value = Math.max(0, U.fl.value - dt * 1.6); U.k.value = this.dp / this.maxDp;
+    // repulse pulse when the player stands inside its dome
+    const inside = this.domeOn() && pl.alive && pl.pos.distanceTo(this.pos) < this.R;
+    if (this.warnT > 0) {
+      this.warnT -= dt;
+      if (this.warnT <= 0 && this.alive) {
+        G.fx.ring(new V3(this.pos.x, this.pos.y + 0.5, this.pos.z), null, 2, 13, 0.4, 0xffb050); G.fx.flash(this.c, 0xffa040, 20, 22, 0.15);
+        sfx('emp', pd);
+        for (const f of [pl, ...G.friends]) {
+          if (!f || !f.alive) continue;
+          const fx_ = f.pos.x - this.pos.x, fz = f.pos.z - this.pos.z, d = Math.hypot(fx_, fz) || 1;
+          if (d > 13) continue;
+          if (f === pl) { damagePlayer(26, this.c, 'warden-pulse'); pl.vel.x += fx_ / d * 26; pl.vel.z += fz / d * 26; pl.vel.y = Math.max(pl.vel.y, 7); }
+          else if (f._ent) f._ent.hit(26, this.c, 'warden-pulse');
+        }
+      }
+    } else if (inside && pd < 13) {
+      this.pulseT -= dt;
+      if (this.pulseT <= 0) { this.pulseT = 3.2; this.warnT = 0.8; G.fx.warn(new V3(this.pos.x, this.pos.y, this.pos.z), 13, 0.8); }
+    } else this.pulseT = Math.min(this.pulseT, 1.2);
+  }
+}
+
 // Dropship: twin-fan VTOL. Flies in from outside the arena, picks a landing zone ~30 m from its target, descends,
 // hovers 2.6 s with the bay open and releases its cargo (G.onDrop(pos, cargo, ds) spawns it), then climbs out and leaves
 // (removed without a kill). Shot down with the cargo aboard, the cargo is lost, except a boss, who walks out of the wreck.
@@ -1940,6 +2133,7 @@ export function updateCombat(dt) {
   G.curLabel = null;
   updateMinis(dt);
   updateDecoys(dt);
+  updateWells(dt);
   updateShots(dt);
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
