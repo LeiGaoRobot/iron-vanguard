@@ -81,6 +81,8 @@ M = dict(
     TArmor=mat("TArmor", "#6e5f4a", 0.6, metal=0.35), TArmor2=mat("TArmor2", "#2f2d2a", 0.55, metal=0.5),
     Orbit=mat("Orbit", "#e8fbff", 0.2, emit="#9fe8ff", strength=7.0),
     DiscEdge=mat("DiscEdge", "#ffd0f4", 0.2, emit="#ff4ad8", strength=7.0),
+    Tether=mat("Tether", "#c8fff0", 0.2, emit="#30ffc8", strength=6.5),
+    Blink=mat("Blink", "#c8dcff", 0.25, emit="#6a8cff", strength=2.2),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -802,6 +804,48 @@ def build_orbital():
     box((0, -0.5, 0.2), (0.46, 0.03, 0.18), M["Hazard"], K)
     muzzle("Muzzle_Orbital", (0, 0.32, 1.08), K)
 
+def build_grappler():
+    # Grappler: heavy hover craft with a harpoon cannon slung under the nose and a cable winch on its back. front = +Y
+    K = kit("E_Grappler")
+    box((0, 0, 0), (2.0, 2.6, 0.9), M["EArmor"], K, bevel=0.12)
+    box((0, 0.2, 0.55), (1.5, 1.8, 0.3), M["EArmor2"], K, bevel=0.06)
+    box((0, 1.35, 0.05), (1.2, 0.3, 0.5), M["EArmor2"], K, bevel=0.05)
+    box((0, 1.5, 0.15), (0.7, 0.08, 0.14), M["EEye"], K)
+    for s_ in (-1, 1):
+        box((s_ * 1.35, -0.2, 0.0), (0.7, 1.6, 0.5), M["EArmor2"], K, bevel=0.06)
+        cyl((s_ * 1.45, -0.2, -0.38), 0.42, 0.2, M["Frame"], K, verts=14)
+        cyl((s_ * 1.45, -0.2, -0.5), 0.3, 0.06, M["NozzleGlow"], K, verts=14)
+        box((s_ * 1.72, 0.3, 0.1), (0.06, 0.8, 0.3), M["Hazard"], K)
+    cyl((0, -1.3, -0.25), 0.5, 0.25, M["Frame"], K, verts=14)
+    cyl((0, -1.3, -0.4), 0.36, 0.06, M["NozzleGlow"], K, verts=14)
+    # winch drum on the back
+    w = empty("E_GWinch", (0, -0.6, 0.85), K)
+    cyl((0, 0, 0), 0.45, 1.3, M["Frame"], w, rot=(0, math.pi / 2, 0), verts=14)
+    for k in range(5):
+        cyl((-0.5 + k * 0.25, 0, 0), 0.5, 0.06, M["Tether"], w, rot=(0, math.pi / 2, 0), verts=14)
+    # harpoon cannon under the nose
+    box((0, 1.2, -0.55), (0.6, 1.2, 0.5), M["Frame"], K, bevel=0.05)
+    cyl((0, 2.0, -0.6), 0.22, 1.2, M["Joint"], K, rot=(-math.pi / 2, 0, 0), verts=10)
+    cyl((0, 2.62, -0.6), 0.28, 0.12, M["Frame"], K, rot=(-math.pi / 2, 0, 0), verts=10)
+    h = empty("E_GHook", (0, 2.7, -0.6), K)
+    cyl((0, 0.25, 0), 0.16, 0.5, M["Tether"], h, rot=(-math.pi / 2, 0, 0), verts=8, r2=0.0)
+    for k in range(3):
+        a = k * 2 * math.pi / 3
+        box((math.cos(a) * 0.2, 0.05, math.sin(a) * 0.2), (0.05, 0.35, 0.05), M["Joint"], h, rot=(math.sin(a) * 0.6, 0, -math.cos(a) * 0.6))
+    muzzle("Muzzle_Grap", (0, 2.75, -0.6), K)
+
+def build_blink():
+    K = kit("S_Blink")
+    # shoulder blink drive: slim pod with three stacked phase rings and a glowing core lens
+    box((0, -0.1, 0.22), (0.56, 0.9, 0.34), M["Armor2"], K, bevel=0.05)
+    box((0.29, -0.1, 0.26), (0.04, 0.8, 0.2), M["Accent"], K)
+    cyl((0, 0.05, 0.5), 0.26, 0.26, M["Frame"], K, verts=14)
+    for k in range(3):
+        torus((0, -0.25 + k * 0.28, 0.5), 0.3, 0.04, M["Blink"], K, rot=(math.pi / 2, 0, 0))
+    ball((0, 0.42, 0.5), 0.14, M["Blink"], K)
+    box((0, -0.55, 0.22), (0.44, 0.03, 0.18), M["Hazard"], K)
+    muzzle("Muzzle_Blink", (0, 0.5, 0.5), K)
+
 def build_disc():
     K = kit("W_Disc")
     # disc launcher: flat armoured cradle with a spring arm; the loaded blade disc DS_Disc rides on top (hidden while thrown)
@@ -1211,7 +1255,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

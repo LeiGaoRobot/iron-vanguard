@@ -93,6 +93,12 @@ export function sfx(name, d = 0, pan = 0) {
       case 'decoy': tone(t, 'sine', 500, 1500, 0.16, 0.45); tone(t + 0.06, 'triangle', 800, 2200, 0.1, 0.4); noise(t, 0.3, 'highpass', 3000, 0.5, 0.15, 0.3); break;
       case 'orbital': for (let i = 0; i < 4; i++) tone(t + i * 0.12, 'sine', 900 + i * 260, 1400 + i * 260, 0.07 * k, 0.12); noise(t + 0.4, 1.0, 'bandpass', 2200, 3, 0.12 * k, 0.9, pan, 5000); break;
       case 'horn': tone(t, 'sawtooth', 233, 228, 0.16 * k, 1.1, 0.06); tone(t, 'sawtooth', 294, 290, 0.13 * k, 1.1, 0.06); tone(t, 'square', 117, 115, 0.05 * k, 1.1, 0.06); break;
+      case 'harpoon': noise(t, 0.25, 'bandpass', 900, 1.5, 0.3 * k, 0.2, pan, 2400); tone(t, 'square', 180, 60, 0.12 * k, 0.2); break;
+      case 'hookhit': tone(t, 'square', 320, 90, 0.18 * k, 0.18); noise(t, 0.12, 'lowpass', 1400, 1, 0.3 * k, 0.1, pan); break;
+      case 'reel': tone(t, 'sawtooth', 140 + Math.random() * 30, 110, 0.05 * k, 0.25); break;
+      case 'snap': tone(t, 'triangle', 1800, 300, 0.14 * k, 0.15); noise(t, 0.08, 'highpass', 3000, 1, 0.2 * k, 0.06, pan); break;
+      case 'blink': tone(t, 'sine', 300, 1600, 0.16 * k, 0.16); tone(t + 0.05, 'sine', 1800, 600, 0.08 * k, 0.2); noise(t, 0.2, 'bandpass', 2600, 3, 0.14 * k, 0.18, pan); break;
+      case 'stormz': noise(t, 0.6, 'bandpass', 500, 1.2, 0.08 * k, 0.5, pan, 900); break;
       case 'disc': noise(t, 0.18, 'bandpass', 1800, 2, 0.22 * k, 0.15, pan, 3200); tone(t, 'sawtooth', 520, 900, 0.05 * k, 0.12); break;
       case 'whirr': tone(t, 'sawtooth', 300 + Math.random() * 60, 340, 0.025 * k, 0.12); break;
       case 'ric': tone(t, 'triangle', 2600, 1400, 0.09 * k, 0.12); noise(t, 0.06, 'highpass', 4000, 1, 0.12 * k, 0.05, pan); break;

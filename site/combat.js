@@ -35,12 +35,13 @@ export const WEAPONS = {
   drones: { slot: 'shoulder', name: 'DP-4 攻击无人机', en: 'DP-4 Drone Pod', desc: '放出 2 架无人机 · 自动攻击 14 秒', type: 'drones', count: 2, dur: 14, dmg: 6, rate: 0.17, range: 80, cd: 18, sfx: 'drone' },
   emp: { slot: 'shoulder', name: 'EP-5 电磁脉冲', en: 'EP-5 EMP Burst', desc: '周围 26 m 敌机瘫痪 2.5 秒（头目 0.8 秒）· 瘫痪中受伤 +30% · 清除来袭弹药与地雷', type: 'emp', radius: 26, dmg: 85, stun: 2.5, bossStun: 0.8, cd: 11, sfx: 'emp' },
   grav: { slot: 'shoulder', name: 'GW-1 重力井', en: 'GW-1 Gravity Well', desc: '发射奇点 · 3 秒内把周围敌机拖向中心并吞掉敌弹 · 结束时坍缩爆炸', type: 'grav', speed: 75, range: 95, R: 20, pull: 15, dur: 3, dps: 26, burst: 150, burstR: 11, cd: 14, sfx: 'grav' },
+  blink: { slot: 'shoulder', name: 'BL-2 跃迁推进器', en: 'BL-2 Blink Drive', desc: '向移动方向瞬移 22 m · 0.35 秒无敌 · 挣断钩锁 · 原地残影 0.3 秒后爆裂 · 2 次充能（各 5.5 秒）', type: 'blink', dist: 22, inv: 0.35, burst: 110, burstR: 9, mag: 2, rech: 5.5, sfx: 'blink' },
   decoy: { slot: 'shoulder', name: 'HD-1 全息诱饵', en: 'HD-1 Holo Decoy', desc: '投射机体全息影像 6 秒 · 吸引敌方火力（头目不易上当）· 被打碎时放出电磁冲击', type: 'decoy', hp: 380, dur: 6, cd: 20, burst: 70, burstR: 11, sfx: 'decoy' },
   orbital: { slot: 'shoulder', name: 'OS-1 轨道打击', en: 'OS-1 Orbital Strike', desc: '标记落点 · 1.4 秒后卫星光柱从天而降 · 半径 9 m 重击 · 落点灼烧 2 秒 · 锁定时卫星跟踪目标直到落下前 0.4 秒', type: 'orbital', dmg: 360, R: 9, delay: 1.4, dps: 40, burnT: 2, range: 170, cd: 13, sfx: 'orbital' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -111,8 +112,9 @@ function dealDamage(ent, dmg, team, at, label) {
 
 const BURN_WEAK = 0.75, STUN_VULN = 1.3;
 const isAlly = (l) => !!l && l.startsWith('ally');
+export function hurtPlayer(dmg, label) { G.curSrc = null; damagePlayer(dmg, null, label); }
 function damagePlayer(dmg, src, label) {
-  const p = G.player; if (!p || !p.alive || G.godMode) return;
+  const p = G.player; if (!p || !p.alive || G.godMode || G.blinkInv > 0) return;
   const blk = shieldBlock(p, src || G.curSrc);
   if (blk) { G.stats.blocked = (G.stats.blocked || 0) + dmg * blk; if (Math.random() < 0.3) sfx('shield', 0); }
   if (G.curShooter && G.curShooter.burnT > 0) dmg *= BURN_WEAK;   // direct hits (melee, beams) from a burning enemy
@@ -462,6 +464,9 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
   } else if (d.type === 'disc') {
     if (held && ws.cd <= 0 && ws.ammo > 0 && isP) { ws.cd = d.rate; ws.ammo--; throwDisc(owner, slot, ws, d, dmgMul, aim); if (me) G.stats.shots++; mslot.recoil = 1; }
     for (const m of mslot.models) { const dk = m._disc || (m._disc = find(m, 'DS_Disc')); if (dk) { dk.visible = ws.ammo > 0; dk.rotation.y += dt * 8; } }
+  } else if (d.type === 'blink') {
+    if (ws.ammo < d.mag) { ws.rechT = (ws.rechT ?? d.rech) - dt; if (ws.rechT <= 0) { ws.ammo++; ws.rechT = d.rech; } } else ws.rechT = d.rech;
+    if (pressed && ws.cd <= 0 && ws.ammo > 0 && isP && owner.alive) { ws.cd = 0.4; ws.ammo--; blinkJump(owner, d, dmgMul); if (me) G.stats.shots++; }
   } else if (d.type === 'orbital') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; launchStrike(owner, slot, d, dmgMul, aim, target); if (me) G.stats.shots++; }
   } else if (d.type === 'emp') {
@@ -791,6 +796,26 @@ function updateDiscs(dt) {
     D.ws.ammo = Math.min(d.mag, D.ws.ammo + 1);
     D.o.parent && D.o.parent.remove(D.o); G.discs.splice(i, 1);
   }
+}
+// blink drive: hop up to `dist` along the move direction (aim direction when standing), stopping short of walls.
+// Brief invulnerability, snaps any tether, and the afterimage left behind bursts after 0.3 s.
+function blinkJump(owner, d, mul) {
+  const p = owner.pos, h = Math.hypot(owner.vel.x, owner.vel.z);
+  let dx, dz; if (h > 4) { dx = owner.vel.x / h; dz = owner.vel.z / h; } else { dx = -Math.sin(owner.aimYaw); dz = -Math.cos(owner.aimYaw); }
+  const from = p.clone(); _d.set(dx, 0, dz);
+  let L = d.dist;
+  for (const y of [1.2, 3.4]) { const w = raySolids(_a.set(p.x, p.y + y, p.z), _d, d.dist + 3); L = Math.min(L, w.t - 3); }
+  L = Math.max(0, L);
+  const lim = ARENA - 3;
+  p.x = Math.max(-lim, Math.min(lim, p.x + dx * L)); p.z = Math.max(-lim, Math.min(lim, p.z + dz * L));
+  owner.vel.x = dx * 16; owner.vel.z = dz * 16; owner.vel.y = Math.max(owner.vel.y, 0);
+  G.blinkInv = d.inv; owner.blinkAt = G.time; G.blinks = (G.blinks || 0) + 1;
+  const fx = G.fx, a = from.clone().setY(from.y + 2.5), b = p.clone().setY(p.y + 2.5);
+  fx.streak(a, b, 2.2, 0x7a9cff, 0.18); fx.streak(a, b, 0.7, 0xe0f0ff, 0.18);
+  fx.flash(a, 0x7a9cff, 30, 26, 0.25); fx.ring(from, null, 1, 7, 0.35, 0x7a9cff); fx.ring(p, null, 1, 5, 0.3, 0xc0d4ff);
+  fx.sparks(b, _b.set(dx, 0.2, dz), 14, 0xb8ccff, 16, 1, 0.35, 0.25);
+  sfx('blink', 0);
+  G.queue.push({ label: 'p-blink', t: 0.3, fn: () => { G.fx.flash(a, 0x9ab4ff, 40, 30, 0.3); explodeAt(a, d.burstR, d.burst * mul, 'P', 0.8, 0x7a9cff); } });
 }
 export function clearDiscs() { for (const D of G.discs) D.o.parent && D.o.parent.remove(D.o); G.discs.length = 0; }
 export function clearStrikes() { for (const S of G.strikes) S.o.parent && S.o.parent.remove(S.o); G.strikes.length = 0; }
@@ -2308,6 +2333,128 @@ export function clearMines() { for (const m of G.mines) m.obj.parent && m.obj.pa
 // Jammer: hovering ECM platform. Keeps ~34 m from the player; while the player is within JAM_R, lock-on, missile
 // homing and the radar's enemy dots stop working. Unarmed, 380 HP. Stunned (EMP) jammers stop jamming.
 export const JAM_R = 50;
+// Grappler: heavy hover craft. Holds 26-40 m off (just outside the storm wall when a storm is up), aims its harpoon
+// for 0.8 s (green line), then fires a fast hook. A hit (22) reels the player toward it for up to 2.6 s (8 dps).
+// A quick boost, a blink, an EMP stun, or 160 damage to the grappler while it reels snaps the cable.
+const cableGeo = new THREE.CylinderGeometry(0.09, 0.09, 1, 6, 1, true).translate(0, 0.5, 0).rotateX(Math.PI / 2);
+const cableMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x30ffc8).multiplyScalar(1.6), toneMapped: false });
+const hookGeo = new THREE.ConeGeometry(0.32, 1.1, 8).rotateX(Math.PI / 2);
+export const GRAP = { aim: 0.8, speed: 100, range: 66, hit: 26, tow: 2.6, dps: 10, pull: 13, snap: 160 };
+export class Grappler extends Enemy {
+  constructor(pos) {
+    super('grappler', 'E_Grappler', pos, 760, 3.0); this.boom = 1.3; this.obj.scale.setScalar(1.15);
+    this.vel = new V3(); this.ph = Math.random() * 6; this.orbit = Math.random() < 0.5 ? 1 : -1;
+    this.st = 'move'; this.stT = 4 + Math.random() * 3; this.gunT = 2 + Math.random() * 2; this.aimP = new V3(); this.hp0 = 0;
+    this.cable = new THREE.Mesh(cableGeo, cableMat); this.cable.visible = false; this.cable.frustumCulled = false; G.scene.add(this.cable);
+    this.hk = new THREE.Mesh(hookGeo, cableMat); this.hk.visible = false; G.scene.add(this.hk);
+    this.hkP = new V3(); this.hkD = new V3(); this.hkL = 0; this.mp = new V3(); this.c.copy(pos);
+  }
+  remove() { super.remove(); this.cable.parent && this.cable.parent.remove(this.cable); this.hk.parent && this.hk.parent.remove(this.hk); if (G.tether === this) G.tether = null; }
+  hit(dmg) { super.hit(dmg); if (this.st === 'tow' && this.hp0 - this.hp >= GRAP.snap * G.diff.hp) this.snap(true); }
+  snap(hard) {
+    if (this.st !== 'tow' && this.st !== 'fire') return;
+    this.st = 'reel'; this.stT = 0.45; if (G.tether === this) G.tether = null;
+    if (hard) { G.fx.sparks(this.hkP, null, 16, 0x80ffd8, 16, 1, 0.4, 0.25); sfx('snap', G.player.pos.distanceTo(this.pos)); G.snaps = (G.snaps || 0) + 1; }
+  }
+  update(dt) {
+    this.ph += dt; this.stT -= dt;
+    const P = G.player, tg = this.tg(), pc = tg.center(playerC);
+    const n = this.n; n.E_GWinch.rotation.x += dt * (this.st === 'tow' ? 9 : this.st === 'reel' ? -14 : 0.4);
+    // hover station
+    _a.set(this.pos.x - pc.x, 0, this.pos.z - pc.z); const L = _a.length() || 1;
+    let tx, tz;
+    const R = G.ring;
+    if (R && Math.hypot(pc.x - R.x, pc.z - R.z) < R.r) {   // wait just outside the storm wall, on the near side
+      let ux = pc.x - R.x, uz = pc.z - R.z; const ul = Math.hypot(ux, uz) || 1; ux /= ul; uz /= ul;
+      const a0 = Math.atan2(uz, ux) + this.orbit * 0.5 + Math.sin(this.ph * 0.15) * 0.4;
+      tx = R.x + Math.cos(a0) * (R.r + 9); tz = R.z + Math.sin(a0) * (R.r + 9);
+      if (Math.hypot(tx - pc.x, tz - pc.z) > 50) { const ang = Math.atan2(_a.z, _a.x) + this.orbit * dt * 0.2; tx = pc.x + Math.cos(ang) * 36; tz = pc.z + Math.sin(ang) * 36; }
+    } else { const ang = Math.atan2(_a.z, _a.x) + this.orbit * dt * 0.25; tx = pc.x + Math.cos(ang) * 33; tz = pc.z + Math.sin(ang) * 33; }
+    const hold = this.st !== 'move';
+    const ty = Math.max(groundAt(this.pos.x, this.pos.z, 99), groundAt(tx, tz, 99)) + 8.5 + Math.sin(this.ph * 1.1) * 0.5;
+    _b.set(hold ? 0 : tx - this.pos.x, ty - this.pos.y, hold ? 0 : tz - this.pos.z);
+    const Lb = _b.length(); if (Lb > 0) _b.multiplyScalar(Math.min(10, Lb * 0.7) / Lb);
+    if (L < 18 && !hold) { _a.multiplyScalar(1 / L); _b.addScaledVector(_a, 8 * (1 - L / 18)); }
+    this.vel.lerp(_b, 1 - Math.exp(-1.4 * dt));
+    this.pos.addScaledVector(this.vel, dt);
+    const sd = pointInSolid(this.pos, 2.6); if (sd) { this.pos.y = sd.max.y + 3.2; this.vel.y = Math.max(this.vel.y, 2); }
+    this.pos.x = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.x)); this.pos.z = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.z));
+    this.c.set(this.pos.x, this.pos.y, this.pos.z);
+    this.obj.rotation.y += angDiff(Math.atan2(this.pos.x - pc.x, this.pos.z - pc.z), this.obj.rotation.y) * Math.min(1, dt * 3);
+    this.obj.rotation.x = -this.vel.z * 0.012; this.obj.rotation.z = this.vel.x * 0.012;
+    const mp = n.Muzzle_Grap.getWorldPosition(this.mp);
+    const dist = Math.hypot(pc.x - this.pos.x, pc.z - this.pos.z), los = this.checkLos(dt);
+    n.E_GHook.visible = this.st === 'move' || this.st === 'aim';
+    // sidearm: short bursts at whatever it is watching
+    if (this.st === 'move' && los && dist < 70) {
+      this.gunT -= dt;
+      if (this.gunT <= 0) {
+        this.gunT = 2.4 + Math.random();
+        for (let k = 0; k < 3; k++) G.queue.push({ label: 'grappler', t: k * 0.12, fn: () => {
+          if (!this.alive) return;
+          const q = this.n.Muzzle_Grap.getWorldPosition(new V3()); const aim = lead(q, 120, _b, this.tg());
+          _d.subVectors(aim, q).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.y += (Math.random() - 0.5) * 0.05; _d.z += (Math.random() - 0.5) * 0.05;
+          spawnShot({ p: q, v: _d.normalize().multiplyScalar(120), dmg: 5, team: 'E', kind: 'ebullet', color: 0x60ffd0, life: 1.5 });
+          G.fx.muzzle(q, _d, 0x60ffd0, 0.8); sfx('eshot', dist);
+        } });
+      }
+    }
+    if (this.st === 'move') {
+      this.cable.visible = this.hk.visible = false;
+      if (this.stT <= 0 && tg === P && P.alive && los && dist < 60 && !G.tether) { this.st = 'aim'; this.stT = GRAP.aim; sfx('lock', dist * 0.5); if (G.onGrapAim) G.onGrapAim(this); }
+      else if (this.stT <= 0) this.stT = 0.6;
+      return;
+    }
+    if (this.st === 'aim') {
+      const tf = mp.distanceTo(pc) / GRAP.speed;
+      this.aimP.set(pc.x + P.vel.x * tf, pc.y, pc.z + P.vel.z * tf);
+      const fl = this.stT < 0.25 ? (Math.sin(G.time * 60) > 0 ? 1 : 0.2) : 0.6;
+      G.fx.streak(mp, this.aimP, 0.1 * fl + 0.04, 0x30ffc8);
+      if (this.stT <= 0) {
+        this.st = 'fire'; this.hkP.copy(mp); this.hkD.subVectors(this.aimP, mp).normalize(); this.hkL = 0;
+        sfx('harpoon', dist); G.fx.muzzle(mp, this.hkD, 0x60ffd0, 1.4); G.grapShots = (G.grapShots || 0) + 1;
+      }
+      return;
+    }
+    if (this.st === 'fire') {
+      const st = GRAP.speed * dt, w = raySolids(this.hkP, this.hkD, st);
+      _c.copy(this.hkP).addScaledVector(this.hkD, Math.min(st, w.t));
+      // segment vs the player's body
+      const pcc = P.center(_b); _d.subVectors(_c, this.hkP); const l2 = _d.lengthSq();
+      let k = l2 > 0 ? _a.subVectors(pcc, this.hkP).dot(_d) / l2 : 0; k = Math.max(0, Math.min(1, k));
+      const hitP = P.alive && !(G.blinkInv > 0) && _a.copy(this.hkP).addScaledVector(_d, k).distanceTo(pcc) < 3.2;
+      this.hkP.copy(_c); this.hkL += st;
+      if (hitP) {
+        this.st = 'tow'; this.stT = GRAP.tow; this.hp0 = this.hp; this.towAt = G.time; G.tether = this;
+        G.curSrc = this.pos; damagePlayer(GRAP.hit, this.pos, 'grappler-hook');
+        G.fx.sparks(pcc, null, 12, 0x80ffd8, 14, 1, 0.3, 0.25); sfx('hookhit', 0); G.hooks = (G.hooks || 0) + 1;
+        G.onTether && G.onTether(this);
+      } else if (w.t < st || this.hkL > GRAP.range) { this.st = 'reel'; this.stT = 0.5; G.fx.sparks(this.hkP, null, 6, 0x80ffd8, 10, 1, 0.3, 0.2); }
+    } else if (this.st === 'tow') {
+      const pcc = P.center(_b); this.hkP.copy(pcc);
+      const broke = !P.alive || this.stT <= 0 || (P.qbAt || -9) > this.towAt + 0.12 || (P.blinkAt || -9) > this.towAt;
+      if (broke) this.snap(this.stT > 0);
+      else {
+        let dx = this.pos.x - P.pos.x, dz = this.pos.z - P.pos.z; const dd = Math.hypot(dx, dz) || 1;
+        if (dd > 7) { P.pos.x += dx / dd * GRAP.pull * dt; P.pos.z += dz / dd * GRAP.pull * dt; collideCyl(P.pos, P.radius, P.height); }
+        G.curSrc = this.pos; damagePlayer(GRAP.dps * dt, this.pos, 'grappler-tow');
+        if (Math.random() < 0.3) G.fx.sparks(pcc, null, 1, 0x80ffd8, 6, 0.8, 0.3, 0.15);
+        this.reelT = (this.reelT || 0) - dt; if (this.reelT <= 0) { this.reelT = 0.3; sfx('reel', 0); }
+      }
+    } else if (this.st === 'reel') {
+      this.hkP.lerp(mp, 1 - Math.exp(-10 * dt));
+      if (this.stT <= 0) { this.st = 'move'; this.stT = 5 + Math.random() * 2; }
+    }
+    // cable + hook head
+    this.cable.visible = this.hk.visible = this.st !== 'move' && this.st !== 'aim';
+    if (this.cable.visible) {
+      this.cable.position.copy(mp); const cl = mp.distanceTo(this.hkP);
+      this.cable.lookAt(this.hkP); this.cable.scale.set(1, 1, Math.max(0.01, cl));
+      this.hk.position.copy(this.hkP); _d.subVectors(this.hkP, mp); if (_d.lengthSq() > 0.01) this.hk.lookAt(_a.copy(this.hkP).add(_d));
+    }
+  }
+}
+
 export class Jammer extends Enemy {
   constructor(pos) {
     super('jammer', 'E_Jammer', pos, 380, 2.8); this.boom = 1; this.obj.scale.setScalar(1.3);
@@ -2619,7 +2766,7 @@ export function updateCombat(dt) {
   for (const e of G.enemies) {
     G.curLabel = e.kind;
     if (e.stunT > 0 && e.alive && !e.dying) {
-      e.stunT -= dt;
+      e.stunT -= dt; if (e.snap) e.snap(true);
       if (Math.random() < 0.3) G.fx.sparks(_a.copy(e.c).add(_b.set((Math.random() - 0.5) * 3, (Math.random() - 0.3) * 3, (Math.random() - 0.5) * 3)), null, 2, 0x9fe0ff, 7, 0.9, 0.3, 0.18);
       if (e.flash > 0) e.flash -= dt;
       continue;
@@ -2633,6 +2780,7 @@ export function updateCombat(dt) {
   for (let i = G.enemies.length - 1; i >= 0; i--) if (G.enemies[i].gone) G.enemies.splice(i, 1);
   G.curLabel = null;
   LAVA.uT.value = G.time;
+  if (G.blinkInv > 0) G.blinkInv -= dt;
   updateBurning(dt);
   updateChill(dt);
   if (LAVA.on) updateForge(dt);
