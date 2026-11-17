@@ -32,10 +32,11 @@ export const WEAPONS = {
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
   drones: { slot: 'shoulder', name: 'DP-4 攻击无人机', en: 'DP-4 Drone Pod', desc: '放出 2 架无人机 · 自动攻击 14 秒', type: 'drones', count: 2, dur: 14, dmg: 6, rate: 0.17, range: 80, cd: 18, sfx: 'drone' },
   emp: { slot: 'shoulder', name: 'EP-5 电磁脉冲', en: 'EP-5 EMP Burst', desc: '周围 26 m 敌机瘫痪 2.5 秒（头目 0.8 秒）· 瘫痪中受伤 +30% · 清除来袭弹药与地雷', type: 'emp', radius: 26, dmg: 85, stun: 2.5, bossStun: 0.8, cd: 11, sfx: 'emp' },
+  decoy: { slot: 'shoulder', name: 'HD-1 全息诱饵', en: 'HD-1 Holo Decoy', desc: '投射机体全息影像 6 秒 · 吸引敌方火力（头目不易上当）· 被打碎时放出电磁冲击', type: 'decoy', hp: 380, dur: 6, cd: 20, burst: 70, burstR: 11, sfx: 'decoy' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'grenade', 'coil', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -435,6 +436,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     }
     const out = G.minis.some((m) => m.owner === owner);
     for (const m of mslot.models) { const dk = m._dock || (m._dock = find(m, 'D_Dock')); if (dk) dk.visible = !out; }
+  } else if (d.type === 'decoy') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Decoy(owner, slot, d, dmgMul); sfx('decoy', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'emp') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; empPulse(owner, d, dmgMul); if (me) G.stats.shots++; }
   } else if (d.type === 'shield') {
@@ -500,6 +503,72 @@ function empPulse(owner, d, dmgMul) {
   }
   G.empHits = (G.empHits || 0) + n;
 }
+
+// ------------------------------------------------------------------ HD-1 holo decoy: a hologram of the mech that enemies prefer as a target
+const holoMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x3ab4ec).multiplyScalar(0.75), transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+const holoWire = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x9ff0ff).multiplyScalar(1.3), wireframe: true, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+export class Decoy {
+  constructor(owner, slot, d, dmgMul) {
+    this.isDecoyObj = true; this.d = d; this.dmgMul = dmgMul; this.t = d.dur; this.maxHp = d.hp; this.hp = d.hp; this.alive = true;
+    this.foeW = 0.55; this.foeWAir = 0.6; this.foeWBoss = 0.95;   // enemies weigh its distance at ~half the player's; bosses barely fall for it
+    this.vel = new V3();
+    const a = owner.aimYaw, side = owner.slots[slot] && owner.slots[slot].side === 'L' ? -1 : 1;
+    const p = new V3(owner.pos.x - Math.sin(a) * 9 + Math.cos(a) * 5 * side, 0, owner.pos.z - Math.cos(a) * 9 - Math.sin(a) * 5 * side);
+    if (pointInSolid(new V3(p.x, 1, p.z), 2.5)) p.set(owner.pos.x, 0, owner.pos.z);
+    p.y = groundAt(p.x, p.z, owner.pos.y + 2);
+    this.pos = p;
+    this.obj = cloneKit('Mech'); this.obj.scale.setScalar(owner.scale); this.obj.position.copy(p); this.obj.rotation.y = a;
+    const ms = []; this.obj.traverse((m) => { if (m.isMesh) ms.push(m); });
+    for (const m of ms) { m.material = holoMat; m.castShadow = false; m.receiveShadow = false; m.add(new THREE.Mesh(m.geometry, holoWire)); }
+    this.n = nodes(this.obj); this.ph = Math.random() * 6; this.sc = owner.scale;
+    G.scene.add(this.obj);
+    this._ent = { isAlly: true, isDecoy: true, c: new V3(), r: 2.2 * owner.scale, get alive() { return this.w.alive; }, w: this, hit: (dmg) => this.damage(dmg) };
+    G.friends.push(this); G.decoys = (G.decoys || 0) + 1;
+    const src = owner.muzzlePos(slot, new V3(), 0).clone();
+    G.fx.streak(src, this.center(new V3()), 0.6, 0x58d8ff);
+    G.fx.ring(new V3(p.x, p.y + 0.3, p.z), null, 1, 6, 0.4, 0x58d8ff);
+    for (const e of G.enemies) if (e.foe === G.player && e.c && e.c.distanceTo(p) < 120) e.tgT = 0;   // nearby enemies re-pick right away
+  }
+  center(out) { return out.set(this.pos.x, this.pos.y + 2.6 * this.sc, this.pos.z); }
+  damage(dmg) {
+    if (!this.alive) return;
+    this.hp -= dmg * G.diff.dmg; this.flash = 0.1;
+    G.decoyDmg = (G.decoyDmg || 0) + dmg * G.diff.dmg;
+    if (this.hp <= 0) this.end(true);
+  }
+  end(broken) {
+    if (!this.alive) return;
+    this.alive = false;
+    const c = this.center(new V3());
+    G.fx.sparks(c, null, 18, 0x9fe8ff, 14, 1.2, 0.5, 0.25); G.fx.ring(new V3(this.pos.x, this.pos.y + 0.3, this.pos.z), null, 1, broken ? this.d.burstR : 5, 0.35, 0x58d8ff);
+    if (broken) {   // shattered: an EMP-like shock hits everything close by
+      G.fx.flash(c, 0x78c8ff, 24, 18, 0.15); sfx('emp', G.player.pos.distanceTo(c));
+      const prev = G.curLabel; G.curLabel = 'p-decoy';
+      for (const e of entsFor('P')) {
+        if (e.isBarrel || e.isMine) continue;
+        if (e.c.distanceTo(c) - (e.r || 1) * 0.6 > this.d.burstR) continue;
+        dealDamage(e, this.d.burst * this.dmgMul, 'P', e.c, 'p-decoy');
+        const host = e.kind === 'cpart' ? e.owner : e;
+        if (host.alive && !host.dying && host.kind !== 'relay') { const big = host.kind === 'boss' || host.kind === 'raider'; host.stunT = Math.max(host.stunT || 0, big ? 0.4 : 1.2); host.stunMax = host.stunT; }
+      }
+      G.curLabel = prev;
+    }
+    this.obj.parent && this.obj.parent.remove(this.obj);
+    const i = G.friends.indexOf(this); if (i >= 0) G.friends.splice(i, 1);
+    for (const e of G.enemies) if (e.foe === this) e.tgT = 0;
+  }
+  update(dt) {
+    this.t -= dt; this.ph += dt;
+    if (this.t <= 0) { this.end(false); return; }
+    const fl = (Math.random() < 0.06 ? 0.3 : 1) * (this.t < 1.5 ? 0.5 + 0.5 * Math.sin(this.ph * 30) : 1);
+    holoMat.opacity = (0.26 + 0.06 * Math.sin(this.ph * 9)) * fl + (this.flash > 0 ? 0.3 : 0);
+    this.flash = Math.max(0, (this.flash || 0) - dt);
+    this.obj.position.y = this.pos.y + Math.sin(this.ph * 2) * 0.08;
+    if (Math.random() < 0.25) G.fx.emit('add', { x: this.pos.x + (Math.random() - 0.5) * 3, y: this.pos.y + Math.random() * 5 * this.sc, z: this.pos.z + (Math.random() - 0.5) * 3, vy: 1.5, life: 0.4, s0: 0.5, c0: 0x58d8ff });
+  }
+}
+export function updateDecoys(dt) { for (const f of G.friends.slice()) if (f instanceof Decoy) f.update(dt); }
+export function clearDecoys() { for (const f of G.friends.slice()) if (f instanceof Decoy) { f.alive = false; f.obj.parent && f.obj.parent.remove(f.obj); G.friends.splice(G.friends.indexOf(f), 1); } }
 
 // ------------------------------------------------------------------ DP-4 attack drones (shoulder weapon)
 function spawnMini(owner, slot, k, d, dmgMul, team) {
@@ -677,7 +746,7 @@ export function pickTarget(self) {
   const from = self.pos || self.c;
   for (const f of [G.player, ...G.friends]) {
     if (!f || !f.alive) continue;
-    const w = f === G.player ? 1 : (self.kind === 'drone' || self.kind === 'gunship' ? f.foeWAir ?? f.foeW : f.foeW) ?? 1.15;
+    const w = f === G.player ? 1 : f.foeWBoss && (self.kind === 'boss' || self.kind === 'raider' || self.isColossus) ? f.foeWBoss : (self.kind === 'drone' || self.kind === 'gunship' ? f.foeWAir ?? f.foeW : f.foeW) ?? 1.15;
     const sc = Math.hypot(f.pos.x - from.x, f.pos.z - from.z) * w;
     if (sc < bs) { bs = sc; best = f; }
   }
@@ -1674,6 +1743,71 @@ export class Jammer extends Enemy {
   }
 }
 
+// Howitzer: tracked artillery that sits 75-120 m back and lobs 4-shell salvos at its target without needing a firing line.
+// Each shell's landing spot is marked on the ground. Accuracy depends on spotting: own line of sight > another enemy
+// seeing the target > nobody (wide spread). Backs off when something closes in.
+export class Howitzer extends Enemy {
+  constructor(pos) {
+    super('howitzer', 'E_Howitzer', pos, 650, 3.1); this.boom = 1.5;
+    this.vel = new V3(); this.yaw = Math.random() * 6.28; this.obj.rotation.y = this.yaw; this.fireT = 4 + Math.random() * 3; this.recoil = 0; this.pitch = 0.3; this.aimT = 0;
+  }
+  spotted(f) {
+    if (this.los) return 1;
+    for (const e of G.enemies) if (e !== this && e.alive && !e.dying && e.los && e.foe === f && e.kind !== 'howitzer') return 2;
+    return 3;
+  }
+  update(dt) {
+    const f = this.tg(), pc = f.center(playerC);
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz);
+    this.checkLos(dt);
+    // keep at range: back off when close, close in when out of reach
+    const toward = dist < 60 ? -1 : dist > 125 ? 1 : 0;
+    const tx = dx / dist * toward * 6, tz = dz / dist * toward * 6;
+    this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-1.5 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-1.5 * dt));
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    this.pos.x = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.x)); this.pos.z = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.z));
+    if (collideCyl(this.pos, 3.1, 3)) { this.vel.multiplyScalar(0.3); }
+    this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6, 2);
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    if (sp > 0.6) this.yaw += angDiff(Math.atan2(-this.vel.x, -this.vel.z) + (toward < 0 ? Math.PI : 0), this.yaw) * Math.min(1, dt * 1.2);   // reverses away, gun still forward-ish
+    this.obj.rotation.y = this.yaw;
+    const T = this.n.E_HTurret; T.rotation.y += angDiff(Math.atan2(-dx, -dz) - this.yaw, T.rotation.y) * Math.min(1, dt * 1.4);
+    const wantP = this.aimT > 0 || this.salvo > 0 ? 0.55 + Math.min(0.35, dist / 400) : 0.18;
+    this.pitch += (wantP - this.pitch) * Math.min(1, dt * 2);
+    this.recoil = Math.max(0, this.recoil - dt * 3);
+    this.n.E_HBarrel.rotation.x = this.pitch;
+    this.c.set(this.pos.x, this.pos.y + 2.2, this.pos.z);
+    if (dist > 165) return;
+    this.fireT -= dt;
+    if (this.fireT <= 0 && !(this.salvo > 0)) { this.fireT = 7 + Math.random() * 2; this.aimT = 1.1; }
+    if (this.aimT > 0) {
+      this.aimT -= dt;
+      if (this.aimT <= 0) {
+        // creeping barrage along the target's path: from just behind it to well ahead, so running straight on gets hit
+        const spr = [0, 3, 4, 9][this.spotted(f)];
+        const mv = new V3(f.vel.x, 0, f.vel.z); const L = mv.length();
+        const side = L > 1 ? mv.multiplyScalar(1 / L) : new V3(Math.random() - 0.5, 0, Math.random() - 0.5).normalize();
+        const step_ = Math.min(9, 4 + L * 0.35);
+        this.salvo = 5;
+        for (let k = 0; k < 5; k++) G.queue.push({ label: 'howitzer', t: k * 0.36, fn: () => {
+          if (!this.alive) { this.salvo = 0; return; }
+          this.salvo--;
+          const mp = this.n.Muzzle_Howitzer.getWorldPosition(_a).clone();
+          const D = Math.hypot(f.pos.x - mp.x, f.pos.z - mp.z), Tf = 1.4 + D / 80, g = 26;
+          const aim = new V3().copy(f.pos).addScaledVector(f.vel, Tf * 0.3).addScaledVector(side, (k - 1) * step_);
+          aim.x += (Math.random() - 0.5) * spr * 2; aim.z += (Math.random() - 0.5) * spr * 2; aim.y = groundAt(aim.x, aim.z, aim.y + 1);
+          const v = new V3((aim.x - mp.x) / Tf, (aim.y - mp.y + 0.5 * g * Tf * Tf) / Tf, (aim.z - mp.z) / Tf);
+          spawnShot({ p: mp, v, dmg: 40, team: 'E', kind: 'shell', splash: 8, life: Tf + 1, grav: g, label: 'howitzer' });
+          G.fx.warn(aim, 8, Tf);
+          G.fx.muzzle(mp, _d.copy(v).normalize(), 0xffa060, 3); G.fx.smoke(mp, 3, 2, 2, 0x8a8478, 1, 0.8);
+          this.recoil = 1; G.artFired = (G.artFired || 0) + 1; sfx('artillery', G.player.pos.distanceTo(this.pos));
+          if (!G.artSaid) { G.artSaid = true; G.onHint && G.onHint('远程炮击 · 地面红圈是落点 · 自走炮不需要视线，找到并摧毁它', 4); }
+        } });
+      }
+    }
+  }
+}
+
 // Dropship: twin-fan VTOL. Flies in from outside the arena, picks a landing zone ~30 m from its target, descends,
 // hovers 2.6 s with the bay open and releases its cargo (G.onDrop(pos, cargo, ds) spawns it), then climbs out and leaves
 // (removed without a kill). Shot down with the cargo aboard, the cargo is lost, except a boss, who walks out of the wreck.
@@ -1805,6 +1939,7 @@ export function updateCombat(dt) {
   for (let i = G.mines.length - 1; i >= 0; i--) if (!G.mines[i].alive) G.mines.splice(i, 1);
   G.curLabel = null;
   updateMinis(dt);
+  updateDecoys(dt);
   updateShots(dt);
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

@@ -89,6 +89,8 @@ export function sfx(name, d = 0, pan = 0) {
       case 'flame': noise(t, 0.16, 'lowpass', 900, 0.6, 0.22 * k, 0.15, pan, 500); break;
       case 'minedrop': tone(t, 'sine', 300, 120, 0.12 * k, 0.15); noise(t, 0.1, 'bandpass', 1200, 1, 0.12 * k, 0.08, pan); break;
       case 'minebeep': for (let i = 0; i < 4; i++) tone(t + i * 0.11, 'square', 2600, 2600, 0.08 * Math.max(0.5, k), 0.05); break;
+      case 'artillery': { const q = Math.max(0.4, k); tone(t, 'sine', 75, 28, 0.7 * q, 0.9); noise(t, 0.9, 'lowpass', 500, 0.8, 0.8 * q, 0.9, pan); tone(t, 'square', 140, 40, 0.15 * q, 0.25); break; }
+      case 'decoy': tone(t, 'sine', 500, 1500, 0.16, 0.45); tone(t + 0.06, 'triangle', 800, 2200, 0.1, 0.4); noise(t, 0.3, 'highpass', 3000, 0.5, 0.15, 0.3); break;
       case 'emp': tone(t, 'sawtooth', 1600, 60, 0.22, 0.5); noise(t, 0.7, 'bandpass', 1800, 0.5, 0.6, 0.6, 0, 200); tone(t + 0.04, 'sine', 90, 30, 0.7, 0.6); for (let i = 0; i < 5; i++) tone(t + 0.1 + i * 0.05, 'square', 2400 - i * 300, 2400 - i * 300, 0.04, 0.04); break;
       case 'jam': for (let i = 0; i < 4; i++) tone(t + i * 0.05, 'square', 300 + Math.random() * 1500, 200 + Math.random() * 900, 0.03, 0.05); noise(t, 0.25, 'bandpass', 2600, 3, 0.05, 0.2, 0); break;
       case 'medal': [659, 784, 988, 1319].forEach((f, i) => tone(t + i * 0.08, 'triangle', f, f, 0.1, 0.25)); break;

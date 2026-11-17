@@ -602,6 +602,49 @@ def build_emp():
     box((0, 0.46, 0.32), (0.5, 0.03, 0.2), M["Hazard"], K)
     muzzle("Muzzle_Emp", (0, 0.0, 0.86), K)
 
+def build_howitzer():
+    # Howitzer: tracked self-propelled gun, ~7 m long. Turret E_HTurret (yaw about Z), barrel E_HBarrel (pitch about X). front = +Y
+    K = kit("E_Howitzer")
+    box((0, 0, 0.95), (3.0, 5.6, 0.9), M["EArmor"], K, bevel=0.1)
+    wedge((0, 2.6, 0.95), (2.8, 0.8, 0.8), M["EArmor2"], K, taper=0.55, bevel=0.06)
+    box((0, -2.5, 1.35), (2.4, 0.8, 0.5), M["EArmor2"], K, bevel=0.05)
+    for s_ in (-1, 1):
+        box((s_ * 1.75, 0, 0.55), (0.75, 5.9, 1.05), M["Black"], K, bevel=0.18)
+        for i in range(6):
+            cyl((s_ * 1.75, -2.4 + i * 0.96, 0.5), 0.38, 0.8, M["Frame"], K, rot=(0, math.pi / 2, 0), verts=12)
+        box((s_ * 1.75, 0, 1.12), (0.82, 5.4, 0.1), M["EArmor2"], K)
+        # stabiliser spades at the rear
+        box((s_ * 1.0, -3.2, 0.45), (0.5, 0.9, 0.12), M["Frame"], K, rot=(0.5, 0, 0))
+        box((s_ * 1.0, -3.65, 0.12), (0.7, 0.12, 0.45), M["Hazard"], K)
+    box((0, 1.6, 1.42), (1.8, 0.7, 0.06), M["Hazard"], K)
+    tur = empty("E_HTurret", (0, -0.4, 1.4), K)
+    box((0, 0, 0.55), (2.4, 2.8, 1.1), M["EArmor2"], tur, bevel=0.08)
+    wedge((0, 1.45, 0.55), (2.2, 0.4, 0.9), M["EArmor"], tur, taper=0.7, bevel=0.04)
+    box((0.85, -0.6, 1.2), (0.5, 0.9, 0.3), M["EArmor"], tur, bevel=0.04)
+    ball((-0.7, 0.9, 1.15), 0.14, M["EEye"], tur)
+    cyl((-0.7, -0.9, 1.6), 0.04, 1.1, M["Frame"], tur)
+    brl = empty("E_HBarrel", (0, 1.3, 0.75), tur)
+    box((0, 0.2, 0), (0.9, 0.9, 0.8), M["EArmor"], brl, bevel=0.05)
+    cyl((0, 2.6, 0), 0.24, 4.6, M["Frame"], brl, rot=(-math.pi / 2, 0, 0), verts=14)
+    cyl((0, 1.3, 0), 0.34, 1.4, M["EArmor2"], brl, rot=(-math.pi / 2, 0, 0), verts=14)
+    cyl((0, 5.0, 0), 0.36, 0.6, M["EArmor2"], brl, rot=(-math.pi / 2, 0, 0), verts=12, smooth=False)
+    for s_ in (-1, 1):
+        box((s_ * 0.38, 5.0, 0), (0.12, 0.5, 0.28), M["Black"], brl)
+    muzzle("Muzzle_Howitzer", (0, 5.4, 0), brl)
+
+def build_decoy():
+    K = kit("S_Decoy")
+    # shoulder holo projector: slim housing with a lens array on top and a folded antenna
+    box((0, 0.0, 0.28), (0.6, 0.95, 0.42), M["Armor2"], K, bevel=0.05)
+    box((0, -0.1, 0.55), (0.48, 0.6, 0.14), M["Frame"], K, bevel=0.03)
+    for i in range(3):
+        cyl((-0.15 + i * 0.15, 0.24, 0.66), 0.06, 0.08, M["EmpGlow"], K, verts=10)
+    cyl((0, 0.32, 0.6), 0.16, 0.06, M["EmpGlow"], K, verts=16)
+    box((0.32, 0, 0.3), (0.04, 0.8, 0.24), M["Accent"], K)
+    cyl((-0.22, -0.38, 0.85), 0.025, 0.55, M["Frame"], K, rot=(0.35, 0, 0))
+    box((0, 0.49, 0.28), (0.44, 0.03, 0.18), M["Hazard"], K)
+    muzzle("Muzzle_Decoy", (0, 0.32, 0.7), K)
+
 def build_dropship():
     # Dropship: twin-fan VTOL troop carrier, ~10 m long. Cargo pod E_DPod hangs under the belly. front = +Y
     K = kit("E_Dropship")
@@ -953,7 +996,7 @@ def build_props():
 build_mech()
 build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
-build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout
