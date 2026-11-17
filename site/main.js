@@ -11,7 +11,7 @@ import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 const V3 = THREE.Vector3;
@@ -80,6 +80,12 @@ const MISSIONS = {
     { title: 'AMBUSH', sub: '全面追击 · 当心隐形狙击机', spawn: { crawler: 14, bulwark: 1, lancer: 1, stalker: 1 } },
     { title: 'EXTRACT', sub: '数据已全部取得 · 前往撤离点坚守 30 秒 · 「幻影」正在追击', spawn: { crawler: 8, drone: 3 }, lateBoss: { type: 'phantom', hp: 0.5, t: 8 } },
   ] },
+  airborne: { name: '高原 · 空降拦截', en: 'AIRBORNE', desc: '阴天 · 敌军用运输机空投部队 · 在舱门打开前击落运输机，连货一起消灭 · 头目「暴君」乘重型运输机降落', seed: 101, env: 'overcast', reward: 4800, waves: [
+    { title: 'WAVE 1', sub: '敌方运输机接近 · 地面红圈是投放点 · 在舱门打开前击落它，连货一起消灭', spawn: { turret: 3, drone: 3, drops: [{ walker: 2 }, { walker: 2 }] } },
+    { title: 'WAVE 2', sub: '第二批空降 · 武装直升机掩护', spawn: { drone: 3, gunship: 1, drops: [{ bulwark: 1, drone: 2 }, { walker: 2 }, { walker: 1, sapper: 1 }] } },
+    { title: 'WAVE 3', sub: '精锐空降 · 掠夺者小队 · 干扰机随行', spawn: { drone: 3, jammer: 1, drops: [{ raider: 1 }, { lancer: 1 }, { walker: 2 }] } },
+    { title: 'FINAL WAVE', sub: '重型运输机载着「暴君」降落 · 击落它挡不住暴君，但能让它带伤出场', spawn: { drone: 2, drops: [{ walker: 2 }], dropBoss: 'tyrant', bossHp: 1 } },
+  ] },
   gauntlet: { name: '头目连战', en: 'GAUNTLET', desc: '日蚀 · 连续四场头目战，最后「暴君」与「幻影」同时出击 · 每场之间修复 50% 装甲 · 当心干扰机', seed: 91, env: 'eclipse', reward: 6000, gauntlet: true, waves: [
     { title: 'ROUND 1', sub: '击破「暴君」', spawn: { boss: 'tyrant', drone: 2 } },
     { title: 'ROUND 2', sub: '击破「幻影」 · 干扰机随行，靠近它锁定与雷达失效', spawn: { boss: 'phantom', jammer: 1 } },
@@ -96,10 +102,11 @@ const ENVS = {
   ash: { top: 0x1f1716, hor: 0x7a4a36, fog: [45, 360], hemi: [0xffc0a0, 0x2a2020, 0.42], sun: [0xff9060, 1.5], env: 0.22, exp: 1.02, dir: [-0.45, 0.32, 0.6], disc: 0.8, ash: true },
   storm: { top: 0x1c232c, hor: 0x46505c, fog: [30, 230], hemi: [0x9aacc0, 0x26282c, 0.42], sun: [0xc0cce0, 0.8], env: 0.2, exp: 1.02, dir: [0.25, 0.7, 0.4], disc: 0.05, rain: true },
   dawn: { top: 0x56658f, hor: 0xf0b49c, fog: [70, 480], hemi: [0xffd8cc, 0x4a4250, 0.52], sun: [0xffc49a, 2.1], env: 0.34, exp: 0.95, dir: [0.75, 0.16, -0.25], disc: 1.6 },
+  overcast: { top: 0x7a8590, hor: 0xb4bcc4, fog: [60, 420], hemi: [0xe0e6ec, 0x5a5c5e, 0.7], sun: [0xf0f2f4, 1.25], env: 0.4, exp: 0.92, dir: [0.3, 0.75, 0.4], disc: 0.15 },
   eclipse: { top: 0x120c1c, hor: 0x5c2a40, fog: [55, 420], hemi: [0xd8c0ff, 0x1c1620, 0.36], sun: [0xff9a80, 1.25], env: 0.18, exp: 1.04, dir: [-0.3, 0.38, 0.7], disc: 0.5 },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
+const KILL_CR = { dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -107,6 +114,16 @@ const UPGRADES = {
   fcs: { name: '火控系统', desc: '全武器伤害 +6%' },
 };
 const UP_COST = [600, 1200, 2000, 3000, 4200];
+// passive chips: one slot, a second one for CHIP2_COST
+const CHIPS = {
+  nano: { name: '纳米自修复', desc: '5 秒未受伤后每秒修复 0.6% AP' },
+  mag: { name: '扩容弹匣', desc: '臂部弹匣 +40% · 换弹 −20%' },
+  cool: { name: '冷却回路', desc: '肩部武器冷却 −25%' },
+  thrust: { name: '推进增压', desc: '推进 +10% · EN 回复 +25%' },
+  cap: { name: '超载电容', desc: '超载充能 +40% · 持续 +3 秒' },
+  leech: { name: '吸能装甲', desc: '每次击毁回复 2.5% AP' },
+};
+const CHIP2_COST = 3000;
 // challenge modifiers: toggled on the title screen, each raises the payout
 const MODS = {
   glass: { name: '玻璃机体', desc: '机体 AP ×0.6', cr: 0.3 },
@@ -139,7 +156,16 @@ const save = { cr: 0, up: { armor: 0, gen: 0, thr: 0, fcs: 0 }, best: {}, bestWa
 const WING_COST = 2500, WING_CR = 0.85;
 try { const o = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (o) { Object.assign(save, o); save.up = { armor: 0, gen: 0, thr: 0, fcs: 0, ...(o.up || {}) }; } } catch (e) { /* storage unavailable */ }
 const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } };
-const playerMods = () => { const u = save.up; return { hp: 1 + 0.08 * u.armor, en: 1 + 0.08 * u.gen, regen: 1 + 0.08 * u.gen, boost: 1 + 0.04 * u.thr, speed: 1 + 0.02 * u.thr }; };
+const playerMods = () => { const u = save.up, th = chipOn('thrust'); return { hp: 1 + 0.08 * u.armor, en: 1 + 0.08 * u.gen, regen: (1 + 0.08 * u.gen) * (th ? 1.25 : 1), boost: (1 + 0.04 * u.thr) * (th ? 1.1 : 1), speed: 1 + 0.02 * u.thr }; };
+const chipSlots = () => (save.chip2 ? 2 : 1);
+const chipOn = (k) => Array.isArray(cfg.chips) && cfg.chips.slice(0, chipSlots()).includes(k);
+function playerWeapon(key) {   // weapon state with chip modifiers applied to a private copy of the weapon data
+  const ws = weaponState(key), d = { ...ws.d };
+  if (chipOn('mag') && d.slot === 'arm' && d.mag) { d.mag = Math.round(d.mag * 1.4); d.reload *= 0.8; }
+  if (chipOn('cool') && d.slot === 'shoulder' && d.cd) d.cd *= 0.75;
+  ws.d = d; ws.ammo = d.mag || 0; return ws;
+}
+const freshPW = () => ({ R: playerWeapon(cfg.R), L: playerWeapon(cfg.L), S: playerWeapon(cfg.S) });
 const dmgMul = () => 1 + 0.06 * save.up.fcs;
 
 // ------------------------------------------------------------------ config (per-viewer convenience only)
@@ -151,6 +177,7 @@ const saveCfg = () => { try { localStorage.setItem(CFG_KEY, JSON.stringify(cfg))
 try { const old = JSON.parse(localStorage.getItem('ironvanguard.best') || '{}'); for (const k in old) if (!save.best['drill.' + k]) save.best['drill.' + k] = old[k]; } catch (e) { /* ignore */ }
 if (!MISSIONS[cfg.mission]) cfg.mission = 'drill';
 if (!cfg.mods || typeof cfg.mods !== 'object') cfg.mods = {};
+if (!Array.isArray(cfg.chips)) cfg.chips = [];
 
 // ------------------------------------------------------------------ renderer / scene
 const canvas = $('c');
@@ -524,7 +551,7 @@ function mixWave(n, rnd) {
   if (n >= 3) pool.push(['crawler', 0.7, 10]);
   if (n >= 4) pool.push(['sapper', 3, 2]);
   if (n >= 5) pool.push(['stalker', 4, 2], ['jammer', 3.5, 1]);
-  if (n >= 6) pool.push(['raider', 4.5, 3], ['lancer', 4.5, 2]);
+  if (n >= 6) pool.push(['raider', 4.5, 3], ['lancer', 4.5, 2], ['dropship', 5, 2]);
   const sp = {}; let budget = 5 + n * 2.6, total = 0;
   while (budget > 0.9 && total < 24) {
     const [k, c, max] = pool[Math.floor(rnd() * pool.length)];
@@ -538,7 +565,7 @@ function makePlayer() {
   if (G.player) G.player.dispose();
   G.player = new Mech(scene, mctx, { palette: cfg.palette, frame: cfg.frame, loadout: { R: cfg.R, L: cfg.L, S: cfg.S }, yaw: 0, mods: playerMods() });
   G.player.pos.set(0, 0, 128);
-  G.pw = { R: weaponState(cfg.R), L: weaponState(cfg.L), S: weaponState(cfg.S) };
+  G.pw = freshPW();
   cam.yaw = 0; cam.pitch = -0.05;
   buildWeaponPanel();
 }
@@ -572,13 +599,13 @@ function newGame() {
     G.core = new Convoy(scene, M.path, M.coreHp); G.friends.push(G.core);
     G.player.pos.set(M.path[0][0] + 6, 0, M.path[0][1] - 9); cam.yaw = -Math.PI / 2; G.player.aimYaw = cam.yaw;
   }
-  G.od = { k: 0, t: 0, ringT: 0 };
+  G.od = { k: 0, t: 0, ringT: 0, dur: OD.dur + (chipOn('cap') ? 3 : 0) }; G.odGain = chipOn('cap') ? 1.4 : 1; G.hurtAt = -99;
   $('coreName').textContent = G.core ? (M.convoy ? '运输车 CONVOY' : '反应堆 REACTOR') : '';
   if (wingOn()) { G.wing = new Wingman(scene, mctx, cfg.palette === 'kestrel' ? 'vanguard' : 'kestrel'); G.friends.push(G.wing); }
   run.coreLost = false;
   run.extract = !!M.extract; run.dlN = 0; run.got = 0; run.evac = null; run.lateBoss = null;
   run.capture = !!M.capture; run.zones = M.capture ? makeZones(M.zones) : M.extract ? makeZones(M.zones, { R: 8, kind: 'cache' }) : []; run.up = 0; run.finalOn = false; run.trickT = 22; run.zoneWarnT = {}; run.spotC = null;
-  Object.assign(run, { gauntlet: !!M.gauntlet, escort: !!M.convoy, stops: M.stops || [], driving: false, harT: 8, waitSaid: 0, wave: -1, defense: !!M.defense, coreWarnT: -99, coreLowSaid: false, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0, cr: 0, msslT: 0, boss2: null, relayHintT: 0, waves: M.endless ? [] : M.waves, endless: !!M.endless });
+  Object.assign(run, { dropSaid: false, gauntlet: !!M.gauntlet, escort: !!M.convoy, stops: M.stops || [], driving: false, harT: 8, waitSaid: 0, wave: -1, defense: !!M.defense, coreWarnT: -99, coreLowSaid: false, breakT: 1.5, t: 0, over: false, deathT: 0, won: false, droneT: 0, cr: 0, msslT: 0, boss2: null, relayHintT: 0, waves: M.endless ? [] : M.waves, endless: !!M.endless });
   G.boss = null; G.bosses = [];
   $('bossBox').classList.add('hidden');
 }
@@ -641,6 +668,32 @@ function startWave(i) {
   }
 }
 
+// dropships enter from outside the arena, staggered by distance
+function dropEntry(k, b) {
+  const a = (b === undefined ? Math.random() * 6.28 : b) + (Math.random() - 0.5) * 1.4, r = ARENA + 30 + k * 45;
+  return new V3(Math.cos(a) * r, 46 + Math.random() * 6, Math.sin(a) * r);
+}
+G.onDrop = (at, cg, ds, crashed) => {
+  const ring = (i, n, r) => { const a = i / n * 6.283 + Math.random() * 0.5; const p = new V3(at.x + Math.cos(a) * r, 0, at.z + Math.sin(a) * r); return pointInSolid(new V3(p.x, 1, p.z), 3) ? at.clone() : p; };
+  if (cg.boss) {
+    const b = new Boss(at.clone(), mctx, cg.boss, cg.hp || 1);
+    if (crashed) b.hp = b.maxHp * 0.7;
+    G.boss = b; G.bosses = (G.bosses || []).concat([b]);
+    $('bossName').textContent = BOSSES[cg.boss].name; $('bossBox').classList.remove('hidden');
+    banner(crashed ? '暴君从残骸中走出' : '头目着陆', crashed ? `${BOSSES[cg.boss].name} · 带伤出场（70%）` : BOSSES[cg.boss].name, true); sfx('alarm');
+    fx.trauma = Math.min(1, fx.trauma + 0.6);
+    return;
+  }
+  let i = 0; const n = Object.values(cg).reduce((a, v) => a + v, 0);
+  for (let k = 0; k < (cg.walker || 0); k++) new Walker(ring(i++, n, 4));
+  for (let k = 0; k < (cg.bulwark || 0); k++) new Bulwark(ring(i++, n, 4));
+  for (const t of Object.keys(RAIDERS)) for (let k = 0; k < (cg[t] || 0); k++) new Boss(ring(i++, n, 4), mctx, t, 1);
+  for (let k = 0; k < (cg.drone || 0); k++) { const p = ring(i++, n, 3); p.y = 10; new Drone(p); }
+  for (let k = 0; k < (cg.sapper || 0); k++) { const p = ring(i++, n, 3); p.y = 11; new Sapper(p); }
+  for (let k = 0; k < (cg.crawler || 0); k++) new Crawler(ring(i++, n, 3));
+};
+G.onDropWarn = () => { if (!run.dropSaid) { run.dropSaid = true; showHint('运输机正在降落投放 · 舱门打开前击落它，货物一起报废', 3.5); } };
+
 function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.turret || 0); k++) new Turret((Math.random() < 0.45 && roofSpot(50, 150)) || spot(55, 140));
   for (let k = 0; k < (S.drone || 0); k++) new Drone(spot(70 * R, 140 * R, true, b));
@@ -651,6 +704,9 @@ function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.mender || 0); k++) new Mender(spot(90 * R, 140 * R, true, b));
   for (let k = 0; k < (S.sapper || 0); k++) new Sapper(spot(90 * R, 140 * R, true, b));
   for (let k = 0; k < (S.jammer || 0); k++) new Jammer(spot(70 * R, 110 * R, true, b));
+  const drops = (S.drops || []).concat(Array.from({ length: S.dropship || 0 }, () => ({ walker: 2 })));
+  drops.forEach((cg, k) => new Dropship(dropEntry(k, b), cg, false));
+  if (S.dropBoss) new Dropship(dropEntry(drops.length + 0.5, b), { boss: S.dropBoss, hp: S.bossHp || 1 }, true);
   for (let k = 0; k < (S.crawler || 0); k += 6) {   // crawlers come in packs of up to 6
     const c0 = spot(55 * R, 95 * R, false, b);
     for (let j = 0; j < Math.min(6, S.crawler - k); j++) { const a = Math.random() * 6.28, r = Math.random() * 4; new Crawler(new V3(c0.x + Math.cos(a) * r, 0, c0.z + Math.sin(a) * r)); }
@@ -662,6 +718,8 @@ G.onKill = (e) => {
   G.hud.kill = 0.3;
   const T = save.tally; T.all = (T.all || 0) + 1; T[e.kind] = (T[e.kind] || 0) + 1;
   if (e.isColossus) T.colossus = (T.colossus || 0) + 1;
+  if (e.kind === 'dropship' && e.full) T.dropFull = (T.dropFull || 0) + 1;
+  if (chipOn('leech') && G.player.alive) G.player.hp = Math.min(G.player.maxHp, G.player.hp + G.player.maxHp * 0.025);
   const cr = Math.round((KILL_CR[e.kind] || 50) * DIFFS[cfg.diff].cr);
   run.cr += cr; G.hud.cr = 1.2; G.hud.crLast = cr;
   if (e.kind === 'bulwark' && Math.random() < 0.5) dropRepair(e.c);
@@ -695,7 +753,7 @@ let odPressed = false;
 function activateOD() {
   const p = G.player, o = G.od;
   if (!o || o.t > 0 || o.k < 1 || !p.alive || run.won) return;
-  o.t = OD.dur; o.k = 0; o.ringT = 0; o.uses = (o.uses || 0) + 1;
+  o.t = o.dur; o.k = 0; o.ringT = 0; o.uses = (o.uses || 0) + 1;
   const c = p.center(new V3());
   G.curLabel = 'p-od'; explodeAt(c, 16, 160, 'P', 2.2, 0xffa040); G.curLabel = null;
   fx.ring(new V3(p.pos.x, 0.4, p.pos.z), null, 1, 22, 0.6, 0xffa040);
@@ -1101,6 +1159,7 @@ const MEDALS = [
   { id: 'k1000', name: '千机斩', desc: '累计击毁 1000 台敌机', cr: 2000, tally: 'all', need: 1000 },
   { id: 'gauntlet', name: '连战制霸', desc: '赢下「头目连战」', cr: 2500, test: (r) => r.win && cfg.mission === 'gauntlet' },
   { id: 'ecm', name: '电子战', desc: '累计击落 10 台干扰机', cr: 800, tally: 'jammer', need: 10 },
+  { id: 'intercept', name: '防空专家', desc: '累计在投放前击落 10 架运输机', cr: 1000, tally: 'dropFull', need: 10 },
   { id: 'maxed', name: '满改机体', desc: '四项机库强化全部升满', cr: 1000, test: () => Object.values(save.up).every((v) => v >= 5), prog: () => [Object.values(save.up).reduce((a, v) => a + v, 0), 20] },
 ];
 function checkMedals(r) {
@@ -1152,10 +1211,25 @@ function buildGarage() {
   fill('gFrame', Object.entries(FRAMES).map(([k, f]) => opt(`${f.name}<small>${f.en}</small>`, cfg.frame === k, () => { cfg.frame = k; rebuildPreview(); })));
   const F = G.player.frame;
   $('gStats').innerHTML = `AP <b>${Math.round(F.hp)}</b> · 速度 <b>×${F.speed.toFixed(2)}</b> · EN <b>${Math.round(F.en)}</b> · 推进 <b>×${F.boost.toFixed(2)}</b> · 受伤 <b>×${F.armor}</b>` + (save.up.fcs ? ` · 伤害 <b>×${dmgMul().toFixed(2)}</b>` : '');
-  const wopt = (slot, k) => opt(`${WEAPONS[k].name}<small>${WEAPONS[k].desc}</small>`, cfg[slot] === k, () => { cfg[slot] = k; G.player.mount({ R: cfg.R, L: cfg.L, S: cfg.S }); G.pw = { R: weaponState(cfg.R), L: weaponState(cfg.L), S: weaponState(cfg.S) }; buildWeaponPanel(); });
+  const wopt = (slot, k) => opt(`${WEAPONS[k].name}<small>${WEAPONS[k].desc}</small>`, cfg[slot] === k, () => { cfg[slot] = k; G.player.mount({ R: cfg.R, L: cfg.L, S: cfg.S }); G.pw = freshPW(); buildWeaponPanel(); });
   fill('gR', ARM_KEYS.map((k) => wopt('R', k)));
   fill('gL', ARM_KEYS.map((k) => wopt('L', k)));
   fill('gS', SHOULDER_KEYS.map((k) => wopt('S', k)));
+  const slots = chipSlots(), mine = cfg.chips.slice(0, slots);
+  fill('gChip', Object.entries(CHIPS).map(([k, c]) => opt(`${c.name}<small>${c.desc}</small>`, mine.includes(k), () => {
+    const cur = cfg.chips.slice(0, slots);
+    cfg.chips = cur.includes(k) ? cur.filter((x) => x !== k) : cur.concat([k]).slice(-slots);
+    rebuildPreview();
+  })));
+  $('gChipN').textContent = `${mine.length} / ${slots}`;
+  const gc2 = $('gChip2'); gc2.innerHTML = '';
+  if (!save.chip2) {
+    const row = document.createElement('div'); row.className = 'uprow';
+    row.innerHTML = `<div class="un"><b>第二芯片槽</b><small>同时装两枚芯片</small></div><div></div>`;
+    const btn = document.createElement('button'); btn.type = 'button'; btn.textContent = `${CHIP2_COST} C`; btn.disabled = save.cr < CHIP2_COST;
+    btn.onclick = () => { if (save.cr < CHIP2_COST) return; save.cr -= CHIP2_COST; save.chip2 = true; writeSave(); sfx('coin'); buildGarage(); };
+    row.appendChild(btn); gc2.appendChild(row);
+  }
   const gw = $('gWing'); gw.innerHTML = '';
   if (!save.wing) {
     const row = document.createElement('div'); row.className = 'uprow';
@@ -1203,7 +1277,7 @@ function drawHUD(dt) {
   $('enBar').classList.toggle('heat', p.overheat > 0);
   if (G.od) {
     const on = G.od.t > 0, ready = !on && G.od.k >= 1;
-    $('odBar').firstElementChild.style.width = ((on ? G.od.t / OD.dur : G.od.k) * 100).toFixed(1) + '%';
+    $('odBar').firstElementChild.style.width = ((on ? G.od.t / G.od.dur : G.od.k) * 100).toFixed(1) + '%';
     $('odBar').classList.toggle('ready', ready); $('odBar').classList.toggle('on', on);
     $('odTxt').textContent = on ? `${G.od.t.toFixed(1)} s` : ready ? (touch.active ? '按「超载」' : pad.active ? 'Y 发动' : 'V 发动') : Math.floor(G.od.k * 100) + '%';
     $('odFx').classList.toggle('on', on);
@@ -1280,6 +1354,14 @@ function drawHUD(dt) {
     d.style.display = ''; d.className = 'objm'; d.style.left = ((_sp.x + 1) / 2 * innerWidth) + 'px'; d.style.top = ((1 - _sp.y) / 2 * innerHeight) + 'px';
     d.textContent = `◆ 中继塔 ${Math.round(e.pos.distanceTo(p.pos))}m`;
   }
+  for (const e of G.enemies) {
+    if (e.kind !== 'dropship' || !e.alive || !e.cargo) continue;
+    _sp.set(e.pos.x, e.pos.y + 4, e.pos.z).project(camera);
+    if (_sp.z > 1 || Math.abs(_sp.x) > 1 || Math.abs(_sp.y) > 1) continue;
+    const d = objPool[oi] || poolEl(objPool, M, 'objm'); oi++;
+    d.style.display = ''; d.className = 'objm foe'; d.style.left = ((_sp.x + 1) / 2 * innerWidth) + 'px'; d.style.top = ((1 - _sp.y) / 2 * innerHeight) + 'px';
+    d.textContent = `▼ ${e.heavy ? '重型运输机' : '运输机'} ` + (e.st === 'drop' ? `投放 ${e.stT.toFixed(1)}s` : e.st === 'down' ? '降落中' : `${Math.round(e.pos.distanceTo(p.pos))}m`) + ` · ${Math.ceil(e.hp / e.maxHp * 100)}%`;
+  }
   if (G.core && G.core.alive) {
     _sp.set(G.core.pos.x, 17.5, G.core.pos.z).project(camera);
     const dd = G.core.pos.distanceTo(p.pos);
@@ -1349,6 +1431,7 @@ function drawHUD(dt) {
   for (const e of G.enemies) {
     if (!e.alive || e.cloaked || (G.jammed && e.kind !== 'boss')) continue;
     const x = (e.c.x - p.pos.x) * K, z = (e.c.z - p.pos.z) * K;
+    if (e.kind === 'dropship') { rctx.fillStyle = e.cargo ? '#ffcc40' : '#8a7a50'; rctx.save(); rctx.translate(x, z); rctx.rotate(-e.yaw); rctx.beginPath(); rctx.moveTo(0, -9); rctx.lineTo(-7, 7); rctx.lineTo(7, 7); rctx.fill(); rctx.restore(); continue; }
     if (e.kind === 'jammer') { rctx.fillStyle = '#c070ff'; rctx.beginPath(); rctx.arc(x, z, 5, 0, Math.PI * 2); rctx.fill(); continue; }
     if (e.kind === 'relay') { rctx.fillStyle = '#ffd23a'; rctx.save(); rctx.translate(x, z); rctx.rotate(Math.PI / 4); rctx.fillRect(-6, -6, 12, 12); rctx.restore(); continue; }
     rctx.fillStyle = e.kind === 'boss' ? '#ff8a1a' : '#ff4a3a';
@@ -1379,7 +1462,7 @@ function drawHUD(dt) {
 const auto = { on: false, st: 1, stT: 0, jT: 3, hover: 0, sT: 0 };
 function autoIntent(dt) {
   const p = G.player; let tgt = null, bd = 1e9;
-  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : e.kind === 'mender' ? -35 : e.kind === 'jammer' ? (G.jammed === e ? -45 : -15) : e.kind === 'crawler' && e.c.distanceTo(p.pos) < 35 ? -30 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
+  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : e.kind === 'mender' ? -35 : e.kind === 'jammer' ? (G.jammed === e ? -45 : -15) : e.kind === 'dropship' ? (e.cargo && e.st !== 'in' ? -60 : e.cargo ? -20 : 400) : e.kind === 'crawler' && e.c.distanceTo(p.pos) < 35 ? -30 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
   // pick up repairs when hurt
   let goal = null;
   if (p.hp < p.maxHp * 0.6) for (const k of G.pickups) { const d = k.o.position.distanceTo(p.pos); if (d < 70) { goal = k.o.position; break; } }
@@ -1487,6 +1570,7 @@ function step(dt) {
   updateAim();
   if (A.od) activateOD();
   updateOD(dt);
+  if (chipOn('nano') && G.player.alive && state === 'play' && G.time - G.hurtAt > 5) G.player.hp = Math.min(G.player.maxHp, G.player.hp + G.player.maxHp * 0.006 * dt);
   if (p.alive && !run.won) {
     const dm = dmgMul() * (G.od.t > 0 ? OD.dmg : 1);
     G.curLabel = 'p-' + G.pw.R.key; weaponTick(dt, p, 'R', G.pw.R, A.b0, G.aimPoint, G.lockTarget, 'P', G.locks, dm);
@@ -1553,7 +1637,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=13');
+    await loadKit('./assets/kit.glb?v=14');
     ensureArena();
     makePlayer();
     setState('title');

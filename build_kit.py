@@ -602,6 +602,40 @@ def build_emp():
     box((0, 0.46, 0.32), (0.5, 0.03, 0.2), M["Hazard"], K)
     muzzle("Muzzle_Emp", (0, 0.0, 0.86), K)
 
+def build_dropship():
+    # Dropship: twin-fan VTOL troop carrier, ~10 m long. Cargo pod E_DPod hangs under the belly. front = +Y
+    K = kit("E_Dropship")
+    box((0, 0, 0), (2.6, 7.0, 1.8), M["EArmor"], K, bevel=0.15)
+    wedge((0, 4.1, 0.15), (2.2, 1.4, 1.4), M["EArmor2"], K, taper=0.45, bevel=0.08)
+    box((0, 4.2, 0.62), (1.4, 0.9, 0.12), M["Glass"], K, rot=(0.45, 0, 0))
+    box((0, 4.75, 0.05), (1.0, 0.08, 0.14), M["EEye"], K)
+    box((0, 0.2, 1.05), (1.6, 4.6, 0.4), M["EArmor2"], K, bevel=0.06)
+    box((0, -3.9, 0.55), (1.4, 1.4, 0.9), M["EArmor2"], K, bevel=0.06)
+    for s_ in (-1, 1):
+        box((s_ * 0.9, -4.4, 1.5), (0.12, 1.2, 1.4), M["EArmor"], K, rot=(0, s_ * 0.3, 0))
+        box((s_ * 2.0, 0.6, 0.35), (1.6, 1.0, 0.3), M["Frame"], K)
+        torus((s_ * 3.4, 0.6, 0.55), 1.25, 0.2, M["EArmor2"], K)
+        torus((s_ * 3.4, 0.6, 0.2), 1.25, 0.2, M["EArmor2"], K)
+        cyl((s_ * 3.4, 0.6, 0.05), 1.1, 0.06, M["Black"], K, verts=20)
+        cyl((s_ * 3.4, 0.6, 0.3), 0.25, 0.4, M["Frame"], K, verts=10)
+        fan = empty(f"E_DFan{'L' if s_ < 0 else 'R'}", (s_ * 3.4, 0.6, 0.45), K)
+        for a in range(3):
+            box((0, 0, 0), (2.1, 0.22, 0.05), M["Frame"], fan, rot=(0, 0, a * math.pi / 3))
+        cyl((s_ * 3.4, 0.6, -0.12), 0.95, 0.06, M["NozzleGlow"], K, verts=16)
+        box((s_ * 1.32, -1.0, -0.3), (0.06, 3.6, 0.12), M["Hazard"], K)
+        box((s_ * 1.0, 1.8, -1.2), (0.16, 0.16, 1.0), M["Frame"], K)
+        box((s_ * 1.0, -1.8, -1.2), (0.16, 0.16, 1.0), M["Frame"], K)
+    box((0, 0, -0.98), (2.2, 4.2, 0.16), M["Frame"], K)
+    ball((0, 2.6, -1.0), 0.18, M["EEye"], K)
+    pod = empty("E_DPod", (0, 0, -2.3), K)
+    box((0, 0, 0), (2.3, 3.8, 2.2), M["EArmor2"], pod, bevel=0.08)
+    for i in range(4):
+        box((0, -1.4 + i * 0.95, 0), (2.34, 0.12, 2.0), M["Frame"], pod)
+    for s_ in (-1, 1):
+        box((s_ * 1.18, 0, 0.6), (0.04, 3.2, 0.25), M["Hazard"], pod)
+    box((0, 1.92, 0.2), (1.4, 0.04, 1.2), M["Black"], pod)
+    ball((0, 1.95, 0.95), 0.12, M["Ammo"], pod)
+
 def build_crawler():
     # Crawler: suicide spider bomb, ~1.6 m across. front = +Y
     K = kit("E_Crawler")
@@ -919,7 +953,7 @@ def build_props():
 build_mech()
 build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
-build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer()
+build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship()
 build_props()
 
 # a display-only mech in the lineup with weapons mounted, so the preview shows the full loadout

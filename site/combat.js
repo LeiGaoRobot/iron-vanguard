@@ -97,7 +97,7 @@ function dealDamage(ent, dmg, team, at, label) {
   if (!ent.alive) return;
   if (team === 'P') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.stunT > 0) dmg *= STUN_VULN; }   // EMP-stunned targets take extra damage
   ent.hit(dmg, at, label || G.curLabel);
-  if (team === 'P' && !ent.isBarrel && !isAlly(label || G.curLabel)) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; if (G.od && !(G.od.t > 0) && !ent.isCore) G.od.k = Math.min(1, G.od.k + dmg / OD.fill); }
+  if (team === 'P' && !ent.isBarrel && !isAlly(label || G.curLabel)) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; if (G.od && !(G.od.t > 0) && !ent.isCore) G.od.k = Math.min(1, G.od.k + dmg / OD.fill * (G.odGain || 1)); }
 }
 
 const BURN_WEAK = 0.75, STUN_VULN = 1.3;
@@ -109,7 +109,7 @@ function damagePlayer(dmg, src, label) {
   if (G.curShooter && G.curShooter.burnT > 0) dmg *= BURN_WEAK;   // direct hits (melee, beams) from a burning enemy
   const d = dmg * G.diff.dmg * p.frame.armor * (1 - blk) * (G.od && G.od.t > 0 ? OD.armor : 1);
   G.dmgLog = G.dmgLog || {}; G.dmgLog[label || '?'] = (G.dmgLog[label || '?'] || 0) + d;
-  p.hit(d); G.stats.dmgTaken += d; G.hud.hurt = Math.min(1, G.hud.hurt + d / 120);
+  p.hit(d); G.stats.dmgTaken += d; G.hud.hurt = Math.min(1, G.hud.hurt + d / 120); G.hurtAt = G.time;
   if (src) G.hud.hurtDir = Math.atan2(src.x - p.pos.x, src.z - p.pos.z);
   G.onPlayerHit && G.onPlayerHit(d);
 }
@@ -1560,7 +1560,7 @@ function updateBurning(dt) {
     e.burnT -= dt;
     const dmg = e.burnDps * dt;
     G.pierce = true; e.hit(dmg, e.c, e.burnLabel); G.pierce = false;
-    if (!isAlly(e.burnLabel)) { G.stats.dmgDealt += dmg; if (G.od && !(G.od.t > 0)) G.od.k = Math.min(1, G.od.k + dmg / OD.fill); }
+    if (!isAlly(e.burnLabel)) { G.stats.dmgDealt += dmg; if (G.od && !(G.od.t > 0)) G.od.k = Math.min(1, G.od.k + dmg / OD.fill * (G.odGain || 1)); }
     if (Math.random() < 0.55) { const r = (e.r || 1.5) * 0.7; G.fx.emit('add', { x: e.c.x + (Math.random() - 0.5) * r, y: e.c.y + (Math.random() - 0.3) * r, z: e.c.z + (Math.random() - 0.5) * r, vy: 3, life: 0.35, s0: 0.9, s1: 1.6, c0: 0xffa040, c1: 0xff3010 }); }
     if (Math.random() < 0.08) G.fx.emit('smoke', { x: e.c.x, y: e.c.y + 1, z: e.c.z, vx: 0, vy: 2, vz: 0, life: 1.2, s0: 1.2, s1: 3.2, c0: 0x3a3634, c1: 0x222020, a0: 0.4, drag: 1 });
   }
@@ -1671,6 +1671,107 @@ export class Jammer extends Enemy {
     this.obj.rotation.x = -this.vel.z * 0.01; this.obj.rotation.z = this.vel.x * 0.01;
     this.ringT -= dt;
     if (this.ringT <= 0) { this.ringT = 1.3; G.fx.ring(new V3(this.pos.x, this.pos.y - 0.4, this.pos.z), null, 1.5, 12, 0.9, 0xb060ff); if (G.jammed === this) sfx('jam', 0); }
+  }
+}
+
+// Dropship: twin-fan VTOL. Flies in from outside the arena, picks a landing zone ~30 m from its target, descends,
+// hovers 2.6 s with the bay open and releases its cargo (G.onDrop(pos, cargo, ds) spawns it), then climbs out and leaves
+// (removed without a kill). Shot down with the cargo aboard, the cargo is lost, except a boss, who walks out of the wreck.
+export class Dropship extends Enemy {
+  constructor(pos, cargo, heavy) {
+    super('dropship', 'E_Dropship', pos, heavy ? 3200 : 1500, 5.2); this.boom = 2;
+    this.cargo = cargo; this.heavy = !!heavy; this.obj.scale.setScalar(heavy ? 1.9 : 1.55);
+    this.vel = new V3(); this.st = 'in'; this.stT = 0; this.lz = null; this.ph = Math.random() * 6; this.sndT = 0; this.fall = false; this.gunT = 2;
+    this.yaw = Math.atan2(pos.x, pos.z); this.c.copy(pos);
+    if (heavy) recolor(this.obj, { EArmor: 0x5a4038, EArmor2: 0x342824 }, 'heavyDropship');
+  }
+  hit(dmg) {
+    if (!this.alive || this.dying) return;
+    this.hp -= dmg * (this.st === 'out' ? 0.5 : 1); this.flash = 0.08;
+    if (this.hp <= 0) this.die();
+  }
+  die() {
+    this.alive = false; this.dying = true; G.stats.kills++;
+    this.full = !!this.cargo; G.onKill && G.onKill(this);
+    this.fall = true; this.vel.y = Math.min(this.vel.y, 0); this.spinV = (Math.random() < 0.5 ? -1 : 1) * 1.6;
+    G.fx.explosion(this.c, 1.6); sfx('bigboom', G.player.pos.distanceTo(this.pos));
+  }
+  pickLZ() {
+    const f = this.tg(), b = f.pos;
+    for (let i = 0; i < 40; i++) {
+      const a = Math.atan2(this.pos.z - b.z, this.pos.x - b.x) + (Math.random() - 0.5) * 1.6, r = 26 + Math.random() * 16;
+      const x = b.x + Math.cos(a) * r, z = b.z + Math.sin(a) * r;
+      if (Math.abs(x) > ARENA - 12 || Math.abs(z) > ARENA - 12) continue;
+      if (pointInSolid(new V3(x, 1, z), 6) || groundAt(x, z, 99) > 0.5) continue;
+      return new V3(x, 0, z);
+    }
+    return new V3(b.x * 0.8, 0, b.z * 0.8);
+  }
+  update(dt) {
+    for (const k of ['L', 'R']) this.n['E_DFan' + k].rotation.y += dt * (this.fall ? 5 : 30) * (k === 'L' ? 1 : -1);
+    const dist = G.player.pos.distanceTo(this.pos);
+    this.sndT -= dt; if (this.sndT <= 0) { this.sndT = 0.13; if (dist < 110 && !this.fall) sfx('rotor', dist); }
+    if (this.fall) {
+      this.vel.y -= 14 * dt; this.pos.addScaledVector(this.vel, dt);
+      this.obj.rotation.y += this.spinV * dt; this.obj.rotation.x += 0.25 * dt;
+      G.fx.smoke(this.pos, 2, 2.6, 1.6, 0x2e2c2a, 1, 0.7);
+      if (Math.random() < 0.5) G.fx.emit('add', { x: this.pos.x + (Math.random() - 0.5) * 4, y: this.pos.y, z: this.pos.z + (Math.random() - 0.5) * 4, life: 0.25, s0: 2.8, c0: 0xff8040 });
+      if (this.pos.y <= groundAt(this.pos.x, this.pos.z, this.pos.y) + 1.5 || pointInSolid(this.pos)) {
+        this.c.copy(this.pos); explodeAt(this.c, 11, 70, 'P', 2.6);
+        if (this.cargo && this.cargo.boss) { const at = this.pos.clone(); at.y = 0; G.onDrop && G.onDrop(at, this.cargo, this, true); }
+        this.remove();
+      }
+      return;
+    }
+    const spd = this.heavy ? 20 : 24;
+    if (this.st === 'in') {
+      if (!this.lz && Math.hypot(this.pos.x, this.pos.z) < ARENA + 20) this.lz = this.pickLZ();
+      const tgt = this.lz || new V3(0, 0, 0);
+      _a.set(tgt.x - this.pos.x, 0, tgt.z - this.pos.z); const L = _a.length();
+      const ty = Math.max(38, groundAt(this.pos.x, this.pos.z, 99) + 22);
+      _a.multiplyScalar(Math.min(spd, L * 0.6) / (L || 1)); _a.y = (ty - this.pos.y) * 0.8;
+      this.vel.lerp(_a, 1 - Math.exp(-1.0 * dt));
+      if (this.lz && L < 4) { this.st = 'down'; G.fx.warn(this.lz, 9, 5); G.onDropWarn && G.onDropWarn(this); }
+    } else if (this.st === 'down') {
+      const ty = this.lz.y + 13;
+      _a.set((this.lz.x - this.pos.x) * 0.8, (ty - this.pos.y) * 1.1, (this.lz.z - this.pos.z) * 0.8);
+      if (_a.y < -9) _a.y = -9;
+      this.vel.lerp(_a, 1 - Math.exp(-2 * dt));
+      if (Math.abs(this.pos.y - ty) < 1) { this.st = 'drop'; this.stT = 2.6; }
+    } else if (this.st === 'drop') {
+      _a.set((this.lz.x - this.pos.x) * 0.8, (this.lz.y + 13 - this.pos.y), (this.lz.z - this.pos.z) * 0.8);
+      this.vel.lerp(_a, 1 - Math.exp(-3 * dt));
+      this.stT -= dt;
+      if (Math.random() < 0.6) G.fx.emit('smoke', { x: this.lz.x + (Math.random() - 0.5) * 10, y: 0.4, z: this.lz.z + (Math.random() - 0.5) * 10, vx: (Math.random() - 0.5) * 8, vy: 0.5, vz: (Math.random() - 0.5) * 8, life: 0.9, s0: 1.5, s1: 4, c0: 0xb0a898, c1: 0x908878, a0: 0.35, drag: 2 });
+      if (this.stT <= 0) {
+        const at = this.lz.clone(); G.onDrop && G.onDrop(at, this.cargo, this, false); this.cargo = null;
+        this.n.E_DPod.visible = false; this.st = 'out'; this.exitA = Math.atan2(this.pos.z, this.pos.x);
+        G.fx.ring(new V3(at.x, 0.3, at.z), null, 2, 12, 0.6, 0xd8cfc0); sfx('land', G.player.pos.distanceTo(at));
+      }
+    } else {   // out: climb and leave
+      _a.set(Math.cos(this.exitA) * spd * 1.2, 10, Math.sin(this.exitA) * spd * 1.2);
+      this.vel.lerp(_a, 1 - Math.exp(-0.8 * dt));
+      if (Math.hypot(this.pos.x, this.pos.z) > ARENA + 60) { this.alive = false; this.remove(); return; }
+    }
+    this.pos.addScaledVector(this.vel, dt);
+    if (this.st !== 'out') { const s_ = pointInSolid(this.pos, 4); if (s_) { this.pos.y = s_.max.y + 5; this.vel.y = Math.max(this.vel.y, 4); } }
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    if (sp > 2) this.yaw += angDiff(Math.atan2(-this.vel.x, -this.vel.z), this.yaw) * Math.min(1, dt * 1.2);
+    this.obj.rotation.y = this.yaw;
+    this.obj.rotation.x = -Math.min(0.25, sp * 0.01);
+    this.c.set(this.pos.x, this.pos.y - (this.cargo ? 1 : 0), this.pos.z);
+    // door gun while hovering
+    if ((this.st === 'drop' || this.st === 'down') && dist < 90) {
+      this.gunT -= dt;
+      if (this.gunT <= 0 && this.checkLos(dt)) {
+        this.gunT = 0.5;
+        const mp = this.c.clone().setY(this.pos.y - 1.5);
+        const aim = lead(mp, 160, new V3());
+        const v = aim.sub(mp).normalize().add(new V3((Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.05, (Math.random() - 0.5) * 0.05)).normalize().multiplyScalar(160);
+        spawnShot({ p: mp, v, dmg: 7, team: 'E', kind: 'ebullet', color: 0xff8a50, w: 0.25, len: 6, label: 'dropship-gun' });
+        sfx('eshot', dist);
+      }
+    }
   }
 }
 
