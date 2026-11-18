@@ -107,6 +107,8 @@ export function sfx(name, d = 0, pan = 0) {
       case 'sentry': tone(t, 'square', 180, 90, 0.12, 0.18); noise(t + 0.4, 0.2, 'lowpass', 900, 1, 0.3, 0.2); tone(t + 0.5, 'sine', 900, 1800, 0.08, 0.25); break;
       case 'hook': noise(t, 0.12, 'highpass', 2000, 1, 0.35 * k, 0.1, pan); tone(t, 'sawtooth', 300, 900, 0.08 * k, 0.15); for (let i = 1; i < 6; i++) tone(t + i * 0.04, 'square', 1800, 1700, 0.03 * k, 0.02); break;
       case 'sonic': tone(t, 'sine', 90, 40, 0.5 * k, 0.35); noise(t, 0.25, 'bandpass', 700, 1.2, 0.4 * k, 0.2, pan); tone(t, 'square', 220, 110, 0.08 * k, 0.18); tone(t + 0.04, 'sine', 440, 300, 0.06 * k, 0.2); break;
+      case 'fence': tone(t, 'sawtooth', 110, 260, 0.07 * k, 0.9); tone(t, 'square', 55, 130, 0.05 * k, 0.9); tone(t + 0.85, 'sawtooth', 260, 240, 0.08 * k, 0.6); break;
+      case 'stasis': tone(t, 'sine', 1400, 140, 0.12 * k, 1.1); tone(t + 0.05, 'triangle', 2200, 300, 0.05 * k, 0.9); noise(t, 0.6, 'lowpass', 700, 1, 0.2 * k, 0.4, pan); break;
       case 'prism': tone(t, 'sine', 1800, 2600, 0.06 * k, 0.5); tone(t + 0.05, 'triangle', 3200, 3600, 0.04 * k, 0.35); break;
       case 'smoke': noise(t, 0.6, 'lowpass', 1200, 0.8, 0.35, 0.6); tone(t, 'sine', 160, 60, 0.15, 0.25); noise(t + 0.15, 1.2, 'bandpass', 2400, 0.6, 0.12, 1.1); break;
       case 'spit': noise(t, 0.35, 'bandpass', 700, 1.4, 0.25 * k, 0.3, pan); tone(t, 'sawtooth', 240, 90, 0.08 * k, 0.3); break;

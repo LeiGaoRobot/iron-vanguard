@@ -1,4 +1,4 @@
-# Iron Vanguard · WeChat mini-game prototype
+# 钢翼先锋 Iron Vanguard · WeChat mini-game prototype
 
 Feasibility prototype: the same `site/` game code, bundled for the WeChat mini-game runtime (no DOM), with a canvas HUD and touch controls. Title screen (mission picker) → mission → pause / result. Garage, medals and settings are not ported yet; the loadout is the default one (or whatever the save already holds).
 

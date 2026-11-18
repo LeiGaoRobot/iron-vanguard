@@ -99,6 +99,11 @@ M = dict(
     Mirror=mat("Mirror", "#bff0ff", 0.08, metal=0.85, emit="#2a8aa8", strength=0.6),
     PrismGlow=mat("PrismGlow", "#e0fbff", 0.2, emit="#60e8ff", strength=2.0),
     SonicGlow=mat("SonicGlow", "#ffe8c0", 0.3, emit="#ffb040", strength=1.6),
+    Fence=mat("Fence", "#ffd0c8", 0.3, emit="#ff3020", strength=2.2),
+    Stasis=mat("Stasis", "#e0f0ff", 0.25, emit="#80c8ff", strength=1.8),
+    TankPaint=mat("TankPaint", "#8a8e78", 0.6, metal=0.3),
+    Rust=mat("Rust", "#6a4a32", 0.9),
+    Toxic=mat("Toxic", "#c8f060", 0.4, emit="#90d020", strength=0.9),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -1045,6 +1050,61 @@ def build_sonic():
     cyl((0, 1.28, 0), 0.46, 0.04, M["Black"], K, rot=ALONG_Y, verts=14)
     muzzle("Muzzle_Sonic", (0, 1.35, 0), K)
 
+def build_fencer():
+    # Fencer: hovering fence pylon. Slim armoured mast, a red emitter ring at chest height (the laser fence starts here),
+    # three stabiliser fins and a thruster underneath. Symmetric; front = +Y
+    K = kit("E_Fencer")
+    cyl((0, 0, 0), 0.5, 2.4, M["EArmor"], K, verts=8, r2=0.36, smooth=False)
+    cyl((0, 0, 1.35), 0.38, 0.3, M["EArmor2"], K, verts=8, r2=0.18, smooth=False)
+    ball((0, 0, 1.55), 0.14, M["Fence"], K)
+    cyl((0, 0, -1.35), 0.42, 0.3, M["Frame"], K, verts=8, r2=0.3, smooth=False)
+    cyl((0, 0, -1.55), 0.3, 0.08, M["NozzleGlow"], K, verts=12)
+    ring = empty("FN_Ring", (0, 0, 0.1), K)
+    torus((0, 0, 0), 0.78, 0.07, M["Fence"], ring)
+    for i in range(3):
+        a = i * math.pi * 2 / 3
+        box((math.cos(a) * 0.78, math.sin(a) * 0.78, 0), (0.22, 0.22, 0.34), M["EArmor2"], ring, rot=(0, 0, a))
+    for i in range(3):
+        a = i * math.pi * 2 / 3 + math.pi / 3
+        wedge((math.cos(a) * 0.6, math.sin(a) * 0.6, -0.7), (0.08, 0.6, 0.9), M["EArmor2"], K, rot=(0, 0, a + math.pi / 2), taper=0.3)
+        box((math.cos(a) * 0.5, math.sin(a) * 0.5, 0.75), (0.05, 0.05, 0.5), M["Hazard"], K, rot=(0, 0, a))
+    box((0, 0.48, 0.6), (0.3, 0.06, 0.12), M["EEye"], K)
+    muzzle("Muzzle_Fencer", (0, 0, 0.1), K)
+
+def build_stasis():
+    K = kit("S_Stasis")
+    # shoulder stasis projector: a squat cradle holding a pale-blue sphere inside two clock rings with tick marks
+    box((0, -0.1, 0.22), (0.66, 0.86, 0.34), M["Armor2"], K, bevel=0.05)
+    box((-0.34, -0.1, 0.28), (0.05, 0.76, 0.24), M["Accent"], K)
+    ball((0, 0.16, 0.64), 0.24, M["Stasis"], K)
+    torus((0, 0.16, 0.64), 0.38, 0.03, M["Stasis"], K, rot=(math.pi / 2, 0, 0))
+    torus((0, 0.16, 0.64), 0.31, 0.025, M["Frame"], K, rot=(math.pi / 2, 0, 0.6))
+    for k in range(8):
+        a = k / 8 * math.pi * 2
+        box((math.cos(a) * 0.38, 0.16, 0.64 + math.sin(a) * 0.38), (0.05, 0.08, 0.05), M["Black"], K)
+    for s_ in (-1, 1):
+        box((s_ * 0.3, 0.16, 0.5), (0.07, 0.26, 0.36), M["Frame"], K)
+    muzzle("Muzzle_Stasis", (0, 0.5, 0.64), K)
+
+def build_toxic():
+    # chemical works: a big storage tank with a hazard band, ladder, pipe stubs and a rusty base; a cluster of drums
+    K = kit("P_Tank")
+    cyl((0, 0, 0.4), 3.4, 0.8, M["Concrete"] if "Concrete" in M else M["Frame"], K, verts=20)
+    cyl((0, 0, 4.0), 3.0, 6.6, M["TankPaint"], K, verts=24)
+    cyl((0, 0, 7.45), 3.0, 0.3, M["TankPaint"], K, verts=24, r2=2.2)
+    cyl((0, 0, 3.0), 3.04, 0.5, M["Hazard"], K, verts=24)
+    cyl((0, 0, 1.0), 3.06, 0.4, M["Rust"], K, verts=24)
+    for k in range(5):
+        box((0.25 * (k % 2 * 2 - 1), -3.1, 1.2 + k * 1.3), (0.06, 0.06, 1.3), M["Frame"], K)
+    box((0, -3.12, 4.0), (0.7, 0.05, 6.4), M["Frame"], K)
+    for a in (0.6, 2.4, 4.0):
+        cyl((math.cos(a) * 3.3, math.sin(a) * 3.3, 1.6), 0.28, 1.0, M["Frame"], K, rot=(math.pi / 2, 0, a + math.pi / 2), verts=10)
+    ball((0, 0, 7.75), 0.5, M["Frame"], K)
+    K = kit("P_Drums")
+    for (x, y, toxic) in ((0, 0, True), (0.9, 0.3, False), (0.3, 0.95, True), (-0.7, 0.6, False), (-0.5, -0.8, False)):
+        cyl((x, y, 0.55), 0.4, 1.1, M["Toxic"] if toxic else M["Rust"], K, verts=12)
+        cyl((x, y, 1.12), 0.41, 0.06, M["Frame"], K, verts=12)
+
 def build_smoke():
     K = kit("S_Smoke")
     # shoulder smoke launcher: three angled grey canister tubes on a cradle
@@ -1502,7 +1562,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

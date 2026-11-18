@@ -37,10 +37,10 @@ fs.writeFileSync(path.join(OUT, 'game.json'), JSON.stringify({
 }, null, 2));
 const pc = path.join(OUT, 'project.config.json');
 if (!fs.existsSync(pc)) fs.writeFileSync(pc, JSON.stringify({
-  description: 'Iron Vanguard WeChat mini-game prototype',
+  description: '钢翼先锋 Iron Vanguard WeChat mini-game prototype',
   compileType: 'game',
   appid: 'touristappid',
-  projectname: 'iron-vanguard',
+  projectname: '钢翼先锋 Iron Vanguard',
   setting: { es6: true, minified: false, postcss: false, enhance: false },
   libVersion: 'latest',
   packOptions: { ignore: [] },

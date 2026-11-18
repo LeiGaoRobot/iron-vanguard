@@ -170,7 +170,7 @@ function button(r, label, col = PAL.cyan) {
 }
 function drawTitle() {
   const I = iv(), W = innerWidth, H = innerHeight, u = unit(), ks = missions(), M = I.MISSIONS[ks[misIdx % ks.length]];
-  panel('钢铁先锋 IRON VANGUARD', '微信小游戏原型 · 横屏 · 左侧移动 右侧转视角');
+  panel('钢翼先锋', '横屏操作 · 左侧摇杆移动 · 右侧拖动转视角');
   const R = menuRects();
   text(M.name, W / 2, H * 0.48, u * 0.6, PAL.amber, 'center', 700);
   text(M.en || '', W / 2, H * 0.48 + u * 0.6, u * 0.3, PAL.dim);

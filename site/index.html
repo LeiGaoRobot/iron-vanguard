@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>钢铁先锋 Iron Vanguard</title>
+<title>钢翼先锋 Iron Vanguard</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
@@ -88,6 +88,7 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 #banner small { display: block; font-family: var(--cn); font-size: 16px; letter-spacing: 3px; color: var(--dim); font-weight: 400; margin-top: 4px; }
 #banner.show { opacity: 1; }
 #banner.warn { color: #ff7a5a; text-shadow: 0 0 18px rgba(255, 80, 40, 0.7); }
+#acidVig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 40%, rgba(150, 200, 40, 0.42) 88%, rgba(200, 230, 60, 0.5) 100%); opacity: 0; }
 #stormVig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 35%, rgba(150, 70, 255, 0.5) 85%, rgba(60, 255, 200, 0.45) 100%); opacity: 0; }
 #hurt { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 50%, rgba(255, 30, 10, 0.55) 100%); opacity: 0; }
 #radar { position: absolute; left: 22px; bottom: 22px; width: 170px; height: 170px; border-radius: 50%; background: rgba(8, 14, 20, 0.7); border: 1px solid var(--line); }
@@ -215,6 +216,7 @@ body.touchmode #mAlert { top: 30%; }
 <canvas id="c"></canvas>
 <div id="hud" class="hidden">
   <div id="hurt"></div>
+  <div id="acidVig"></div>
   <div id="stormVig"></div>
   <div id="locks"></div>
   <div id="marks"></div>
@@ -269,7 +271,7 @@ body.touchmode #mAlert { top: 30%; }
 <div id="title" class="overlay hidden">
   <div class="card">
     <h1>IRON <span>VANGUARD</span></h1>
-    <div class="sub">钢铁先锋 · 机甲作战</div>
+    <div class="sub">钢翼先锋 · 机甲作战</div>
     <div style="color: var(--dim); font-size: 14px; line-height: 1.7">驾驶可定制的人形机甲出击。击毁敌机赚取资金，在机库强化机体。</div>
     <div class="gsec"><h3>选择任务</h3><div class="mlist" id="tMission"></div><div class="mrow"><div id="tMisDesc"></div><div id="tMods"><span>挑战</span></div></div></div>
     <div class="keys">
