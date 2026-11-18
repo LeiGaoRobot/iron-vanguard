@@ -6,11 +6,11 @@ import { TIERS, Q, setMode } from './quality.js';
 import { WX, saveWX, today } from './store.js';
 import { FRAMES } from '../../site/mech.js';
 
-const TABS = [['up', '强化'], ['arm', '武器'], ['frame', '机体'], ['chip', '芯片'], ['diff', '难度'], ['set', '设置']];
+const TABS = [['up', '强化'], ['arm', '武器'], ['frame', '机体'], ['chip', '芯片'], ['diff', '难度'], ['medal', '勋章'], ['set', '设置']];
 const SLOTS = [['gR', '右臂'], ['gL', '左臂'], ['gS', '肩部']];
 export const SUPPLY = { cr: 800, perDay: 3 };
 const GS = { tab: 'up', slot: 0, scroll: {}, hits: [], list: null, maxScroll: 0, drag: null };
-let ctx = null;   // { iv, startMission, missionName, toast, showRewarded, adMode, onAd }
+let ctx = null;   // { iv, startMission, goCurrent, regarage, missionName, toast, showRewarded, adMode, onAd }
 export function initGarage(c) { ctx = c; }
 
 // ---------------------------------------------------------------- read main.js's fake DOM
@@ -26,6 +26,14 @@ function rowItem(r) {
   const label = b ? (b.textContent === 'MAX' ? '已满' : b.textContent.replace(/ C$/, ' 资金')) : '';
   return { kind: 'row', name, desc: zh(desc), pips, lv, label, can: !!b && !b.disabled, go: () => b && !b.disabled && b.onclick && b.onclick() };
 }
+// medals: main.js's buildMedals() fills #mList when the state is 'medals' (see refreshMedals)
+function medalItem(d) {
+  const h = d.innerHTML || '', sm = [...h.matchAll(/<small>(.*?)<\/small>/g)].map((m) => m[1]);
+  const pw = (h.match(/width:(\d+)%/) || [])[1];
+  const em = (h.match(/<em>(.*?)<\/em>/) || [])[1] || '';
+  return { kind: 'medal', name: (h.match(/<b>(.*?)<\/b>/) || [])[1] || '', desc: sm[0] || '', prog: sm[1] || '', pk: pw ? +pw / 100 : -1, on: d.classList.contains('on'), label: em.replace(/ C$/, ' 资金') };
+}
+function refreshMedals() { const I = ctx.iv(); I.setState('medals'); ctx.regarage(); }
 function items() {
   const I = ctx.iv();
   if (GS.tab === 'up') {
@@ -46,6 +54,7 @@ function items() {
   }
   if (GS.tab === 'chip') return [{ kind: 'note', name: `已装 ${el('gChipN').textContent || ''} · 点击装上 / 卸下` }].concat(kids('gChip').map(optItem));
   if (GS.tab === 'diff') return kids('gDiff').map(optItem);
+  if (GS.tab === 'medal') return [{ kind: 'note', name: `已获得 ${el('mCount').textContent || ''} · 每枚勋章首次达成时奖励资金` }].concat(kids('mList').map(medalItem));
   // settings: quality tiers (this build's own) + replay the tutorial
   const cur = `当前「${TIERS[Q.tier].name}」${Q.fps ? ` · 上局约 ${Math.round(Q.fps)} 帧` : ''}`;
   return [
@@ -77,7 +86,7 @@ export function drawGarage() {
   const bw = Math.min(W * 0.18, 3.6 * u), bh = 1.0 * u, by = H - bh - 0.35 * u;
   const back = { x: 0.4 * u, y: by, w: bw, h: bh }, go = { x: 0.4 * u + bw + 0.3 * u, y: by, w: bw, h: bh };
   button(back, '返回', PAL.dim); hit(back, () => I.setState('title'));
-  button(go, '出击', PAL.cyan); hit(go, () => ctx.startMission());
+  button(go, '出击', PAL.cyan); hit(go, () => ctx.goCurrent());
   flat(`任务：${ctx.missionName()}`, 0.45 * u, by - 0.35 * u, 0.3 * u, PAL.dim, 'left', 500, bw * 2 + 0.3 * u);
   const left = supplyLeft(), sup = { x: 0.4 * u, y: by - 1.9 * u, w: bw * 2 + 0.3 * u, h: 0.95 * u };
   button(sup, left ? `${ctx.adMode() === 'video' ? '▶ ' : ''}领取补给 +${SUPPLY.cr} 资金（今日还剩 ${left} 次）` : '今日补给已领完', left ? PAL.amber : PAL.off, 0.36);
@@ -87,7 +96,7 @@ export function drawGarage() {
     if (WX.supplyDay !== today()) { WX.supplyDay = today(); WX.supplyN = 0; }
     WX.supplyN++; saveWX();
     I.save.cr += SUPPLY.cr; I.save.earned = (I.save.earned || 0) + SUPPLY.cr; I.writeSave();
-    I.setState('garage');   // rebuild main.js's lists so the buy buttons see the new balance
+    ctx.regarage();   // rebuild main.js's lists so the buy buttons see the new balance
     ctx.toast(`补给到账 · +${SUPPLY.cr} 资金`);
   }));
   // right panel
@@ -97,7 +106,7 @@ export function drawGarage() {
     const r = { x: x0 + i * tw + 2, y: top, w: tw - 4, h: tabH }, on = GS.tab === k;
     box(r, on ? 'rgba(95,227,255,0.22)' : 'rgba(10,20,28,0.8)', on ? PAL.cyan : PAL.line, on ? 2 : 1);
     text(n, r.x + r.w / 2, r.y + r.h / 2, 0.36 * u, on ? PAL.ink : PAL.dim, 'center', 700);
-    hit(r, () => { GS.tab = k; });
+    hit(r, () => { GS.tab = k; if (k === 'medal') refreshMedals(); });
   });
   if (GS.tab === 'arm') {
     const sw = (x1 - x0) / 3, y = top + tabH + 0.2 * u;
@@ -137,6 +146,21 @@ export function drawGarage() {
       });
       return;
     }
+    if (it.kind === 'medal') {
+      box(r, it.on ? 'rgba(255,190,80,0.14)' : 'rgba(12,22,30,0.85)', it.on ? PAL.amber : 'rgba(95,227,255,0.18)', 1);
+      text(it.on ? '★' : '☆', r.x + 0.5 * u, r.y + hh / 2, 0.5 * u, it.on ? PAL.amber : PAL.dim);
+      const tw2 = r.w - 3.4 * u;
+      flat(it.name, r.x + 1.0 * u, r.y + hh * 0.32, 0.34 * u, it.on ? PAL.ink : PAL.dim, 'left', 700, tw2);
+      flat(it.desc, r.x + 1.0 * u, r.y + hh * 0.7, 0.25 * u, PAL.dim, 'left', 500, tw2);
+      text(it.label, r.x + r.w - 0.3 * u, r.y + hh * 0.36, 0.28 * u, it.on ? PAL.amber : PAL.ink, 'right', 700);
+      if (it.pk >= 0) {
+        const bx = r.x + r.w - 2.3 * u, by2 = r.y + hh * 0.66, bw2 = 2.0 * u;
+        g.fillStyle = 'rgba(255,255,255,0.15)'; g.fillRect(bx, by2, bw2, 0.1 * u);
+        g.fillStyle = PAL.cyan; g.fillRect(bx, by2, bw2 * it.pk, 0.1 * u);
+        flat(it.prog, bx, by2 + 0.25 * u, 0.2 * u, PAL.dim, 'left', 500, bw2);
+      }
+      return;
+    }
     const on = it.kind === 'opt' && it.on;
     box(r, on ? 'rgba(95,227,255,0.16)' : 'rgba(12,22,30,0.85)', on ? PAL.cyan : 'rgba(95,227,255,0.18)', on ? 2 : 1);
     const rw = it.kind === 'row' ? 3.0 * u : on ? 1.6 * u : 0;
@@ -174,4 +198,6 @@ export function garageEnd(t) {
   const h = GS.hits.slice().reverse().find((q) => q.r.h > 0 && inRect(q.r, t.clientX, t.clientY));
   if (h) h.fn();
 }
+// entering the hangar on the medals tab: main.js only rebuilds #mList on setState('medals')
+export function garageEnter() { if (GS.tab === 'medal') refreshMedals(); }
 export const garageState = GS;

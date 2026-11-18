@@ -37,7 +37,10 @@ let current = () => null;        // () => { key, name } of the mission the card 
 let pendingJump = null;
 
 function card(m) {
-  const o = m ? { title: `${GAME_NAME}：来挑战「${m.name}」`, query: `m=${m.key}` } : { title: `${GAME_NAME}：驾驶机甲出击`, query: '' };
+  // the daily card always opens today's daily, whatever day the friend taps it
+  const o = !m ? { title: `${GAME_NAME}：驾驶机甲出击`, query: '' }
+    : m.key === 'daily' ? { title: `${GAME_NAME} 每日挑战：今天这套地图和头目，你能打赢吗？`, query: 'm=daily' }
+      : { title: `${GAME_NAME}：来挑战「${m.name}」`, query: `m=${m.key}` };
   if (SHARE_IMAGE) o.imageUrl = SHARE_IMAGE;
   return o;
 }

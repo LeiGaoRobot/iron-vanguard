@@ -4,10 +4,10 @@
 /* global wx */
 import * as THREE from 'three';
 import { explodeAt, WIND } from '../../site/combat.js';
-import { GAME_NAME } from './config.js';
+import { GAME_NAME, AGE, AGE_TEXT, HEALTH, GAME_CLUB } from './config.js';
 import { initAds, adMode, adBusy, showRewarded, initShare, shareMission, takeJump } from './ads.js';
-import { S, PAL, FONT, unit, inRect, el, zh, wName, stripTags, money, clock, text, flat, bar, circle, panel, button } from './ui.js';
-import { initGarage, drawGarage, garageStart, garageMove, garageEnd } from './garage.js';
+import { S, PAL, FONT, unit, inRect, el, zh, wName, stripTags, money, clock, text, flat, bar, box, circle, panel, button } from './ui.js';
+import { initGarage, drawGarage, garageStart, garageMove, garageEnd, garageEnter } from './garage.js';
 import { initQuality, monitor, resetMonitor, thinParticles } from './quality.js';
 import { WX, saveWX } from './store.js';
 import { INTRO, INTRO_KEY, STEPS, OD_STEP } from './intro.js';
@@ -15,7 +15,7 @@ import { snapRun, topSources } from './recap.js';
 import * as stats from './stats.js';
 
 const iv = () => window.__iv;
-let cv, g, tex, scene, cam, mesh, K = 1, frameN = 0, lastState = '', misIdx = 0;
+let cv, g, tex, scene, cam, mesh, K = 1, frameN = 0, lastState = '', misIdx = 0, redraw = false;
 const held = {};   // touch identifier -> button key
 const BTN = [
   { k: 'b0', t: '右臂', s: '开火', x: -2.3, y: -2.3, r: 1.25, c: PAL.red },
@@ -46,8 +46,24 @@ function menuRects() {
     next: { x: W / 2 + 4.6 * u, y: H * 0.52, r: 0.7 * u },
     garage: { x: W / 2 - 4.1 * u, y: H * 0.68, w: 3.9 * u, h: 1.15 * u },
     go: { x: W / 2 + 0.2 * u, y: H * 0.68, w: 3.9 * u, h: 1.15 * u },
+    daily: { x: W / 2 - 4.1 * u, y: H * 0.68 + 1.4 * u, w: 8.2 * u, h: 0.9 * u },
     quit: { x: W / 2 - 2.2 * u, y: H * 0.68, w: 4.4 * u, h: 1.15 * u },
+    age: { x: 0.5 * u, y: 1.0 * u, w: 2.4 * u, h: 0.62 * u },
   };
+}
+// ---------------------------------------------------------------- progression: a mission opens once one of the two before it is cleared
+const DIFF_CN = { easy: '新兵', normal: '正规', hard: '王牌' };
+const cleared = (k) => { const M = iv().MISSIONS[k], b = iv().save.best, p = ((M && M.bestKey) || k) + '.'; return Object.keys(b).some((x) => x.startsWith(p)); };
+function frontier() { let f = -1; missions().forEach((k, i) => { if (cleared(k)) f = i; }); return f; }
+const AHEAD = 2;
+const isOpen = (i) => i <= frontier() + AHEAD;
+// how many more clears (each opening AHEAD further) until mission i opens
+const clearsToOpen = (i) => Math.ceil((i - AHEAD - frontier()) / AHEAD);
+const dailyOpen = () => frontier() >= 1;   // after the tutorial and the proving ground
+function goCurrent() {
+  const ks = missions(), i = misIdx % ks.length;
+  if (!isOpen(i)) { toast(`尚未解锁 · 再通关 ${clearsToOpen(i)} 场前面的任务`); return; }
+  startMission();
 }
 // two-by-two button grid under a panel (revive / result screens)
 function gridRects() {
@@ -56,10 +72,11 @@ function gridRects() {
 }
 
 // ---------------------------------------------------------------- per-run state: rewards, tutorial, stats
-const RW = { revived: false, didRevive: false, doubled: false, earned: 0, rank: '', toast: '', toastT: 0, recap: [], logged: false };
+const RW = { revived: false, didRevive: false, doubled: false, earned: 0, rank: '', toast: '', toastT: 0, recap: [], logged: false, addCard: false };
+const UI = { age: false };   // the 适龄提示 panel is open over the title
 const TU = { on: false, i: 0, stepT: 0, p0: new THREE.Vector3(), od: false, odT: 0 };
 function newRun(I) {
-  Object.assign(RW, { revived: false, didRevive: false, doubled: false, earned: 0, rank: '', recap: [], logged: false });
+  Object.assign(RW, { revived: false, didRevive: false, doubled: false, earned: 0, rank: '', recap: [], logged: false, addCard: false });
   snapRun(I.G); resetMonitor(); thinParticles(I.G);
   stats.missionStart(I.cfg.mission);
   TU.on = I.cfg.mission === INTRO_KEY; TU.i = 0; TU.stepT = 0; TU.od = false; TU.odT = 0; TU.p0.copy(I.G.player.pos);
@@ -95,6 +112,8 @@ function readResult(I) {
   RW.rank = el('rRank').textContent || '';
   RW.recap = I.run.won ? [] : topSources(I.G, I.run.coreLost ? 'core' : 'player', 2);
   logEnd(I, I.run.won ? 'win' : 'fail');
+  // first real win: ask once to add the game to 我的小程序 (it is how players find it again tomorrow)
+  if (I.run.won && I.cfg.mission !== INTRO_KEY && !WX.addTip) { RW.addCard = true; WX.addTip = true; saveWX(); }
 }
 function doubleReward() {
   const I = iv();
@@ -132,19 +151,39 @@ function setGarageView(on) {
   const W = innerWidth, H = innerHeight, k = 1.3;
   if (on) c.setViewOffset(W, H, W * (0.5 - 0.24 * k), H * (0.5 - 0.42 * k), W * k, H * k); else if (c.view && c.view.enabled) c.clearViewOffset();
 }
+// rebuild main.js's hangar lists in place (setState('garage') also resets main.js's own view offset)
+function regarage() { iv().setState('garage'); setGarageView(true); }
+
+// ---------------------------------------------------------------- 游戏圈 button: a native button, shown on the title only
+let club = null, clubOn = false;
+function initClub() {
+  if (!GAME_CLUB || typeof wx.createGameClubButton !== 'function') return;
+  const u = unit();
+  try {
+    club = wx.createGameClubButton({ icon: 'white', style: { left: Math.round(0.55 * u), top: Math.round(innerHeight - 1.75 * u), width: 36, height: 36 } });
+    club.hide();
+  } catch (e) { club = null; }
+}
+function showClub(on) { if (!club || on === clubOn) return; clubOn = on; if (on) club.show(); else club.hide(); }
+const clubPos = () => { const u = unit(); return { x: 0.55 * u + 18, y: innerHeight - 1.75 * u + 18 }; };
 
 // ---------------------------------------------------------------- touch
 function onStart(res) {
   const I = iv(); if (!I) return;
+  redraw = true;   // the title redraws at 2 Hz when idle; a tap must show at once
   const st = I.state(), T = I.touch;
   for (const t of res.changedTouches) {
     const x = t.clientX, y = t.clientY;
     if (st === 'title') {
+      if (splashOn()) continue;
+      if (UI.age) { UI.age = false; continue; }   // any tap closes the 适龄提示 panel
       const R = menuRects(), n = missions().length;
       if (hit(R.prev, x, y, 1.6)) misIdx = (misIdx + n - 1) % n;
       else if (hit(R.next, x, y, 1.6)) misIdx = (misIdx + 1) % n;
-      else if (inRect(R.go, x, y)) startMission();
+      else if (inRect(R.go, x, y)) goCurrent();
       else if (inRect(R.garage, x, y)) I.setState('garage');
+      else if (inRect(R.daily, x, y)) { if (dailyOpen()) startMission('daily'); else toast('通关「演习场」后开放每日挑战'); }
+      else if (inRect(R.age, x, y)) UI.age = true;
       continue;
     }
     if (st === 'garage') { if (!adBusy()) garageStart(t); continue; }
@@ -161,6 +200,7 @@ function onStart(res) {
     }
     if (st === 'result') {
       if (adBusy()) continue;
+      if (RW.addCard) { RW.addCard = false; continue; }   // first tap dismisses the add-to-My-Mini-Programs card
       const Q = gridRects();
       if (inRect(Q.a, x, y)) doubleReward();
       else if (inRect(Q.b, x, y)) shareMission(curMission());
@@ -200,6 +240,15 @@ function onEnd(res) {
     if (t.identifier === T.stick) { T.stick = null; T.mx = T.my = 0; }
     if (t.identifier === T.look) T.look = null;
   }
+}
+// extra touch aim assist while a fire button is held: main.js already drifts the view toward the primary lock;
+// a thumb on the fire button cannot also fine-aim, so pull harder, most of all while the other thumb is off the view
+function aimAssist(I, dt) {
+  const T = I.touch, lt = I.G.lockTarget;
+  if (!T.active || !lt || lt.sx === undefined || !(T.b.b0 || T.b.b2)) return;
+  const ox = (lt.sx - innerWidth / 2) / innerHeight, oy = (lt.sy - innerHeight / 2) / innerHeight;
+  const k = T.look === null ? 2.4 : 1.0;
+  I.cam.yaw -= ox * 2.2 * k * dt; I.cam.pitch -= oy * 1.6 * k * dt;
 }
 
 // ---------------------------------------------------------------- tutorial (新兵训练)
@@ -291,14 +340,78 @@ function drawPlay() {
 function drawTitle() {
   const I = iv(), W = innerWidth, H = innerHeight, u = unit(), ks = missions(), k = ks[misIdx % ks.length], M = I.MISSIONS[k];
   panel(GAME_NAME, '横屏操作 · 左侧摇杆移动 · 右侧拖动转视角');
-  const R = menuRects();
-  text(M.name, W / 2, H * 0.48, u * 0.6, PAL.amber, 'center', 700);
+  const R = menuRects(), i = misIdx % ks.length, open = isOpen(i), done = cleared(k);
+  text(`${M.name}${done ? ' ✓' : ''}`, W / 2, H * 0.48, u * 0.6, open ? PAL.amber : PAL.dim, 'center', 700);
   circle(R.prev.x, R.prev.y, R.prev.r, 'rgba(10,20,28,0.8)', PAL.line); text('‹', R.prev.x, R.prev.y - 2, R.prev.r * 1.3);
   circle(R.next.x, R.next.y, R.next.r, 'rgba(10,20,28,0.8)', PAL.line); text('›', R.next.x, R.next.y - 2, R.next.r * 1.3);
-  text(`${misIdx % ks.length + 1} / ${ks.length}${k === INTRO_KEY ? ' · 新手先打这一关' : ''}`, W / 2, H * 0.6, u * 0.28, PAL.dim);
+  const sub = !open ? `再通关 ${clearsToOpen(i)} 场前面的任务解锁` : k === INTRO_KEY ? '新手先打这一关' : `难度 ${DIFF_CN[I.cfg.diff] || ''} · 可在机库更改`;
+  text(`${i + 1} / ${ks.length} · ${sub}`, W / 2, H * 0.6, u * 0.28, open ? PAL.dim : PAL.red);
   button(R.garage, '机库', PAL.amber);
-  button(R.go, '出击');
+  button(R.go, open ? '出击' : '未解锁', open ? PAL.cyan : PAL.off);
+  // daily challenge: today's seeded map / enemies / boss
+  const D = I.MISSIONS.daily, dk = D && D.bestKey ? Object.keys(I.save.best).some((x) => x.startsWith(D.bestKey + '.')) : false;
+  const dEnv = D ? (D.desc.split(' · ')[1] || '') : '';
+  button(R.daily, dailyOpen() ? `每日挑战 · ${dEnv}${dk ? ' · 今日已完成 ✓' : ' · 今日新地图与头目'}` : '每日挑战 · 通关「演习场」后开放', dailyOpen() ? PAL.amber : PAL.off, 0.38);
   text(money(I.save.cr), u * 0.5, u * 0.6, u * 0.34, PAL.amber, 'left', 700);
+  const mc = (el('btnMedals').textContent || '').replace(/^\S+\s*/, '');
+  if (mc) text(`勋章 ${mc}`, W - 0.5 * u, H - 0.5 * u, u * 0.28, PAL.dim, 'right');
+  drawAgeBadge(R.age);
+  if (club) { const c = clubPos(); text('游戏圈', c.x, c.y + 26, u * 0.24, PAL.dim); }
+  if (UI.age) drawAgePanel();
+}
+// 适龄提示: a badge on the title and boot screens; tapping it opens the full text
+function drawAgeBadge(r) {
+  const u = unit();
+  box(r, 'rgba(20,60,30,0.85)', '#6fdc8c', 2);
+  text(`${AGE}+`, r.x + 0.5 * u, r.y + r.h / 2, r.h * 0.5, '#e8ffe8', 'center', 800);
+  text('适龄提示', r.x + 1.55 * u, r.y + r.h / 2, u * 0.24, '#bff0c8', 'center', 600);
+}
+// greedy line wrap by measured width (CJK text has no spaces to break at)
+function wrap(s, maxW, size, weight = 500) {
+  g.font = `${weight} ${Math.round(size)}px ${FONT}`;
+  const out = []; let cur = '';
+  for (const ch of s) { if (cur && g.measureText(cur + ch).width > maxW) { out.push(cur); cur = ch.trim(); } else cur += ch; }
+  if (cur) out.push(cur);
+  return out;
+}
+function drawAgePanel() {
+  const W = innerWidth, H = innerHeight, u = unit(), w = Math.min(W * 0.84, 17 * u), fs = u * 0.27, lh = u * 0.44;
+  const lines = AGE_TEXT.flatMap((s, j) => wrap(`${j + 1}. ${s}`, w - u, fs).map((t, k) => (k ? `    ${t}` : t)));
+  const h = 1.5 * u + lines.length * lh + 0.9 * u, x = (W - w) / 2, y = Math.max(4, (H - h) / 2);
+  g.fillStyle = 'rgba(0,0,0,0.6)'; g.fillRect(0, 0, W, H);
+  box({ x, y, w, h }, 'rgba(8,16,22,0.96)', '#6fdc8c', 2);
+  text(`适龄提示 · ${AGE} 周岁以上`, W / 2, y + 0.65 * u, u * 0.42, PAL.ink, 'center', 800);
+  lines.forEach((t, j) => flat(t, x + 0.5 * u, y + 1.45 * u + j * lh, fs, PAL.dim, 'left', 500));
+  text('点击任意位置关闭', W / 2, y + h - 0.45 * u, u * 0.24, PAL.dim);
+}
+// ---------------------------------------------------------------- boot screen: 健康游戏忠告, 适龄提示, download progress
+const SPL = { t0: Date.now(), min: 3000 };   // the notice stays up at least 3 s even when the package is cached
+const splashOn = () => Date.now() - SPL.t0 < SPL.min;
+function drawSplash() {
+  const W = innerWidth, H = innerHeight, u = unit(), I = window.__iv, L = window.__MA_LOAD || { p: 0, phase: '载入中' };
+  const ready = I && I.state && I.state() !== 'loading', le = el('loading'), err = le && /载入失败/.test(le.innerHTML || '');
+  g.fillStyle = '#070c12'; g.fillRect(0, 0, W, H);
+  g.fillStyle = 'rgba(95,227,255,0.06)'; for (let x = 0; x < W; x += u) g.fillRect(x, 0, 1, H);
+  text(GAME_NAME, W / 2, H * 0.3, u * 1.1, PAL.ink, 'center', 800);
+  text('科幻机甲动作射击', W / 2, H * 0.3 + u * 0.95, u * 0.34, PAL.dim);
+  const p = ready ? 1 : L.p, bw = Math.min(W * 0.46, 14 * u);
+  bar((W - bw) / 2, H * 0.53, bw, u * 0.2, p, err ? PAL.red : PAL.cyan, '');
+  const ph = err ? '载入失败，请检查网络后重新打开' : ready ? '准备就绪' : L.p >= 1 ? '解析模型与场景' : `${L.phase} ${Math.round(L.p * 100)}%`;
+  text(ph, W / 2, H * 0.53 + u * 0.6, u * 0.3, err ? PAL.red : PAL.dim);
+  text('健康游戏忠告', W / 2, H - 1.75 * u, u * 0.3, PAL.ink, 'center', 700);
+  HEALTH.forEach((s, j) => text(s, W / 2, H - (1.15 - j * 0.5) * u, u * 0.28, PAL.dim));
+  drawAgeBadge(menuRects().age);
+}
+// before main.js reaches the title there is no game frame (and so no afterRender): draw the boot screen ourselves
+function splashLoop() {
+  const I = window.__iv;
+  if (I && I.G && I.G.renderer && I.state() !== 'loading') return;   // afterRender takes over
+  if (I && I.G && I.G.renderer) {
+    g.setTransform(K, 0, 0, K, 0, 0); g.clearRect(0, 0, innerWidth, innerHeight);
+    drawSplash(); tex.needsUpdate = true;
+    const r = I.G.renderer; r.setRenderTarget(null); r.render(scene, cam);
+  }
+  requestAnimationFrame(splashLoop);
 }
 function drawPause() {
   panel('已暂停', '点击任意位置继续');
@@ -325,6 +438,21 @@ function drawResult() {
   button(Q.b, '分享给好友', PAL.cyan);
   button(Q.c, '再来一次', PAL.cyan);
   button(Q.d, RW.earned > 0 ? '去机库' : '返回标题', PAL.dim);
+  if (RW.addCard) drawAddCard();
+}
+// points at the top-right capsule (···) where 添加到我的小程序 lives
+function drawAddCard() {
+  const W = innerWidth, H = innerHeight, u = unit();
+  let mb = null; try { mb = wx.getMenuButtonBoundingClientRect && wx.getMenuButtonBoundingClientRect(); } catch (e) { mb = null; }
+  const ax = mb && mb.width ? mb.left + mb.width * 0.3 : W - 2.2 * u, ay = mb && mb.height ? mb.bottom + 4 : 1.3 * u;
+  g.fillStyle = 'rgba(0,0,0,0.55)'; g.fillRect(0, 0, W, H);
+  const w = Math.min(W * 0.5, 12 * u), h = 2.6 * u, x = Math.min(W - w - 0.4 * u, ax - w * 0.75), y = ay + 0.9 * u;
+  box({ x, y, w, h }, 'rgba(8,16,22,0.97)', PAL.amber, 2);
+  g.strokeStyle = PAL.amber; g.lineWidth = 3; g.beginPath(); g.moveTo(ax, y); g.lineTo(ax, ay + 6); g.moveTo(ax - 8, ay + 16); g.lineTo(ax, ay + 6); g.lineTo(ax + 8, ay + 16); g.stroke();
+  text(`首胜！把「${GAME_NAME}」添加到我的小程序`, x + w / 2, y + 0.55 * u, u * 0.36, PAL.ink, 'center', 700);
+  text('点右上角「···」→「添加到我的小程序」', x + w / 2, y + 1.2 * u, u * 0.3, PAL.amber);
+  text('下次在微信首页下拉就能找到，每日挑战天天换新', x + w / 2, y + 1.7 * u, u * 0.26, PAL.dim);
+  text('点击任意位置继续', x + w / 2, y + h - 0.32 * u, u * 0.22, PAL.dim);
 }
 function drawToast(dt) {
   if (RW.toastT <= 0) return;
@@ -340,17 +468,25 @@ function drawToast(dt) {
 
 // ---------------------------------------------------------------- per-frame composite
 let prevSt = 'loading', booted = false;
-function boot(I) {   // once main.js is up: tutorial mission, quality tier
+function boot(I) {   // once main.js is up: tutorial mission, quality tier, first-launch difficulty, where the title opens
   booted = true;
   if (!I.MISSIONS[INTRO_KEY]) I.MISSIONS[INTRO_KEY] = INTRO;
   initQuality();
+  if (!WX.diffInit) {   // brand-new players start on 新兵 (half damage taken); returning web-save players keep theirs
+    if (!Object.keys(I.save.best).length && !(I.save.earned > 0)) I.cfg.diff = 'easy';
+    WX.diffInit = true; saveWX();
+  }
+  const ks = missions(), f = frontier();
+  misIdx = Math.min(ks.length - 1, Math.max(0, f + 1));   // open on the next mission to play
 }
 function afterRender(dt = 1 / 60) {
   const I = iv();
   let st = I.state();
   if (st === 'loading') { prevSt = st; return; }
   if (!booted) boot(I);
-  if (st === 'title') {
+  const splash = splashOn() && st === 'title';
+  showClub(st === 'title' && !splash && !UI.age);
+  if (st === 'title' && !splash) {
     const m = takeJump(), ks = missions();
     if (m && I.MISSIONS[m]) { const i = ks.indexOf(m); if (i >= 0) misIdx = i; startMission(m); st = I.state(); }   // opened from a share card
     else if (!WX.introDone && !(I.save.earned > 0) && !stats.summary().length) { startMission(INTRO_KEY); st = I.state(); }               // first launch: tutorial
@@ -358,20 +494,22 @@ function afterRender(dt = 1 / 60) {
   // state transitions
   if (st === 'play' && !['play', 'pause', 'revive'].includes(prevSt)) newRun(I);
   if (st === 'result' && prevSt !== 'result') readResult(I);
-  if ((st === 'garage') !== (prevSt === 'garage')) setGarageView(st === 'garage');
+  if ((st === 'garage') !== (prevSt === 'garage')) { setGarageView(st === 'garage'); if (st === 'garage') garageEnter(); }
   if (st === 'play') {
     if (canRevive(I)) { I.setState('revive'); st = 'revive'; }
-    else { tutorStep(I, dt); const m = monitor(); if (m) toast(m); }
+    else { tutorStep(I, dt); aimAssist(I, dt); const m = monitor(); if (m) toast(m); }
   }
   prevSt = st;
   frameN++;
-  const dirty = st !== lastState || st !== 'title' || frameN % 30 === 0 || RW.toastT > 0;
-  if (dirty && (frameN % 2 === 0 || st !== lastState)) {   // redraw at ~30 Hz, the texture upload is the cost
+  const dirty = st !== lastState || st !== 'title' || splash || redraw || frameN % 30 === 0 || RW.toastT > 0;
+  if (dirty && (frameN % 2 === 0 || st !== lastState || redraw)) {
+    redraw = false;   // redraw at ~30 Hz, the texture upload is the cost
     lastState = st;
     g.setTransform(K, 0, 0, K, 0, 0); g.clearRect(0, 0, innerWidth, innerHeight);
     if (st === 'play') drawPlay();
     else if (st === 'pause') { drawPlay(); drawPause(); }
     else if (st === 'revive') { drawPlay(); drawRevive(); }
+    else if (splash) drawSplash();
     else if (st === 'title') drawTitle();
     else if (st === 'garage') drawGarage();
     else if (st === 'result') drawResult();
@@ -397,9 +535,10 @@ export function initHud() {
   scene.add(mesh);
   const wait = () => { if (window.__iv && window.__iv.G) { window.__iv.G.afterRender = afterRender; } else setTimeout(wait, 50); };
   wait();
-  initAds(); initShare(curMission);
-  initGarage({ iv, g: () => g, startMission, missionName: () => (curMission() || {}).name || '', toast, showRewarded, adMode, onAd });
-  window.__ivwx = { stats, WX, RW, TU };   // test / DevTools hooks
+  requestAnimationFrame(splashLoop);
+  initAds(); initShare(curMission); initClub();
+  initGarage({ iv, g: () => g, startMission, goCurrent, regarage, missionName: () => (curMission() || {}).name || '', toast, showRewarded, adMode, onAd });
+  window.__ivwx = { stats, WX, RW, TU, UI, SPL, frontier, isOpen, club: () => club };   // test / DevTools hooks
   wx.onTouchStart(onStart); wx.onTouchMove(onMove); wx.onTouchEnd(onEnd); wx.onTouchCancel(onEnd);
   addEventListener('resize', resize);
 }

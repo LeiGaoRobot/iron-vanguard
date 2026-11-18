@@ -177,10 +177,15 @@ function WxAudioContext() {
 GG.AudioContext = WxAudioContext; GG.webkitAudioContext = WxAudioContext;
 
 // ---- kit GLB lives in the "assets" subpackage (keeps the main package under 4 MB)
+// download progress for the boot screen (hud.js draws it while main.js is still in its 'loading' state)
+GG.__MA_LOAD = { p: 0, phase: '下载资源' };
 GG.__MA_KIT_LOAD = () => new Promise((resolve, reject) => {
-  const read = () => { try { resolve(wx.getFileSystemManager().readFileSync('assets/kit.glb')); } catch (e) { reject(e); } };
-  if (wx.loadSubpackage) wx.loadSubpackage({ name: 'assets', success: read, fail: (e) => reject(new Error('subpackage: ' + (e && e.errMsg))) });
-  else read();
+  const L = GG.__MA_LOAD;
+  const read = () => { L.p = 1; L.phase = '解析模型'; try { resolve(wx.getFileSystemManager().readFileSync('assets/kit.glb')); } catch (e) { reject(e); } };
+  if (wx.loadSubpackage) {
+    const task = wx.loadSubpackage({ name: 'assets', success: read, fail: (e) => reject(new Error('subpackage: ' + (e && e.errMsg))) });
+    if (task && task.onProgressUpdate) task.onProgressUpdate((r) => { L.p = Math.min(1, (r && r.progress || 0) / 100); });
+  } else read();
 });
 
 // ---- host events

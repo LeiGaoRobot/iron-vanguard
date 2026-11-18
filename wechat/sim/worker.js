@@ -21,7 +21,15 @@ function makeWx(m) {
     removeStorageSync: (k) => { store.delete(k); },
     clearStorageSync: () => store.clear(),
     getFileSystemManager: () => ({ readFileSync: (p) => { if (p === 'assets/kit.glb') return m.glb; throw new Error('no such file ' + p); } }),
-    loadSubpackage: ({ name, success, fail }) => { setTimeout(() => (name === 'assets' ? success() : fail({ errMsg: 'no subpackage ' + name })), 30); return { onProgressUpdate() {} }; },
+    // progress ticks like the real download (25 / 60 / 100 %) so the boot screen's bar can be checked
+    loadSubpackage: ({ name, success, fail }) => {
+      const cbs = [], tick = (p) => cbs.forEach((f) => f({ progress: p, totalBytesWritten: p, totalBytesExpectedToWrite: 100 }));
+      [25, 60, 100].forEach((p, i) => setTimeout(() => tick(p), 150 * (i + 1)));
+      setTimeout(() => (name === 'assets' ? success() : fail({ errMsg: 'no subpackage ' + name })), 600);
+      return { onProgressUpdate(f) { cbs.push(f); } };
+    },
+    getMenuButtonBoundingClientRect: () => { const w = 87, h = 32, r = info.windowWidth - 10; return { width: w, height: h, top: 8, bottom: 8 + h, left: r - w, right: r }; },
+    createGameClubButton: (o) => { const b = { style: o.style, icon: o.icon, visible: true, show() { b.visible = true; }, hide() { b.visible = false; }, destroy() { b.visible = false; }, onTap() {} }; self.club = b; return b; },
     onTouchStart: (f) => cbs.touchstart.push(f),
     onTouchMove: (f) => cbs.touchmove.push(f),
     onTouchEnd: (f) => cbs.touchend.push(f),
