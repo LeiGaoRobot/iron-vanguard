@@ -83,6 +83,9 @@ M = dict(
     DiscEdge=mat("DiscEdge", "#ffd0f4", 0.2, emit="#ff4ad8", strength=7.0),
     Tether=mat("Tether", "#c8fff0", 0.2, emit="#30ffc8", strength=6.5),
     Blink=mat("Blink", "#c8dcff", 0.25, emit="#6a8cff", strength=2.2),
+    EelGlow=mat("EelGlow", "#9ad8ec", 0.2, emit="#30c8ff", strength=2.2),
+    EelSkin=mat("EelSkin", "#1c2a34", 0.45, metal=0.5),
+    Sonar=mat("Sonar", "#c8fff8", 0.25, emit="#40f0e0", strength=1.8),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -846,6 +849,43 @@ def build_blink():
     box((0, -0.55, 0.22), (0.44, 0.03, 0.18), M["Hazard"], K)
     muzzle("Muzzle_Blink", (0, 0.5, 0.5), K)
 
+def build_eel():
+    # Eel: armoured serpent drone. Head and one body segment are separate kits; the game strings 9 segments behind the head. front = +Y
+    K = kit("E_EelHead")
+    box((0, 0.1, 0.05), (1.5, 2.2, 1.1), M["EelSkin"], K, bevel=0.2)
+    box((0, 0.9, 0.3), (1.2, 1.2, 0.5), M["EArmor"], K, bevel=0.12)
+    box((0, 1.0, -0.3), (1.1, 1.3, 0.35), M["EelSkin"], K, bevel=0.1, rot=(0.18, 0, 0))   # lower jaw
+    for s_ in (-1, 1):
+        box((s_ * 0.45, 1.45, 0.38), (0.22, 0.3, 0.14), M["EEye"], K)
+        box((s_ * 0.85, -0.2, 0.0), (0.12, 1.1, 0.7), M["EArmor2"], K, rot=(0, 0, s_ * 0.5))   # gill fins
+        for k in range(3):
+            box((s_ * 0.6, 1.62, -0.05 - k * 0.0), (0.05, 0.08, 0.28), M["Joint"], K, rot=(0, 0, s_ * 0.3))
+    box((0, -0.3, 0.75), (0.12, 1.6, 0.4), M["EelGlow"], K)      # dorsal glow ridge
+    box((0, 0.6, 0.62), (0.5, 0.06, 0.08), M["Hazard"], K)
+    box((0, -0.9, 0.0), (1.0, 0.4, 0.8), M["Frame"], K, bevel=0.06)
+    muzzle("Muzzle_Eel", (0, 1.7, 0.0), K)
+
+    S = kit("E_EelSeg")
+    box((0, 0, 0), (1.2, 1.4, 0.95), M["EelSkin"], S, bevel=0.22)
+    box((0, 0, 0.42), (0.9, 1.1, 0.25), M["EArmor"], S, bevel=0.08)
+    box((0, 0, 0.66), (0.1, 1.0, 0.32), M["EelGlow"], S)
+    for s_ in (-1, 1):
+        box((s_ * 0.62, 0, -0.05), (0.08, 1.0, 0.5), M["EelGlow"], S)
+        box((s_ * 0.75, -0.2, -0.1), (0.1, 0.6, 0.45), M["EArmor2"], S, rot=(0, 0, s_ * 0.6))
+
+def build_sonar():
+    K = kit("S_Sonar")
+    # shoulder sonar: squat pod with a forward dish and a glowing emitter
+    box((0, -0.15, 0.22), (0.6, 0.85, 0.36), M["Armor2"], K, bevel=0.05)
+    box((0.31, -0.15, 0.26), (0.04, 0.75, 0.2), M["Accent"], K)
+    cyl((0, 0.32, 0.5), 0.12, 0.3, M["Frame"], K, rot=(-math.pi / 2, 0, 0), verts=12)
+    cyl((0, 0.5, 0.5), 0.2, 0.1, M["Frame"], K, rot=(-math.pi / 2, 0, 0), verts=16, r2=0.42)
+    torus((0, 0.56, 0.5), 0.38, 0.035, M["Sonar"], K, rot=(math.pi / 2, 0, 0))
+    ball((0, 0.52, 0.5), 0.11, M["Sonar"], K)
+    for k in range(3):
+        box((0, -0.5 + k * 0.16, 0.42), (0.4, 0.05, 0.03), M["Joint"], K)
+    muzzle("Muzzle_Sonar", (0, 0.6, 0.5), K)
+
 def build_disc():
     K = kit("W_Disc")
     # disc launcher: flat armoured cradle with a spring arm; the loaded blade disc DS_Disc rides on top (hidden while thrown)
@@ -1255,7 +1295,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

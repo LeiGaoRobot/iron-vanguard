@@ -38,10 +38,11 @@ export const WEAPONS = {
   blink: { slot: 'shoulder', name: 'BL-2 跃迁推进器', en: 'BL-2 Blink Drive', desc: '向移动方向瞬移 22 m · 0.35 秒无敌 · 挣断钩锁 · 原地残影 0.3 秒后爆裂 · 2 次充能（各 5.5 秒）', type: 'blink', dist: 22, inv: 0.35, burst: 110, burstR: 9, mag: 2, rech: 5.5, sfx: 'blink' },
   decoy: { slot: 'shoulder', name: 'HD-1 全息诱饵', en: 'HD-1 Holo Decoy', desc: '投射机体全息影像 6 秒 · 吸引敌方火力（头目不易上当）· 被打碎时放出电磁冲击', type: 'decoy', hp: 380, dur: 6, cd: 20, burst: 70, burstR: 11, sfx: 'decoy' },
   orbital: { slot: 'shoulder', name: 'OS-1 轨道打击', en: 'OS-1 Orbital Strike', desc: '标记落点 · 1.4 秒后卫星光柱从天而降 · 半径 9 m 重击 · 落点灼烧 2 秒 · 锁定时卫星跟踪目标直到落下前 0.4 秒', type: 'orbital', dmg: 360, R: 9, delay: 1.4, dps: 40, burnT: 2, range: 170, cd: 13, sfx: 'orbital' },
+  sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -101,7 +102,7 @@ export const OD = { fill: 2600, dur: 10, dmg: 1.4, armor: 0.65 };
 // ------------------------------------------------------------------ damage
 function dealDamage(ent, dmg, team, at, label) {
   if (!ent.alive) return;
-  if (team === 'P') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.stunT > 0) dmg *= STUN_VULN; }   // EMP-stunned targets take extra damage
+  if (team === 'P') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.stunT > 0) dmg *= STUN_VULN; if (h.markT > 0) dmg *= h.maxHp > 3000 ? WEAPONS.sonar.bossVuln : WEAPONS.sonar.vuln; }   // EMP-stunned targets take extra damage
   if ((team === 'P' || team === 'X') && !G.pierce && !ent.isBarrel && !ent.isMine && !ent.isPlayer && !ent.isAlly && G.player) {   // warden dome: hits from outside are absorbed
     const w = domeAt(ent.c);
     if (w && G.player.pos.distanceTo(w.pos) > w.R) { w.absorb(dmg, domeEntry(w, G.player.center(_c), ent.c, new V3())); if (team === 'P' && !isAlly(label || G.curLabel)) G.stats.hits++; return; }
@@ -471,6 +472,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; launchStrike(owner, slot, d, dmgMul, aim, target); if (me) G.stats.shots++; }
   } else if (d.type === 'emp') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; empPulse(owner, d, dmgMul); if (me) G.stats.shots++; }
+  } else if (d.type === 'sonar') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; sonarPulse(owner, slot, d, dmgMul); if (me) G.stats.shots++; }
   } else if (d.type === 'shield') {
     if (pressed && ws.cd <= 0) { ws.cd = d.cd; ws.beamT = d.dur; sfx('shield', dist); if (me) G.stats.shots++; }
     if (ws.beamT > 0) ws.beamT = Math.max(0, ws.beamT - dt);
@@ -500,6 +503,31 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
       }
       ws.sndT -= dt; if (ws.sndT <= 0) { ws.sndT = 0.11; sfx('laser', dist); }
     }
+  }
+}
+
+// ------------------------------------------------------------------ SN-1 sonar: mark every enemy in range (no line of sight needed)
+function sonarPulse(owner, slot, d, mul) {
+  const fx = G.fx, c = owner.center(new V3()), g = new V3(owner.pos.x, owner.pos.y + 0.5, owner.pos.z);
+  fx.ring(g, null, 2, d.R, 0.9, 0x40f0e0); fx.ring(g, null, 1, d.R * 0.6, 0.6, 0xa8fff4); fx.ring(c, null, 1, d.burstR * 1.3, 0.3, 0xffffff);
+  fx.flash(c, 0x40f0e0, 26, 30, 0.2);
+  G.queue.push({ label: 'p-sonar', t: 0.25, fn: () => fx.ring(g, null, 2, d.R * 0.85, 0.7, 0x40f0e0) });
+  sfx('sonar', 0);
+  let n = 0;
+  for (const e of G.enemies) {
+    if (!e.alive || e.dying || e.c.distanceTo(c) > d.R) continue;
+    e.markT = d.mark; n++;
+    if (e.c.distanceTo(c) < d.burstR + (e.r || 1) * 0.6) { G.curLabel = 'p-sonar'; dealDamage(e.parts ? e.parts[0] : e, d.burst * mul, 'P', e.c, 'p-sonar'); }
+  }
+  for (const m of G.mines) if (m.alive && m.pos.distanceTo(c) < d.R) m.markT = d.mark;
+  G.marks = (G.marks || 0) + n; G.pings = (G.pings || 0) + 1;
+}
+function updateMarks(dt) {
+  for (const e of G.enemies) {
+    if (!(e.markT > 0)) continue;
+    e.markT -= dt; if (!e.alive || e.dying) continue;
+    e._mk = (e._mk || 0) - dt;
+    if (e._mk <= 0) { e._mk = 0.12; G.fx.emit('add', { x: e.c.x, y: e.c.y + (e.r || 2) + 1.4, z: e.c.z, vy: 0.6, life: 0.22, s0: 2.0, s1: 0.7, c0: e.markT < 1.5 && Math.sin(G.time * 20) > 0 ? 0xffffff : 0x40f0e0 }); }
   }
 }
 
@@ -1934,6 +1962,7 @@ export class Stalker extends Enemy {
     // visibility: cloaked units shimmer a little so a sharp eye can spot them
     const tgtA = want < 0.1 ? 0.05 + (Math.sin(G.time * 7 + this.ph) > 0.92 ? 0.12 : 0) : want;
     this.alpha += (tgtA - this.alpha) * (1 - Math.exp(-6 * dt));
+    if (this.markT > 0) this.alpha = Math.max(this.alpha, 0.62);   // sonar-marked: the cloak fails
     this.setAlpha(this.alpha); this.cloaked = this.alpha < 0.35;
     // pose
     const sp = Math.hypot(this.vel.x, this.vel.z);
@@ -2455,6 +2484,108 @@ export class Grappler extends Enemy {
   }
 }
 
+// Eel: armoured serpent drone (abyss). Swims a sinuous orbit around its target, coils for 0.85 s (blue streak shows the line),
+// then lunges straight through at 50 m/s; a body that brushes the player discharges. Head + two body segments are hittable parts.
+export const EEL = { n: 9, gap: 1.55, swim: 15, coil: 0.85, lunge: 50, lungeT: 1.0, bite: 42, shock: 14, shockR: 5.5 };
+export class Eel extends Enemy {
+  constructor(pos) {
+    super('eel', 'E_EelHead', pos, 640, 2.0); this.boom = 1.1;
+    this.vel = new V3(0, 0, -EEL.swim); this.ph = Math.random() * 6; this.orbit = Math.random() < 0.5 ? 1 : -1;
+    this.st = 'swim'; this.stT = 1 + Math.random() * 2; this.dir = new V3(); this.aimP = new V3(); this.shockT = 2; this.bit = false;
+    this.trail = []; const TN = Math.ceil(EEL.n * EEL.gap / 0.3) + 8;
+    for (let i = 0; i < TN; i++) this.trail.push(new V3(pos.x, pos.y, pos.z + i * 0.3));
+    this.segs = [];
+    for (let i = 0; i < EEL.n; i++) { const o = cloneKit('E_EelSeg'); o.scale.setScalar(1 - i * 0.055); o.position.set(pos.x, pos.y, pos.z + (i + 1) * EEL.gap); G.scene.add(o); this.segs.push(o); }
+    this.c.copy(pos);
+    const self = this;
+    const mk = (key, c, r, mul) => { const pt = { kind: 'cpart', key, owner: self, c, r, mul, get alive() { return self.alive && !self.dying; } }; pt.hit = (dmg, at, label) => self.hitPart(pt, dmg, label); return pt; };
+    this.parts = [mk('head', this.c, 2.0, 1), mk('body', this.segs[2].position, 1.5, 0.85), mk('tail', this.segs[5].position, 1.3, 0.85)];
+  }
+  hitPart(pt, dmg, label) {
+    // one splash / pierce event must not count once per segment: same label in the same frame only lands on the first part it touches
+    const key = (label || '?') + '|' + G.time;
+    if (this.hitKey === key && this.hitPt !== pt) return;
+    this.hitKey = key; this.hitPt = pt;
+    this.hit(dmg * pt.mul);
+  }
+  remove() { super.remove(); for (const o of this.segs) o.parent && o.parent.remove(o); }
+  explode() {
+    const ps = this.segs.map((o) => o.position.clone());
+    super.explode();
+    ps.forEach((q, i) => G.queue.push({ label: 'eel', t: 0.05 + i * 0.07, fn: () => { G.fx.explosion(q, 0.45 - i * 0.02, 0x60d8ff); G.fx.sparks(q, null, 5, 0x9fe8ff, 10, 1, 0.3, 0.2); } }));
+  }
+  update(dt) {
+    this.ph += dt; this.stT -= dt; this.shockT -= dt;
+    const P = G.player, tg = this.tg(), pc = tg.center(playerC);
+    const dist = this.c.distanceTo(pc), gy = groundAt(this.pos.x, this.pos.z, 99);
+    const los = this.checkLos(dt);
+    if (this.st === 'swim') {
+      _a.set(this.pos.x - pc.x, 0, this.pos.z - pc.z);
+      const ang = Math.atan2(_a.z, _a.x) + this.orbit * 0.55, R = 24 + Math.sin(this.ph * 0.4) * 5;
+      const tx = pc.x + Math.cos(ang) * R, tz = pc.z + Math.sin(ang) * R;
+      const ty = Math.max(gy, groundAt(tx, tz, 99)) + 4.5 + Math.sin(this.ph * 0.7) * 2.5;
+      _b.set(tx - this.pos.x, ty - this.pos.y, tz - this.pos.z); if (_b.lengthSq() > 0) _b.normalize(); _b.multiplyScalar(EEL.swim);
+      _c.set(-_b.z, 0, _b.x); if (_c.lengthSq() > 0) _c.normalize(); _b.addScaledVector(_c, Math.sin(this.ph * 3.2) * 5);
+      this.vel.lerp(_b, 1 - Math.exp(-1.6 * dt));
+      if (this.stT <= 0 && tg.alive !== false && dist < 50 && los) { this.st = 'coil'; this.stT = EEL.coil; sfx('eelcoil', dist); if (!G.eelSaid && tg === P) { G.eelSaid = true; G.onHint && G.onHint('雷鳗蓄力 · 蓝线是它的冲刺路线 · 横向闪开', 3.5); } }
+      else if (this.stT <= 0) this.stT = 0.5;
+    } else if (this.st === 'coil') {
+      this.vel.multiplyScalar(Math.exp(-4 * dt));
+      const tf = dist / EEL.lunge, tv = tg === P ? P.vel : null;
+      this.aimP.set(pc.x + (tv ? tv.x * tf : 0), pc.y, pc.z + (tv ? tv.z * tf : 0));
+      _b.subVectors(this.aimP, this.pos); if (_b.lengthSq() > 0) this.vel.addScaledVector(_b.normalize(), 0.5);   // swing the head round to face the line
+      const fl = this.stT < 0.25 ? (Math.sin(G.time * 60) > 0 ? 1 : 0.25) : 0.5;
+      G.fx.streak(this.c, this.aimP, 0.09 * fl + 0.03, 0x30c8ff);
+      if (Math.random() < 0.6) G.fx.sparks(this.c, null, 2, 0x9fe8ff, 8, 0.9, 0.25, 0.18);
+      if (this.stT <= 0) {
+        this.st = 'lunge'; this.stT = EEL.lungeT; this.bit = false;
+        this.dir.subVectors(this.aimP, this.pos); if (this.dir.lengthSq() < 0.01) this.dir.set(0, 0, -1); this.dir.normalize();
+        sfx('eellunge', dist); G.lunges = (G.lunges || 0) + 1;
+      }
+    } else if (this.st === 'lunge') {
+      this.vel.copy(this.dir).multiplyScalar(EEL.lunge);
+      if (Math.random() < 0.5) G.fx.emit('add', { x: this.c.x, y: this.c.y, z: this.c.z, life: 0.18, s0: 2.2, s1: 0.4, c0: 0x40c8ff });
+      if (!this.bit) for (const e of entsFor('E')) {
+        if (e.isBarrel || e.c.distanceTo(this.c) > e.r + 3.0) continue;
+        this.bit = true; G.curSrc = this.pos; G.curLabel = 'eel-bite'; dealDamage(e, EEL.bite, 'E', this.c, 'eel-bite');
+        if (e.isPlayer) { P.vel.addScaledVector(this.dir, 12); P.vel.y += 5; G.bites = (G.bites || 0) + 1; }
+        G.fx.sparks(this.c, null, 14, 0x9fe8ff, 16, 1.1, 0.35, 0.25); G.fx.flash(this.c, 0x40c8ff, 20, 16, 0.12); sfx('zap', 0);
+        break;
+      }
+      if (this.stT <= 0) { this.st = 'swim'; this.stT = 4 + Math.random() * 2; }
+    }
+    this.pos.addScaledVector(this.vel, dt);
+    const fy = Math.max(gy, groundAt(this.pos.x, this.pos.z, 99)) + 1.4;
+    if (this.pos.y < fy) { this.pos.y = fy; this.vel.y = Math.max(this.vel.y, 0); if (this.st === 'lunge') this.stT = Math.min(this.stT, 0.12); }
+    const sd = pointInSolid(this.pos, 1.8);
+    if (sd) { this.pos.y = sd.max.y + 2.2; this.vel.y = Math.max(this.vel.y, 3); if (this.st === 'lunge') { this.stT = 0; G.fx.sparks(this.pos, null, 8, 0x9fe8ff, 12, 1, 0.3, 0.2); } }
+    this.pos.x = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.x)); this.pos.z = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.z));
+    this.c.copy(this.pos);
+    if (this.vel.lengthSq() > 0.5) this.obj.lookAt(_a.copy(this.pos).sub(this.vel));   // kit front is -Z: point +Z backwards
+    // body: segments ride the head's path at fixed arc-length spacing
+    const tr = this.trail;
+    if (tr[0].distanceToSquared(this.pos) > 0.09) { const q = tr.pop(); q.copy(this.pos); tr.unshift(q); }
+    let acc = 0, si = 0, prev = this.pos, ps = this.pos;
+    for (let k = 0; k < tr.length && si < EEL.n; k++) {
+      const q = tr[k], l = prev.distanceTo(q);
+      while (si < EEL.n && acc + l >= (si + 1) * EEL.gap) {
+        const f = l > 1e-4 ? ((si + 1) * EEL.gap - acc) / l : 0, o = this.segs[si];
+        o.position.lerpVectors(prev, q, f);
+        o.lookAt(_a.copy(o.position).multiplyScalar(2).sub(ps)); ps = o.position; si++;
+      }
+      acc += l; prev = q;
+    }
+    for (; si < EEL.n; si++) { this.segs[si].position.copy(prev); }
+    // brushing the body discharges
+    if (this.shockT <= 0 && P.alive) {
+      const pcc = P.center(_b); let near = null;
+      if (this.c.distanceTo(pcc) < EEL.shockR) near = this.c; else for (const o of this.segs) if (o.position.distanceTo(pcc) < EEL.shockR) { near = o.position; break; }
+      if (near) { this.shockT = 2.4; G.curSrc = near; damagePlayer(EEL.shock, near, 'eel-shock'); G.fx.streak(near, pcc, 0.2, 0x9fe8ff); G.fx.sparks(pcc, null, 6, 0x9fe8ff, 10, 0.9, 0.3, 0.2); sfx('zap', 0); }
+      else this.shockT = 0.2;
+    }
+  }
+}
+
 export class Jammer extends Enemy {
   constructor(pos) {
     super('jammer', 'E_Jammer', pos, 380, 2.8); this.boom = 1; this.obj.scale.setScalar(1.3);
@@ -2775,12 +2906,13 @@ export function updateCombat(dt) {
     if (e.flash > 0) e.flash -= dt;
   }
   const pp = G.player; G.jammed = null;
-  if (pp && pp.alive) for (const e of G.enemies) if (e.kind === 'jammer' && e.alive && !e.dying && !(e.stunT > 0) && e.c.distanceTo(pp.pos) < JAM_R) { G.jammed = e; break; }
+  if (pp && pp.alive) for (const e of G.enemies) if (e.kind === 'jammer' && e.alive && !e.dying && !(e.stunT > 0) && !(e.markT > 0) && e.c.distanceTo(pp.pos) < JAM_R) { G.jammed = e; break; }
   if (G.jammed && !G.jamSaid) { G.jamSaid = true; G.onHint && G.onHint('电子干扰 · 锁定与雷达失效 · 击落紫色的干扰机，或用电磁脉冲瘫痪它', 4); }
   for (let i = G.enemies.length - 1; i >= 0; i--) if (G.enemies[i].gone) G.enemies.splice(i, 1);
   G.curLabel = null;
   LAVA.uT.value = G.time;
   if (G.blinkInv > 0) G.blinkInv -= dt;
+  updateMarks(dt);
   updateBurning(dt);
   updateChill(dt);
   if (LAVA.on) updateForge(dt);

@@ -50,7 +50,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber';
+  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss';
   LAVA.on = forge;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
@@ -86,7 +86,12 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       vec3 leafC = mix(vec3(0.55, 0.16, 0.05), vec3(0.8, 0.52, 0.12), h21(lc + 7.3)) * (0.7 + 0.3 * h21(lc + 2.1));
       diffuseColor.rgb *= vec3(0.78, 0.72, 0.64) * (0.9 + 0.12 * h21(floor(vWP.xz / 9.0)));
       diffuseColor.rgb = mix(diffuseColor.rgb, leafC, lfk * step(0.45, h21(lc)) * (1.0 - stripe) * 0.75);` : ''}${cyber ? `
-      diffuseColor.rgb = mix(vec3(0.035, 0.03, 0.06) * (0.8 + 0.4 * h21(floor(vWP.xz / 8.0))), diffuseColor.rgb * 0.3, stripe);` : ''}${lunar ? `
+      diffuseColor.rgb = mix(vec3(0.035, 0.03, 0.06) * (0.8 + 0.4 * h21(floor(vWP.xz / 8.0))), diffuseColor.rgb * 0.3, stripe);` : ''}${abyss ? `
+      float rip = 0.5 + 0.5 * sin(vWP.x * 0.9 + sin(vWP.z * 0.13) * 3.0);
+      vec3 sand = vec3(0.2, 0.24, 0.21) * (0.82 + 0.1 * rip + 0.1 * h21(floor(vWP.xz / 0.6)) + 0.08 * h21(floor(vWP.xz / 9.0)));
+      float weed = smoothstep(0.7, 0.9, h21(floor(vWP.xz / 5.0)) * 0.6 + h21(floor(vWP.xz / 1.4)) * 0.4);
+      sand = mix(sand, vec3(0.12, 0.26, 0.2), weed * 0.7);
+      diffuseColor.rgb = mix(sand, diffuseColor.rgb * 0.55, 0.15 + 0.65 * stripe);` : ''}${lunar ? `
       vec3 rc = vec3(0.5, 0.5, 0.49) * (0.74 + 0.1 * h21(floor(vWP.xz / 0.7)) + 0.1 * h21(floor(vWP.xz / 5.0)));
       for (int q = 0; q < 2; q++) {
         float sz = q == 0 ? 26.0 : 9.0;
@@ -126,7 +131,11 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       vec3 lc = mix(vec3(0.95, 0.16, 0.02), vec3(1.0, 0.5, 0.1), fl * fl) * (0.75 + 0.7 * fl) * (1.0 - 0.6 * crust);
       float edge = smoothstep(8.0, 5.0, lv) * (1.0 - molten);
       float crack = (1.0 - smoothstep(0.0, 0.06, abs(fract(vWP.x / 5.3 + sin(vWP.z * 0.21) * 0.7) - 0.5))) * step(0.86, h21(floor(vWP.xz / 10.0))) * step(9.0, lv);
-      totalEmissiveRadiance += lc * molten + vec3(1.0, 0.32, 0.06) * (edge * 0.25 + crack * 0.45);` : '',
+      totalEmissiveRadiance += lc * molten + vec3(1.0, 0.32, 0.06) * (edge * 0.25 + crack * 0.45);` : abyss ? `
+      vec2 cq = vWP.xz * 0.5; float ct = uT * 0.9;
+      float cw = abs(sin(cq.x * 1.3 + sin(cq.y * 0.9 + ct) * 1.4 + ct * 0.7) + sin(cq.y * 1.1 + sin(cq.x * 0.8 - ct * 0.9) * 1.6 - ct * 0.5));
+      float cau = 1.0 - smoothstep(0.0, 0.16, cw);
+      totalEmissiveRadiance += vec3(0.25, 0.75, 0.85) * cau * 0.16;` : '',
   });
   const floor = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), floorMat);
   floor.receiveShadow = true; group.add(floor);
@@ -140,7 +149,10 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float tone = 0.85 + 0.2 * h21(floor(vWP.xz / 6.0) + floor(vWP.y / 3.5));
       diffuseColor.rgb *= tone * (1.0 - 0.35 * max(hl, vl));
       if (n.y < 0.5) { float win = step(0.62, fract(vWP.y / 3.5)) * step(fract(vWP.y / 3.5), 0.82);
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.2, 0.26), win * 0.8); }${cyber ? `
+        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.2, 0.26), win * 0.8); }${abyss ? `
+      diffuseColor.rgb *= vec3(0.5, 0.68, 0.7);
+      if (vWN.y > 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.14, 0.3, 0.22), 0.55 + 0.3 * h21(floor(vWP.xz / 1.5)));
+      else diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.2, 0.3, 0.24), smoothstep(2.5, 0.0, vWP.y) * 0.7);` : ''}${cyber ? `
       diffuseColor.rgb *= 0.3;` : ''}${snow ? `
       if (vWN.y > 0.5) diffuseColor.rgb = vec3(0.84, 0.88, 0.93) * (0.92 + 0.08 * h21(floor(vWP.xz / 2.0)));
       else diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.85, 0.9), step(0.5, fract(vWP.y / 3.5 + 0.38)) * step(fract(vWP.y / 3.5 + 0.38), 0.53) * 0.75);` : ''}`,

@@ -98,6 +98,10 @@ export function sfx(name, d = 0, pan = 0) {
       case 'reel': tone(t, 'sawtooth', 140 + Math.random() * 30, 110, 0.05 * k, 0.25); break;
       case 'snap': tone(t, 'triangle', 1800, 300, 0.14 * k, 0.15); noise(t, 0.08, 'highpass', 3000, 1, 0.2 * k, 0.06, pan); break;
       case 'blink': tone(t, 'sine', 300, 1600, 0.16 * k, 0.16); tone(t + 0.05, 'sine', 1800, 600, 0.08 * k, 0.2); noise(t, 0.2, 'bandpass', 2600, 3, 0.14 * k, 0.18, pan); break;
+      case 'eelcoil': tone(t, 'sawtooth', 90, 420, 0.07 * k, 0.8); noise(t, 0.8, 'bandpass', 3000, 4, 0.06 * k, 0.7, pan, 5000); break;
+      case 'eellunge': noise(t, 0.4, 'bandpass', 700, 1.2, 0.3 * k, 0.35, pan, 2200); tone(t, 'square', 600, 120, 0.08 * k, 0.3); break;
+      case 'zap': noise(t, 0.15, 'highpass', 2500, 1, 0.3 * k, 0.12, pan); tone(t, 'square', 1400, 200, 0.1 * k, 0.12); break;
+      case 'sonar': tone(t, 'sine', 1250, 1180, 0.22 * k, 0.9); tone(t + 0.02, 'sine', 2500, 2400, 0.05 * k, 0.5); tone(t + 0.35, 'sine', 1250, 1200, 0.07 * k, 0.8); break;
       case 'stormz': noise(t, 0.6, 'bandpass', 500, 1.2, 0.08 * k, 0.5, pan, 900); break;
       case 'disc': noise(t, 0.18, 'bandpass', 1800, 2, 0.22 * k, 0.15, pan, 3200); tone(t, 'sawtooth', 520, 900, 0.05 * k, 0.12); break;
       case 'whirr': tone(t, 'sawtooth', 300 + Math.random() * 60, 340, 0.025 * k, 0.12); break;
