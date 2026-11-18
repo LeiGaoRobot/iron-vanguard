@@ -6,12 +6,12 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadKit, cloneKit } from './kit.js';
-import { buildArena, addSolid, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine, relaySites, mulberry32, LAVA, lavaAt, PLAT, WATER } from './world.js';
+import { buildArena, addSolid, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine, relaySites, mulberry32, LAVA, lavaAt, PLAT, WATER, GRID } from './world.js';
 import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff, PHYS } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 // rail loop for the train mission: a 118 x 82 m oval, closed (last point == first)
@@ -120,6 +120,12 @@ const MISSIONS = {
     { title: 'WAVE 3', sub: '反应釜 · 敌方机甲小队', spawn: { fencer: 2, raider: 1, lancer: 1, mender: 1, drone: 2 } },
     { title: 'FINAL WAVE', sub: '「暴君」与栅栏网 · 把它引进酸雾里', spawn: { boss: 'tyrant', bossHp: 0.9, fencer: 2, drone: 2 } },
   ] },
+  grid: { name: '电网 · 发电站', en: 'POWER GRID', desc: '夜间发电站 · 地块轮流通电，黄框预警后放电 · 「蜂巢」放出成群自爆无人机 · 头目「暴君」', seed: 247, env: 'grid', reward: 6100, waves: [
+    { title: 'WAVE 1', sub: '变电区 · 黄框闪烁的地块马上通电 · 离开那一格，或起跳悬停躲过去', spawn: { hive: 1, walker: 2, drone: 2, crawler: 6 } },
+    { title: 'WAVE 2', sub: '冷却塔 · 蜂巢与护盾坦克', spawn: { hive: 1, bulwark: 1, gunship: 1, walker: 2 } },
+    { title: 'WAVE 3', sub: '主控室 · 敌方机甲小队', spawn: { hive: 2, raider: 1, lancer: 1, mender: 1 } },
+    { title: 'FINAL WAVE', sub: '「暴君」入场 · 把它引到通电的地块上', spawn: { boss: 'tyrant', bossHp: 0.9, hive: 2, drone: 2 } },
+  ] },
   jungle: { name: '丛林 · 雨林遗迹', en: 'JUNGLE RUINS', desc: '雨林吞没的旧城 · 「棱镜」的镜面会把子弹和导弹原路弹回 · 绕到侧后、从高处打，或用光束 / 爆炸 / 近战 / 音波 · 头目「暴君」', seed: 221, env: 'jungle', reward: 5900, waves: [
     { title: 'WAVE 1', sub: '遗迹外围 · 青色镜面朝着你时别开枪 · 绕到侧面，或等它开火后镜面放下散热', spawn: { prism: 2, walker: 2, drone: 3, crawler: 6 } },
     { title: 'WAVE 2', sub: '密林伏击 · 棱镜掩护炮击', spawn: { prism: 3, walker: 1, howitzer: 1, gunship: 1, drone: 2 } },
@@ -196,13 +202,14 @@ const ENVS = {
   sky3: { top: 0x060c26, hor: 0x3a6ab8, fog: [300, 2400], hemi: [0xb8ccff, 0x202838, 0.42], sun: [0xfff6ec, 2.5], env: 0.24, exp: 0.95, dir: [-0.4, 0.42, 0.55], disc: 0.6, stars: 0.5, earth: [0, -1, 0] },
   sky4: { top: 0x000002, hor: 0x0c1c40, fog: [500, 3200], hemi: [0xa8b4cc, 0x101420, 0.3], sun: [0xffffff, 2.6], env: 0.2, exp: 0.95, dir: [0.5, 0.42, -0.5], disc: 0.2, stars: 1, earth: [0, -1, 0] },
   dune: { top: 0x8a6e58, hor: 0xe0b890, fog: [50, 340], hemi: [0xffe4c4, 0x6a5038, 0.6], sun: [0xffd4a4, 2.0], env: 0.32, exp: 0.9, dir: [-0.4, 0.45, 0.45], disc: 0.7, sand: true },
+  grid: { top: 0x0c1424, hor: 0x2e3e58, fog: [45, 330], hemi: [0x9ab4e0, 0x141820, 0.34], sun: [0xb8ccff, 0.8], env: 0.16, exp: 1.04, dir: [0.4, 0.55, -0.5], disc: 0.3 },
   toxic: { top: 0x48562a, hor: 0xc4c27a, fog: [40, 300], hemi: [0xe6eec0, 0x343a20, 0.58], sun: [0xf6eec0, 1.8], env: 0.3, exp: 0.92, dir: [-0.35, 0.6, 0.45], disc: 0.5, spores: true },
   jungle: { top: 0x3c6a58, hor: 0xb8d0a0, fog: [40, 300], hemi: [0xe0f0c8, 0x2c3a20, 0.6], sun: [0xfff0c8, 1.9], env: 0.3, exp: 0.92, dir: [0.35, 0.62, 0.4], disc: 0.6, pollen: true },
   surge: { top: 0x34424e, hor: 0x8a98a2, fog: [55, 400], hemi: [0xc8d8e4, 0x30383c, 0.56], sun: [0xd8e4f0, 1.15], env: 0.3, exp: 0.95, dir: [0.3, 0.6, 0.45], disc: 0.1, rain: true },
   meteor: { top: 0x050414, hor: 0x3c2050, fog: [110, 680], hemi: [0xd0b0ff, 0x2a1a2c, 0.5], sun: [0xffc0a0, 1.7], env: 0.26, exp: 0.98, dir: [-0.45, 0.4, 0.55], disc: 0.4, stars: 0.8, earth: [0, -1, 0] },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { fencer: 110, prism: 220, skimmer: 200, splitter: 60, jet: 220, eel: 200, grappler: 240, train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
+const KILL_CR = { hive: 300, swarm: 5, fencer: 110, prism: 220, skimmer: 200, splitter: 60, jet: 220, eel: 200, grappler: 240, train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -707,6 +714,7 @@ function mixWave(n, rnd) {
   if (n >= 4) pool.push(['skimmer', 3.5, 2]);
   if (n >= 3) pool.push(['prism', 3.5, 2]);
   if (n >= 4) pool.push(['fencer', 3.5, 2]);
+  if (n >= 4) pool.push(['hive', 4, 1]);
   const sp = {}; let budget = 5 + n * 2.6, total = 0;
   while (budget > 0.9 && total < 24) {
     const [k, c, max] = pool[Math.floor(rnd() * pool.length)];
@@ -728,7 +736,7 @@ function makePlayer() {
 const wingOn = () => !!(save.wing && cfg.wing);
 function clearWorld() {
   if (G.wing) G.wing.dispose(); if (G.core) G.core.dispose();
-  clearDecoys(); clearWells(); clearChill(); clearStrikes(); clearDiscs(); clearMeteors(); clearHooks(); clearSmokes(); clearStasis(); clearAcid(); G.levSaid = false; G.levSwimSaid = false; G.smokeN = 0; G.levBreaches = 0; G.meteorSaid = false; G.wadeSaid = false; G.tether = null; G.blinkInv = 0; G.eelSaid = false; G.jetSaid = false; G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
+  clearDecoys(); clearWells(); clearChill(); clearStrikes(); clearDiscs(); clearMeteors(); clearHooks(); clearSmokes(); clearStasis(); clearAcid(); clearGrid(); G.gridSaid = false; G.hiveSaid = false; G.levSaid = false; G.levSwimSaid = false; G.smokeN = 0; G.levBreaches = 0; G.meteorSaid = false; G.wadeSaid = false; G.tether = null; G.blinkInv = 0; G.eelSaid = false; G.jetSaid = false; G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
   for (const e of G.enemies) e.remove ? e.remove() : null;
   G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0; clearMinis(); clearMines(); snipeSaid = false; G.mendSaid = false; G.mineSaid = false; G.jamSaid = false; G.jammed = null; clearZones();
   for (const k of G.pickups) scene.remove(k.o);
@@ -865,6 +873,7 @@ G.onDrop = (at, cg, ds, crashed) => {
   for (let k = 0; k < (cg.sapper || 0); k++) { const p = ring(i++, n, 3); p.y = 11; new Sapper(p); }
   for (let k = 0; k < (cg.crawler || 0); k++) new Crawler(ring(i++, n, 3));
 };
+G.onHive = (e) => { if (!G.hiveSaid && G.player && e.c.distanceTo(G.player.pos) < 110) { G.hiveSaid = true; showHint('蜂巢 · 一次放出六架自爆无人机 · 优先打掉蜂巢，蜂群用高射炮或范围武器清', 4.5); } };
 G.onFence = (e) => { if (!G.fenceSaid && G.player && e.c.distanceTo(G.player.pos) < 90) { G.fenceSaid = true; showHint('激光栅栏 · 两台栅栏机之间的红线马上横扫过来 · 起跳或推进越过它，绕到端头，或击毁其中一台', 4.5); } };
 G.onFenceLink = () => { if (!G.linkSaid) { G.linkSaid = true; showHint('落单的栅栏机和另一台重新组网了', 3); } };
 G.onDropWarn = () => { if (!run.dropSaid) { run.dropSaid = true; showHint('运输机正在降落投放 · 舱门打开前击落它，货物一起报废', 3.5); } };
@@ -884,6 +893,7 @@ function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.burrower || 0); k++) new Burrower(spot(60 * R, 100 * R, false, b));
   for (let k = 0; k < (S.grappler || 0); k++) new Grappler(spot(70 * R, 115 * R, true, b));
   for (let k = 0; k < (S.eel || 0); k++) new Eel(spot(60 * R, 100 * R, true, b));
+  for (let k = 0; k < (S.hive || 0); k++) new Hive(spot(70 * R, 110 * R, true, b));
   for (let k = 0; k < (S.prism || 0); k++) new Prism(spot(80 * R, 130 * R, false, b));
   for (let k = 0; k < (S.fencer || 0); k++) { const s0 = spot(75 * R, 125 * R, true, b), a = new Fencer(s0); new Fencer(new V3(s0.x + 12, s0.y, s0.z + 4), a); }   // fencers come in linked pairs
   for (let k = 0; k < (S.skimmer || 0); k++) new Skimmer(spot(80 * R, 135 * R, false, b));
@@ -1477,6 +1487,7 @@ const MEDALS = [
   { id: 'sandking', name: '驯沙', desc: '击败沙海巨虫', cr: 1500, tally: 'leviathan', need: 1 },
   { id: 'mirrorbreak', name: '裂镜', desc: '累计击毁 20 台棱镜', cr: 1200, tally: 'prism', need: 20 },
   { id: 'unfence', name: '断网', desc: '累计击毁 20 台栅栏机', cr: 1200, tally: 'fencer', need: 20 },
+  { id: 'unhive', name: '灭巢', desc: '累计击毁 10 座蜂巢', cr: 1200, tally: 'hive', need: 10 },
   { id: 'skipper', name: '截浪', desc: '累计击沉 15 艘气垫炮艇', cr: 1000, tally: 'skimmer', need: 15 },
   { id: 'shatter', name: '碎星', desc: '累计击碎 40 个分裂球（大中小都算）', cr: 1000, tally: 'splitter', need: 40 },
   { id: 'mirror', name: '破镜', desc: '击败复制你武装的「镜像」', cr: 1200, tally: 'echo', need: 1 },
@@ -1804,7 +1815,7 @@ const auto = { on: false, st: 1, stT: 0, jT: 3, hover: 0, sT: 0 };
 const incomingAny = () => G.shots.some((sh) => sh.team === 'E' && (sh.kind === 'missile' || sh.kind === 'plasma') && Math.hypot(sh.x - G.player.pos.x, sh.y - G.player.pos.y - 3, sh.z - G.player.pos.z) < 30);
 function autoIntent(dt) {
   const p = G.player; let tgt = null, bd = 1e9;
-  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : e.kind === 'mender' ? -35 : e.kind === 'jammer' ? (G.jammed === e ? -45 : -15) : e.kind === 'dropship' ? (e.cargo && e.st !== 'in' ? -60 : e.cargo ? -20 : 400) : e.kind === 'howitzer' ? -25 : e.kind === 'warden' ? (domeAt(p.pos) === e ? -90 : -30) : e.kind === 'crawler' && e.c.distanceTo(p.pos) < 35 ? -30 : e.kind === 'prism' && !(e.vent > 0) && e.fwd.x * (p.pos.x - e.pos.x) + e.fwd.z * (p.pos.z - e.pos.z) > 0 ? 25 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
+  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'relay' ? -25 : e.kind === 'mender' ? -35 : e.kind === 'hive' ? -20 : e.kind === 'swarm' ? (e.c.distanceTo(p.pos) < 12 ? -20 : 60) : e.kind === 'jammer' ? (G.jammed === e ? -45 : -15) : e.kind === 'dropship' ? (e.cargo && e.st !== 'in' ? -60 : e.cargo ? -20 : 400) : e.kind === 'howitzer' ? -25 : e.kind === 'warden' ? (domeAt(p.pos) === e ? -90 : -30) : e.kind === 'crawler' && e.c.distanceTo(p.pos) < 35 ? -30 : e.kind === 'prism' && !(e.vent > 0) && e.fwd.x * (p.pos.x - e.pos.x) + e.fwd.z * (p.pos.z - e.pos.z) > 0 ? 25 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (d < bd) { bd = d; tgt = e; } }
   // pick up repairs when hurt
   let goal = null;
   if (p.hp < p.maxHp * 0.6) for (const k of G.pickups) { const d = k.o.position.distanceTo(p.pos); if (d < 70) { goal = k.o.position; break; } }
@@ -1844,6 +1855,12 @@ function autoIntent(dt) {
     }
   }
   if (auto.trackT > 0) { auto.trackT -= dt; goal = auto.trackGoal; }
+  if (GRID.on) for (const z of G.zones) {   // charged floor sector: walk off it during the warning, ride out the discharge in the air
+    const dx = p.pos.x - z.x, dz = p.pos.z - z.z; if (Math.max(Math.abs(dx), Math.abs(dz)) > 21) continue;
+    if (z.autoR === undefined) z.autoR = Math.random() < 0.7;
+    if (!z.autoR) continue;
+    if (z.st === 'warn' && !goal) { goal = Math.abs(dx) > Math.abs(dz) ? new V3(z.x + Math.sign(dx || 1) * 28, 0, p.pos.z) : new V3(p.pos.x, 0, z.z + Math.sign(dz || 1) * 28); }
+  }
   if (!goal && G.inAcid) for (const c of G.acid) { const dx = p.pos.x - c.x, dz = p.pos.z - c.z, dl = Math.hypot(dx, dz) || 1; if (dl < c.R) { goal = new V3(c.x + dx / dl * (c.R + 8), 0, c.z + dz / dl * (c.R + 8)); break; } }
   if (!goal && G.core && G.core.alive && Math.hypot(p.pos.x - G.core.pos.x, p.pos.z - G.core.pos.z) > (run.escort ? (run.driving ? 22 : G.enemies.filter((e) => e.alive).length <= 2 ? 999 : 45) : 70)) goal = G.core.pos;
   if (tgt) {
@@ -1863,6 +1880,7 @@ function autoIntent(dt) {
     if (P.autoJ === undefined) P.autoJ = Math.random() < 0.65;   // a human doesn't read every sweep in time
     if (P.autoJ && P.st === 'sweep' && Math.abs(nx) < FENCE.len / 2 + 2 && sx > -1 && sx < 7) { if (p.grounded) { if (p.en > 10) { jump = true; auto.hover = 0.7; } } else if (!(auto.hover > 0.3)) auto.hover = -0.5; }   // on the ground: jump it; in the air: drop under it
   }
+  if (GRID.on) for (const z of G.zones) { if (!z.autoR || Math.max(Math.abs(p.pos.x - z.x), Math.abs(p.pos.z - z.z)) > 21) continue; if ((z.st === 'live' || z.t < 0.4) && p.en > 8) { if (p.grounded) jump = true; auto.hover = Math.max(auto.hover, 0.4); } }
   if (LAVA.on && lavaAt(p.pos.x + p.vel.x * 0.4, p.pos.z + p.vel.z * 0.4) && p.en > 12) { if (p.grounded) jump = true; auto.hover = Math.max(auto.hover, 0.25); }
   const d = tgt ? tgt.c.distanceTo(p.pos) : 0;
   const isMelee = (t) => t === 'blade' || t === 'pile';
@@ -1881,7 +1899,7 @@ function autoIntent(dt) {
   const sniped = G.enemies.some((e) => e.kind === 'stalker' && e.st === 'aim' && e.lockOn === p && e.stT < 0.5);
   const incoming = G.shots.some((sh) => sh.team === 'E' && sh.kind === 'missile' && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 22);
   const leapNear = G.enemies.some((e) => (e.kind === 'crawler' && e.st === 'leap' && e.c.distanceTo(p.pos) < 12) || (e.kind === 'burrower' && e.st === 'warn' && Math.hypot(e.spot.x - p.pos.x, e.spot.z - p.pos.z) < 7) || (e.isLev && e.st === 'warn' && Math.hypot(e.spot.x - p.pos.x, e.spot.z - p.pos.z) < 12));
-  const fire = (slot) => !!los && !(mirror && refl(G.pw[slot])) && (G.pw[slot].d.type !== 'blade' || d < 36) && (G.pw[slot].d.type !== 'pile' || d < 24) && (G.pw[slot].d.type !== 'flame' || d < 20) && (!G.pw[slot].d.chill || d < 66) && (G.pw[slot].d.type !== 'disc' || d < 52) && (G.pw[slot].d.type !== 'sonic' || d < 30) && (G.pw[slot].d.type !== 'hook' || (d < 66 && !bigT)) && (G.pw[slot].d.type !== 'charge' || Math.random() < 0.985);
+  const fire = (slot) => !!los && !(mirror && refl(G.pw[slot])) && (G.pw[slot].d.type !== 'blade' || d < 36) && (G.pw[slot].d.type !== 'pile' || d < 24) && (G.pw[slot].d.type !== 'flame' || d < 20) && (!G.pw[slot].d.chill || d < 66) && (G.pw[slot].d.type !== 'disc' || d < 52) && (G.pw[slot].d.type !== 'sonic' || d < 30) && (G.pw[slot].d.type !== 'hook' || (d < 66 && !bigT)) && (G.pw[slot].d.type !== 'charge' || Math.random() < 0.985) && (!G.pw[slot].d.flak || d < 100);
   const odNow = G.od.k >= 1 && (G.bosses.some((b) => b.alive && b.c.distanceTo(p.pos) < 80) || G.enemies.filter((e) => e.alive && e.c.distanceTo(p.pos) < 60).length >= 3);
   const blinkK = G.pw.S.d.type === 'blink';
   const blinkP = blinkK && G.pw.S.ammo > 0 && (G.tether ? Math.random() < 0.08 : (leapNear || sniped) ? Math.random() < 0.2 : incoming ? Math.random() < 0.1 : G.hud.hurt > 0.35 ? Math.random() < 0.05 : run.ring && run.ring.out > -3 ? Math.random() < 0.05 : false);
@@ -2018,7 +2036,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=31');
+    await loadKit('./assets/kit.glb?v=32');
     ensureArena();
     makePlayer();
     setState('title');

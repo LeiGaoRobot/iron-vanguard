@@ -1,6 +1,6 @@
 // Weapons, projectiles, enemies, damage.  Shared state lives in G.
 import * as THREE from 'three';
-import { barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD } from './world.js';
+import { barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD, GRID } from './world.js';
 import { cloneKit, nodes, find, recolor } from './kit.js';
 import { Mech, angDiff, PALETTES } from './mech.js';
 import { sfx } from './audio.js';
@@ -23,6 +23,7 @@ export const WEAPONS = {
   coil: { slot: 'arm', name: 'LC-3 闪电线圈', en: 'LC-3 Arc Coil', desc: '自动索敌 · 连锁 3 个目标', type: 'chain', rate: 0.5, dmg: 44, range: 60, chains: 3, chainR: 18, mag: 14, reload: 2.2, sfx: 'coil', recoil: 0.3 },
   rail: { slot: 'arm', name: 'RG-9 磁轨炮', en: 'RG-9 Railgun', desc: '按住蓄力 · 松开贯穿', type: 'charge', charge: 1.1, dmg: [45, 280], rate: 0.6, mag: 6, reload: 2.6, sfx: 'rail', recoil: 0.9 },
   blade: { slot: 'arm', name: 'LB-0 光束剑', en: 'LB-0 Pulse Blade', desc: '近战 · 锁定时冲刺斩击 · 耗 EN', type: 'blade', dmg: 310, range: 7.5, lunge: 38, cd: 0.95, cost: 16, sfx: 'blade' },
+  flak: { slot: 'arm', name: 'FL-8 高射炮', en: 'FL-8 Flak Cannon', desc: '近炸引信炮弹 · 飞近敌机 4 m 内自动空爆 · 6 m 破片 · 射程尽头也会空爆 · 专克蜂群和无人机', type: 'bullet', flak: 4, rate: 0.3, dmg: 44, splash: 6, speed: 150, spread: 0.01, life: 0.7, mag: 12, reload: 2.6, color: 0xffc070, w: 0.32, len: 3, sfx: 'cannon', recoil: 0.45 },
   shotgun: { slot: 'arm', name: 'SG-12 霰弹炮', en: 'SG-12 Scattergun', desc: '近距离 · 一发 9 颗弹丸 · 射程短', type: 'bullet', pellets: 9, rate: 0.72, dmg: 13, speed: 250, spread: 0.075, life: 0.42, mag: 6, reload: 2.3, color: 0xffc890, w: 0.2, len: 4, sfx: 'cannon', recoil: 0.7 },
   grenade: { slot: 'arm', name: 'GL-4 榴弹发射器', en: 'GL-4 Grenade Launcher', desc: '抛物线弹道 · 范围爆炸 · 可越过掩体', type: 'bullet', grenade: true, rate: 0.55, dmg: 78, splash: 6.5, speed: 88, grav: 30, spread: 0.004, mag: 8, reload: 2.5, color: 0xffa050, sfx: 'grenade', recoil: 0.55 },
   flamer: { slot: 'arm', name: 'FT-2 火焰喷射器', en: 'FT-2 Flamethrower', desc: '近距离持续喷射 · 点燃敌人持续灼烧 · 燃烧中的敌人伤害 −25%', type: 'flame', rate: 0.04, dmg: 8, speed: 60, spread: 0.08, life: 0.42, mag: 120, reload: 2, burn: 22, burnT: 2.5, sfx: 'flame' },
@@ -46,7 +47,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'hook', 'sonic', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis'];
 
 export function weaponState(key) {
@@ -165,6 +166,11 @@ export function spawnShot(o) {
 
 function impact(s, at, ent) {
   const fx = G.fx; G.curLabel = s.label;
+  if (s.flak && s.team === 'P') {   // flak shell: airburst
+    explodeAt(at, s.splash, s.dmg, 'P', 0.36, 0xffc060); G.flakBursts = (G.flakBursts || 0) + 1;
+    fx.sparks(at, null, 14, 0xffd090, 18, 0.7, 0.3, 0.18); fx.emit('smoke', { x: at.x, y: at.y, z: at.z, vy: 0.4, life: 1.2, s0: 1.5, s1: 3.5, c0: 0x4a4440, c1: 0x2a2624, a0: 0.55, drag: 1.5 });
+    return;
+  }
   if (s.kind === 'missile') explodeAt(at, s.splash, s.dmg, s.team, 0.7);
   else if (s.kind === 'plasma') explodeAt(at, s.splash, s.dmg, s.team, 1.5, 0xff8a30);
   else if (s.kind === 'shell') explodeAt(at, s.splash, s.dmg, s.team, 0.55, 0xff7040);
@@ -230,6 +236,11 @@ function updateShots(DT) {
         G.shots.splice(i, 1); continue;
       }
     }
+    if (s.flak && s.team === 'P') {   // proximity fuse
+      let near = null;
+      for (const e of entsP) if (!e.isBarrel && !e.isMine && e.alive && e.c.distanceTo(_b) < s.flak + (e.r || 1) * 0.5) { near = e; break; }
+      if (near) { impact(s, _b.clone(), null); G.shots.splice(i, 1); continue; }
+    }
     // vs entities
     const h = segHit(_a, _b, s.team === 'P' ? entsP : entsE, s.kind === 'plasma' ? 0.6 : s.kind === 'flame' ? 0.4 + s.age * 2.5 : 0);
     // vs world
@@ -262,7 +273,7 @@ function updateShots(DT) {
     }
     s.x = _b.x; s.y = _b.y; s.z = _b.z;
     if (s.life <= 0 || Math.abs(s.x) > 400 || Math.abs(s.z) > 400) {
-      if (s.kind === 'missile' || s.kind === 'plasma' || s.kind === 'grenade') impact(s, _b.clone(), null);
+      if (s.kind === 'missile' || s.kind === 'plasma' || s.kind === 'grenade' || s.flak) impact(s, _b.clone(), null);
       G.shots.splice(i, 1); continue;
     }
     // draw
@@ -321,7 +332,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
           const spr = n > 1 ? d.spread * (isP ? 1 : 1.3) : d.spread * (isP ? 2 : 6);
           _d.x += (Math.random() - 0.5) * spr; _d.y += (Math.random() - 0.5) * spr; _d.z += (Math.random() - 0.5) * spr;
           _d.normalize();
-          spawnShot({ p: mp, v: _d.clone().multiplyScalar(d.speed * (n > 1 ? 0.9 + Math.random() * 0.2 : 1)), dmg: d.dmg * dmgMul, team, kind: isP ? 'bullet' : 'ebullet', color: isP ? d.color : 0xff6a40, w: d.w, len: d.len, life: d.life || 1.6, chill: isP && team === 'P' ? d.chill : 0 });
+          const sh = spawnShot({ p: mp, v: _d.clone().multiplyScalar(d.speed * (n > 1 ? 0.9 + Math.random() * 0.2 : 1)), dmg: d.dmg * dmgMul, team, kind: isP ? 'bullet' : 'ebullet', color: isP ? d.color : 0xff6a40, w: d.w, len: d.len, life: d.life || 1.6, chill: isP && team === 'P' ? d.chill : 0 });
+          if (d.flak && team === 'P') { sh.flak = d.flak; sh.splash = d.splash; }
         }
         if (n > 1 && me) fx.trauma = Math.min(1, fx.trauma + 0.12);
         fx.muzzle(mp, _d, d.chill ? 0x9fe8ff : isP ? 0xffd27a : 0xff8a50, n > 1 ? 1.9 : d.spinUp ? 0.9 : 1.1);
@@ -1761,7 +1773,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -3874,6 +3886,132 @@ function updateAcid(dt) {
   if (inP) { hurtPlayer(ACID.dps * dt, 'acid'); G.acidT += dt; }
 }
 
+// Hive: a slow carrier that hovers ~22 m up, 45-70 m from its target. Every 8 s it opens its bays and drops a swarm of six
+// swarmlings (kamikaze micro-drones), keeping at most 14 of its own alive. The amber core underneath takes x1.6 damage.
+export const HIVE = { hp: 1300, cd: 8, n: 6, cap: 14, swarmHp: 36, swarmDmg: 14, swarmSpd: 26, life: 20 };
+export class Hive extends Enemy {
+  constructor(pos) {
+    super('hive', 'E_Hive', pos, HIVE.hp, 3.8); this.boom = 2.2; this.obj.scale.setScalar(1.3);
+    this.vel = new V3(); this.ph = Math.random() * 6; this.orbit = Math.random() < 0.5 ? 1 : -1; this.relT = 3 + Math.random() * 2; this.open = 0; this.kids = [];
+    this.c.copy(pos);
+  }
+  hit(dmg, at, label) { if (at && at.y < this.c.y - 0.8) dmg *= 1.6; super.hit(dmg); }   // the core under the hull
+  update(dt) {
+    this.ph += dt;
+    for (let i = 1; i <= 4; i++) { const r = this.n['HV_Rotor' + i]; if (r) r.rotation.z += dt * 26; }
+    const core = this.n.HV_Core; if (core) core.scale.setScalar(1 + 0.15 * Math.sin(this.ph * 5) + this.open * 0.4);
+    const p = this.tg(), pc = p.center(playerC);
+    _a.set(this.pos.x - pc.x, 0, this.pos.z - pc.z); const L = _a.length() || 1;
+    const ang = Math.atan2(_a.z, _a.x) + this.orbit * dt * 0.12;
+    const want = 58, tx = pc.x + Math.cos(ang) * want, tz = pc.z + Math.sin(ang) * want;
+    const ty = Math.max(groundAt(this.pos.x, this.pos.z, 99), groundAt(tx, tz, 99)) + 22 + Math.sin(this.ph * 0.9) * 1.2;
+    _b.set(tx - this.pos.x, ty - this.pos.y, tz - this.pos.z);
+    const Lb = _b.length(); if (Lb > 0) _b.multiplyScalar(Math.min(6, Lb * 0.6) / Lb);
+    this.vel.lerp(_b, 1 - Math.exp(-1.2 * dt)); this.pos.addScaledVector(this.vel, dt);
+    const s = pointInSolid(this.pos, 3); if (s) { this.pos.y = s.max.y + 5; this.vel.y = Math.max(this.vel.y, 2); }
+    this.pos.x = Math.max(-ARENA + 4, Math.min(ARENA - 4, this.pos.x)); this.pos.z = Math.max(-ARENA + 4, Math.min(ARENA - 4, this.pos.z));
+    this.c.set(this.pos.x, this.pos.y, this.pos.z);
+    this.obj.rotation.y = Math.atan2(this.pos.x - pc.x, this.pos.z - pc.z);
+    this.obj.rotation.x = -this.vel.z * 0.02; this.obj.rotation.z = this.vel.x * 0.02;
+    this.open = Math.max(0, this.open - dt);
+    this.kids = this.kids.filter((k) => k.alive);
+    this.relT -= dt;
+    if (this.relT <= 0 && L < 120) {
+      this.relT = HIVE.cd + Math.random();
+      const n = Math.min(HIVE.n, HIVE.cap - this.kids.length);
+      if (n > 0) {
+        this.open = 1.4; sfx('hive', G.player ? G.player.pos.distanceTo(this.pos) : 0); G.hiveRel = (G.hiveRel || 0) + n;
+        for (let k = 0; k < n; k++) G.queue.push({ label: 'swarm', t: k * 0.12, fn: () => { if (this.alive) new Swarm(new V3(this.pos.x + (Math.random() - 0.5) * 2, this.pos.y - 2, this.pos.z + (Math.random() - 0.5) * 2), this); } });
+        G.onHive && G.onHive(this);
+      }
+    }
+    if (this.open > 0 && Math.random() < 0.6) G.fx.emit('add', { x: this.pos.x, y: this.pos.y - 1.6, z: this.pos.z, vy: -3, life: 0.3, s0: 1.4, s1: 0.4, c0: 0xffb040 });
+  }
+}
+// swarmling: drifts out of the bay, then homes in on its target with a weave and bursts on contact (12). 14 HP; dies after 20 s.
+export class Swarm extends Enemy {
+  constructor(pos, hive) {
+    super('swarm', 'E_Swarm', pos, HIVE.swarmHp, 0.9); this.obj.scale.setScalar(1.7);
+    const a = Math.random() * 6.28; this.vel = new V3(Math.cos(a) * 7, -3, Math.sin(a) * 7);
+    this.ph = Math.random() * 6; this.wob = (Math.random() < 0.5 ? 1 : -1) * (0.6 + Math.random() * 0.6); this.age = 0; this.spd = HIVE.swarmSpd * (0.85 + Math.random() * 0.3);
+    this.c.copy(pos); if (hive) hive.kids.push(this);
+  }
+  explode() { G.fx.explosion(this.c, 0.28, 0xffa040); G.fx.sparks(this.c, null, 6, 0xffb050, 10, 0.6, 0.25, 0.18); this.remove(); }
+  pop() { this.dying = true; this.alive = false; this.explode(); }
+  update(dt) {
+    this.age += dt; this.ph += dt;
+    if (this.age > HIVE.life) { this.pop(); return; }
+    const p = this.tg(), pc = p.center(playerC);
+    _a.subVectors(pc, this.c); const d = _a.length() || 1; _a.divideScalar(d);
+    if (this.age > 0.6) {
+      _b.set(-_a.z, 0, _a.x).multiplyScalar(Math.sin(this.ph * 3.2) * this.wob * Math.min(1, d / 12));
+      _c.copy(_a).add(_b).normalize().multiplyScalar(this.spd);
+      this.vel.lerp(_c, 1 - Math.exp(-2.6 * dt));
+    } else this.vel.multiplyScalar(1 - Math.min(1, dt * 1.5));
+    this.pos.addScaledVector(this.vel, dt);
+    const gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 1); if (this.pos.y < gy + 0.8) { this.pos.y = gy + 0.8; this.vel.y = Math.abs(this.vel.y) * 0.5; }
+    this.c.copy(this.pos);
+    this.obj.rotation.y = Math.atan2(-this.vel.x, -this.vel.z); this.obj.rotation.x = Math.atan2(this.vel.y, Math.hypot(this.vel.x, this.vel.z)) * 0.8;
+    const w1 = this.n.SW_Wing1, w2 = this.n.SW_Wing2, fl = Math.sin(this.ph * 50) * 0.6; if (w1) w1.rotation.y = fl; if (w2) w2.rotation.y = -fl;
+    if (d < 2.6) {   // burst on contact
+      for (const e of entsFor('E')) if (!e.isBarrel && e.c.distanceTo(this.c) < 3.2) { G.curSrc = this.c; dealDamage(e, HIVE.swarmDmg, 'E', this.c, 'swarm'); G.swarmHits = (G.swarmHits || 0) + 1; break; }
+      this.pop();
+    }
+  }
+}
+
+// power plant: the floor is split into 40 m sectors. Every ~8 s two or three sectors near the player charge for 2 s (yellow),
+// then discharge for 3 s (blue arcs): anything standing on a live sector is shocked (grounded player 26 AP/s, ground enemies
+// 20 HP/s). Jump or hover to ride it out, or get off the sector during the warning.
+export const GRIDZ = { S: 40, dps: 26, edps: 20, warn: 2, live: 3 };
+G.zones = [];
+export function clearGrid() { G.zones.length = 0; for (const v of GRID.uZ.value) v.set(0, 0, 0, 0); G.gridT = 6; }
+function updateGrid(dt) {
+  const p = G.player; if (!p) return;
+  const S = GRIDZ.S;
+  for (let i = G.zones.length - 1; i >= 0; i--) {
+    const z = G.zones[i]; z.t -= dt;
+    if (z.st === 'warn' && z.t <= 0) { z.st = 'live'; z.t = GRIDZ.live; sfx('zap', Math.hypot(p.pos.x - z.x, p.pos.z - z.z)); G.gridShocks = (G.gridShocks || 0) + 1; }
+    else if (z.st === 'live' && z.t <= 0) G.zones.splice(i, 1);
+  }
+  G.gridT = (G.gridT ?? 6) - dt;
+  if (G.gridT <= 0 && p.alive) {
+    G.gridT = 6.5 + Math.random() * 2;
+    const ci = Math.floor(p.pos.x / S), cj = Math.floor(p.pos.z / S), want = 3, lim = Math.floor(ARENA / S);
+    const picks = [];
+    if (Math.random() < 0.75) picks.push([ci, cj]);
+    for (let k = 0; k < 30 && picks.length < want; k++) {
+      const a = ci + Math.round((Math.random() - 0.5) * 4), b = cj + Math.round((Math.random() - 0.5) * 4);
+      if (a < -lim || a >= lim || b < -lim || b >= lim || picks.some(([x, y]) => x === a && y === b)) continue;
+      picks.push([a, b]);
+    }
+    for (const [a, b] of picks) if (G.zones.length < 4) G.zones.push({ x: a * S + S / 2, z: b * S + S / 2, st: 'warn', t: GRIDZ.warn });
+    sfx('warn', 0);
+  }
+  let shocked = false;
+  for (const z of G.zones) {
+    if (z.st !== 'live') continue;
+    const h = S / 2;
+    if (p.alive && p.grounded && Math.abs(p.pos.x - z.x) < h && Math.abs(p.pos.z - z.z) < h) shocked = true;
+    for (const e of G.enemies) {
+      if (!(e instanceof Enemy) || !e.alive || e.dying || e.maxHp > 1500 || Math.abs(e.pos.x - z.x) > h || Math.abs(e.pos.z - z.z) > h) continue;
+      if (e.c.y - groundAt(e.pos.x, e.pos.z, e.c.y) > 5) continue;
+      e.hp -= GRIDZ.edps * dt; G.gridDmgE = (G.gridDmgE || 0) + GRIDZ.edps * dt; if (e.hp <= 0) e.die();
+    }
+    if (Math.random() < 0.5) {   // arcs crawling over the sector
+      const ax = z.x + (Math.random() - 0.5) * S * 0.9, az = z.z + (Math.random() - 0.5) * S * 0.9;
+      G.fx.lightning(new V3(ax, 0.3, az), new V3(ax + (Math.random() - 0.5) * 9, 0.3, az + (Math.random() - 0.5) * 9), 0x9fd8ff, 0.22, 0.1, 1.2);
+    }
+  }
+  G.inGrid = shocked;
+  if (shocked) {
+    G.curSrc = null; damagePlayer(GRIDZ.dps * dt, null, 'grid'); G.gridT_ = (G.gridT_ || 0) + dt;
+    if (Math.random() < 0.3) G.fx.lightning(new V3(p.pos.x, 0.3, p.pos.z), p.center(new V3()), 0x9fd8ff, 0.3, 0.08, 1);
+    if (!G.gridSaid) { G.gridSaid = true; G.onHint && G.onHint('通电 · 蓝色的地块正在放电 · 起跳悬停躲过去，或在黄色预警时离开那一格', 4); }
+  }
+  for (let k = 0; k < 4; k++) { const z = G.zones[k], v = GRID.uZ.value[k]; if (z) v.set(z.x, z.z, z.st === 'live' ? 2 : 1, z.t); else v.set(0, 0, 0, 0); }
+}
+
 export function dropRepair(pos) {
   if (G.noRepair) return;
   const o = cloneKit('P_Repair'); o.position.copy(pos); o.position.y = Math.max(1.5, groundAt(pos.x, pos.z, pos.y) + 1.5);
@@ -3924,6 +4062,7 @@ export function updateCombat(dt) {
   updateSmokes(dt);
   updateStasis(dt);
   if (ACID.on) updateAcid(dt);
+  if (GRID.on) updateGrid(dt);
   updateShots(dt);
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
