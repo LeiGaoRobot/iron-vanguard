@@ -85,6 +85,7 @@ M = dict(
     Blink=mat("Blink", "#c8dcff", 0.25, emit="#6a8cff", strength=2.2),
     EelGlow=mat("EelGlow", "#9ad8ec", 0.2, emit="#30c8ff", strength=2.2),
     EelSkin=mat("EelSkin", "#1c2a34", 0.45, metal=0.5),
+    SplitGlow=mat("SplitGlow", "#ffb0f0", 0.2, emit="#ff40d0", strength=1.8),
     Sonar=mat("Sonar", "#c8fff8", 0.25, emit="#40f0e0", strength=1.8),
 )
 
@@ -869,6 +870,53 @@ def build_jet():
     cyl((0, 2.2, -0.5), 0.12, 0.9, M["Joint"], K, rot=(-math.pi / 2, 0, 0), verts=8)
     muzzle("Muzzle_Jet", (0, 2.7, -0.5), K)
 
+def build_split():
+    # Splitter: armoured ball of eight curved plates around a glowing core, centred on the origin (rolls freely)
+    K = kit("E_Split")
+    ball((0, 0, 0), 0.66, M["SplitGlow"], K, sub=2)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            for sz in (-1, 1):
+                c = 0.5
+                box((sx * c, sy * c, sz * c), (0.74, 0.74, 0.74), M["EArmor"] if (sx * sy * sz) > 0 else M["EArmor2"], K, bevel=0.12,
+                    rot=(0.0, 0.0, 0.0))
+    for ax in range(3):
+        rot = [(0, 0, 0), (math.pi / 2, 0, 0), (0, math.pi / 2, 0)][ax]
+        torus((0, 0, 0), 0.9, 0.06, M["Frame"], K, rot=rot)
+    for d in ((1, 0, 0), (-1, 0, 0), (0, 1, 0), (0, -1, 0), (0, 0, 1), (0, 0, -1)):
+        ball((d[0] * 0.9, d[1] * 0.9, d[2] * 0.9), 0.13, M["SplitGlow"], K, sub=1)
+
+def build_sentry():
+    # deployable sentry: tripod base, yawing head with twin barrels and a cyan sensor; front = +Y
+    K = kit("D_Sentry")
+    cyl((0, 0, 0.35), 0.55, 0.3, M["Frame"], K, verts=16)
+    for i in range(3):
+        a = i / 3 * math.pi * 2
+        box((math.cos(a) * 0.75, math.sin(a) * 0.75, 0.2), (0.16, 0.16, 0.9), M["Joint"], K, rot=(math.sin(a) * 0.9, -math.cos(a) * 0.9, 0))
+        box((math.cos(a) * 1.15, math.sin(a) * 1.15, 0.05), (0.32, 0.32, 0.1), M["Frame"], K)
+    cyl((0, 0, 0.75), 0.18, 0.6, M["Joint"], K, verts=10)
+    h = empty("SY_Head", (0, 0, 1.15), K)
+    box((0, 0.05, 0.1), (0.9, 0.95, 0.55), M["Armor2"], h, bevel=0.08)
+    box((0, -0.1, 0.42), (0.6, 0.6, 0.12), M["Accent"], h, bevel=0.03)
+    box((0.48, 0.05, 0.1), (0.06, 0.7, 0.3), M["Hazard"], h)
+    ball((-0.28, 0.5, 0.22), 0.11, M["Sonar"], h, sub=1)
+    for sx in (-1, 1):
+        cyl((sx * 0.18, 0.95, 0.05), 0.07, 0.9, M["Black"], h, rot=(-math.pi / 2, 0, 0), verts=10)
+        cyl((sx * 0.18, 1.4, 0.05), 0.1, 0.12, M["Joint"], h, rot=(-math.pi / 2, 0, 0), verts=10)
+    muzzle("Muzzle_Sentry", (0, 1.5, 0.05), h)
+
+def build_sentry_pod():
+    K = kit("S_Sentry")
+    # shoulder rack carrying a folded sentry: armoured cradle, folded legs, barrel tips poking forward
+    box((0, -0.1, 0.25), (0.7, 0.95, 0.42), M["Armor2"], K, bevel=0.05)
+    box((0, -0.1, 0.5), (0.5, 0.7, 0.1), M["Frame"], K)
+    box((0, 0.42, 0.5), (0.42, 0.3, 0.2), M["Accent"], K, bevel=0.03)
+    for sx in (-1, 1):
+        cyl((sx * 0.1, 0.62, 0.5), 0.05, 0.28, M["Black"], K, rot=(-math.pi / 2, 0, 0), verts=8)
+        box((sx * 0.37, -0.1, 0.25), (0.05, 0.8, 0.12), M["Hazard"], K)
+    ball((0.14, 0.4, 0.62), 0.06, M["Sonar"], K, sub=1)
+    muzzle("Muzzle_SentryPod", (0, 0.7, 0.55), K)
+
 def build_eel():
     # Eel: armoured serpent drone. Head and one body segment are separate kits; the game strings 9 segments behind the head. front = +Y
     K = kit("E_EelHead")
@@ -1315,7 +1363,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

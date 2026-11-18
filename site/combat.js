@@ -38,11 +38,12 @@ export const WEAPONS = {
   blink: { slot: 'shoulder', name: 'BL-2 跃迁推进器', en: 'BL-2 Blink Drive', desc: '向移动方向瞬移 22 m · 0.35 秒无敌 · 挣断钩锁 · 原地残影 0.3 秒后爆裂 · 2 次充能（各 5.5 秒）', type: 'blink', dist: 22, inv: 0.35, burst: 110, burstR: 9, mag: 2, rech: 5.5, sfx: 'blink' },
   decoy: { slot: 'shoulder', name: 'HD-1 全息诱饵', en: 'HD-1 Holo Decoy', desc: '投射机体全息影像 6 秒 · 吸引敌方火力（头目不易上当）· 被打碎时放出电磁冲击', type: 'decoy', hp: 380, dur: 6, cd: 20, burst: 70, burstR: 11, sfx: 'decoy' },
   orbital: { slot: 'shoulder', name: 'OS-1 轨道打击', en: 'OS-1 Orbital Strike', desc: '标记落点 · 1.4 秒后卫星光柱从天而降 · 半径 9 m 重击 · 落点灼烧 2 秒 · 锁定时卫星跟踪目标直到落下前 0.4 秒', type: 'orbital', dmg: 360, R: 9, delay: 1.4, dps: 40, burnT: 2, range: 170, cd: 13, sfx: 'orbital' },
+  sentry: { slot: 'shoulder', name: 'TR-3 哨戒炮塔', en: 'TR-3 Sentry Turret', desc: '在前方架设自动炮塔 15 秒 · 双管速射 75 m 内敌机 · 吸引部分火力 · 耐久 400 · 同时只能有 1 座', type: 'sentry', hp: 400, dur: 15, dmg: 10, rate: 0.11, range: 75, cd: 22, sfx: 'sentry' },
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -458,6 +459,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     }
     const out = G.minis.some((m) => m.owner === owner);
     for (const m of mslot.models) { const dk = m._dock || (m._dock = find(m, 'D_Dock')); if (dk) dk.visible = !out; }
+  } else if (d.type === 'sentry') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Sentry(owner, slot, d, dmgMul); sfx('sentry', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'decoy') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Decoy(owner, slot, d, dmgMul); sfx('decoy', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'grav') {
@@ -624,6 +627,80 @@ export class Decoy {
     this.flash = Math.max(0, (this.flash || 0) - dt);
     this.obj.position.y = this.pos.y + Math.sin(this.ph * 2) * 0.08;
     if (Math.random() < 0.25) G.fx.emit('add', { x: this.pos.x + (Math.random() - 0.5) * 3, y: this.pos.y + Math.random() * 5 * this.sc, z: this.pos.z + (Math.random() - 0.5) * 3, vy: 1.5, life: 0.4, s0: 0.5, c0: 0x58d8ff });
+  }
+}
+
+// ------------------------------------------------------------------ TR-3 sentry: a turret dropped a few metres ahead that tracks and
+// shoots the nearest visible enemy for 18 s. Enemies weigh it a little below the player, so it soaks some fire; one at a time.
+export class Sentry {
+  constructor(owner, slot, d, dmgMul) {
+    for (const f of G.friends.slice()) if (f instanceof Sentry) f.end(false);
+    this.isSentry = true; this.d = d; this.dmg = d.dmg * dmgMul; this.t = d.dur; this.maxHp = d.hp; this.hp = d.hp; this.alive = true;
+    this.foeW = 1.0; this.foeWAir = 0.95; this.foeWBoss = 1.2;
+    this.vel = new V3(); this.fireT = 0.6; this.tgt = null; this.tgtT = 0; this.ph = 0; this.owner = owner; this.drop = 0.45;
+    const a = owner.aimYaw;
+    const p = new V3(owner.pos.x - Math.sin(a) * 6, 0, owner.pos.z - Math.cos(a) * 6);
+    if (pointInSolid(new V3(p.x, 1, p.z), 2) || (PLAT.R && Math.hypot(p.x, p.z) > PLAT.R - 4)) p.set(owner.pos.x, 0, owner.pos.z);
+    p.y = groundAt(p.x, p.z, owner.pos.y + 2);
+    this.pos = p;
+    this.obj = cloneKit('D_Sentry'); if (owner.paletteKey) recolor(this.obj, PALETTES[owner.paletteKey], owner.paletteKey);
+    this.obj.scale.setScalar(1.35); this.obj.position.copy(p).setY(p.y + 6); this.obj.rotation.y = a;
+    this.n = nodes(this.obj); this.head = this.n.SY_Head;
+    G.scene.add(this.obj);
+    this._ent = { isAlly: true, isSentry: true, c: new V3(), r: 1.6, get alive() { return this.w.alive; }, w: this, hit: (dmg) => this.damage(dmg) };
+    G.friends.push(this); G.sentries = (G.sentries || 0) + 1;
+    G.fx.streak(owner.muzzlePos(slot, new V3(), 0).clone(), this.obj.position, 0.4, 0x9fe8ff);
+    for (const e of G.enemies) if (e.foe === G.player && e.c && e.c.distanceTo(p) < 90) e.tgT = 0;
+  }
+  center(out) { return out.set(this.pos.x, this.pos.y + 1.8, this.pos.z); }
+  damage(dmg) {
+    if (!this.alive) return;
+    this.hp -= dmg * G.diff.dmg; this.flash = 0.1;
+    G.sentryDmg = (G.sentryDmg || 0) + dmg * G.diff.dmg;
+    if (this.hp <= 0) this.end(true);
+  }
+  end(broken) {
+    if (!this.alive) return;
+    this.alive = false;
+    const c = this.center(new V3());
+    if (broken) { G.fx.explosion(c, 0.6, 0xffb060); sfx('boom', G.player.pos.distanceTo(c)); }
+    else { G.fx.sparks(c, null, 12, 0x9fe8ff, 10, 1, 0.4, 0.22); G.fx.ring(new V3(this.pos.x, this.pos.y + 0.3, this.pos.z), null, 1, 4, 0.3, 0x9fe8ff); }
+    this.obj.parent && this.obj.parent.remove(this.obj);
+    const i = G.friends.indexOf(this); if (i >= 0) G.friends.splice(i, 1);
+    for (const e of G.enemies) if (e.foe === this) e.tgT = 0;
+  }
+  update(dt) {
+    this.t -= dt; this.ph += dt;
+    if (this.t <= 0) { this.end(false); return; }
+    if (this.drop > 0) {   // falls into place from the shoulder rack
+      this.drop -= dt; const k = Math.max(0, this.drop / 0.45);
+      this.obj.position.y = this.pos.y + 6 * k * k;
+      if (this.drop <= 0) { G.fx.ring(new V3(this.pos.x, this.pos.y + 0.3, this.pos.z), null, 1, 5, 0.35, 0x9fe8ff); G.fx.smoke(this.pos, 4, 2, 2, 0x8a8a8a, 1.2, 0.8); sfx('pile', G.player.pos.distanceTo(this.pos) * 0.6); }
+      return;
+    }
+    const P = this.center(_a).clone();
+    this.tgtT -= dt;
+    if (this.tgtT <= 0) {
+      this.tgtT = 0.3; this.tgt = null; let bd = this.d.range;
+      for (const e of entsFor('P')) {
+        if (e.isBarrel || e.isMine || e.cloaked) continue;
+        const dd = e.c.distanceTo(P); if (dd < bd && clearLine(P, e.c)) { bd = dd; this.tgt = e; }
+      }
+    }
+    const t = this.tgt && this.tgt.alive ? this.tgt : null;
+    const want = t ? Math.atan2(-(t.c.x - P.x), -(t.c.z - P.z)) - this.obj.rotation.y : Math.sin(this.ph * 0.6) * 0.9;
+    this.head.rotation.y += angDiff(want, this.head.rotation.y) * Math.min(1, dt * (t ? 9 : 2));
+    if (this.flash > 0) this.flash -= dt;
+    this.fireT -= dt;
+    if (t && this.fireT <= 0 && Math.abs(angDiff(want, this.head.rotation.y)) < 0.25) {
+      this.fireT = this.d.rate * (0.9 + Math.random() * 0.2);
+      const mp = this.n.Muzzle_Sentry.getWorldPosition(new V3());
+      _d.subVectors(t.c, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.025; _d.y += (Math.random() - 0.5) * 0.02; _d.z += (Math.random() - 0.5) * 0.025;
+      spawnShot({ p: mp, v: _d.normalize().multiplyScalar(270), dmg: this.dmg, team: 'P', kind: 'bullet', color: 0x9fe8ff, w: 0.16, len: 4.5, life: 0.6, label: 'sentry' });
+      G.fx.muzzle(mp, _d, 0x9fe8ff, 0.6);
+      G.stats.shots++;
+      if (Math.random() < 0.4) sfx('dronefire', G.player.pos.distanceTo(mp));
+    }
   }
 }
 
@@ -848,8 +925,8 @@ function blinkJump(owner, d, mul) {
 export function clearDiscs() { for (const D of G.discs) D.o.parent && D.o.parent.remove(D.o); G.discs.length = 0; }
 export function clearStrikes() { for (const S of G.strikes) S.o.parent && S.o.parent.remove(S.o); G.strikes.length = 0; }
 export function clearWells() { for (const w of G.wells) { w.o.parent && w.o.parent.remove(w.o); w.area.parent && w.area.parent.remove(w.area); } G.wells.length = 0; }
-export function updateDecoys(dt) { for (const f of G.friends.slice()) if (f instanceof Decoy) f.update(dt); }
-export function clearDecoys() { for (const f of G.friends.slice()) if (f instanceof Decoy) { f.alive = false; f.obj.parent && f.obj.parent.remove(f.obj); G.friends.splice(G.friends.indexOf(f), 1); } }
+export function updateDecoys(dt) { for (const f of G.friends.slice()) if (f instanceof Decoy || f instanceof Sentry) f.update(dt); }
+export function clearDecoys() { for (const f of G.friends.slice()) if (f instanceof Decoy || f instanceof Sentry) { f.alive = false; f.obj.parent && f.obj.parent.remove(f.obj); G.friends.splice(G.friends.indexOf(f), 1); } }
 
 // ------------------------------------------------------------------ DP-4 attack drones (shoulder weapon)
 function spawnMini(owner, slot, k, d, dmgMul, team) {
@@ -1426,7 +1503,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { pile: 'blade', disc: 'rifle', decoy: 'missile', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -2669,6 +2746,170 @@ export class Jet extends Enemy {
   }
 }
 
+// Splitter: an armoured ball that rolls at its target. Destroying it bursts it into two smaller ones (big -> medium -> small).
+// Big: keeps ~22 m away and fires a 5-shard fan. Medium: coils, then dashes through. Small: fast, weaving, zaps on contact.
+export const SPLIT = [
+  { r: 2.2, sc: 2.2, hp: 460, spd: 8, touch: 30 },
+  { r: 1.4, sc: 1.4, hp: 170, spd: 12.5, touch: 24 },
+  { r: 0.85, sc: 0.85, hp: 60, spd: 17, touch: 14 },
+];
+const _q = new THREE.Quaternion(), _ax = new V3();
+export class Splitter extends Enemy {
+  constructor(pos, tier = 0, vel = null) {
+    const T = SPLIT[tier];
+    super('splitter', 'E_Split', pos, T.hp, T.r); this.tier = tier; this.T = T; this.boom = 0.4 + (2 - tier) * 0.35;
+    this.obj.scale.setScalar(T.sc); this.obj.rotation.set(Math.random() * 6, Math.random() * 6, 0);
+    this.vel = vel ? vel.clone() : new V3(); this.vy = vel ? 7 : 0; this.ph = Math.random() * 6; this.weave = Math.random() * 6;
+    this.wake = vel ? 0.45 : 0.3 + Math.random() * 0.6; this.st = 'roll'; this.stT = 0; this.touchT = 0;
+    this.fireT = 1.5 + Math.random() * 1.5; this.dashT = 1.5 + Math.random() * 2; this.dash = new V3(); this.strafe = Math.random() < 0.5 ? 1 : -1;
+    this.pos.y = Math.max(pos.y, groundAt(pos.x, pos.z, pos.y + 2) + T.r); this.c.copy(this.pos);
+    this.glow = []; this.obj.traverse((m) => { if (m.isMesh && m.material && m.material.name === 'SplitGlow') this.glow.push(m); });
+  }
+  explode() {
+    const c = this.c.clone();
+    G.fx.explosion(c, 0.35 + (2 - this.tier) * 0.3, 0xff60d0); G.fx.sparks(c, null, 14, 0xff80e0, 14, 1, 0.4, 0.25);
+    sfx('boom', G.player ? G.player.pos.distanceTo(c) : 50);
+    this.remove();
+    if (this.tier < 2) {
+      const a = Math.random() * 6.28;
+      for (const s of [0, Math.PI]) {
+        const v = new V3(Math.cos(a + s) * 10, 0, Math.sin(a + s) * 10);
+        new Splitter(new V3(c.x + v.x * 0.12, c.y, c.z + v.z * 0.12), this.tier + 1, v);
+      }
+      G.splits = (G.splits || 0) + 1;
+    }
+  }
+  touch(p, pc, dmg, kx, kz) {
+    this.touchT = 0.9;
+    G.curSrc = this.pos;
+    if (p === G.player) { damagePlayer(dmg, this.pos, 'splitter' + this.tier); p.vel.x += kx * 9; p.vel.z += kz * 9; p.vel.y = Math.max(p.vel.y, 4); }
+    else if (p._ent) p._ent.hit(dmg);
+    G.fx.sparks(_a.copy(this.c).lerp(pc, 0.5), null, 10, 0xff80e0, 12, 1, 0.3, 0.2);
+    sfx('zap', G.player.pos.distanceTo(this.c));
+    this.vel.x *= -0.6; this.vel.z *= -0.6;
+  }
+  update(dt) {
+    const T = this.T, p = this.tg(), pc = p.center(playerC);
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1;
+    this.ph += dt; this.wake -= dt; this.touchT -= dt;
+    let fx_ = dx / dist, fz = dz / dist, sp = this.wake > 0 ? 0 : T.spd;
+    const gl = goalDir(this, this.pos); if (gl) { fx_ = gl.x; fz = gl.z; }
+    let glowK = 1;
+    if (this.tier === 0) {
+      if (dist < 22) { const s = this.strafe; const tx = -fz * s - fx_ * 0.45, tz = fx_ * s - fz * 0.45; fx_ = tx; fz = tz; }
+      this.fireT -= dt;
+      if (this.fireT < 0.5) glowK = 1 + (Math.sin(this.ph * 30) > 0 ? 1.2 : 0);
+      if (this.fireT <= 0 && dist < 70 && this.checkLos(dt)) {
+        this.fireT = 2.8 + Math.random() * 1.2;
+        const o = new V3(this.c.x, this.c.y + T.r * 0.4, this.c.z);
+        lead(o, 62, _b, p === G.player ? p : G.player);
+        if (p !== G.player) _b.copy(pc);
+        const base = Math.atan2(_b.x - o.x, _b.z - o.z), dy = (_b.y - o.y) / Math.max(1, o.distanceTo(_b));
+        for (let k = -2; k <= 2; k++) {
+          const a = base + k * 0.11;
+          spawnShot({ p: o.clone(), v: new V3(Math.sin(a), dy, Math.cos(a)).normalize().multiplyScalar(62), dmg: 11, team: 'E', kind: 'ebullet', color: 0xff60d0, w: 0.42, len: 3, life: 1.6, label: 'splitter-shard' });
+        }
+        G.fx.flash(o, 0xff60d0, 12, 8, 0.15); sfx('coil', G.player.pos.distanceTo(o) * 0.8);
+      }
+    } else if (this.tier === 1) {
+      this.dashT -= dt;
+      if (this.st === 'roll' && this.dashT <= 0 && this.wake <= 0 && dist < 32 && this.checkLos(dt)) { this.st = 'coil'; this.stT = 0.55; sfx('crawl', G.player.pos.distanceTo(this.c)); }
+      if (this.st === 'coil') {
+        sp = 0; this.stT -= dt; glowK = 1 + (Math.sin(this.ph * 40) > 0 ? 1.5 : 0.3);
+        if (this.stT <= 0) {
+          const tv = p.vel || _a.set(0, 0, 0), lt = Math.min(1, dist / 30);
+          this.dash.set(pc.x + tv.x * lt * 0.6 - this.pos.x, 0, pc.z + tv.z * lt * 0.6 - this.pos.z).normalize();
+          this.st = 'dash'; this.stT = 0.75; this.touchT = 0;
+        }
+      } else if (this.st === 'dash') {
+        this.stT -= dt; this.vel.set(this.dash.x * 34, 0, this.dash.z * 34); glowK = 2;
+        if (Math.random() < 0.6) G.fx.emit('add', { x: this.c.x, y: this.c.y, z: this.c.z, vy: 0, life: 0.3, s0: 1.4, s1: 0.2, c0: 0xff80e0 });
+        if (this.stT <= 0) { this.st = 'roll'; this.dashT = 2.4 + Math.random() * 1.6; }
+      }
+    } else {
+      const w = Math.sin(this.ph * 3 + this.weave) * 0.6 * Math.min(1, dist / 12);
+      const tx = fx_ - fz * w, tz = fz + fx_ * w; fx_ = tx; fz = tz;
+    }
+    if (this.st !== 'dash') {
+      const L = Math.hypot(fx_, fz) || 1, k = 1 - Math.exp(-3 * dt);
+      this.vel.x += (fx_ / L * sp - this.vel.x) * k; this.vel.z += (fz / L * sp - this.vel.z) * k;
+    }
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    _c.set(this.pos.x, this.pos.y - T.r, this.pos.z);
+    if (collideCyl(_c, T.r * 0.9, T.r * 2)) { this.pos.x = _c.x; this.pos.z = _c.z; if (this.st === 'dash') { this.st = 'roll'; this.dashT = 2; } }
+    this.pos.x = Math.max(-ARENA + 2, Math.min(ARENA - 2, this.pos.x)); this.pos.z = Math.max(-ARENA + 2, Math.min(ARENA - 2, this.pos.z));
+    this.vy -= 30 * dt; this.pos.y += this.vy * dt;
+    const gy = groundAt(this.pos.x, this.pos.z, this.pos.y - T.r + 0.8, 2) + T.r * 0.95;
+    if (this.pos.y < gy) { this.pos.y = gy; this.vy = this.vy < -6 ? -this.vy * 0.35 : 0; }
+    // roll: rotate about the axis perpendicular to travel by distance / radius
+    const v = Math.hypot(this.vel.x, this.vel.z);
+    if (v > 0.2) { _ax.set(this.vel.z / v, 0, -this.vel.x / v); _q.setFromAxisAngle(_ax, v * dt / T.r); this.obj.quaternion.premultiply(_q); }
+    for (const m of this.glow) m.scale.setScalar(glowK > 1.5 ? 1.12 : 1);
+    this.c.copy(this.pos);
+    // contact
+    if (this.touchT <= 0 && this.wake <= 0 && Math.hypot(pc.x - this.c.x, pc.z - this.c.z) < T.r + 1.9 && Math.abs(pc.y - this.c.y) < T.r + 3.2) this.touch(p, pc, this.st === 'dash' ? 32 : T.touch, dx / dist, dz / dist);
+  }
+}
+
+// meteor shower: every few seconds a meteor (sometimes two) falls on a red circle, half the time near the player; it hits
+// everything in 8 m (enemies too) and some carry a big splitter that rolls out of the crater
+G.meteors = [];
+const meteorMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffc080).multiplyScalar(2.4), toneMapped: false });
+const meteorGeo = new THREE.IcosahedronGeometry(1.5, 1);
+export const METEOR = { R: 8, dmg: 70, fall: 2.2, gap: [5.5, 8.5], split: 0.25 };
+function dropMeteor(at, split) {
+  const d = G.meteorDir || (G.meteorDir = new V3(0.55, 0, 0.35));
+  const from = new V3(at.x - d.x * 200, 240, at.z - d.z * 200);
+  const o = new THREE.Mesh(meteorGeo, meteorMat); o.position.copy(from); G.scene.add(o);
+  G.fx.warn(at, METEOR.R, METEOR.fall);
+  G.meteors.push({ o, from, to: at.clone(), t: 0, split });
+  if (G.player) sfx('meteor', G.player.pos.distanceTo(at) * 0.6);
+  G.meteorN = (G.meteorN || 0) + 1;
+}
+function updateMeteors(dt) {
+  const p = G.player; if (!p) return;
+  G.starT = (G.starT ?? 0) - dt;
+  if (G.starT <= 0) {   // decorative shooting stars far out in the sky
+    G.starT = 0.15 + Math.random() * 0.45;
+    const a = Math.random() * 6.28, r = 260 + Math.random() * 200, d = G.meteorDir || (G.meteorDir = new V3(0.55, 0, 0.35));
+    const s0 = new V3(p.pos.x + Math.cos(a) * r, 150 + Math.random() * 180, p.pos.z + Math.sin(a) * r), L = 30 + Math.random() * 50;
+    G.fx.streak(s0, new V3(s0.x + d.x * L, s0.y - L * 0.45, s0.z + d.z * L), 0.5 + Math.random() * 0.6, Math.random() < 0.5 ? 0xffe0b0 : 0xc8b0ff, 0.25 + Math.random() * 0.2);
+  }
+  G.meteorT = (G.meteorT ?? 5) - dt;
+  if (G.meteorT <= 0 && p.alive) {
+    G.meteorT = (METEOR.gap[0] + Math.random() * (METEOR.gap[1] - METEOR.gap[0])) / (G.meteorRate || 1);
+    const n = Math.random() < 0.4 ? 2 : 1, big = G.enemies.filter((e) => e.kind === 'splitter' && e.alive).length + (G.enemies.some((e) => e.alive && e.kind !== 'splitter') ? 0 : 99);   // no new splitters once only splitters remain, so the wave can end
+    for (let k = 0; k < n; k++) {
+      let at = null;
+      for (let tries = 0; tries < 20 && !at; tries++) {
+        const near = k === 0 && Math.random() < 0.55;
+        const a = Math.random() * 6.28, r = near ? Math.random() * 7 : 14 + Math.random() * 50;
+        const x = p.pos.x + (near ? p.vel.x * 1.4 : 0) + Math.cos(a) * r, z = p.pos.z + (near ? p.vel.z * 1.4 : 0) + Math.sin(a) * r;
+        if (Math.abs(x) > ARENA - 8 || Math.abs(z) > ARENA - 8 || pointInSolid(new V3(x, 1, z), 3)) continue;
+        at = new V3(x, groundAt(x, z, 60) + 0.2, z);
+      }
+      if (at) dropMeteor(at, big < 4 && Math.random() < METEOR.split);
+    }
+    if (!G.meteorSaid) { G.meteorSaid = true; G.onHint && G.onHint('流星雨 · 红圈是陨石落点 · 敌人也会被砸中 · 有的陨石里滚出分裂球', 4); }
+  }
+  for (let i = G.meteors.length - 1; i >= 0; i--) {
+    const m = G.meteors[i]; m.t += dt;
+    const k = Math.min(1, m.t / METEOR.fall);
+    m.o.position.lerpVectors(m.from, m.to, k); m.o.rotation.x += dt * 3; m.o.rotation.z += dt * 2;
+    if (Math.random() < 0.9) G.fx.emit('add', { x: m.o.position.x, y: m.o.position.y, z: m.o.position.z, vy: 2, life: 0.55, s0: 3.2, s1: 0.6, c0: 0xffd090, c1: 0xff4010 });
+    if (k < 1) continue;
+    m.o.parent && m.o.parent.remove(m.o); G.meteors.splice(i, 1);
+    const c = m.to.clone().setY(m.to.y + 0.6);
+    G.curLabel = 'meteor'; G.curSrc = c;
+    explodeAt(c, METEOR.R, METEOR.dmg, 'X', 1.7, 0xff8040);
+    G.fx.smoke(c, 8, 5, 5, 0x3a2a30, 2.8, 1.8);
+    G.fx.sparks(c, null, 24, 0xffc070, 22, 1.4, 0.6, 0.3);
+    G.curLabel = null;
+    if (m.split) { const s = new Splitter(c.clone().setY(c.y + 2), 0); s.vy = 9; s.wake = 0.8; G.meteorSplits = (G.meteorSplits || 0) + 1; }
+  }
+}
+export function clearMeteors() { for (const m of G.meteors) m.o.parent && m.o.parent.remove(m.o); G.meteors.length = 0; G.meteorT = 5; }
+
 export class Jammer extends Enemy {
   constructor(pos) {
     super('jammer', 'E_Jammer', pos, 380, 2.8); this.boom = 1; this.obj.scale.setScalar(1.3);
@@ -3004,6 +3245,7 @@ export function updateCombat(dt) {
   updateBurning(dt);
   updateChill(dt);
   if (LAVA.on) updateForge(dt);
+  if (G.meteorOn) updateMeteors(dt);
   for (const m of G.mines) if (m.alive) m.update(dt);
   for (let i = G.mines.length - 1; i >= 0; i--) if (!G.mines[i].alive) G.mines.splice(i, 1);
   G.curLabel = null;
