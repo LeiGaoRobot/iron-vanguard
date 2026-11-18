@@ -116,6 +116,8 @@ M = dict(
     Rime=mat("Rime", "#c6d6e2", 0.5, metal=0.1),
     Envelope=mat("Envelope", "#8a8f80", 0.75, metal=0.05),
     Envelope2=mat("Envelope2", "#6e7364", 0.75, metal=0.05),
+    HoloGlow=mat("HoloGlow", "#e0c8ff", 0.2, emit="#b070ff", strength=2.2),
+    StickyGlow=mat("StickyGlow", "#ffb0a0", 0.3, emit="#ff4030", strength=2.0),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -1361,6 +1363,43 @@ def build_rockets():
         box((s_ * 0.52, -0.2, 0), (0.08, 0.5, 0.25), M["Frame"], K)
     muzzle("Muzzle_Rockets", (0, 0.7, 0), K)
 
+def build_mirage():
+    # Mirage projector: a flat hover disc with a crystal lens array underneath, a slowly turning emitter ring
+    # (MR_Ring) carrying four small prisms, and a pulse gun (Muzzle_MR) under the nose. front = +Y
+    K = kit("E_Mirage")
+    cyl((0, 0, 0), 2.1, 0.45, M["EArmor"], K, verts=20, r2=1.6)
+    cyl((0, 0, 0.32), 1.4, 0.25, M["EArmor2"], K, verts=20, r2=1.0)
+    cyl((0, 0, 0.5), 0.55, 0.2, M["Glass"], K, verts=14)
+    cyl((0, 0, -0.32), 1.2, 0.2, M["Frame"], K, verts=18)
+    ball((0, 0, -0.75), 0.6, M["HoloGlow"], K, scale=(1, 1, 0.8), sub=2)
+    for k in range(3):
+        a = k / 3 * math.pi * 2
+        box((math.cos(a) * 0.9, math.sin(a) * 0.9, -0.55), (0.18, 0.18, 0.5), M["Ice"], K, rot=(math.sin(a) * 0.4, -math.cos(a) * 0.4, 0))
+    r = empty("MR_Ring", (0, 0, -0.1), K)
+    torus((0, 0, 0), 2.5, 0.08, M["HoloGlow"], r)
+    for k in range(4):
+        a = k / 4 * math.pi * 2
+        box((math.cos(a) * 2.5, math.sin(a) * 2.5, 0), (0.3, 0.3, 0.55), M["Ice"], r, rot=(0, 0, a + math.pi / 4))
+    box((0, 1.85, -0.05), (0.7, 0.6, 0.3), M["EArmor2"], K, bevel=0.06)
+    box((0, 2.0, 0.12), (0.5, 0.1, 0.08), M["EEye"], K)
+    cyl((0, 2.35, -0.2), 0.11, 0.7, M["Black"], K, rot=ALONG_Y, verts=10)
+    muzzle("Muzzle_MR", (0, 2.75, -0.2), K)
+    for s_ in (-1, 1):
+        box((s_ * 1.6, -1.0, 0.05), (0.5, 0.9, 0.12), M["Hazard"], K)
+
+def build_sticky():
+    K = kit("W_Sticky")
+    # sticky-bomb launcher: squat receiver, a side box magazine with red-lit charges, wide flared barrel
+    box((0, 0.1, 0.05), (0.46, 0.9, 0.42), M["Frame"], K, bevel=0.05)
+    box((0, 0.0, 0.3), (0.38, 0.6, 0.1), M["Armor"], K, bevel=0.02)
+    box((0.33, 0.2, -0.05), (0.22, 0.6, 0.36), M["Armor2"], K, bevel=0.04)
+    for k in range(3):
+        ball((0.45, 0.0 + k * 0.2, -0.05), 0.07, M["StickyGlow"], K, sub=1)
+    cyl((0, 0.95, 0.06), 0.15, 0.8, M["Joint"], K, rot=ALONG_Y, verts=12)
+    cyl((0, 1.4, 0.06), 0.16, 0.22, M["Frame"], K, rot=ALONG_Y, verts=12, r2=0.26)
+    box((-0.24, 0.3, 0.05), (0.04, 0.5, 0.2), M["Hazard"], K)
+    muzzle("Muzzle_Sticky", (0, 1.55, 0.06), K)
+
 def build_smoke():
     K = kit("S_Smoke")
     # shoulder smoke launcher: three angled grey canister tubes on a cradle
@@ -1818,7 +1857,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

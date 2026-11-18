@@ -55,7 +55,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', gale = env === 'gale', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister';
+  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', gale = env === 'gale', salt = env === 'salt', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister';
   LAVA.on = forge; GRID.on = grid; const PR = PLAT.R;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
@@ -108,7 +108,13 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float pv = vn2(vWP.xz / 11.0 + 3.7) * 0.75 + vn2(vWP.xz / 3.0) * 0.25;
       float pud = smoothstep(0.69, 0.74, pv);
       slab = mix(slab, vec3(0.2, 0.22, 0.08), smoothstep(0.58, 0.69, pv) * 0.55);
-      diffuseColor.rgb = mix(slab, vec3(0.36, 0.5, 0.1), pud * 0.9);` : ''}${gale ? `
+      diffuseColor.rgb = mix(slab, vec3(0.36, 0.5, 0.1), pud * 0.9);` : ''}${salt ? `
+      float sc = abs(vn2(vWP.xz / 5.5) - 0.5), sc2 = abs(vn2(vWP.xz / 1.8 + 7.0) - 0.5);
+      float crack = (1.0 - smoothstep(0.0, 0.035, sc)) * 0.8 + (1.0 - smoothstep(0.0, 0.025, sc2)) * 0.35;
+      vec3 crust = mix(vec3(0.74, 0.72, 0.68), vec3(0.84, 0.82, 0.78), vn2(vWP.xz / 9.0)) * (0.94 + 0.08 * vn2(vWP.xz / 0.5));
+      crust = mix(crust, vec3(0.5, 0.48, 0.44), clamp(crack, 0.0, 1.0));
+      crust = mix(crust, vec3(0.62, 0.66, 0.68), smoothstep(0.66, 0.8, vn2(vWP.xz / 22.0 + 4.0)) * 0.45);
+      diffuseColor.rgb = mix(crust, diffuseColor.rgb * vec3(0.8, 0.78, 0.74), 0.08 + 0.6 * stripe);` : ''}${gale ? `
       float gr = vn2(vWP.xz / 10.0) * 0.6 + vn2(vWP.xz / 2.6) * 0.4;
       vec3 rock = mix(vec3(0.27, 0.26, 0.24), vec3(0.4, 0.38, 0.34), smoothstep(0.3, 0.7, gr)) * (0.86 + 0.16 * vn2(vWP.xz / 0.6));
       float tuft = smoothstep(0.62, 0.78, vn2(vWP.xz / 6.0 + 3.3)) * step(0.4, h21(floor(vWP.xz / 0.7)));

@@ -30,6 +30,7 @@ export const WEAPONS = {
   cryo: { slot: 'arm', name: 'CR-3 冷冻枪', en: 'CR-3 Cryo Lance', desc: '冰晶连射 · 射程 70 m · 命中累积寒冷让敌人变慢 · 冻满后冰封 1.5 秒（瘫痪、受伤 +30%）', type: 'bullet', rate: 0.085, dmg: 8.5, speed: 230, spread: 0.007, life: 0.3, mag: 60, reload: 2.2, color: 0x9fe8ff, w: 0.26, len: 5, sfx: 'cryo', recoil: 0.1, chill: 5.5 },
   disc: { slot: 'arm', name: 'DS-7 回旋刃', en: 'DS-7 Ripper Disc', desc: '掷出贯穿锯刃 · 飞到 48 m 或撞墙后飞回手中 · 去程回程各命中一次 · 同时最多 2 片', type: 'disc', rate: 0.32, dmg: 56, speed: 72, range: 48, mag: 2, reload: 0, sfx: 'disc', recoil: 0.25 },
   pile: { slot: 'arm', name: 'PB-9 打桩机', en: 'PB-9 Pile Bunker', desc: '近战 · 锁定时冲刺 · 单体重击 · 贯穿护盾', type: 'pile', dmg: 430, range: 5.5, lunge: 26, cd: 1.3, cost: 20, sfx: 'pile' },
+  sticky: { slot: 'arm', name: 'SB-5 粘性炸弹', en: 'SB-5 Sticky Launcher', desc: '低弧线粘弹 · 粘在敌机或地面上 1.2 秒后引爆 · 同一目标上每多一颗伤害 +25%', type: 'bullet', grenade: true, sticky: true, rate: 0.4, dmg: 60, splash: 5, speed: 95, grav: 14, spread: 0.006, mag: 6, reload: 2.4, color: 0xff5040, sfx: 'grenade', recoil: 0.45 },
   hook: { slot: 'arm', name: 'GH-2 钩爪发射器', en: 'GH-2 Grapple Hook', desc: '射出钩爪 70 m · 钩中小型敌机拖到面前并瘫痪 1.2 秒 · 钩中大型目标或墙体则把自己拉过去', type: 'hook', dmg: 110, range: 70, speed: 150, rate: 0.85, mag: 1, reload: 0, sfx: 'hook', recoil: 0.4 },
   sonic: { slot: 'arm', name: 'SW-6 音波炮', en: 'SW-6 Sonic Cannon', desc: '前方 32 m 扇形冲击波 · 击退并震慑敌机 0.35 秒 · 震散来袭子弹 · 镜面反射不了声波', type: 'sonic', rate: 0.75, dmg: 62, range: 32, cone: 0.5, push: 12, stun: 0.35, mag: 6, reload: 2.4, sfx: 'sonic', recoil: 0.7 },
   missile: { slot: 'shoulder', name: 'MS-6 飞弹巢', en: 'MS-6 Missile Pods', desc: '多重锁定 · 6 发追踪', type: 'missile', count: 6, dmg: 40, splash: 5, cd: 6.5, sfx: 'missile' },
@@ -51,7 +52,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -163,6 +164,7 @@ export function explodeAt(pos, radius, dmg, team, size = 1, color) {
 export function spawnShot(o) {
   const s = { x: o.p.x, y: o.p.y, z: o.p.z, v: o.v.clone(), life: o.life ?? 2.5, dmg: o.dmg, team: o.team, kind: o.kind, splash: o.splash || 0,
     burn: o.burn || 0, burnT: o.burnT || 0, chill: o.chill || 0, label: o.label || G.curLabel || o.kind, color: o.color ?? 0xffd27a, w: o.w ?? 0.2, len: o.len ?? 6, target: o.target || null, aim: o.aim ? o.aim.clone() : null, age: 0, speed: o.v.length(), maxSpeed: o.maxSpeed || 0, size: o.size || 1, turn: o.turn || 5.5, grav: o.grav ?? 6 };
+  if (o.flak) s.flak = o.flak; if (o.sticky) s.sticky = true;
   if (s.team === 'E' && G.curShooter && G.curShooter.burnT > 0) s.dmg *= BURN_WEAK;   // burning enemies fire weakened shots
   G.shots.push(s);
   return s;
@@ -170,6 +172,7 @@ export function spawnShot(o) {
 
 function impact(s, at, ent) {
   const fx = G.fx; G.curLabel = s.label;
+  if (s.sticky) { stickAt(s, at, ent); return; }
   if (s.cluster) { splitCluster(s, at.clone().setY(at.y + 2)); return; }
   if (s.bomblet) { explodeAt(at, s.splash, s.dmg, s.team, 0.45, 0xffb050); return; }
   if (s.flak && s.team === 'P') {   // flak shell: airburst
@@ -339,7 +342,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
           const th = disc > 0 ? Math.atan((v * v - Math.sqrt(disc)) / (g * h)) : Math.PI / 4;
           _d.set(hx / h * Math.cos(th), Math.sin(th), hz / h * Math.cos(th));
           _d.x += (Math.random() - 0.5) * d.spread; _d.z += (Math.random() - 0.5) * d.spread;
-          spawnShot({ p: mp, v: _d.clone().normalize().multiplyScalar(v), dmg: d.dmg * dmgMul, team, kind: 'grenade', splash: d.splash, grav: g, life: 5, color: d.color });
+          spawnShot({ p: mp, v: _d.clone().normalize().multiplyScalar(v), dmg: d.dmg * dmgMul, team, kind: 'grenade', splash: d.splash, grav: g, life: 5, color: d.color, sticky: d.sticky && team === 'P' });
           fx.muzzle(mp, _d, 0xffb060, 1.5); mslot.recoil = Math.min(0.6, (mslot.recoil || 0) + d.recoil);
           if (me) { G.stats.shots++; fx.trauma = Math.min(1, fx.trauma + 0.08); }
           sfx(d.sfx, dist); continue;
@@ -1432,7 +1435,7 @@ export class Drone extends Enemy {
           const mp = this.n.Muzzle_Drone.getWorldPosition(_a).clone();
           const aim = lead(mp, 150, _b, this.tg());
           _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.y += (Math.random() - 0.5) * 0.05; _d.z += (Math.random() - 0.5) * 0.05;
-          spawnShot({ p: mp, v: _d.normalize().multiplyScalar(150), dmg: 6, team: 'E', kind: 'ebullet', color: 0xff5040, w: 0.26, len: 5 });
+          spawnShot({ p: mp, v: _d.normalize().multiplyScalar(150), dmg: this.holo ? 0 : 6, team: 'E', kind: 'ebullet', color: 0xff5040, w: 0.26, len: 5, label: this.holo ? 'holo' : undefined });
           G.fx.muzzle(mp, _d, 0xff7050, 0.7); sfx('eshot', this.pos.distanceTo(G.player.pos));
         } });
       }
@@ -1798,7 +1801,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -4622,6 +4625,128 @@ function fireRockets(owner, slot, d, aim, dmgMul, team) {
   } });
 }
 
+// ---- SB-5 sticky charges ---------------------------------------------------------------------------------
+const STICK = { fuse: 1.2, stack: 0.25 };
+const stickGeo = new THREE.SphereGeometry(0.45, 10, 8);
+export function clearStickies() { for (const k of (G.stickies || [])) k.mesh.parent && k.mesh.parent.remove(k.mesh); G.stickies = []; }
+function stickAt(s, at, ent) {
+  G.stickies = G.stickies || [];
+  const host = ent && !ent.isBarrel && !ent.isMine && !ent.isPlayer && ent.alive ? ent : null;
+  const mesh = new THREE.Mesh(stickGeo, new THREE.MeshBasicMaterial({ color: 0xff4030 })); mesh.position.copy(at); G.scene.add(mesh);
+  const off = host ? at.clone().sub(host.c) : null;
+  G.stickies.push({ mesh, host, off, t: STICK.fuse, dmg: s.dmg, splash: s.splash, label: s.label, team: s.team });
+  G.fx.sparks(at, null, 4, 0xff7050, 6, 0.6, 0.2, 0.15); sfx('minebeep', G.player ? G.player.pos.distanceTo(at) : 0);
+  G.stuckN = (G.stuckN || 0) + (host ? 1 : 0);
+}
+function updateStickies(dt) {
+  const L = G.stickies; if (!L || !L.length) return;
+  for (let i = L.length - 1; i >= 0; i--) {
+    const k = L[i]; k.t -= dt;
+    if (k.host && k.host.alive && !k.host.gone) k.mesh.position.copy(k.host.c).add(k.off); else k.host = null;
+    const blink = k.t < 0.4 ? 30 : 9; k.mesh.visible = Math.sin(k.t * blink) > -0.3; k.mesh.scale.setScalar(1 + (1.2 - k.t) * 0.3);
+    if (k.t > 0) continue;
+    // every other charge stuck to the same host when this one blows adds 25 %
+    let n = 0; if (k.host) for (const o of L) if (o !== k && o.host === k.host) n++;
+    const mul = 1 + STICK.stack * n;
+    G.curLabel = k.label;
+    if (k.host) dealDamage(k.host, k.dmg * 0.5 * mul, k.team, k.mesh.position);
+    explodeAt(k.mesh.position.clone(), k.splash, k.dmg * 0.5 * mul, k.team, 0.75, 0xff6040);
+    k.mesh.parent && k.mesh.parent.remove(k.mesh); L.splice(i, 1);
+  }
+}
+
+// ---- Mirage projector: a hover disc with two mirror images and swarms of holographic drones -------------------
+export const MIRAGE = { hp: 950, alt: 15, img: 2, imgR: 9, imgRe: 3.5, holoEvery: [9, 12], holoN: 3, holoCap: 6, holoLife: 18, cd: [2.2, 3.0], burst: 3, gap: 0.16, dmg: 11, speed: 120 };
+function glitchOut(e) {
+  if (e.gone) return;
+  e.alive = false; e.dying = true;
+  G.fx.sparks(e.c, null, 12, 0xc8a0ff, 12, 0.8, 0.35, 0.2); G.fx.emit('add', { x: e.c.x, y: e.c.y, z: e.c.z, life: 0.25, s0: 3.5, s1: 0.5, c0: 0xb080ff });
+  sfx('prism', G.player ? G.player.pos.distanceTo(e.pos) : 0);
+  G.holoPopped = (G.holoPopped || 0) + 1; e.remove();
+}
+export class HoloDrone extends Drone {
+  constructor(pos, owner) { super(pos); this.kind = 'holo'; this.holo = true; this.maxHp = this.hp = 1; this.owner = owner; this.life = MIRAGE.holoLife + Math.random() * 3; this.flk = 0; }
+  die() { glitchOut(this); }
+  update(dt) {
+    this.life -= dt;
+    if (this.life <= 0 || !this.owner.alive || this.markT > 0) { glitchOut(this); return; }
+    super.update(dt);
+    if (this.flk > 0) { this.flk -= dt; this.obj.visible = this.flk < 0.03; } else if (Math.random() < dt * 0.25) this.flk = 0.08;
+  }
+}
+class MirageImage extends Enemy {
+  constructor(owner, k) { super('mimage', 'E_Mirage', owner.pos, 1, 2.6); this.maxHp = this.hp = 1; this.owner = owner; this.k = k; this.holo = true; this.c.copy(owner.pos); }
+  die() { glitchOut(this); this.owner.reimg.push({ k: this.k, t: MIRAGE.imgRe }); }
+  update(dt) {
+    const o = this.owner; if (!o.alive) { glitchOut(this); return; }
+    if (this.markT > 0) { this.die(); return; }
+    const tp = o.tg().pos, a = Math.atan2(o.pos.z - tp.z, o.pos.x - tp.x) + (this.k ? 1 : -1) * Math.PI / 2 + Math.sin(o.ph * 0.6 + this.k * 2) * 0.35;   // side by side as seen by the target
+    this.pos.set(o.pos.x + Math.cos(a) * MIRAGE.imgR, o.pos.y + Math.sin(o.ph * 1.7 + this.k) * 0.8, o.pos.z + Math.sin(a) * MIRAGE.imgR);
+    this.obj.rotation.copy(o.obj.rotation); if (this.n.MR_Ring && o.n.MR_Ring) this.n.MR_Ring.rotation.z = o.n.MR_Ring.rotation.z;
+    this.c.copy(this.pos);
+  }
+  fake(p) {   // mirrors the real gun's burst with harmless pulses
+    const m = this.n.Muzzle_MR; if (!m) return; const mp = m.getWorldPosition(_a).clone(), aim = lead(mp, MIRAGE.speed, _b, p);
+    _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.06; _d.z += (Math.random() - 0.5) * 0.06;
+    spawnShot({ p: mp, v: _d.normalize().multiplyScalar(MIRAGE.speed), dmg: 0, team: 'E', kind: 'ebullet', color: 0xc890ff, w: 0.34, len: 5, life: 1.2, label: 'holo' });
+  }
+}
+export class Mirage extends Enemy {
+  constructor(pos) {
+    super('mirage', 'E_Mirage', pos, MIRAGE.hp, 2.6); this.boom = 1.3;
+    this.vel = new V3(); this.orbit = Math.random() < 0.5 ? 1 : -1; this.radius = 38 + Math.random() * 20; this.ph = Math.random() * 6;
+    this.holoT = 3 + Math.random() * 3; this.fireT = 2 + Math.random() * 2; this.burst = 0; this.bT = 0; this.reimg = []; this.imgs = [];
+    this.pos.y = groundAt(pos.x, pos.z, 99) + MIRAGE.alt; this.c.copy(this.pos);
+    for (let k = 0; k < MIRAGE.img; k++) this.imgs.push(new MirageImage(this, k));
+  }
+  update(dt) {
+    this.ph += dt;
+    const p = this.tg(), pc = p.center(playerC);
+    if (this.markT > 0) this.reimg.length = 0;
+    // orbit the target at range, drifting
+    let ang = Math.atan2(this.pos.z - p.pos.z, this.pos.x - p.pos.x) + this.orbit * dt * 0.3;
+    if (G.glare && G.sunDir) { const sa = Math.atan2(G.sunDir.z, G.sunDir.x) + Math.sin(this.ph * 0.25 + this.radius) * 0.3; ang += angDiff(sa, ang) * 0.6; }   // keep the sun at its back
+    const tx = p.pos.x + Math.cos(ang) * this.radius, tz = p.pos.z + Math.sin(ang) * this.radius;
+    const ty = groundAt(this.pos.x, this.pos.z, 99) + MIRAGE.alt + Math.sin(this.ph * 0.9) * 1.5;
+    _a.set(tx - this.pos.x, ty - this.pos.y, tz - this.pos.z); const L = _a.length(); if (L > 0) _a.multiplyScalar(Math.min(11, L * 0.8) / L);
+    this.vel.lerp(_a, 1 - Math.exp(-1.2 * dt)); this.pos.addScaledVector(this.vel, dt);
+    const s = pointInSolid(this.pos, 3); if (s) { this.pos.y = s.max.y + 4; this.vel.y = Math.max(this.vel.y, 2); }
+    this.pos.x = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.x)); this.pos.z = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.z));
+    this.obj.rotation.y = Math.atan2(this.pos.x - pc.x, this.pos.z - pc.z); this.c.copy(this.pos);
+    if (this.n.MR_Ring) this.n.MR_Ring.rotation.z += dt * 0.9;
+    // images come back after being popped
+    for (let i = this.reimg.length - 1; i >= 0; i--) { const r = this.reimg[i]; r.t -= dt; if (r.t <= 0 && !(this.markT > 0)) { this.reimg.splice(i, 1); const im = new MirageImage(this, r.k); this.imgs.push(im); G.fx.sparks(im.c, null, 8, 0xc8a0ff, 8, 0.6, 0.3, 0.2); } }
+    // holographic drones
+    this.holoT -= dt;
+    if (this.holoT <= 0 && !(this.markT > 0)) {
+      this.holoT = MIRAGE.holoEvery[0] + Math.random() * (MIRAGE.holoEvery[1] - MIRAGE.holoEvery[0]);
+      let n = 0; for (const e of G.enemies) if (e.kind === 'holo' && e.owner === this && e.alive) n++;
+      for (let k = 0; k < Math.min(MIRAGE.holoN, MIRAGE.holoCap - n); k++) {
+        const a = Math.random() * 6.28, r = 20 + Math.random() * 15;
+        const h = new HoloDrone(new V3(p.pos.x + Math.cos(a) * r, p.pos.y + 10 + Math.random() * 6, p.pos.z + Math.sin(a) * r), this);
+        G.fx.sparks(h.pos, null, 6, 0xc8a0ff, 8, 0.5, 0.3, 0.2);
+      }
+      G.holoSpawned = (G.holoSpawned || 0) + 1; G.onHolo && G.onHolo(this);
+    }
+    // pulse gun: the real one hurts, the images copy it
+    if (this.burst > 0) {
+      this.bT -= dt;
+      if (this.bT <= 0) {
+        this.bT = MIRAGE.gap; this.burst--;
+        const m = this.n.Muzzle_MR, mp = m.getWorldPosition(_a).clone(), aim = lead(mp, MIRAGE.speed, _b, p);
+        _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.04; _d.z += (Math.random() - 0.5) * 0.04;
+        G.curLabel = 'mirage'; spawnShot({ p: mp, v: _d.normalize().multiplyScalar(MIRAGE.speed), dmg: MIRAGE.dmg, team: 'E', kind: 'ebullet', color: 0xc890ff, w: 0.34, len: 5, life: 1.2, label: 'mirage' });
+        for (const im of this.imgs) if (im.alive) im.fake(p);
+        G.fx.muzzle(mp, _d, 0xc890ff, 1); sfx('eshot', this.pos.distanceTo(G.player.pos));
+      }
+    } else if (this.c.distanceTo(pc) < 95 && this.checkLos(dt)) {
+      this.fireT -= dt;
+      if (this.fireT <= 0) { this.fireT = MIRAGE.cd[0] + Math.random() * (MIRAGE.cd[1] - MIRAGE.cd[0]); this.burst = MIRAGE.burst; this.bT = 0; }
+    }
+    this.imgs = this.imgs.filter((im) => im.alive);
+  }
+}
+
 export function dropRepair(pos) {
   if (G.noRepair) return;
   const o = cloneKit('P_Repair'); o.position.copy(pos); o.position.y = Math.max(1.5, groundAt(pos.x, pos.z, pos.y) + 1.5);
@@ -4676,7 +4801,7 @@ export function updateCombat(dt) {
   if (GRID.on) updateGrid(dt);
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
-  updateIce(dt); updateIceWalls(dt); updateWind(dt);
+  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
