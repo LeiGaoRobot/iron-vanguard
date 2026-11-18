@@ -118,6 +118,8 @@ M = dict(
     Envelope2=mat("Envelope2", "#6e7364", 0.75, metal=0.05),
     HoloGlow=mat("HoloGlow", "#e0c8ff", 0.2, emit="#b070ff", strength=2.2),
     StickyGlow=mat("StickyGlow", "#ffb0a0", 0.3, emit="#ff4030", strength=2.0),
+    MagGlow=mat("MagGlow", "#c8e6ff", 0.2, emit="#4aa8ff", strength=2.2),
+    Rust2=mat("Rust2", "#5a3a26", 0.9, metal=0.2),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -1400,6 +1402,65 @@ def build_sticky():
     box((-0.24, 0.3, 0.05), (0.04, 0.5, 0.2), M["Hazard"], K)
     muzzle("Muzzle_Sticky", (0, 1.55, 0.06), K)
 
+def build_crane():
+    # scrapyard electromagnet crane: two lattice legs 18 m tall, a cross girder along X, a trolley with cables
+    # down to the magnet disc (CR_Mag, hangs at ~11 m) whose underside ring glows when energised
+    K = kit("P_Crane")
+    for s_ in (-1, 1):
+        for d in (-1, 1):
+            box((s_ * 8.0, d * 1.4, 9.0), (0.45, 0.45, 18.0), M["Hazard"] if d < 0 else M["Rust"], K)
+        for h in range(1, 6):
+            box((s_ * 8.0, 0, h * 3.0), (0.3, 2.8, 0.3), M["Rust2"], K)
+            box((s_ * 8.0, 0, h * 3.0 + 1.5), (0.18, 3.2, 0.18), M["Rust2"], K, rot=(0.78, 0, 0))
+        box((s_ * 8.0, 0, 0.3), (2.2, 4.2, 0.6), M["Concrete"] if "Concrete" in M else M["Frame"], K)
+    box((0, 0, 18.4), (17.5, 1.6, 1.2), M["Hazard"], K)
+    box((0, 0, 19.2), (17.0, 1.2, 0.4), M["Rust"], K)
+    box((0, 0, 17.4), (2.4, 2.2, 1.0), M["Frame"], K, bevel=0.1)
+    for s_ in (-0.5, 0.5):
+        box((s_, 0, 14.2), (0.08, 0.08, 5.6), M["Black"], K)
+    m = empty("CR_Mag", (0, 0, 11.0), K)
+    cyl((0, 0, 0), 2.2, 0.8, M["Frame"], m, verts=20)
+    cyl((0, 0, 0.55), 1.4, 0.35, M["Rust"], m, verts=16)
+    cyl((0, 0, -0.45), 2.0, 0.12, M["MagGlow"], m, verts=20)
+    for k in range(6):
+        a = k / 6 * math.pi * 2
+        box((math.cos(a) * 2.15, math.sin(a) * 2.15, 0), (0.3, 0.3, 0.9), M["Hazard"], m, rot=(0, 0, a))
+    box((0, 0, 0.95), (0.6, 0.6, 0.4), M["Black"], m)
+
+def build_deflector():
+    # Deflector: a squat hover body inside a vertical coil ring (DF_Ring, spins), two emitter dishes on the flanks
+    # and a scrap claw under the nose that flings junk (Muzzle_DF). front = +Y
+    K = kit("E_Deflector")
+    box((0, 0, 0), (1.8, 2.2, 1.2), M["EArmor"], K, bevel=0.2)
+    wedge((0, 1.35, 0), (1.5, 0.6, 1.0), M["EArmor2"], K, taper=0.4)
+    box((0, 1.4, 0.3), (0.9, 0.1, 0.12), M["EEye"], K)
+    cyl((0, 0, -0.8), 0.9, 0.4, M["Frame"], K, verts=14)
+    cyl((0, 0, -1.05), 0.7, 0.1, M["MagGlow"], K, verts=14)
+    r = empty("DF_Ring", (0, 0, 0), K)
+    torus((0, 0, 0), 2.1, 0.16, M["Rust"], r, rot=(0, math.pi / 2, 0))
+    for k in range(8):
+        a = k / 8 * math.pi * 2
+        box((0, math.cos(a) * 2.1, math.sin(a) * 2.1), (0.45, 0.32, 0.32), M["MagGlow"] if k % 2 else M["Frame"], r, rot=(a, 0, 0))
+    for s_ in (-1, 1):
+        cyl((s_ * 1.05, 0, 0.1), 0.5, 0.2, M["EArmor2"], K, rot=(0, math.pi / 2, 0), verts=14, r2=0.7)
+        cyl((s_ * 1.18, 0, 0.1), 0.3, 0.06, M["MagGlow"], K, rot=(0, math.pi / 2, 0), verts=12)
+    for k in range(3):
+        a = (k - 1) * 0.5
+        box((math.sin(a) * 0.35, 1.5, -0.75), (0.12, 0.6, 0.12), M["Black"], K, rot=(0.5, a, 0))
+    muzzle("Muzzle_DF", (0, 1.8, -0.9), K)
+
+def build_minepod():
+    K = kit("S_Mines")
+    # mine dispenser: flat armoured box with four drum mines visible in a tray and a drop chute
+    box((0, 0, 0), (0.95, 1.0, 0.55), M["Armor"], K, bevel=0.06)
+    box((0, -0.55, -0.1), (0.7, 0.2, 0.3), M["Frame"], K)
+    for i in range(2):
+        for j in range(2):
+            cyl((-0.22 + i * 0.44, -0.2 + j * 0.42, 0.3), 0.17, 0.1, M["Black"], K, verts=12)
+            cyl((-0.22 + i * 0.44, -0.2 + j * 0.42, 0.36), 0.05, 0.04, M["StickyGlow"], K, verts=8)
+    box((0.5, 0, 0), (0.06, 0.8, 0.4), M["Hazard"], K)
+    muzzle("Muzzle_Mines", (0, -0.7, -0.2), K)
+
 def build_smoke():
     K = kit("S_Smoke")
     # shoulder smoke launcher: three angled grey canister tubes on a cradle
@@ -1857,7 +1918,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
