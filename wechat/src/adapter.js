@@ -47,8 +47,9 @@ class Element extends Emitter {
   get innerHTML() { return this._text; }
   set innerHTML(v) { this._text = String(v); this.children.length = 0; }
   get childNodes() { return this.children; }
-  get firstChild() { return this.children[0] || null; }
-  get lastChild() { return this.children[this.children.length - 1] || null; }
+  // index.html markup does not exist here: main.js reaches into it through first/last child (wind tag arrow, bar fills)
+  get firstChild() { return this.children[0] || this.appendChild(new Element('div')); }
+  get lastChild() { return this.children[this.children.length - 1] || this.appendChild(new Element('div')); }
   // main.js writes bar fills through firstElementChild (markup from index.html that doesn't exist here)
   get firstElementChild() { return this.children[0] || this.appendChild(new Element('div')); }
   get lastElementChild() { return this.children[this.children.length - 1] || this.appendChild(new Element('div')); }
