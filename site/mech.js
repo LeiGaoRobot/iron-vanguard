@@ -1,7 +1,7 @@
 // Mech: model assembly (paint + weapon mounts), movement physics, procedural animation, thrusters.
 import * as THREE from 'three';
 import { cloneKit, recolor, nodes, find } from './kit.js';
-import { groundAt, collideCyl, ARENA, PLAT } from './world.js';
+import { groundAt, collideCyl, ARENA, PLAT, WATER } from './world.js';
 import { TEX } from './fx.js';
 
 export const PALETTES = {
@@ -88,7 +88,7 @@ export class Mech {
     for (const s of Object.values(this.slots)) for (const m of s.models) m.parent && m.parent.remove(m);
     this.slots = {};
     this.loadout = { ...loadout };
-    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', grenade: 'W_Grenade', pile: 'W_Pile', flamer: 'W_Flamer', cryo: 'W_Cryo', shield: 'S_Shield', drones: 'S_Drones', emp: 'S_Emp', decoy: 'S_Decoy', grav: 'S_Grav', orbital: 'S_Orbital', disc: 'W_Disc', blink: 'S_Blink', sonar: 'S_Sonar', sentry: 'S_Sentry' };
+    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', grenade: 'W_Grenade', pile: 'W_Pile', flamer: 'W_Flamer', cryo: 'W_Cryo', shield: 'S_Shield', drones: 'S_Drones', emp: 'S_Emp', decoy: 'S_Decoy', grav: 'S_Grav', orbital: 'S_Orbital', disc: 'W_Disc', blink: 'S_Blink', sonar: 'S_Sonar', sentry: 'S_Sentry', hook: 'W_Hook' };
     const mk = (slot, key, mounts) => {
       const models = [], muzzles = [];
       for (const mt of mounts) {
@@ -135,7 +135,8 @@ export class Mech {
       this.boosting = true;
     }
     const lunging = this.lungeT > 0;
-    const top = (this.boosting ? BOOST * F.boost : WALK * F.speed) * mlen;
+    const wade = WATER.on ? Math.max(0, Math.min(1, (WATER.y - this.pos.y) / 3)) : 0; this.wade = wade;
+    const top = (this.boosting ? BOOST * F.boost * (1 - 0.25 * wade) : WALK * F.speed * (1 - 0.4 * wade)) * mlen;
     const acc = this.grounded ? (this.boosting ? 70 : 55) : (this.boosting ? 32 : 12);
     const tx = dx * top, tz = dz * top;
     const k = this.qbT > 0 ? 1 - Math.exp(-2.2 * dt) : 1 - Math.exp(-acc / Math.max(6, top + 6) * dt * 1.6);

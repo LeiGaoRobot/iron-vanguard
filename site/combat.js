@@ -1,6 +1,6 @@
 // Weapons, projectiles, enemies, damage.  Shared state lives in G.
 import * as THREE from 'three';
-import { barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, LAVA, lavaAt, lavaD } from './world.js';
+import { barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD } from './world.js';
 import { cloneKit, nodes, find, recolor } from './kit.js';
 import { Mech, angDiff, PALETTES } from './mech.js';
 import { sfx } from './audio.js';
@@ -29,6 +29,7 @@ export const WEAPONS = {
   cryo: { slot: 'arm', name: 'CR-3 冷冻枪', en: 'CR-3 Cryo Lance', desc: '冰晶连射 · 射程 70 m · 命中累积寒冷让敌人变慢 · 冻满后冰封 1.5 秒（瘫痪、受伤 +30%）', type: 'bullet', rate: 0.085, dmg: 8.5, speed: 230, spread: 0.007, life: 0.3, mag: 60, reload: 2.2, color: 0x9fe8ff, w: 0.26, len: 5, sfx: 'cryo', recoil: 0.1, chill: 5.5 },
   disc: { slot: 'arm', name: 'DS-7 回旋刃', en: 'DS-7 Ripper Disc', desc: '掷出贯穿锯刃 · 飞到 48 m 或撞墙后飞回手中 · 去程回程各命中一次 · 同时最多 2 片', type: 'disc', rate: 0.32, dmg: 56, speed: 72, range: 48, mag: 2, reload: 0, sfx: 'disc', recoil: 0.25 },
   pile: { slot: 'arm', name: 'PB-9 打桩机', en: 'PB-9 Pile Bunker', desc: '近战 · 锁定时冲刺 · 单体重击 · 贯穿护盾', type: 'pile', dmg: 430, range: 5.5, lunge: 26, cd: 1.3, cost: 20, sfx: 'pile' },
+  hook: { slot: 'arm', name: 'GH-2 钩爪发射器', en: 'GH-2 Grapple Hook', desc: '射出钩爪 70 m · 钩中小型敌机拖到面前并瘫痪 1.2 秒 · 钩中大型目标或墙体则把自己拉过去', type: 'hook', dmg: 110, range: 70, speed: 150, rate: 0.85, mag: 1, reload: 0, sfx: 'hook', recoil: 0.4 },
   missile: { slot: 'shoulder', name: 'MS-6 飞弹巢', en: 'MS-6 Missile Pods', desc: '多重锁定 · 6 发追踪', type: 'missile', count: 6, dmg: 40, splash: 5, cd: 6.5, sfx: 'missile' },
   cannon: { slot: 'shoulder', name: 'PC-2 等离子炮', en: 'PC-2 Plasma Cannon', desc: '大范围爆炸 · 弹速慢', type: 'plasma', dmg: 165, splash: 9, speed: 105, cd: 3.4, sfx: 'cannon' },
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
@@ -42,7 +43,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'hook', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry'];
 
 export function weaponState(key) {
@@ -465,6 +466,10 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Decoy(owner, slot, d, dmgMul); sfx('decoy', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'grav') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; launchWell(owner, slot, d, dmgMul, aim); sfx('cannon', dist); if (me) G.stats.shots++; }
+  } else if (d.type === 'hook') {
+    const out = G.hooks.some((h) => h.owner === owner && h.slot === slot);
+    if (held && ws.cd <= 0 && !out && isP && owner.alive) { ws.cd = d.rate; fireHook(owner, slot, d, dmgMul, aim); if (me) G.stats.shots++; mslot.recoil = 1; }
+    for (const m of mslot.models) { const hk = m._hook || (m._hook = find(m, 'HK_Head')); if (hk) hk.visible = !out; }
   } else if (d.type === 'disc') {
     if (held && ws.cd <= 0 && ws.ammo > 0 && isP) { ws.cd = d.rate; ws.ammo--; throwDisc(owner, slot, ws, d, dmgMul, aim); if (me) G.stats.shots++; mslot.recoil = 1; }
     for (const m of mslot.models) { const dk = m._disc || (m._disc = find(m, 'DS_Disc')); if (dk) { dk.visible = ws.ammo > 0; dk.rotation.y += dt * 8; } }
@@ -922,6 +927,80 @@ function blinkJump(owner, d, mul) {
   sfx('blink', 0);
   G.queue.push({ label: 'p-blink', t: 0.3, fn: () => { G.fx.flash(a, 0x9ab4ff, 40, 30, 0.3); explodeAt(a, d.burstR, d.burst * mul, 'P', 0.8, 0x7a9cff); } });
 }
+// GH-2 grapple hook: the claw flies out on a cable. Small enemies are reeled in in front of the owner and stunned;
+// anything big (or a wall / roof) pulls the owner to it instead. Floor hits and misses just reel the cable back.
+G.hooks = [];
+const PULLABLE = new Set(['drone', 'crawler', 'walker', 'splitter', 'sapper', 'mender', 'jammer', 'grappler', 'stalker', 'skimmer']);
+const FLYERS = new Set(['drone', 'sapper', 'mender', 'jammer', 'grappler']);
+const clawMat = new THREE.MeshStandardMaterial({ color: 0xc0c8d0, metalness: 0.85, roughness: 0.3, emissive: 0xffa040, emissiveIntensity: 0.25 });
+const clawGeo = new THREE.ConeGeometry(0.32, 1.1, 6).rotateX(Math.PI / 2);
+function fireHook(owner, slot, d, mul, aim) {
+  const mp = owner.muzzlePos(slot, new V3(), 0).clone();
+  const dir = new V3().subVectors(aim, mp).normalize();
+  const o = new THREE.Mesh(clawGeo, clawMat); o.position.copy(mp); G.scene.add(o);
+  G.hooks.push({ o, owner, slot, d, mul, dir, P: mp.clone(), st: 'fly', left: d.range, t: 0, host: null, at: new V3(), zipT: 0 });
+  sfx('hook', G.player ? G.player.pos.distanceTo(mp) : 0); G.hookShots = (G.hookShots || 0) + 1;
+}
+function updateHooks(dt) {
+  const fx = G.fx;
+  for (let i = G.hooks.length - 1; i >= 0; i--) {
+    const H = G.hooks[i], d = H.d, own = H.owner, P = H.P;
+    H.t += dt;
+    const mp = own.muzzlePos(H.slot, new V3(), 0);
+    let done = !own.alive;
+    if (!done && H.st === 'fly') {
+      const st = d.speed * dt, nx = _a.copy(P).addScaledVector(H.dir, st).clone();
+      const w = raySolids(P, H.dir, st + 0.4);
+      const prev = G.curLabel; G.curLabel = 'p-hook';
+      const ents = entsFor('P').filter((e) => !e.isBarrel && !e.isMine && !e.cloaked);
+      const h = segHit(P, nx, ents, 0.6);
+      if (h && h.t * st < w.t) {
+        const e = h.ent, host = e.kind === 'cpart' ? e.owner : e;
+        dealDamage(e, d.dmg * H.mul, 'P', e.c, 'p-hook');
+        P.copy(e.c); fx.sparks(P, null, 12, 0xffc070, 14, 1, 0.3, 0.2); sfx('ric', G.player.pos.distanceTo(P));
+        if (host.alive && !host.dying && PULLABLE.has(host.kind) && host.pos) {
+          H.st = 'pull'; H.host = host; H.T = 0.45; host.stunT = Math.max(host.stunT || 0, 1.2); host.stunMax = host.stunT; G.hookPulls = (G.hookPulls || 0) + 1;
+          if (host.st === 'leap' || host.st === 'dash') host.st = host.kind === 'crawler' ? 'run' : 'roll';
+        } else { H.st = 'zip'; H.at.copy(e.c); H.host = host.alive ? host : null; G.hookZips = (G.hookZips || 0) + 1; }
+      } else if (w.t < st + 0.4) {
+        P.addScaledVector(H.dir, Math.max(0, w.t - 0.3));
+        fx.sparks(P, null, 8, 0xffc070, 12, 1, 0.25, 0.2); sfx('ric', G.player.pos.distanceTo(P));
+        if (w.solid === 'floor') H.st = 'back';
+        else { H.st = 'zip'; H.at.copy(P); G.hookZips = (G.hookZips || 0) + 1; }
+      } else { P.copy(nx); H.left -= st; if (H.left <= 0) H.st = 'back'; }
+      G.curLabel = prev;
+    } else if (!done && H.st === 'pull') {
+      const e = H.host;
+      if (!e.alive || e.dying || e.gone) H.st = 'back';
+      else {
+        H.T -= dt;
+        const fw = _b.set(-Math.sin(own.aimYaw), 0, -Math.cos(own.aimYaw));
+        const tx = own.pos.x + fw.x * 7.5, tz = own.pos.z + fw.z * 7.5;
+        const ty = FLYERS.has(e.kind) ? own.pos.y + 4 : Math.max(groundAt(tx, tz, own.pos.y + 3), WATER.on && e.kind === 'skimmer' ? WATER.y + 1 : -99) + (e.kind === 'splitter' ? e.T.r : 0);
+        const k = 1 - Math.exp(-9 * dt), ox = e.pos.x, oy = e.pos.y, oz = e.pos.z;
+        e.pos.x += (tx - e.pos.x) * k; e.pos.y += (ty - e.pos.y) * k; e.pos.z += (tz - e.pos.z) * k;
+        if (e.c && e.c !== e.pos) e.c.add(_c.set(e.pos.x - ox, e.pos.y - oy, e.pos.z - oz));
+        if (e.vel) e.vel.set(0, 0, 0);
+        P.copy(e.c);
+        if (H.T <= 0 || Math.hypot(tx - e.pos.x, tz - e.pos.z) < 1.5) { H.st = 'back'; fx.ring(new V3(e.pos.x, e.pos.y + 0.3, e.pos.z), null, 1, 4, 0.3, 0xffc070); }
+      }
+    } else if (!done && H.st === 'zip') {
+      if (H.host && H.host.c) H.at.copy(H.host.c);
+      H.zipT += dt;
+      const c = own.center(_a); _b.subVectors(H.at, c); const L = _b.length();
+      if (L < 5.5 || H.zipT > 1.1) { own.lungeT = 0.0001; own.vel.multiplyScalar(0.35); own.vel.y = Math.max(own.vel.y, 3); H.st = 'back'; }
+      else { own.lungeT = 0.12; own.vel.copy(_b.multiplyScalar(54 / L)); if (Math.random() < 0.5) fx.emit('add', { x: c.x, y: c.y, z: c.z, life: 0.25, s0: 1.6, s1: 0.3, c0: 0xffc070 }); }
+      P.copy(H.at);
+    } else if (!done && H.st === 'back') {
+      _b.subVectors(mp, P); const L = _b.length(), st = 170 * dt;
+      if (L < Math.max(1.2, st)) done = true; else P.addScaledVector(_b.multiplyScalar(1 / L), st);
+    }
+    if (done) { H.o.parent && H.o.parent.remove(H.o); G.hooks.splice(i, 1); continue; }
+    H.o.position.copy(P); _c.subVectors(P, mp); if (_c.lengthSq() > 0.01) H.o.lookAt(_d.copy(P).add(_c)); else H.o.lookAt(_d.copy(P).add(H.dir));
+    fx.streak(mp, P, 0.09, 0x8a929a); fx.streak(mp, P, 0.03, 0xffd8a0);
+  }
+}
+export function clearHooks() { for (const H of G.hooks) H.o.parent && H.o.parent.remove(H.o); G.hooks.length = 0; }
 export function clearDiscs() { for (const D of G.discs) D.o.parent && D.o.parent.remove(D.o); G.discs.length = 0; }
 export function clearStrikes() { for (const S of G.strikes) S.o.parent && S.o.parent.remove(S.o); G.strikes.length = 0; }
 export function clearWells() { for (const w of G.wells) { w.o.parent && w.o.parent.remove(w.o); w.area.parent && w.area.parent.remove(w.area); } G.wells.length = 0; }
@@ -1503,7 +1582,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -2533,7 +2612,7 @@ export class Grappler extends Enemy {
       if (hitP) {
         this.st = 'tow'; this.stT = GRAP.tow; this.hp0 = this.hp; this.towAt = G.time; G.tether = this;
         G.curSrc = this.pos; damagePlayer(GRAP.hit, this.pos, 'grappler-hook');
-        G.fx.sparks(pcc, null, 12, 0x80ffd8, 14, 1, 0.3, 0.25); sfx('hookhit', 0); G.hooks = (G.hooks || 0) + 1;
+        G.fx.sparks(pcc, null, 12, 0x80ffd8, 14, 1, 0.3, 0.25); sfx('hookhit', 0); G.grapHits = (G.grapHits || 0) + 1;
         G.onTether && G.onTether(this);
       } else if (w.t < st || this.hkL > GRAP.range) { this.st = 'reel'; this.stT = 0.5; G.fx.sparks(this.hkP, null, 6, 0x80ffd8, 10, 1, 0.3, 0.2); }
     } else if (this.st === 'tow') {
@@ -2910,6 +2989,63 @@ function updateMeteors(dt) {
 }
 export function clearMeteors() { for (const m of G.meteors) m.o.parent && m.o.parent.remove(m.o); G.meteors.length = 0; G.meteorT = 5; }
 
+// Skimmer: hover gunboat that circles its target fast at 34-52 m, skimming water (or ground). Fires 8-round gun bursts
+// and pairs of slow homing torpedoes. Banks into its turns; flips its circling direction when it scrapes a building.
+export class Skimmer extends Enemy {
+  constructor(pos) {
+    super('skimmer', 'E_Skimmer', pos, 380, 2.6); this.boom = 1.1; this.obj.scale.setScalar(1.1); this.obj.rotation.order = 'YXZ';
+    this.vel = new V3(); this.ph = Math.random() * 6; this.orbit = Math.random() < 0.5 ? 1 : -1; this.R = 34 + Math.random() * 18;
+    this.gunT = 2 + Math.random() * 2; this.burst = 0; this.burstT = 0; this.torpT = 4 + Math.random() * 3; this.flipT = 0;
+    this.pos.y = this.surf(pos.x, pos.z, pos.y); this.c.set(this.pos.x, this.pos.y + 1, this.pos.z);
+  }
+  surf(x, z, y) { return Math.max(WATER.on ? WATER.y : -99, groundAt(x, z, y + 2.5, 2)) + 0.9; }
+  update(dt) {
+    this.ph += dt; this.flipT -= dt;
+    const p = this.tg(), pc = p.center(playerC);
+    _c.set(this.pos.x - pc.x, 0, this.pos.z - pc.z); const dist = _c.length() || 1;
+    const ang = Math.atan2(_c.z, _c.x) + this.orbit * 0.55, R = this.R + Math.sin(this.ph * 0.35) * 10;
+    _b.set(pc.x + Math.cos(ang) * R - this.pos.x, 0, pc.z + Math.sin(ang) * R - this.pos.z);
+    const L = _b.length() || 1, sp = 22 + Math.sin(this.ph * 0.7) * 4; _b.multiplyScalar(sp / L);
+    const k = 1 - Math.exp(-1.6 * dt); this.vel.x += (_b.x - this.vel.x) * k; this.vel.z += (_b.z - this.vel.z) * k;
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    _a.set(this.pos.x, this.pos.y - 1, this.pos.z);
+    if (collideCyl(_a, 2.4, 3)) { this.pos.x = _a.x; this.pos.z = _a.z; if (this.flipT <= 0) { this.orbit *= -1; this.flipT = 1.5; } }
+    this.pos.x = Math.max(-ARENA + 4, Math.min(ARENA - 4, this.pos.x)); this.pos.z = Math.max(-ARENA + 4, Math.min(ARENA - 4, this.pos.z));
+    const sy = this.surf(this.pos.x, this.pos.z, this.pos.y);
+    this.pos.y += (sy - this.pos.y) * (1 - Math.exp(-6 * dt)); this.obj.position.y = this.pos.y + Math.sin(this.ph * 2.6) * 0.12;
+    const yaw = Math.atan2(-this.vel.x, -this.vel.z), dy = angDiff(yaw, this.obj.rotation.y);
+    this.obj.rotation.y += dy * Math.min(1, dt * 5);
+    this.obj.rotation.z += (Math.max(-0.45, Math.min(0.45, -dy * 2.2)) - this.obj.rotation.z) * Math.min(1, dt * 4);
+    this.obj.rotation.x = 0.05;
+    this.c.set(this.pos.x, this.pos.y + 1, this.pos.z);
+    if (WATER.on && this.pos.y - 1.2 <= WATER.y && Math.random() < 0.6) G.fx.emit('add', { x: this.pos.x - this.vel.x * 0.1 + (Math.random() - 0.5) * 2, y: WATER.y + 0.2, z: this.pos.z - this.vel.z * 0.1 + (Math.random() - 0.5) * 2, vy: 2.5, life: 0.5, s0: 1.2, s1: 2.6, c0: 0xc8e8f0 });
+    const los = this.checkLos(dt);
+    this.gunT -= dt;
+    if (this.burst > 0) {
+      this.burstT -= dt;
+      if (this.burstT <= 0) {
+        this.burstT = 0.09; this.burst--;
+        const mp = this.n.Muzzle_Skim.getWorldPosition(new V3());
+        if (p === G.player) lead(mp, 210, _d); else _d.copy(pc);
+        _d.sub(mp).normalize(); _d.x += (Math.random() - 0.5) * 0.07; _d.y += (Math.random() - 0.5) * 0.04; _d.z += (Math.random() - 0.5) * 0.07;
+        spawnShot({ p: mp, v: _d.normalize().multiplyScalar(210), dmg: 4, team: 'E', kind: 'ebullet', life: 1, label: 'skimmer-gun' });
+        G.fx.muzzle(mp, _d, 0xffb060, 0.6);
+        if (this.burst % 2) sfx('rifle', G.player.pos.distanceTo(mp) * 1.3);
+      }
+    } else if (this.gunT <= 0 && los && dist < 62) { this.gunT = 3.4 + Math.random(); this.burst = 5; this.burstT = 0; }
+    this.torpT -= dt;
+    if (this.torpT <= 0 && los && dist < 90) {
+      this.torpT = 5.5 + Math.random() * 2;
+      for (let s = -1; s <= 1; s += 2) {
+        const mp = this.n.Muzzle_SkimT.getWorldPosition(new V3()), fw = new V3(-Math.sin(this.obj.rotation.y), 0.5, -Math.cos(this.obj.rotation.y));
+        const v = fw.multiplyScalar(16).add(new V3(Math.cos(this.obj.rotation.y) * s * 6, 0, -Math.sin(this.obj.rotation.y) * s * 6));
+        spawnShot({ p: mp, v, dmg: 24, team: 'E', kind: 'missile', splash: 4.5, target: p._ent, aim: pc.clone(), life: 6, maxSpeed: 40, turn: 1.3, label: 'skimmer-torpedo' });
+      }
+      sfx('missile', G.player.pos.distanceTo(this.pos));
+    }
+  }
+}
+
 export class Jammer extends Enemy {
   constructor(pos) {
     super('jammer', 'E_Jammer', pos, 380, 2.8); this.boom = 1; this.obj.scale.setScalar(1.3);
@@ -3254,6 +3390,7 @@ export function updateCombat(dt) {
   updateWells(dt);
   updateStrikes(dt);
   updateDiscs(dt);
+  updateHooks(dt);
   updateShots(dt);
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

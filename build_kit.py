@@ -917,6 +917,40 @@ def build_sentry_pod():
     ball((0.14, 0.4, 0.62), 0.06, M["Sonar"], K, sub=1)
     muzzle("Muzzle_SentryPod", (0, 0.7, 0.55), K)
 
+def build_skimmer():
+    # Skimmer: hover gunboat. Wedge hull on a black skirt, two ducted fans at the back, chin gun, torpedo pods. front = +Y
+    K = kit("E_Skimmer")
+    box((0, 0.1, 0.55), (2.2, 3.6, 0.7), M["EArmor"], K, bevel=0.18)
+    box((0, 1.95, 0.45), (1.5, 0.9, 0.5), M["EArmor"], K, bevel=0.15, rot=(0.25, 0, 0))
+    box((0, 0.0, 0.12), (2.5, 4.0, 0.3), M["Black"], K, bevel=0.12)                 # skirt
+    box((0, 0.6, 1.0), (1.0, 1.2, 0.45), M["EArmor2"], K, bevel=0.1)                 # cabin
+    box((0, 1.05, 1.08), (0.8, 0.35, 0.22), M["EEye"], K, bevel=0.05)
+    for s_ in (-1, 1):
+        cyl((s_ * 0.62, -1.9, 1.15), 0.62, 0.35, M["Frame"], K, rot=(math.pi / 2, 0, 0), verts=16)
+        torus((s_ * 0.62, -1.9, 1.15), 0.62, 0.08, M["EArmor2"], K, rot=(math.pi / 2, 0, 0))
+        cyl((s_ * 0.62, -2.05, 1.15), 0.42, 0.05, M["NozzleGlow"], K, rot=(math.pi / 2, 0, 0), verts=12)
+        box((s_ * 1.2, 0.3, 0.75), (0.32, 1.4, 0.32), M["EArmor2"], K, bevel=0.06)     # torpedo pods
+        box((s_ * 1.2, 1.02, 0.75), (0.22, 0.08, 0.22), M["Hazard"], K)
+        box((s_ * 1.28, -0.4, 0.55), (0.06, 2.2, 0.12), M["Hazard"], K)
+    cyl((0, 2.45, 0.28), 0.1, 0.8, M["Joint"], K, rot=(-math.pi / 2, 0, 0), verts=8)
+    muzzle("Muzzle_Skim", (0, 2.9, 0.28), K)
+    muzzle("Muzzle_SkimT", (0, 1.1, 0.8), K)
+
+def build_hook():
+    K = kit("W_Hook")
+    # grapple launcher: chunky barrel with a winch drum; the claw HK_Head sits in the muzzle and is hidden while it flies
+    box((0, 0.15, 0.0), (0.38, 1.0, 0.38), M["Frame"], K, bevel=0.05)
+    box((0, 0.2, 0.2), (0.3, 0.7, 0.06), M["Armor"], K, bevel=0.02)
+    cyl((0, 0.85, 0.02), 0.15, 0.5, M["Joint"], K, rot=(-math.pi / 2, 0, 0), verts=12)
+    cyl((0.28, -0.05, 0.0), 0.2, 0.18, M["Armor2"], K, rot=(0, math.pi / 2, 0), verts=14)  # winch
+    cyl((0.37, -0.05, 0.0), 0.12, 0.04, M["Hazard"], K, rot=(0, math.pi / 2, 0), verts=12)
+    h = empty("HK_Head", (0, 1.15, 0.02), K)
+    cyl((0, 0, 0), 0.07, 0.3, M["Joint"], h, rot=(-math.pi / 2, 0, 0), verts=8)
+    for k in range(3):
+        a = k / 3 * math.pi * 2
+        box((math.cos(a) * 0.12, 0.16, math.sin(a) * 0.12), (0.05, 0.22, 0.05), M["Hazard"], h, rot=(math.sin(a) * 0.6, 0, -math.cos(a) * 0.6))
+    muzzle("Muzzle_Hook", (0, 1.25, 0.02), K)
+
 def build_eel():
     # Eel: armoured serpent drone. Head and one body segment are separate kits; the game strings 9 segments behind the head. front = +Y
     K = kit("E_EelHead")
@@ -1363,7 +1397,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

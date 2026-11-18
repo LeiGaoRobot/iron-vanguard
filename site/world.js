@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { cloneKit, bakeStatic } from './kit.js';
 
+export const WATER = { on: false, y: -50 };   // storm surge: flat water plane at height y (mechs wade slower below it)
 export const PLAT = { R: 0 };   // sky elevator: round deck of radius R, void beyond (0 = normal square arena)
 export const ARENA = 170;          // playable half-size (m)
 export const solids = [];          // {min: V3, max: V3, kind, ref}
