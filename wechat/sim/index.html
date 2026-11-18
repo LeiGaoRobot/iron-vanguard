@@ -28,7 +28,7 @@ worker.onmessage = (e) => {
 // test hook: await __sim(code) evaluates code in the worker (inside an async function) and returns the result
 window.__sim = (code) => new Promise((res) => { const id = ++seq; pending[id] = res; worker.postMessage({ type: 'eval', id, code }); });
 fetch('../minigame/assets/kit.glb').then((r) => r.arrayBuffer()).then((glb) => {
-  worker.postMessage({ type: 'boot', canvas: off, w: innerWidth, h: innerHeight, dpr: devicePixelRatio, glb }, [off, glb]);
+  worker.postMessage({ type: 'boot', canvas: off, w: innerWidth, h: innerHeight, dpr: devicePixelRatio, glb, query: Object.fromEntries(new URLSearchParams(location.search)) }, [off, glb]);
 });
 const tl = (list) => [...list].map((t) => ({ identifier: t.identifier, clientX: t.clientX, clientY: t.clientY }));
 for (const ty of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {

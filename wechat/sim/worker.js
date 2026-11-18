@@ -27,7 +27,19 @@ function makeWx(m) {
     onTouchEnd: (f) => cbs.touchend.push(f),
     onTouchCancel: (f) => cbs.touchcancel.push(f),
     onWindowResize: (f) => { resizeCb = f; },
-    onHide() {}, onShow() {},
+    onHide() {}, onShow: (f) => { self.showCbs.push(f); },
+    // launch query from the sim page URL (?m=<mission>) stands in for a share card
+    getLaunchOptionsSync: () => ({ scene: 1007, query: m.query || {} }),
+    showShareMenu: (o) => { self.shares.push({ menu: o.menus }); },
+    onShareAppMessage: (f) => { self.shareCb = f; },
+    onShareTimeline: (f) => { self.timelineCb = f; },
+    shareAppMessage: (o) => { self.shares.push(o); post('shareAppMessage ' + JSON.stringify(o)); },
+    // fake rewarded video: show() resolves, onClose fires after 0.3 s with isEnded = self.adEnds
+    createRewardedVideoAd: () => {
+      const cl = [];
+      return { onLoad() {}, onError() {}, onClose: (f) => cl.push(f), load: () => Promise.resolve(),
+        show: () => { self.adShows++; setTimeout(() => cl.forEach((f) => f({ isEnded: self.adEnds })), 300); return Promise.resolve(); } };
+    },
     // no createWebAudioContext: workers have no Web Audio, so the game runs silent here
   };
 }
@@ -39,6 +51,7 @@ self.shot = async (name) => {
   const data = await new Promise((res) => { const r = new FileReader(); r.onload = () => res(r.result); r.readAsDataURL(blob); });
   return fetch('http://127.0.0.1:8212/', { method: 'POST', body: JSON.stringify({ name, data }) }).then((r) => r.text()).catch((e) => 'ERR ' + e);
 };
+self.showCbs = []; self.shares = []; self.adShows = 0; self.adEnds = true;
 self.tap = (ev, pts) => { const t = pts.map(([x, y], i) => ({ identifier: 200 + i, clientX: x, clientY: y })); for (const f of cbs[ev]) f({ touches: ev === 'touchend' ? [] : t, changedTouches: t }); };
 
 self.onmessage = async (e) => {
