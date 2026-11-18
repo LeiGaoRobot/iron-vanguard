@@ -88,7 +88,7 @@ export class Mech {
     for (const s of Object.values(this.slots)) for (const m of s.models) m.parent && m.parent.remove(m);
     this.slots = {};
     this.loadout = { ...loadout };
-    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', grenade: 'W_Grenade', pile: 'W_Pile', flamer: 'W_Flamer', cryo: 'W_Cryo', shield: 'S_Shield', drones: 'S_Drones', emp: 'S_Emp', decoy: 'S_Decoy', grav: 'S_Grav', orbital: 'S_Orbital', disc: 'W_Disc', blink: 'S_Blink', sonar: 'S_Sonar', sentry: 'S_Sentry', hook: 'W_Hook', smoke: 'S_Smoke' };
+    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', grenade: 'W_Grenade', pile: 'W_Pile', flamer: 'W_Flamer', cryo: 'W_Cryo', shield: 'S_Shield', drones: 'S_Drones', emp: 'S_Emp', decoy: 'S_Decoy', grav: 'S_Grav', orbital: 'S_Orbital', disc: 'W_Disc', blink: 'S_Blink', sonar: 'S_Sonar', sentry: 'S_Sentry', hook: 'W_Hook', smoke: 'S_Smoke', sonic: 'W_Sonic' };
     const mk = (slot, key, mounts) => {
       const models = [], muzzles = [];
       for (const mt of mounts) {

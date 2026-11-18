@@ -30,6 +30,7 @@ export const WEAPONS = {
   disc: { slot: 'arm', name: 'DS-7 回旋刃', en: 'DS-7 Ripper Disc', desc: '掷出贯穿锯刃 · 飞到 48 m 或撞墙后飞回手中 · 去程回程各命中一次 · 同时最多 2 片', type: 'disc', rate: 0.32, dmg: 56, speed: 72, range: 48, mag: 2, reload: 0, sfx: 'disc', recoil: 0.25 },
   pile: { slot: 'arm', name: 'PB-9 打桩机', en: 'PB-9 Pile Bunker', desc: '近战 · 锁定时冲刺 · 单体重击 · 贯穿护盾', type: 'pile', dmg: 430, range: 5.5, lunge: 26, cd: 1.3, cost: 20, sfx: 'pile' },
   hook: { slot: 'arm', name: 'GH-2 钩爪发射器', en: 'GH-2 Grapple Hook', desc: '射出钩爪 70 m · 钩中小型敌机拖到面前并瘫痪 1.2 秒 · 钩中大型目标或墙体则把自己拉过去', type: 'hook', dmg: 110, range: 70, speed: 150, rate: 0.85, mag: 1, reload: 0, sfx: 'hook', recoil: 0.4 },
+  sonic: { slot: 'arm', name: 'SW-6 音波炮', en: 'SW-6 Sonic Cannon', desc: '前方 32 m 扇形冲击波 · 击退并震慑敌机 0.35 秒 · 震散来袭子弹 · 镜面反射不了声波', type: 'sonic', rate: 0.75, dmg: 62, range: 32, cone: 0.5, push: 12, stun: 0.35, mag: 6, reload: 2.4, sfx: 'sonic', recoil: 0.7 },
   missile: { slot: 'shoulder', name: 'MS-6 飞弹巢', en: 'MS-6 Missile Pods', desc: '多重锁定 · 6 发追踪', type: 'missile', count: 6, dmg: 40, splash: 5, cd: 6.5, sfx: 'missile' },
   cannon: { slot: 'shoulder', name: 'PC-2 等离子炮', en: 'PC-2 Plasma Cannon', desc: '大范围爆炸 · 弹速慢', type: 'plasma', dmg: 165, splash: 9, speed: 105, cd: 3.4, sfx: 'cannon' },
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
@@ -44,7 +45,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'hook', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'hook', 'sonic', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke'];
 
 export function weaponState(key) {
@@ -234,6 +235,21 @@ function updateShots(dt) {
     const w = raySolids(_a, _d, L);
     if (h && h.t * L <= w.t) {
       _c.lerpVectors(_a, _b, h.t);
+      if (h.ent.kind === 'prism' && s.team === 'P' && (s.kind === 'bullet' || s.kind === 'missile') && h.ent.reflects(s, _a)) {
+        const pr = h.ent; G.prismRefl = (G.prismRefl || 0) + 1; pr.glint = 0.12;
+        if (isAlly(s.label) || !G.player || !G.player.alive) { G.fx.sparks(_c, null, 5, 0x9ff6ff, 10, 1, 0.2, 0.2); G.shots.splice(i, 1); continue; }
+        const tc = G.player.center(new V3());
+        const sp = s.v.length();
+        s.v.subVectors(tc, _c).normalize(); s.v.x += (Math.random() - 0.5) * 0.04; s.v.y += (Math.random() - 0.5) * 0.04; s.v.z += (Math.random() - 0.5) * 0.04;
+        s.v.normalize().multiplyScalar(Math.min(sp, s.kind === 'missile' ? 70 : 220));
+        s.x = _c.x + s.v.x * 0.02; s.y = _c.y + s.v.y * 0.02; s.z = _c.z + s.v.z * 0.02;
+        s.team = 'E'; s.dmg *= PRISM.refl; s.label = 'prism-reflect'; s.color = 0x80f0ff; s.age = 0; s.life = Math.max(s.life, 1.4); s.chill = 0;
+        if (s.kind === 'bullet') s.kind = 'ebullet';
+        else { s.target = null; s.aim = tc; s.turn = 1.2; }
+        if (Math.random() < 0.5) G.fx.sparks(_c, s.v.clone().normalize(), 4, 0xb0f8ff, 12, 0.6, 0.2, 0.2);
+        if (Math.random() < 0.15) sfx('prism', G.player.pos.distanceTo(pr.pos));
+        continue;
+      }
       impact(s, _c.clone(), h.ent); G.shots.splice(i, 1); continue;
     }
     if (w.solid) {
@@ -314,6 +330,50 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
       if (ws.ammo <= 0) startReload();
     }
     if (!held && ws.cd < 0) ws.cd = 0;
+  } else if (d.type === 'sonic') {
+    if (held && ws.cd <= 0 && ws.reloadT <= 0 && ws.ammo > 0) {
+      ws.cd = d.rate; ws.ammo--;
+      const mp = owner.muzzlePos(slot, _a).clone();
+      const dir = new V3().subVectors(aim, mp); dir.y *= 0.5; dir.normalize();
+      const cc = Math.cos(d.cone);
+      const ents = entsFor(enemyTeam).filter((e) => !e.isBarrel || isP);
+      const done = new Set();
+      for (const e of ents) {
+        const host = e.kind === 'cpart' ? e.owner : e;
+        if (done.has(host)) continue;
+        _c.subVectors(e.c, mp); const dd = _c.length(); if (dd > d.range + e.r) continue;
+        const cs = _c.dot(dir) / Math.max(dd, 0.01);
+        if (cs < cc && !(dd < 7 && cs > 0)) continue;
+        if (!clearLine(mp, e.c)) continue;
+        done.add(host);
+        const k = 1 - 0.5 * Math.min(1, dd / d.range);
+        dealDamage(e, d.dmg * dmgMul * k, team, e.c);
+        fx.sparks(e.c, dir, 8, 0xffc060, 14, 1, 0.3, 0.3);
+        const big = host.maxHp > 3000 || host.kind === 'boss' || host.kind === 'raider' || host.isPlayer;
+        if (!big && host.alive && host.pos && !host.isBarrel && !host.isMine) {
+          const push = d.push * (1 - Math.min(1, dd / d.range) * 0.6);
+          const ox = host.pos.x, oz = host.pos.z;
+          _b.set(e.c.x - mp.x, 0, e.c.z - mp.z).normalize();
+          host.pos.x += _b.x * push; host.pos.z += _b.z * push;
+          if (pointInSolid(new V3(host.pos.x, host.pos.y + 1, host.pos.z), host.r || 2)) { host.pos.x = ox + _b.x * push * 0.3; host.pos.z = oz + _b.z * push * 0.3; if (pointInSolid(new V3(host.pos.x, host.pos.y + 1, host.pos.z), host.r || 2)) { host.pos.x = ox; host.pos.z = oz; } }
+          if (host.vel) host.vel.multiplyScalar(0.2);
+          host.stunT = Math.max(host.stunT || 0, d.stun); host.stunMax = host.stunT;
+        }
+      }
+      // shatter incoming fire inside the cone
+      for (let i = G.shots.length - 1; i >= 0; i--) {
+        const q = G.shots[i]; if (q.team === team) continue;
+        _c.set(q.x - mp.x, q.y - mp.y, q.z - mp.z); const dd = _c.length(); if (dd > d.range) continue;
+        if (_c.dot(dir) / Math.max(dd, 0.01) < cc - 0.08) continue;
+        fx.sparks(_b.set(q.x, q.y, q.z), null, 4, 0xffd080, 8, 1, 0.2, 0.2); G.shots.splice(i, 1); if (me) G.sonicEat = (G.sonicEat || 0) + 1;
+      }
+      for (let r = 0; r < 4; r++) fx.ring(_b.copy(mp).addScaledVector(dir, 3 + r * 7), dir, 0.8 + r * 2.4, 2.5 + r * 3.6, 0.22 + r * 0.05, r % 2 ? 0xffd890 : 0xffa040);
+      fx.muzzle(mp, dir, 0xffc060, 2.2); fx.flash(mp, 0xffb050, 14, 18, 0.1);
+      mslot.recoil = Math.min(0.8, (mslot.recoil || 0) + d.recoil);
+      if (me) { G.stats.shots++; fx.trauma = Math.min(1, fx.trauma + 0.12); }
+      sfx('sonic', dist);
+      if (ws.ammo <= 0) startReload();
+    }
   } else if (d.type === 'chain') {
     if (held && ws.cd <= 0 && ws.reloadT <= 0 && ws.ammo > 0) {
       ws.cd = d.rate; ws.ammo--;
@@ -1405,6 +1465,83 @@ export class Walker extends Enemy {
 }
 
 // Bulwark: slow shielded tank. The shield in front of the turret blocks hits from the front (attack from the side, above or behind).
+// Prism: tripod walker behind a big hexagonal mirror. Bullets and missiles that hit the mirror side bounce back at the player
+// (half damage). It turns slowly, so flank it, shoot from above, or use what a mirror can't return (beams, blasts, arcs, blades, sound).
+const _pe = new V3();
+export const PRISM = { hp: 560, refl: 0.4, arc: 0.42, turn: 0.8, dmg: 34, cd: 3.6, aim: 0.85, vent: 1.8 };
+export class Prism extends Enemy {
+  constructor(pos) {
+    super('prism', 'E_Prism', pos, PRISM.hp, 3.0); this.boom = 1.4; this.obj.scale.setScalar(1.3);
+    this.vel = new V3(); this.yaw = Math.random() * 6.28; this.obj.rotation.y = this.yaw; this.ph = Math.random() * 6;
+    this.strafe = Math.random() < 0.5 ? 1 : -1; this.stT = 2.5; this.st = 'move'; this.aimT = 0; this.fireT = 2 + Math.random() * 2; this.glint = 0;
+    this.aimPt = new V3(); this.fwd = new V3(0, 0, -1);
+    this.c.set(pos.x, pos.y + 3.4, pos.z);
+  }
+  reflects(s, from) {   // shot came in from the mirror side and not steeply from above
+    if (this.stunT > 0 || this.frozen || this.vent > 0) return false;
+    _pe.set(from.x - this.c.x, 0, from.z - this.c.z); const L = _pe.length(); if (L < 0.01) return false; _pe.divideScalar(L);
+    const vl = s.v.length() || 1;
+    if (-s.v.y / vl > 0.62) return false;
+    return _pe.dot(this.fwd) > PRISM.arc;
+  }
+  update(dt) {
+    const p = this.tg(), pc = p.center(playerC);
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1;
+    this.glint = Math.max(0, this.glint - dt); this.vent = Math.max(0, (this.vent || 0) - dt);
+    // turn the mirror toward the target, slowly
+    const want = Math.atan2(-dx, -dz);
+    const dy = angDiff(want, this.yaw), mx = PRISM.turn * dt * (this.st === 'aim' ? 0.35 : 1);
+    this.yaw += Math.max(-mx, Math.min(mx, dy));
+    this.obj.rotation.y = this.yaw; this.fwd.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    // keep 22-40 m, sidestep
+    this.blindT = this.los ? 0 : (this.blindT || 0) + dt;
+    let toward = dist > 40 || this.blindT > 4 ? 1 : dist < 22 ? -0.8 : 0;
+    this.slideT = Math.max(0, (this.slideT || 0) - dt); if (this.slideT > 0) toward *= 0.15;
+    this.stT -= dt; if (this.stT <= 0) { this.stT = 2.5 + Math.random() * 3; this.strafe *= -1; }
+    let fx_ = dx / dist, fz = dz / dist;
+    const gl = goalDir(this, this.pos); if (gl) { fx_ = gl.x; fz = gl.z; toward = this.slideT > 0 ? 0.15 : 1; }
+    const sw = this.st === 'aim' ? 0.15 : this.slideT > 0 ? 1.2 : gl ? 0.2 : 0.55;
+    const spd = this.st === 'aim' ? 2 : 4.6;
+    const tx = (fx_ * toward + -fz * this.strafe * sw) * spd, tz = (fz * toward + fx_ * this.strafe * sw) * spd;
+    this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-2 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-2 * dt));
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 2.8, 5)) blockedSlide(this);
+    this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6, 2);
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    this.ph += dt * (2 + sp * 1.1);
+    const body = this.n.E_PBody; body.position.y = 2.6 + Math.sin(this.ph * 1.5) * 0.08 * Math.min(1, sp / 3);
+    for (let i = 1; i <= 3; i++) {
+      const s = Math.sin(this.ph + i * 2.09);
+      this.n['E_PLeg' + i].rotation.y = s * 0.22 * Math.min(1, sp / 3) + Math.max(0, s) * 0.08;
+      this.n['E_PKnee' + i].rotation.y = Math.max(0, Math.cos(this.ph + i * 2.09)) * 0.3 * Math.min(1, sp / 3);
+    }
+    const mir = this.n.PR_Mirror; if (mir) { mir.rotation.y = Math.sin(this.ph * 0.5) * 0.05; mir.rotation.x += ((this.vent > 0 ? -1.0 : 0) - mir.rotation.x) * Math.min(1, dt * 10); }   // after a shot the mirror tips down to vent heat
+    if (this.vent > 0.2 && Math.random() < 0.4) { const q = this.n.PR_Mirror.getWorldPosition(_b); G.fx.emit('smoke', { x: q.x, y: q.y + 1, z: q.z, vx: 0, vy: 2.2, vz: 0, life: 0.7, s0: 0.6, s1: 1.8, c0: 0xd8f4ff, c1: 0xa0b8c0, a0: 0.3, drag: 1.5 }); }
+    this.c.set(this.pos.x, this.pos.y + 3.4, this.pos.z);
+    // beam: telegraph line, then a hitscan shot from the crystal
+    const mp = this.n.Muzzle_Prism.getWorldPosition(_a).clone();
+    if (this.st === 'move') {
+      if (dist < 95 && this.checkLos(dt)) { this.fireT -= dt; if (this.fireT <= 0) { this.st = 'aim'; this.aimT = PRISM.aim; this.aimPt.copy(pc); sfx('prism', dist); } }
+    } else {
+      this.aimT -= dt;
+      if (this.aimT > 0.22) { const v = p.vel || _c.set(0, 0, 0), lt = Math.min(0.5, this.aimT); _b.set(pc.x + v.x * lt, pc.y, pc.z + v.z * lt); this.aimPt.lerp(_b, 1 - Math.exp(-8 * dt)); }
+      _d.subVectors(this.aimPt, mp).normalize();
+      const w = raySolids(mp, _d, 200), h0 = rayEnts(mp, _d, w.t, entsFor('E')), end = mp.clone().addScaledVector(_d, h0 ? h0.t : w.t);
+      const fr = this.aimT <= 0.22;
+      G.fx.streak(mp, end, fr ? 0.13 : 0.05, fr ? 0x9ff6ff : 0x50c8ff);
+      G.fx.emit('add', { x: mp.x, y: mp.y, z: mp.z, life: 0.05, s0: 1 + (1 - this.aimT / PRISM.aim) * 2.5, c0: 0x9ff6ff });
+      if (this.aimT <= 0) {
+        this.st = 'move'; this.fireT = PRISM.cd + Math.random() * 1.2; this.vent = PRISM.vent;
+        G.curLabel = 'prism-beam'; G.curSrc = this.pos;
+        if (h0 && !smokeBlocks(mp, end)) dealDamage(h0.ent, PRISM.dmg, 'E', end, 'prism-beam');
+        G.fx.streak(mp, end, 0.45, 0xc8fbff, 0.12); G.fx.streak(mp, end, 0.18, 0xffffff, 0.08);
+        G.fx.sparks(end, null, 10, 0x9ff6ff, 14, 1, 0.3, 0.25); G.fx.flash(mp, 0x60e8ff, 18, 20, 0.12);
+        sfx('rail', dist);
+      }
+    }
+  }
+}
+
 export class Bulwark extends Enemy {
   constructor(pos) {
     super('bulwark', 'E_Bulwark', pos, 900, 3.3); this.boom = 1.5;
@@ -1620,7 +1757,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };

@@ -91,6 +91,14 @@ M = dict(
     LevPlate=mat("LevPlate", "#54443a", 0.55, metal=0.3),
     SmokeTube=mat("SmokeTube", "#6a7078", 0.5, metal=0.4),
     Sonar=mat("Sonar", "#c8fff8", 0.25, emit="#40f0e0", strength=1.8),
+    Bark=mat("Bark", "#4a3a2c", 0.95),
+    Leaf=mat("Leaf", "#3c6e2c", 0.8),
+    Leaf2=mat("Leaf2", "#2c5624", 0.85),
+    Vine=mat("Vine", "#4a6a2a", 0.9),
+    Moss=mat("Moss", "#4e6a34", 0.95),
+    Mirror=mat("Mirror", "#bff0ff", 0.08, metal=0.85, emit="#2a8aa8", strength=0.6),
+    PrismGlow=mat("PrismGlow", "#e0fbff", 0.2, emit="#60e8ff", strength=2.0),
+    SonicGlow=mat("SonicGlow", "#ffe8c0", 0.3, emit="#ffb040", strength=1.6),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -979,6 +987,64 @@ def build_lev():
         box((math.cos(a) * 1.3, 0.0, math.sin(a) * 1.3), (0.6, 1.7, 0.3), M["LevPlate"], K, bevel=0.1)
     box((0, -0.2, -1.25), (0.5, 1.2, 0.3), M["LevPlate"], K, bevel=0.08)
 
+def build_jungle():
+    # big rainforest tree: tapered trunk with buttress roots, a lumpy two-tone canopy and hanging vines
+    for name, H, R in (("P_JTree", 12.5, 4.4), ("P_JTree2", 9.0, 3.4)):
+        K = kit(name)
+        cyl((0, 0, H / 2), 0.9 * R / 4.4 + 0.1, H, M["Bark"], K, verts=9, r2=0.45, smooth=False)
+        for k in range(5):
+            a = k / 5 * math.pi * 2 + 0.4
+            wedge((math.cos(a) * 0.9, math.sin(a) * 0.9, 0.9), (0.35, 1.8, 1.8), M["Bark"], K, rot=(0, 0, a + math.pi / 2), taper=0.15)
+        ball((0, 0, H + 0.4), R, M["Leaf"], K, scale=(1, 1, 0.5), sub=1)
+        for k in range(4):
+            a = k / 4 * math.pi * 2 + 0.8
+            ball((math.cos(a) * R * 0.62, math.sin(a) * R * 0.62, H - 0.4 + (k % 2) * 0.8), R * 0.62, M["Leaf2" if k % 2 else "Leaf"], K, scale=(1, 1, 0.55), sub=1)
+        for k in range(7):
+            a = k / 7 * math.pi * 2 + 0.2
+            L = 2.5 + (k * 1.7) % 3.2
+            box((math.cos(a) * R * 0.75, math.sin(a) * R * 0.75, H - 1.2 - L / 2), (0.08, 0.08, L), M["Vine"], K)
+        box((0, 0, 1.6), (1.95 * R / 4.4 + 0.3, 1.95 * R / 4.4 + 0.3, 1.0), M["Moss"], K)
+    K = kit("P_Fern")
+    for k in range(7):
+        a = k / 7 * math.pi * 2
+        wedge((math.cos(a) * 0.7, math.sin(a) * 0.7, 0.35), (0.35, 1.6, 0.12), M["Leaf2" if k % 2 else "Leaf"], K, rot=(0.45, 0, a - math.pi / 2), taper=0.1)
+
+def build_prism():
+    # Prism: tripod walker carrying a big hexagonal mirror in front (reflects bullets and missiles back). front = +Y
+    K = kit("E_Prism")
+    body = empty("E_PBody", (0, 0, 2.6), K)
+    cyl((0, 0, 0), 0.95, 1.6, M["EArmor"], body, verts=6, smooth=False)
+    cyl((0, 0, 0.95), 0.75, 0.35, M["EArmor2"], body, verts=6, r2=0.45, smooth=False)
+    ball((0, 0, 1.55), 0.42, M["PrismGlow"], body, scale=(0.8, 0.8, 1.7), sub=0)
+    box((0, 0.62, 0.35), (0.7, 0.08, 0.14), M["EEye"], body)
+    mir = empty("PR_Mirror", (0, 1.25, 0.15), body)
+    cyl((0, 0, 0), 1.75, 0.14, M["Mirror"], mir, rot=(math.pi / 2, 0, math.pi / 6), verts=6, smooth=False)
+    cyl((0, -0.06, 0), 1.9, 0.1, M["PrismGlow"], mir, rot=(math.pi / 2, 0, math.pi / 6), verts=6, smooth=False)
+    cyl((0, -0.14, 0), 1.95, 0.14, M["EArmor2"], mir, rot=(math.pi / 2, 0, math.pi / 6), verts=6, smooth=False)
+    for sx in (-1, 1):
+        box((sx * 0.75, -0.55, 0), (0.2, 1.0, 0.25), M["Frame"], mir)
+    muzzle("Muzzle_Prism", (0, 0.2, 2.2), body)
+    for i in range(3):
+        a = i / 3 * math.pi * 2 + math.pi / 2 + math.pi / 3
+        leg = empty(f"E_PLeg{i + 1}", (math.cos(a) * 0.75, math.sin(a) * 0.75, -0.5), body, rot=(0, 0, a))
+        ball((0, 0, 0), 0.24, M["Joint"], leg)
+        box((0.6, 0, 0.25), (1.2, 0.28, 0.28), M["EArmor"], leg, rot=(0, math.radians(-25), 0), bevel=0.04)
+        kn = empty(f"E_PKnee{i + 1}", (1.15, 0, 0.5), leg)
+        ball((0, 0, 0), 0.18, M["Joint"], kn)
+        box((0.15, 0, -1.25), (0.24, 0.24, 2.5), M["Frame"], kn, rot=(0, math.radians(-8), 0), bevel=0.03)
+        cyl((0.32, 0, -2.5), 0.32, 0.16, M["EArmor2"], kn, verts=6, smooth=False)
+
+def build_sonic():
+    K = kit("W_Sonic")
+    # sonic cannon: boxy emitter body, a flared horn with glowing resonator rings
+    box((0, 0.0, 0.0), (0.42, 0.9, 0.42), M["Frame"], K, bevel=0.05)
+    box((0, -0.1, 0.24), (0.34, 0.6, 0.08), M["Armor"], K, bevel=0.02)
+    cyl((0, 0.85, 0), 0.2, 0.9, M["Armor2"], K, rot=ALONG_Y, verts=14, r2=0.5)
+    for k, y in enumerate((0.55, 0.85, 1.15)):
+        torus((0, y, 0), 0.24 + k * 0.1, 0.035, M["SonicGlow"], K, rot=(math.pi / 2, 0, 0))
+    cyl((0, 1.28, 0), 0.46, 0.04, M["Black"], K, rot=ALONG_Y, verts=14)
+    muzzle("Muzzle_Sonic", (0, 1.35, 0), K)
+
 def build_smoke():
     K = kit("S_Smoke")
     # shoulder smoke launcher: three angled grey canister tubes on a cradle
@@ -1436,7 +1502,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

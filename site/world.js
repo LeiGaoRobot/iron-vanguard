@@ -42,6 +42,7 @@ function panelMaterial(color, opts) {
         float lavaD(vec2 p){ float fa = 55.0 * sin(p.x / 62.0 + 0.6) - 60.0; float da = abs(p.y - fa) / sqrt(1.0 + pow(55.0 / 62.0 * cos(p.x / 62.0 + 0.6), 2.0));
           float fb = 40.0 * sin(p.y / 50.0 + 1.8) + 60.0; float db = abs(p.x - fb) / sqrt(1.0 + pow(40.0 / 50.0 * cos(p.y / 50.0 + 1.8), 2.0)); return min(da, db); }
         float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+        float vn2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
         float gridLine(float x, float s, float w){ float f = abs(fract(x / s + 0.5) - 0.5) * s; return 1.0 - smoothstep(w * 0.5, w, f); }`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         ${opts.frag}`)
@@ -52,7 +53,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss';
+  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle';
   LAVA.on = forge; const PR = PLAT.R;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
@@ -91,7 +92,10 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       vec2 lc = floor(vWP.xz / 0.5);
       vec3 leafC = mix(vec3(0.55, 0.16, 0.05), vec3(0.8, 0.52, 0.12), h21(lc + 7.3)) * (0.7 + 0.3 * h21(lc + 2.1));
       diffuseColor.rgb *= vec3(0.78, 0.72, 0.64) * (0.9 + 0.12 * h21(floor(vWP.xz / 9.0)));
-      diffuseColor.rgb = mix(diffuseColor.rgb, leafC, lfk * step(0.45, h21(lc)) * (1.0 - stripe) * 0.75);` : ''}${cyber ? `
+      diffuseColor.rgb = mix(diffuseColor.rgb, leafC, lfk * step(0.45, h21(lc)) * (1.0 - stripe) * 0.75);` : ''}${jungle ? `
+      float jm = smoothstep(0.35, 0.7, vn2(vWP.xz / 9.0) * 0.65 + vn2(vWP.xz / 2.2) * 0.35);
+      vec3 soil = mix(vec3(0.22, 0.17, 0.11), vec3(0.17, 0.29, 0.11), jm) * (0.86 + 0.14 * vn2(vWP.xz / 0.6));
+      diffuseColor.rgb = mix(soil, diffuseColor.rgb * vec3(0.62, 0.7, 0.56), 0.18 + 0.55 * stripe);` : ''}${cyber ? `
       diffuseColor.rgb = mix(vec3(0.035, 0.03, 0.06) * (0.8 + 0.4 * h21(floor(vWP.xz / 8.0))), diffuseColor.rgb * 0.3, stripe);` : ''}${PR ? `
       float rr = length(vWP.xz), aa = atan(vWP.z, vWP.x);
       diffuseColor.rgb *= vec3(0.86, 0.9, 0.96);
@@ -177,7 +181,11 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       diffuseColor.rgb *= vec3(0.5, 0.68, 0.7);
       if (vWN.y > 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.14, 0.3, 0.22), 0.55 + 0.3 * h21(floor(vWP.xz / 1.5)));
       else diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.2, 0.3, 0.24), smoothstep(2.5, 0.0, vWP.y) * 0.7);` : ''}${cyber ? `
-      diffuseColor.rgb *= 0.3;` : ''}${snow ? `
+      diffuseColor.rgb *= 0.3;` : ''}${jungle ? `
+      diffuseColor.rgb *= vec3(0.74, 0.74, 0.64);
+      float mo = smoothstep(0.5, 0.8, vn2(vec2(vWP.x + vWP.z, vWP.y) / 2.5));
+      if (vWN.y > 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.18, 0.32, 0.12), 0.75);
+      else diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.2, 0.32, 0.14), max(smoothstep(4.0, 0.0, vWP.y) * 0.8, mo * 0.4));` : ''}${snow ? `
       if (vWN.y > 0.5) diffuseColor.rgb = vec3(0.84, 0.88, 0.93) * (0.92 + 0.08 * h21(floor(vWP.xz / 2.0)));
       else diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.85, 0.9), step(0.5, fract(vWP.y / 3.5 + 0.38)) * step(fract(vWP.y / 3.5 + 0.38), 0.53) * 0.75);` : ''}`,
     emit: night ? `
@@ -259,6 +267,11 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
     const rot = rnd() < 0.5 ? 0 : Math.PI / 2;
     place.push({ kit: 'P_Barrier', matrix: M4(x, 0, z, rot) }); addSolid(x, z, rot ? 0.9 : 3, rot ? 3 : 0.9, 1.1, 0, 'barrier');
   });
+  if (jungle) {   // rainforest: big trees (solid trunks), ferns underneath
+    scatter(44, 3, (x, z) => { place.push({ kit: 'P_JTree', matrix: M4(x, 0, z, rnd() * 6.28, 1.0 + rnd() * 0.35) }); addSolid(x, z, 2.6, 2.6, 15, 0, 'tree'); });
+    scatter(36, 2.5, (x, z) => { place.push({ kit: 'P_JTree2', matrix: M4(x, 0, z, rnd() * 6.28, 0.9 + rnd() * 0.3) }); addSolid(x, z, 2.0, 2.0, 10, 0, 'tree'); });
+    scatter(70, 1.5, (x, z) => { place.push({ kit: 'P_Fern', matrix: M4(x, 0, z, rnd() * 6.28, 0.8 + rnd() * 0.8) }); });
+  }
   // a few set pieces round the centre plaza (the original's yellow-striped blocks)
   for (let i = 0; i < 6; i++) {
     const a = i / 6 * Math.PI * 2 + 0.3;
