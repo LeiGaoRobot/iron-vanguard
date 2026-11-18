@@ -849,6 +849,26 @@ def build_blink():
     box((0, -0.55, 0.22), (0.44, 0.03, 0.18), M["Hazard"], K)
     muzzle("Muzzle_Blink", (0, 0.5, 0.5), K)
 
+def build_jet():
+    # Striker: delta-wing attack jet with a chin cannon. front = +Y
+    K = kit("E_Jet")
+    box((0, 0.2, 0), (0.9, 5.2, 0.8), M["EArmor"], K, bevel=0.15)            # fuselage
+    box((0, 2.8, -0.05), (0.6, 1.0, 0.55), M["EArmor"], K, bevel=0.12, rot=(0.12, 0, 0))   # nose
+    box((0, 3.4, -0.12), (0.3, 0.5, 0.3), M["Frame"], K, bevel=0.06)
+    box((0, 1.4, 0.42), (0.55, 1.3, 0.3), M["EEye"], K, bevel=0.1)          # canopy glow
+    for s_ in (-1, 1):
+        # swept delta wing built from three stepped slabs
+        box((s_ * 1.2, -0.6, -0.05), (1.6, 2.6, 0.14), M["EArmor2"], K)
+        box((s_ * 2.3, -1.1, -0.05), (1.0, 1.7, 0.12), M["EArmor2"], K)
+        box((s_ * 3.0, -1.5, -0.05), (0.6, 0.9, 0.1), M["EArmor2"], K)
+        box((s_ * 3.25, -1.5, 0.12), (0.1, 0.9, 0.35), M["Hazard"], K)       # wingtip fins
+        box((s_ * 0.55, -2.3, 0.55), (0.1, 1.0, 0.9), M["EArmor2"], K, rot=(0, s_ * 0.35, 0))   # twin tails
+        cyl((s_ * 0.32, -2.55, 0.0), 0.32, 0.4, M["Frame"], K, rot=(math.pi / 2, 0, 0), verts=12)
+        cyl((s_ * 0.32, -2.78, 0.0), 0.24, 0.08, M["NozzleGlow"], K, rot=(math.pi / 2, 0, 0), verts=12)
+        box((s_ * 1.6, -0.2, -0.22), (0.18, 1.2, 0.18), M["Frame"], K)       # pylons
+    cyl((0, 2.2, -0.5), 0.12, 0.9, M["Joint"], K, rot=(-math.pi / 2, 0, 0), verts=8)
+    muzzle("Muzzle_Jet", (0, 2.7, -0.5), K)
+
 def build_eel():
     # Eel: armoured serpent drone. Head and one body segment are separate kits; the game strings 9 segments behind the head. front = +Y
     K = kit("E_EelHead")
@@ -1295,7 +1315,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

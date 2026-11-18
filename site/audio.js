@@ -102,6 +102,8 @@ export function sfx(name, d = 0, pan = 0) {
       case 'eellunge': noise(t, 0.4, 'bandpass', 700, 1.2, 0.3 * k, 0.35, pan, 2200); tone(t, 'square', 600, 120, 0.08 * k, 0.3); break;
       case 'zap': noise(t, 0.15, 'highpass', 2500, 1, 0.3 * k, 0.12, pan); tone(t, 'square', 1400, 200, 0.1 * k, 0.12); break;
       case 'sonar': tone(t, 'sine', 1250, 1180, 0.22 * k, 0.9); tone(t + 0.02, 'sine', 2500, 2400, 0.05 * k, 0.5); tone(t + 0.35, 'sine', 1250, 1200, 0.07 * k, 0.8); break;
+      case 'jetdive': noise(t, 1.4, 'bandpass', 600, 0.8, 0.22 * k, 1.2, pan, 2400); tone(t, 'sawtooth', 220, 520, 0.05 * k, 1.2); break;
+      case 'jetgun': for (let i = 0; i < 10; i++) noise(t + i * 0.07, 0.05, 'lowpass', 1800, 1, 0.22 * k, 0.04, pan); break;
       case 'stormz': noise(t, 0.6, 'bandpass', 500, 1.2, 0.08 * k, 0.5, pan, 900); break;
       case 'disc': noise(t, 0.18, 'bandpass', 1800, 2, 0.22 * k, 0.15, pan, 3200); tone(t, 'sawtooth', 520, 900, 0.05 * k, 0.12); break;
       case 'whirr': tone(t, 'sawtooth', 300 + Math.random() * 60, 340, 0.025 * k, 0.12); break;

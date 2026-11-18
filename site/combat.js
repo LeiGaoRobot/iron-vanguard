@@ -1,6 +1,6 @@
 // Weapons, projectiles, enemies, damage.  Shared state lives in G.
 import * as THREE from 'three';
-import { barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, LAVA, lavaAt, lavaD } from './world.js';
+import { barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, LAVA, lavaAt, lavaD } from './world.js';
 import { cloneKit, nodes, find, recolor } from './kit.js';
 import { Mech, angDiff, PALETTES } from './mech.js';
 import { sfx } from './audio.js';
@@ -2586,6 +2586,89 @@ export class Eel extends Enemy {
   }
 }
 
+// Jet (Striker): circles high around its target, then lines up a strafing run. The run is shown 1.5 s ahead as a red line on
+// the ground; the jet dives along it at 60 m/s and its cannon walks a row of blasts down the line. Only reachable up close.
+export const JET = { hp: 340, cruise: 46, strafe: 60, tele: 1.5, len: 72, step: 3.5, blast: 24, blastR: 4.2, side: 2.6, alt: 16 };
+export class Jet extends Enemy {
+  constructor(pos) {
+    super('jet', 'E_Jet', pos, JET.hp, 2.8); this.boom = 1.4; this.obj.scale.setScalar(1.25);
+    this.vel = new V3(); this.ph = Math.random() * 6; this.orbit = Math.random() < 0.5 ? 1 : -1;
+    this.st = 'loop'; this.stT = 3 + Math.random() * 3; this.A = new V3(); this.B = new V3(); this.dir = new V3(); this.prog = 0; this.nextD = 0; this.bank = 0; this.av = true;
+    this.c.copy(pos);
+  }
+  update(dt) {
+    this.stT -= dt; this.ph += dt;
+    const tg = this.tg(), pc = tg.center(playerC), P = G.player;
+    const air = _a.set(this.A.x, JET.alt, this.A.z);
+    if (this.st === 'loop' || this.st === 'climb') {
+      _c.set(this.pos.x - pc.x, 0, this.pos.z - pc.z);
+      const ang = Math.atan2(_c.z, _c.x) + this.orbit * 0.4, R = 115 + Math.sin(this.ph * 0.3) * 20;
+      _b.set(pc.x + Math.cos(ang) * R - this.pos.x, 40 + Math.sin(this.ph * 0.5) * 6 - this.pos.y, pc.z + Math.sin(ang) * R - this.pos.z);
+      _b.normalize().multiplyScalar(JET.cruise);
+      this.vel.lerp(_b, 1 - Math.exp(-(this.st === 'climb' ? 1.2 : 0.9) * dt));
+      this.bank += (this.orbit * 0.6 - this.bank) * Math.min(1, dt * 2);
+      this.msT = (this.msT ?? 3 + Math.random() * 3) - dt;   // while circling: a pair of slow homing missiles now and then
+      if (this.st === 'loop' && this.msT <= 0 && tg.alive !== false && this.c.distanceTo(pc) < 130 && this.checkLos(dt)) {
+        this.msT = 6 + Math.random() * 2; if (tg === P) G.onEnemyMissile && G.onEnemyMissile();
+        for (let k = 0; k < 2; k++) G.queue.push({ label: 'jet-missile', t: k * 0.25, fn: () => {
+          if (!this.alive) return;
+          const mp = this.n.Muzzle_Jet.getWorldPosition(new V3()), v = this.vel.clone().setLength(30).add(new V3((Math.random() - 0.5) * 10, -4, (Math.random() - 0.5) * 10));
+          spawnShot({ p: mp, v, dmg: 22, team: 'E', kind: 'missile', splash: 4, target: this.tg()._ent, aim: this.tg().center(new V3()), life: 6, maxSpeed: 54, turn: 1.5, label: 'jet-missile' });
+          sfx('missile', this.pos.distanceTo(P.pos));
+        } });
+      }
+      if (this.st === 'climb' && this.stT <= 0) { this.st = 'loop'; this.stT = 5 + Math.random() * 3; }
+      else if (this.st === 'loop' && this.stT <= 0) {
+        if (tg.alive === false) this.stT = 1;
+        else {   // plan the run: a ground line through the target (with a little lead), approached from the jet's side
+          const tv = tg === P ? P.vel : null;
+          const tx = pc.x + (tv ? tv.x * 0.8 : 0), tz = pc.z + (tv ? tv.z * 0.8 : 0);
+          this.dir.set(tx - this.pos.x, 0, tz - this.pos.z); if (this.dir.lengthSq() < 1) this.dir.set(1, 0, 0); this.dir.normalize();
+          this.A.set(tx - this.dir.x * JET.len / 2, 0.3, tz - this.dir.z * JET.len / 2); this.B.set(tx + this.dir.x * JET.len / 2, 0.3, tz + this.dir.z * JET.len / 2);
+          this.st = 'tele'; this.stT = JET.tele; this.av = Math.random() < 0.65; sfx('jetdive', this.pos.distanceTo(P.pos) * 0.5);
+          G.jetRuns = (G.jetRuns || 0) + 1;
+          if (!G.jetSaid && tg === P) { G.jetSaid = true; G.onHint && G.onHint('攻击机俯冲扫射 · 地面红线就是弹道 · 横向离开那条线', 3.5); }
+        }
+      }
+    } else if (this.st === 'tele') {   // race to the start of the line; the line tracks the target until 0.5 s before the dive
+      if (this.stT > 0.4) {
+        const tv = tg === P ? P.vel : null, lt = this.stT + JET.len / 2 / JET.strafe;
+        const tx = pc.x + (tv ? tv.x * lt : 0), tz = pc.z + (tv ? tv.z * lt : 0);
+        this.A.set(tx - this.dir.x * JET.len / 2, 0.3, tz - this.dir.z * JET.len / 2); this.B.set(tx + this.dir.x * JET.len / 2, 0.3, tz + this.dir.z * JET.len / 2);
+      }
+      air.set(this.A.x, JET.alt, this.A.z);
+      _b.subVectors(air, this.pos); const L = _b.length();
+      const sp = Math.max(40, Math.min(130, L / Math.max(0.1, this.stT)));
+      this.vel.lerp(_b.multiplyScalar(sp / Math.max(0.01, L)), 1 - Math.exp(-5 * dt));
+      this.bank *= Math.exp(-3 * dt);
+      if (this.stT <= 0) { this.st = 'strafe'; this.prog = 0; this.nextD = 0; this.pos.set(this.A.x, JET.alt, this.A.z); this.vel.copy(this.dir).multiplyScalar(JET.strafe); sfx('jetgun', this.pos.distanceTo(P.pos) * 0.5); }
+    } else if (this.st === 'strafe') {
+      this.vel.copy(this.dir).multiplyScalar(JET.strafe); this.vel.y = 0;
+      this.prog += JET.strafe * dt;
+      while (this.nextD <= Math.min(this.prog + 6, JET.len)) {   // the cannon leads the jet by ~6 m
+        const d = this.nextD, sd = (Math.round(d / JET.step) % 2 ? 1 : -1) * JET.side; this.nextD += JET.step;   // twin cannons: alternate either side of the line
+        const qx = this.A.x + this.dir.x * d - this.dir.z * sd, qz = this.A.z + this.dir.z * d + this.dir.x * sd;
+        const q = new V3(qx, groundAt(qx, qz, 99), qz);
+        const mp = this.n.Muzzle_Jet.getWorldPosition(new V3());
+        G.fx.streak(mp, q, 0.25, 0xffb060);
+        G.queue.push({ label: 'jet', t: 0.08, fn: () => { G.curSrc = q; explodeAt(q, JET.blastR, JET.blast, 'E', 0.55, 0xff8040); } });
+      }
+      if (this.prog > JET.len + 4) { this.st = 'climb'; this.stT = 2.2; this.vel.y = 18; }
+    }
+    // telegraph: a flickering red line on the ground until the cannon has passed
+    if (this.st === 'tele' || this.st === 'strafe') {
+      const k0 = this.st === 'strafe' ? Math.min(1, this.nextD / JET.len) : 0;
+      _c.copy(this.A).lerp(this.B, k0);
+      const fl = this.st === 'tele' && this.stT < 0.4 ? (Math.sin(G.time * 50) > 0 ? 1 : 0.35) : 0.75;
+      for (const sd of [-JET.side, JET.side]) G.fx.streak(_d.set(_c.x - this.dir.z * sd, 0.3, _c.z + this.dir.x * sd), _b.set(this.B.x - this.dir.z * sd, 0.3, this.B.z + this.dir.x * sd), 0.42 * fl, 0xff3020);
+    }
+    this.pos.addScaledVector(this.vel, dt);
+    const gy = groundAt(this.pos.x, this.pos.z, 999) + 6; if (this.pos.y < gy) { this.pos.y = gy; this.vel.y = Math.max(this.vel.y, 0); }
+    this.c.copy(this.pos);
+    if (this.vel.lengthSq() > 1) { this.obj.lookAt(_b.copy(this.pos).sub(this.vel)); this.obj.rotateZ(this.bank); }
+  }
+}
+
 export class Jammer extends Enemy {
   constructor(pos) {
     super('jammer', 'E_Jammer', pos, 380, 2.8); this.boom = 1; this.obj.scale.setScalar(1.3);
@@ -2812,6 +2895,7 @@ export class Dropship extends Enemy {
       const a = Math.atan2(this.pos.z - b.z, this.pos.x - b.x) + (Math.random() - 0.5) * 1.6, r = 26 + Math.random() * 16;
       const x = b.x + Math.cos(a) * r, z = b.z + Math.sin(a) * r;
       if (Math.abs(x) > ARENA - 12 || Math.abs(z) > ARENA - 12) continue;
+      if (PLAT.R && Math.hypot(x, z) > PLAT.R - 14) continue;
       if (pointInSolid(new V3(x, 1, z), 6) || groundAt(x, z, 99) > 0.5) continue;
       return new V3(x, 0, z);
     }
@@ -2908,6 +2992,10 @@ export function updateCombat(dt) {
   const pp = G.player; G.jammed = null;
   if (pp && pp.alive) for (const e of G.enemies) if (e.kind === 'jammer' && e.alive && !e.dying && !(e.stunT > 0) && !(e.markT > 0) && e.c.distanceTo(pp.pos) < JAM_R) { G.jammed = e; break; }
   if (G.jammed && !G.jamSaid) { G.jamSaid = true; G.onHint && G.onHint('电子干扰 · 锁定与雷达失效 · 击落紫色的干扰机，或用电磁脉冲瘫痪它', 4); }
+  if (PLAT.R) for (const e of G.enemies) {   // sky elevator: nothing that walks or hovers leaves the deck
+    if (!e.pos || !e.alive || e.kind === 'jet' || e.kind === 'dropship') continue;
+    const d = Math.hypot(e.pos.x, e.pos.z), lim = PLAT.R - 3; if (d > lim) { e.pos.x *= lim / d; e.pos.z *= lim / d; }
+  }
   for (let i = G.enemies.length - 1; i >= 0; i--) if (G.enemies[i].gone) G.enemies.splice(i, 1);
   G.curLabel = null;
   LAVA.uT.value = G.time;

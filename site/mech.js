@@ -1,7 +1,7 @@
 // Mech: model assembly (paint + weapon mounts), movement physics, procedural animation, thrusters.
 import * as THREE from 'three';
 import { cloneKit, recolor, nodes, find } from './kit.js';
-import { groundAt, collideCyl, ARENA } from './world.js';
+import { groundAt, collideCyl, ARENA, PLAT } from './world.js';
 import { TEX } from './fx.js';
 
 export const PALETTES = {
@@ -166,6 +166,7 @@ export class Mech {
     }
     const lim = ARENA - 2;
     p.x = Math.max(-lim, Math.min(lim, p.x)); p.z = Math.max(-lim, Math.min(lim, p.z));
+    if (PLAT.R) { const pr = Math.hypot(p.x, p.z), pl = PLAT.R - 2.5; if (pr > pl) { p.x *= pl / pr; p.z *= pl / pr; const vr = (this.vel.x * p.x + this.vel.z * p.z) / pl; if (vr > 0) { this.vel.x -= p.x / pl * vr; this.vel.z -= p.z / pl * vr; } } }
     const g = groundAt(p.x, p.z, Math.max(prevY, p.y), this.radius);
     if (p.y <= g + 0.001) {
       if (!this.grounded) {

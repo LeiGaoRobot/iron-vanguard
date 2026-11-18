@@ -6,12 +6,12 @@ import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js'
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadKit, cloneKit } from './kit.js';
-import { buildArena, addSolid, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine, relaySites, mulberry32, LAVA, lavaAt } from './world.js';
+import { buildArena, addSolid, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine, relaySites, mulberry32, LAVA, lavaAt, PLAT } from './world.js';
 import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff, PHYS } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 // rail loop for the train mission: a 118 x 82 m oval, closed (last point == first)
@@ -100,6 +100,14 @@ const MISSIONS = {
     { title: 'WAVE 3', sub: '鳗群与敌方机甲小队', spawn: { raider: 2, lancer: 1, eel: 3, mender: 1, drone: 2 } },
     { title: 'FINAL WAVE', sub: '「幻影」在深渊中潜行', spawn: { boss: 'phantom', eel: 2, drone: 2 } },
   ] },
+  elevator: { name: '天梯 · 轨道电梯', en: 'SKY ELEVATOR', desc: '在爬升的轨道电梯平台上作战 · 平台外是万丈虚空，边缘有能量护栏 · 攻击机俯冲扫射，地面红线就是弹道 · 越往上重力越弱 · 头目「暴君」在轨道上乘运输机降落', seed: 181, env: 'sky1', platform: 140, reward: 6000,
+    ascend: [{ env: 'sky1', y: -140, cA: 0xffffff, cB: 0x9fb4c8, cover: 0.45, puff: 1, v: 18, g: 1 }, { env: 'sky2', y: -420, cA: 0xffd2b0, cB: 0x7a5a78, cover: 0.5, puff: 0.7, v: 24, g: 0.92 },
+      { env: 'sky3', y: -1100, cA: 0xdde6ff, cB: 0x2a4680, cover: 0.56, puff: 0.25, v: 30, g: 0.8 }, { env: 'sky4', y: -2600, cA: 0xeef4ff, cB: 0x103470, cover: 0.62, puff: 0, v: 36, g: 0.6 }], waves: [
+    { title: 'WAVE 1', sub: '海拔 3 km · 平台开始爬升', spawn: { drone: 4, walker: 3, jet: 2, crawler: 6 } },
+    { title: 'WAVE 2', sub: '海拔 12 km · 黄昏云海 · 运输机在平台上卸兵', spawn: { jet: 2, dropship: 2, gunship: 1, walker: 2, drone: 2 } },
+    { title: 'WAVE 3', sub: '海拔 40 km · 平流层 · 敌方机甲小队登台', spawn: { jet: 2, raider: 2, lancer: 1, sapper: 1, dropship: 1 } },
+    { title: 'FINAL WAVE', sub: '海拔 100 km · 轨道 · 重力减弱 · 「暴君」乘重型运输机降落', spawn: { dropBoss: 'tyrant', bossHp: 1.15, jet: 3, drone: 2 } },
+  ] },
   mirror: { name: '数据空间 · 镜像试炼', en: 'MIRROR TRIAL', desc: '赛博空间 · 霓虹网格 · 隐形狙击机与干扰机 · 头目「镜像」复制你当前的全部武装，变身后分裂出镜像碎片', seed: 151, env: 'cyber', reward: 5400, waves: [
     { title: 'WAVE 1', sub: '数据空间 · 当心隐形狙击机', spawn: { turret: 2, drone: 4, walker: 4, stalker: 1 } },
     { title: 'WAVE 2', sub: '防火墙 · 敌方机甲小队与干扰机', spawn: { raider: 1, lancer: 1, jammer: 1, walker: 3, mender: 1, drone: 2 } },
@@ -153,9 +161,13 @@ const ENVS = {
   overcast: { top: 0x7a8590, hor: 0xb4bcc4, fog: [60, 420], hemi: [0xe0e6ec, 0x5a5c5e, 0.7], sun: [0xf0f2f4, 1.25], env: 0.4, exp: 0.92, dir: [0.3, 0.75, 0.4], disc: 0.15 },
   eclipse: { top: 0x120c1c, hor: 0x5c2a40, fog: [55, 420], hemi: [0xd8c0ff, 0x1c1620, 0.36], sun: [0xff9a80, 1.25], env: 0.18, exp: 1.04, dir: [-0.3, 0.38, 0.7], disc: 0.5 },
   abyss: { top: 0x03121c, hor: 0x0c4a58, fog: [30, 200], hemi: [0x7fd0e0, 0x081418, 0.48], sun: [0x98e4f4, 0.8], env: 0.16, exp: 0.96, dir: [0.15, 0.92, 0.2], disc: 0, bubbles: true },
+  sky1: { top: 0x3f7fc8, hor: 0xcfe2f2, fog: [220, 1500], hemi: [0xe4f0ff, 0x7088a0, 0.6], sun: [0xfff2e0, 2.3], env: 0.35, exp: 0.88, dir: [0.4, 0.6, 0.5], disc: 1.0, earth: [0, -1, 0] },
+  sky2: { top: 0x2a3c78, hor: 0xf0a070, fog: [240, 1700], hemi: [0xffd0b0, 0x40406a, 0.5], sun: [0xffb070, 2.2], env: 0.3, exp: 0.9, dir: [-0.6, 0.28, 0.5], disc: 1.4, earth: [0, -1, 0] },
+  sky3: { top: 0x060c26, hor: 0x3a6ab8, fog: [300, 2400], hemi: [0xb8ccff, 0x202838, 0.42], sun: [0xfff6ec, 2.5], env: 0.24, exp: 0.95, dir: [-0.4, 0.42, 0.55], disc: 0.6, stars: 0.5, earth: [0, -1, 0] },
+  sky4: { top: 0x000002, hor: 0x0c1c40, fog: [500, 3200], hemi: [0xa8b4cc, 0x101420, 0.3], sun: [0xffffff, 2.6], env: 0.2, exp: 0.95, dir: [0.5, 0.42, -0.5], disc: 0.2, stars: 1, earth: [0, -1, 0] },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { eel: 200, grappler: 240, train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
+const KILL_CR = { jet: 220, eel: 200, grappler: 240, train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -250,8 +262,8 @@ const sky = new THREE.Mesh(new THREE.SphereGeometry(1200, 32, 16), new THREE.Sha
     float hs(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
     void main(){ float h = clamp(vD.y, 0.0, 1.0); vec3 c = mix(hor, top, pow(h, 0.55));
       float s = max(dot(vD, sun), 0.0); c += vec3(1.0, 0.92, 0.8) * (pow(s, 600.0) * 4.0 + pow(s, 8.0) * 0.15 * disc);
-      if (stars > 0.5) {
-        vec3 q = floor(vD * 220.0); float st = hs(q); c += vec3(0.85, 0.9, 1.0) * step(0.9965, st) * (0.4 + 2.2 * fract(st * 97.0)) * smoothstep(0.0, 0.12, vD.y);
+      if (stars > 0.01) {
+        vec3 q = floor(vD * 220.0); float st = hs(q); c += vec3(0.85, 0.9, 1.0) * step(0.9965, st) * (0.4 + 2.2 * fract(st * 97.0)) * smoothstep(0.0, 0.12, vD.y) * min(stars, 1.0);
         float e = dot(vD, earth);
         if (e > 0.9975) {   // earth: blue disc with cloud bands, lit from the sun side
           vec3 n = normalize(vD - earth * e); float r = sqrt(max(0.0, 1.0 - e * e)) / 0.0707;
@@ -272,12 +284,12 @@ sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6;
 scene.add(sun, sun.target);
 const SUN_DIR = new V3(0.45, 0.55, 0.7).normalize();
 function applyEnv(key) {
-  const E = ENVS[key] || ENVS.day, U = sky.material.uniforms;
+  const E = typeof key === 'object' ? key : ENVS[key] || ENVS.day, U = sky.material.uniforms;
   U.top.value.set(E.top); HORIZON.set(E.hor); scene.fog.color.copy(HORIZON); scene.fog.near = E.fog[0]; scene.fog.far = E.fog[1];
   SUN_DIR.set(...E.dir).normalize(); U.sun.value.copy(SUN_DIR); U.disc.value = E.disc;
   hemi.color.set(E.hemi[0]); hemi.groundColor.set(E.hemi[1]); hemi.intensity = E.hemi[2];
   sun.color.set(E.sun[0]); sun.intensity = E.sun[1];
-  U.stars.value = E.stars ? 1 : 0; if (E.earth) U.earth.value.set(...E.earth).normalize();
+  U.stars.value = +E.stars || 0; if (E.earth) U.earth.value.set(...E.earth).normalize();
   scene.environmentIntensity = E.env; renderer.toneMappingExposure = E.exp;
   snowFx.visible = !!(E.snow || E.ash || E.leaves || E.dust || E.bubbles); rainFx.visible = !!E.rain;
   snowFx.material.color.set(E.bubbles ? 0x8fdcec : E.dust ? 0xa890d8 : E.leaves ? 0xd0782a : E.ember ? 0xff8a40 : E.ash ? 0x6a605a : 0xffffff); snowFx.userData.k = E.bubbles ? -0.45 : E.dust ? -0.15 : E.leaves ? 0.22 : E.ash ? 0.35 : 1;
@@ -288,8 +300,10 @@ function ensureArena() {
   const M = MISSIONS[cfg.mission], key = M.seed + M.env;
   if (key === arenaKey && arenaGroup) return;
   if (arenaGroup) scene.remove(arenaGroup);
+  PLAT.R = M.platform || 0; asc = null;
   arenaGroup = buildArena(scene, M.seed, M.env, M.path || M.track || null, M.zones ? (M.evac ? [...M.zones, M.evac] : M.zones) : null); arenaKey = key;
   applyEnv(M.env);
+  if (M.platform) buildAscent(arenaGroup);
 }
 
 const camera = new THREE.PerspectiveCamera(68, innerWidth / innerHeight, 0.1, 2000);
@@ -617,6 +631,7 @@ function mixWave(n, rnd) {
   if (n >= 6) pool.push(['raider', 4.5, 3], ['lancer', 4.5, 2], ['dropship', 5, 2]);
   if (n >= 5) pool.push(['grappler', 4, 2]);
   if (n >= 4) pool.push(['eel', 3.5, 2]);
+  if (n >= 5) pool.push(['jet', 4, 2]);
   const sp = {}; let budget = 5 + n * 2.6, total = 0;
   while (budget > 0.9 && total < 24) {
     const [k, c, max] = pool[Math.floor(rnd() * pool.length)];
@@ -638,7 +653,7 @@ function makePlayer() {
 const wingOn = () => !!(save.wing && cfg.wing);
 function clearWorld() {
   if (G.wing) G.wing.dispose(); if (G.core) G.core.dispose();
-  clearDecoys(); clearWells(); clearChill(); clearStrikes(); clearDiscs(); G.tether = null; G.blinkInv = 0; G.eelSaid = false; G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
+  clearDecoys(); clearWells(); clearChill(); clearStrikes(); clearDiscs(); G.tether = null; G.blinkInv = 0; G.eelSaid = false; G.jetSaid = false; G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
   for (const e of G.enemies) e.remove ? e.remove() : null;
   G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0; clearMinis(); clearMines(); snipeSaid = false; G.mendSaid = false; G.mineSaid = false; G.jamSaid = false; G.jammed = null; clearZones();
   for (const k of G.pickups) scene.remove(k.o);
@@ -657,7 +672,7 @@ function newGame() {
   Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
   const M = MISSIONS[cfg.mission];
   G.echoLo = setEcho({ R: cfg.R, L: cfg.L, S: cfg.S, frame: cfg.frame });
-  PHYS.g = M.grav || 1; clearWells(); G.eruptT = 8; G.freezes = 0; G.lavaT = 0; G.eruptions = 0; G.burrowUps = 0;
+  PHYS.g = M.grav || 1; if (M.ascend) setStage(0, true); clearWells(); G.eruptT = 8; G.freezes = 0; G.lavaT = 0; G.eruptions = 0; G.burrowUps = 0;
   if (M.defense) {
     G.core = new Reactor(scene, new V3(0, 0, 0), M.coreHp); G.friends.push(G.core);
     G.player.pos.set(0, 0, 22);
@@ -685,6 +700,7 @@ function spot(minD, maxD, air, bearing) {
     const a = bearing === undefined || i > 200 ? Math.random() * Math.PI * 2 : bearing + (Math.random() - 0.5) * 2.1, r = minD + Math.random() * (maxD - minD);
     const x = p.x + Math.cos(a) * r, z = p.z + Math.sin(a) * r;
     if (Math.abs(x) > ARENA - 10 || Math.abs(z) > ARENA - 10) continue;
+    if (PLAT.R && Math.hypot(x, z) > PLAT.R - 12) continue;
     if (!air && pointInSolid(new V3(x, 1, z), 4)) continue;
     if (air) { const y = groundAt(x, z, 99) + 10 + Math.random() * 6; return new V3(x, y, z); }
     return new V3(x, 0, z);
@@ -704,6 +720,7 @@ function startWave(i) {
   if (run.endless && !run.waves[i]) run.waves[i] = endlessWave(i);
   run.wave = i; const W = run.waves[i];
   if (run.ring) shrinkStorm(i);
+  if (MISSIONS[cfg.mission] && MISSIONS[cfg.mission].ascend && i > 0) setStage(i, false);
   if (run.endless) G.diff.hp = DIFFS[cfg.diff].hp * (1 + 0.05 * i) * (modOn('elite') ? 1.3 : 1);
   const S = W.spawn, R = run.defense ? 1.15 : 1;
   banner(W.title, W.sub, !!(S.boss || S.colossus || S.train));
@@ -784,6 +801,7 @@ function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.burrower || 0); k++) new Burrower(spot(60 * R, 100 * R, false, b));
   for (let k = 0; k < (S.grappler || 0); k++) new Grappler(spot(70 * R, 115 * R, true, b));
   for (let k = 0; k < (S.eel || 0); k++) new Eel(spot(60 * R, 100 * R, true, b));
+  for (let k = 0; k < (S.jet || 0); k++) { const a = (b === undefined ? Math.random() * 6.28 : b) + (Math.random() - 0.5) * 2, r = 230 + k * 30; new Jet(new V3(Math.cos(a) * r, 50, Math.sin(a) * r)); }
   const drops = (S.drops || []).concat(Array.from({ length: S.dropship || 0 }, () => ({ walker: 2 })));
   drops.forEach((cg, k) => new Dropship(dropEntry(k, b), cg, false));
   if (S.dropBoss) new Dropship(dropEntry(drops.length + 0.5, b), { boss: S.dropBoss, hp: S.bossHp || 1 }, true);
@@ -974,6 +992,65 @@ const stormNext = (() => {
   const o = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: new THREE.Color(0xe0f0ff).multiplyScalar(1.4), transparent: true, opacity: 0.55, depthWrite: false, toneMapped: false }));
   o.visible = false; o.renderOrder = 4; scene.add(o); return o;
 })();
+// ------------------------------------------------------------------ sky elevator: tether + collar rings sliding down, rising cloud
+// puffs, a cloud sea that falls away below the deck, and the sky blended from stage to stage as the platform climbs
+let asc = null;
+const _ecA = new THREE.Color(), _ecB = new THREE.Color();
+const lcol = (a, b, k) => _ecA.set(a).lerp(_ecB.set(b), k).getHex(), lnum = (a, b, k) => a + (b - a) * k;
+function mixEnv(A, B, k) {
+  return { top: lcol(A.top, B.top, k), hor: lcol(A.hor, B.hor, k), fog: [lnum(A.fog[0], B.fog[0], k), lnum(A.fog[1], B.fog[1], k)],
+    hemi: [lcol(A.hemi[0], B.hemi[0], k), lcol(A.hemi[1], B.hemi[1], k), lnum(A.hemi[2], B.hemi[2], k)], sun: [lcol(A.sun[0], B.sun[0], k), lnum(A.sun[1], B.sun[1], k)],
+    env: lnum(A.env, B.env, k), exp: lnum(A.exp, B.exp, k), dir: [0, 1, 2].map((i) => lnum(A.dir[i], B.dir[i], k)), disc: lnum(A.disc, B.disc, k),
+    stars: lnum(+A.stars || 0, +B.stars || 0, k), earth: B.earth };
+}
+function buildAscent(group) {
+  const metal = new THREE.MeshStandardMaterial({ color: 0x2c3038, roughness: 0.4, metalness: 0.8 });
+  group.add(new THREE.Mesh(new THREE.CylinderGeometry(5.5, 5.5, 3600, 24, 1, true), metal));
+  const glow = new THREE.MeshBasicMaterial({ color: 0x7fe8ff });
+  for (let k = 0; k < 4; k++) group.add(new THREE.Mesh(new THREE.BoxGeometry(0.45, 3600, 0.45).translate(Math.cos(k * Math.PI / 2 + 0.4) * 5.6, 0, Math.sin(k * Math.PI / 2 + 0.4) * 5.6), glow));
+  addSolid(0, 0, 11, 11, 400, 0, 'tether');
+  const ringG = new THREE.TorusGeometry(6.8, 0.5, 8, 32).rotateX(Math.PI / 2), ringM = new THREE.MeshBasicMaterial({ color: 0x58d8ff });
+  const rings = []; for (let i = 0; i < 16; i++) { const r = new THREE.Mesh(ringG, ringM); r.position.y = -360 + i * 45; group.add(r); rings.push(r); }
+  const seaU = { uT: { value: 0 }, cA: { value: new THREE.Color(0xffffff) }, cB: { value: new THREE.Color(0x9fb4c8) }, cover: { value: 0.45 } };
+  const sea = new THREE.Mesh(new THREE.PlaneGeometry(9000, 9000).rotateX(-Math.PI / 2), new THREE.ShaderMaterial({ uniforms: seaU, transparent: true, depthWrite: false,
+    vertexShader: 'varying vec3 vW; void main(){ vec4 w = modelMatrix * vec4(position, 1.0); vW = w.xyz; gl_Position = projectionMatrix * viewMatrix * w; }',
+    fragmentShader: `uniform float uT; uniform vec3 cA; uniform vec3 cB; uniform float cover; varying vec3 vW;
+      float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+      float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y); }
+      float fbm(vec2 p){ float a = 0.5, s = 0.0; for (int i = 0; i < 5; i++) { s += a * n2(p); p *= 2.03; a *= 0.5; } return s; }
+      void main(){ vec2 p = vW.xz * 0.0016 + vec2(uT * 0.004, uT * 0.0025); float f = fbm(p);
+        float m = smoothstep(cover - 0.12, cover + 0.18, f);
+        vec3 c = mix(cB, cA, m * (0.75 + 0.25 * fbm(p * 3.0 + 7.0)));
+        float d = length(vW.xz - cameraPosition.xz), fade = 1.0 - smoothstep(2400.0, 4400.0, d);
+        gl_FragColor = vec4(c, fade); }` }));
+  sea.position.y = -140; sea.renderOrder = -5; sea.frustumCulled = false; group.add(sea);
+  const pm = new THREE.SpriteMaterial({ map: TEX.softTex, color: 0xffffff, transparent: true, opacity: 0.5, depthWrite: false });
+  const puffs = [];
+  const placePuff = (s, y) => { const a = Math.random() * 6.283, r = PLAT.R + 25 + Math.random() * 260; s.position.set(Math.cos(a) * r, y, Math.sin(a) * r); s.scale.setScalar(50 + Math.random() * 70); };
+  for (let i = 0; i < 40; i++) { const s = new THREE.Sprite(pm); placePuff(s, -260 + Math.random() * 480); group.add(s); puffs.push(s); }
+  asc = { rings, sea, seaU, pm, puffs, placePuff, v: 18, vT: 18, y: -140, yT: -140, puff: 1, puffT: 1, cA: new THREE.Color(0xffffff), cB: new THREE.Color(0x9fb4c8), cover: 0.45 };
+}
+function setStage(i, now) {
+  const M = MISSIONS[cfg.mission], L = M.ascend, st = L[Math.min(i, L.length - 1)], E = ENVS[st.env];
+  PHYS.g = st.g;
+  if (now || !run.envCur) { applyEnv(E); run.envCur = E; run.envBl = null; }
+  else run.envBl = { A: run.envCur, B: E, t: 0, T: 9 };
+  if (!asc) return;
+  asc.yT = st.y; asc.vT = st.v; asc.puffT = st.puff; asc.cA.set(st.cA); asc.cB.set(st.cB); asc.cover = st.cover;
+  if (now) { asc.y = st.y; asc.v = st.v; asc.puff = st.puff; asc.seaU.cA.value.copy(asc.cA); asc.seaU.cB.value.copy(asc.cB); asc.seaU.cover.value = st.cover; }
+}
+function ascentLogic(dt) {
+  if (!asc || !PLAT.R) return;
+  const b = run.envBl;
+  if (b) { b.t += dt; const k = Math.min(1, b.t / b.T), e = k * k * (3 - 2 * k), E = mixEnv(b.A, b.B, e); applyEnv(E); if (k >= 1) { run.envBl = null; run.envCur = b.B; } else run.envCur = E; }
+  const k = Math.min(1, dt * 0.25);
+  asc.y += (asc.yT - asc.y) * k; asc.v += (asc.vT - asc.v) * k; asc.puff += (asc.puffT - asc.puff) * k;
+  asc.sea.position.y = asc.y; asc.pm.opacity = 0.5 * asc.puff;
+  asc.seaU.cA.value.lerp(asc.cA, k); asc.seaU.cB.value.lerp(asc.cB, k); asc.seaU.cover.value += (asc.cover - asc.seaU.cover.value) * k; asc.seaU.uT.value += dt;
+  for (const r of asc.rings) { r.position.y -= asc.v * dt; if (r.position.y < -360) r.position.y += 16 * 45; }
+  for (const s of asc.puffs) { s.position.y -= asc.v * 1.6 * dt; if (s.position.y < -280) asc.placePuff(s, 220 + Math.random() * 60); }
+}
+
 function shrinkStorm(i) {
   const R = run.ring, last = i >= run.waves.length - 1;
   const r1 = Math.max(STORM.minR, R.r * (i === 0 ? 0.82 : STORM.k) * (last ? 0.85 : 1));
@@ -1308,6 +1385,7 @@ const MEDALS = [
   { id: 'ecm', name: '电子战', desc: '累计击落 10 台干扰机', cr: 800, tally: 'jammer', need: 10 },
   { id: 'unhook', name: '断索', desc: '累计击落 10 台钩锁机', cr: 1000, tally: 'grappler', need: 10 },
   { id: 'eelslayer', name: '屠鳗', desc: '累计击落 10 条雷鳗', cr: 1000, tally: 'eel', need: 10 },
+  { id: 'ace', name: '制空', desc: '累计击落 10 架攻击机', cr: 1000, tally: 'jet', need: 10 },
   { id: 'mirror', name: '破镜', desc: '击败复制你武装的「镜像」', cr: 1200, tally: 'echo', need: 1 },
   { id: 'derail', name: '脱轨', desc: '击毁装甲列车', cr: 1200, tally: 'train', need: 1 },
   { id: 'digger', name: '地心猎人', desc: '累计击毁 10 只钻地虫', cr: 1000, tally: 'burrower', need: 10 },
@@ -1583,7 +1661,8 @@ function drawHUD(dt) {
     rctx.fillRect(x0, z0, (s.max.x - s.min.x) * K, (s.max.z - s.min.z) * K);
   }
   rctx.strokeStyle = 'rgba(255, 200, 60, 0.6)'; rctx.lineWidth = 3;
-  rctx.strokeRect((-ARENA - p.pos.x) * K, (-ARENA - p.pos.z) * K, ARENA * 2 * K, ARENA * 2 * K);
+  if (PLAT.R) { rctx.beginPath(); rctx.arc(-p.pos.x * K, -p.pos.z * K, PLAT.R * K, 0, Math.PI * 2); rctx.stroke(); }
+  else rctx.strokeRect((-ARENA - p.pos.x) * K, (-ARENA - p.pos.z) * K, ARENA * 2 * K, ARENA * 2 * K);
   if (run.ring) {
     const Rg = run.ring; rctx.strokeStyle = 'rgba(190, 120, 255, 0.9)'; rctx.lineWidth = 3; rctx.beginPath(); rctx.arc((Rg.x - p.pos.x) * K, (Rg.z - p.pos.z) * K, Rg.r * K, 0, Math.PI * 2); rctx.stroke();
     if (stormNext.visible) { rctx.strokeStyle = 'rgba(235, 245, 255, 0.75)'; rctx.lineWidth = 1.5; rctx.setLineDash([5, 5]); rctx.beginPath(); rctx.arc((Rg.x1 - p.pos.x) * K, (Rg.z1 - p.pos.z) * K, Rg.r1 * K, 0, Math.PI * 2); rctx.stroke(); rctx.setLineDash([]); }
@@ -1629,6 +1708,12 @@ function autoIntent(dt) {
   // pick up repairs when hurt
   let goal = null;
   if (p.hp < p.maxHp * 0.6) for (const k of G.pickups) { const d = k.o.position.distanceTo(p.pos); if (d < 70) { goal = k.o.position; break; } }
+  if (!goal) for (const e of G.enemies) {
+    if (e.kind !== 'jet' || !e.alive || !e.av || (e.st !== 'tele' && e.st !== 'strafe')) continue;
+    const ax = e.A.x, az = e.A.z, dx = e.B.x - ax, dz = e.B.z - az, L2 = dx * dx + dz * dz || 1;
+    const t = Math.max(0, Math.min(1, ((p.pos.x - ax) * dx + (p.pos.z - az) * dz) / L2)), cx = ax + dx * t, cz = az + dz * t, dd = Math.hypot(p.pos.x - cx, p.pos.z - cz);
+    if (dd < 7) { let nx = p.pos.x - cx, nz = p.pos.z - cz; if (dd < 0.5) { nx = -dz; nz = dx; } const nl = Math.hypot(nx, nz) || 1; goal = new V3(p.pos.x + nx / nl * 14, 0, p.pos.z + nz / nl * 14); break; }
+  }
   if (!goal && run.ring) {
     const Rg = run.ring, nx = Rg.t < Rg.T, cx = nx ? Rg.x1 : Rg.x, cz = nx ? Rg.z1 : Rg.z, cr = nx ? Rg.r1 : Rg.r;
     const dc = Math.hypot(p.pos.x - cx, p.pos.z - cz), dn = Math.hypot(p.pos.x - Rg.x, p.pos.z - Rg.z);
@@ -1768,7 +1853,7 @@ function step(dt) {
   if (p.alive && p.grounded && p.thrustLv > 0.5 && Math.random() < 0.6) fx.dust(p.pos, 1, 1.8, 3);
   if (p.alive && !p.grounded && p.hoverLv > 0.3 && p.pos.y - groundAt(p.pos.x, p.pos.z, p.pos.y) < 6 && Math.random() < 0.5) fx.dust(new V3(p.pos.x, groundAt(p.pos.x, p.pos.z, p.pos.y), p.pos.z), 1, 2.2, 6);
   fx.update(dt, camera);
-  updateSnow(dt); updateRain(dt);
+  updateSnow(dt); updateRain(dt); ascentLogic(dt);
   waveLogic(dt);
   thrust(p.alive ? Math.max(p.thrustLv, p.hoverLv * 0.7) : 0);
   const inten = run.wave < 0 ? 0 : (G.bosses && G.bosses.some((b) => b.alive)) ? 1 : Math.min(0.9, 0.45 + run.wave * 0.15);
@@ -1819,7 +1904,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=23');
+    await loadKit('./assets/kit.glb?v=24');
     ensureArena();
     makePlayer();
     setState('title');

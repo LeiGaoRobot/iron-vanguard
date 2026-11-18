@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { cloneKit, bakeStatic } from './kit.js';
 
+export const PLAT = { R: 0 };   // sky elevator: round deck of radius R, void beyond (0 = normal square arena)
 export const ARENA = 170;          // playable half-size (m)
 export const solids = [];          // {min: V3, max: V3, kind, ref}
 export const barrels = [];         // explosive props {obj, pos, hp, solid}
@@ -51,7 +52,7 @@ function panelMaterial(color, opts) {
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
   const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss';
-  LAVA.on = forge;
+  LAVA.on = forge; const PR = PLAT.R;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
     for (let i = 0; road && i < road.length - 1; i++) {
@@ -86,7 +87,14 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       vec3 leafC = mix(vec3(0.55, 0.16, 0.05), vec3(0.8, 0.52, 0.12), h21(lc + 7.3)) * (0.7 + 0.3 * h21(lc + 2.1));
       diffuseColor.rgb *= vec3(0.78, 0.72, 0.64) * (0.9 + 0.12 * h21(floor(vWP.xz / 9.0)));
       diffuseColor.rgb = mix(diffuseColor.rgb, leafC, lfk * step(0.45, h21(lc)) * (1.0 - stripe) * 0.75);` : ''}${cyber ? `
-      diffuseColor.rgb = mix(vec3(0.035, 0.03, 0.06) * (0.8 + 0.4 * h21(floor(vWP.xz / 8.0))), diffuseColor.rgb * 0.3, stripe);` : ''}${abyss ? `
+      diffuseColor.rgb = mix(vec3(0.035, 0.03, 0.06) * (0.8 + 0.4 * h21(floor(vWP.xz / 8.0))), diffuseColor.rgb * 0.3, stripe);` : ''}${PR ? `
+      float rr = length(vWP.xz), aa = atan(vWP.z, vWP.x);
+      diffuseColor.rgb *= vec3(0.86, 0.9, 0.96);
+      float rad = 1.0 - smoothstep(0.0, 0.006, abs(fract(aa * 24.0 / 6.2832) - 0.5) * 6.2832 / 24.0 * 0.5);
+      float rng = max(gridLine(rr, 24.0, 0.25), 0.0);
+      diffuseColor.rgb *= 1.0 - 0.18 * max(rad * step(30.0, rr), rng);
+      float edgeK = smoothstep(${(PR - 6).toFixed(1)}, ${(PR - 5.6).toFixed(1)}, rr) * (1.0 - smoothstep(${(PR - 2.4).toFixed(1)}, ${(PR - 2.0).toFixed(1)}, rr));
+      diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(0.1), vec3(0.9, 0.66, 0.1), step(0.5, fract(aa * 90.0 / 6.2832))), edgeK);` : ''}${abyss ? `
       float rip = 0.5 + 0.5 * sin(vWP.x * 0.9 + sin(vWP.z * 0.13) * 3.0);
       vec3 sand = vec3(0.2, 0.24, 0.21) * (0.82 + 0.1 * rip + 0.1 * h21(floor(vWP.xz / 0.6)) + 0.08 * h21(floor(vWP.xz / 9.0)));
       float weed = smoothstep(0.7, 0.9, h21(floor(vWP.xz / 5.0)) * 0.6 + h21(floor(vWP.xz / 1.4)) * 0.4);
@@ -137,8 +145,19 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float cau = 1.0 - smoothstep(0.0, 0.16, cw);
       totalEmissiveRadiance += vec3(0.25, 0.75, 0.85) * cau * 0.16;` : '',
   });
-  const floor = new THREE.Mesh(new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), floorMat);
+  const floor = new THREE.Mesh(PR ? new THREE.CircleGeometry(PR, 180).rotateX(-Math.PI / 2) : new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), floorMat);
   floor.receiveShadow = true; group.add(floor);
+  if (PR) {
+    const skirtM = new THREE.MeshStandardMaterial({ color: 0x3a3f48, roughness: 0.6, metalness: 0.6 });
+    group.add(new THREE.Mesh(new THREE.CylinderGeometry(PR, PR * 0.9, 9, 120, 1, true).translate(0, -4.5, 0), skirtM));
+    group.add(new THREE.Mesh(new THREE.CylinderGeometry(PR * 0.9, PR * 0.35, 26, 120, 1, true).translate(0, -22, 0), skirtM));
+    const ribs = [];
+    for (let i = 0; i < 24; i++) { const a = i / 24 * Math.PI * 2; ribs.push(new THREE.BoxGeometry(2.2, 30, PR * 0.62).translate(0, -20, PR * 0.62).rotateY(a)); }
+    const rb = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(ribs), skirtM); group.add(rb);
+    const rail = new THREE.Mesh(new THREE.CylinderGeometry(PR - 0.6, PR - 0.6, 3.2, 180, 1, true).translate(0, 1.6, 0), new THREE.MeshBasicMaterial({ color: 0x58d8ff, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending }));
+    group.add(rail);
+    const lip = new THREE.Mesh(new THREE.TorusGeometry(PR - 0.6, 0.12, 6, 180).rotateX(Math.PI / 2).translate(0, 3.2, 0), new THREE.MeshBasicMaterial({ color: 0x9fe8ff })); group.add(lip);
+  }
 
   // ---- buildings (merged box geometry)
   const bldMat = panelMaterial(0x4a5260, {
@@ -174,6 +193,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   });
   const boxes = [];
   const free = (x, z, r) => {
+    if (PR && Math.hypot(x, z) > PR - 16 - r) return false;
     if (Math.hypot(x, z - 120) < 28 || Math.hypot(x, z) < 26) return false;   // spawn + centre plaza
     if (road && roadD(x, z) < 11 + r) return false;
     if (forge && lavaD(x, z) < 9 + r) return false;
@@ -197,11 +217,11 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   }
   // perimeter wall + far skyline (not playable)
   const wallH = 14;
-  for (const [x, z, w, d] of [[0, -ARENA - 2, ARENA * 2 + 8, 4], [0, ARENA + 2, ARENA * 2 + 8, 4], [-ARENA - 2, 0, 4, ARENA * 2 + 8], [ARENA + 2, 0, 4, ARENA * 2 + 8]]) {
+  if (!PR) for (const [x, z, w, d] of [[0, -ARENA - 2, ARENA * 2 + 8, 4], [0, ARENA + 2, ARENA * 2 + 8, 4], [-ARENA - 2, 0, 4, ARENA * 2 + 8], [ARENA + 2, 0, 4, ARENA * 2 + 8]]) {
     boxes.push([x, z, w, d, wallH]); addSolid(x, z, w, d, 60, 0, 'wall');
   }
   const skyline = [];
-  for (let i = 0; i < 90; i++) {
+  for (let i = 0; i < (PR ? 0 : 90); i++) {
     const a = rnd() * Math.PI * 2, r = 260 + rnd() * 260;
     skyline.push([Math.cos(a) * r, Math.sin(a) * r, 14 + rnd() * 30, 14 + rnd() * 30, 10 + rnd() * 60]);
   }
@@ -332,7 +352,7 @@ export function pointInSolid(p, pad = 0) {
 // ray vs solids + floor; returns {t, solid}
 export function raySolids(o, d, maxT, noFloor = false) {
   let best = maxT, bs = null;
-  if (!noFloor && d.y < -1e-6) { const t = -o.y / d.y; if (t > 0 && t < best) { best = t; bs = 'floor'; } }
+  if (!noFloor && d.y < -1e-6) { const t = -o.y / d.y; if (t > 0 && t < best && (!PLAT.R || Math.hypot(o.x + d.x * t, o.z + d.z * t) < PLAT.R)) { best = t; bs = 'floor'; } }
   for (const s of solids) {
     let t0 = 0, t1 = best;
     for (const ax of ['x', 'y', 'z']) {
