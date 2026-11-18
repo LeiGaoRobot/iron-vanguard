@@ -37,6 +37,7 @@ export const WEAPONS = {
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
   drones: { slot: 'shoulder', name: 'DP-4 攻击无人机', en: 'DP-4 Drone Pod', desc: '放出 2 架无人机 · 自动攻击 14 秒', type: 'drones', count: 2, dur: 14, dmg: 6, rate: 0.17, range: 80, cd: 18, sfx: 'drone' },
   emp: { slot: 'shoulder', name: 'EP-5 电磁脉冲', en: 'EP-5 EMP Burst', desc: '周围 26 m 敌机瘫痪 2.5 秒（头目 0.8 秒）· 瘫痪中受伤 +30% · 清除来袭弹药与地雷', type: 'emp', radius: 26, dmg: 85, stun: 2.5, bossStun: 0.8, cd: 11, sfx: 'emp' },
+  cluster: { slot: 'shoulder', name: 'CM-6 集束迫击炮', en: 'CM-6 Cluster Mortar', desc: '高抛弹道 · 下落时分裂成 10 枚子弹药 · 覆盖 11 m · 可越过掩体', type: 'cluster', range: 130, speed: 62, grav: 30, n: 10, R: 11, dmg: 42, splash: 4, cd: 9, sfx: 'grenade' },
   grav: { slot: 'shoulder', name: 'GW-1 重力井', en: 'GW-1 Gravity Well', desc: '发射奇点 · 3 秒内把周围敌机拖向中心并吞掉敌弹 · 结束时坍缩爆炸', type: 'grav', speed: 75, range: 95, R: 20, pull: 15, dur: 3, dps: 26, burst: 150, burstR: 11, cd: 14, sfx: 'grav' },
   blink: { slot: 'shoulder', name: 'BL-2 跃迁推进器', en: 'BL-2 Blink Drive', desc: '向移动方向瞬移 22 m · 0.35 秒无敌 · 挣断钩锁 · 原地残影 0.3 秒后爆裂 · 2 次充能（各 5.5 秒）', type: 'blink', dist: 22, inv: 0.35, burst: 110, burstR: 9, mag: 2, rech: 5.5, sfx: 'blink' },
   decoy: { slot: 'shoulder', name: 'HD-1 全息诱饵', en: 'HD-1 Holo Decoy', desc: '投射机体全息影像 6 秒 · 吸引敌方火力（头目不易上当）· 被打碎时放出电磁冲击', type: 'decoy', hp: 380, dur: 6, cd: 20, burst: 70, burstR: 11, sfx: 'decoy' },
@@ -48,7 +49,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -166,6 +167,8 @@ export function spawnShot(o) {
 
 function impact(s, at, ent) {
   const fx = G.fx; G.curLabel = s.label;
+  if (s.cluster) { splitCluster(s, at.clone().setY(at.y + 2)); return; }
+  if (s.bomblet) { explodeAt(at, s.splash, s.dmg, s.team, 0.45, 0xffb050); return; }
   if (s.flak && s.team === 'P') {   // flak shell: airburst
     explodeAt(at, s.splash, s.dmg, 'P', 0.36, 0xffc060); G.flakBursts = (G.flakBursts || 0) + 1;
     fx.sparks(at, null, 14, 0xffd090, 18, 0.7, 0.3, 0.18); fx.emit('smoke', { x: at.x, y: at.y, z: at.z, vy: 0.4, life: 1.2, s0: 1.5, s1: 3.5, c0: 0x4a4440, c1: 0x2a2624, a0: 0.55, drag: 1.5 });
@@ -215,6 +218,7 @@ function updateShots(DT) {
       if (a > 0.25 && Math.random() < 0.18) fx.emit('smoke', { x: s.x, y: s.y, z: s.z, vx: 0, vy: 1.6, vz: 0, life: 0.8, s0: 1.2, s1: 3, c0: 0x4a4440, c1: 0x2a2624, a0: 0.35, drag: 1.5 });
     } else if (s.kind === 'grenade') {
       s.v.y -= s.grav * dt;
+      if (s.cluster && s.v.y < 0 && (s.y - groundAt(s.x, s.z, s.y) < 18 || Math.hypot(s.x - s.cluster.aim.x, s.z - s.cluster.aim.z) < 5)) { splitCluster(s, new V3(s.x, s.y, s.z)); G.shots.splice(i, 1); continue; }
       fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.1, s0: 1.0, s1: 0.3, c0: 0xffb060 });
       if (Math.random() < 0.5) fx.emit('smoke', { x: s.x, y: s.y, z: s.z, vx: 0, vy: 0.3, vz: 0, life: 0.6, s0: 0.4, s1: 1.4, c0: 0xb8b4ac, c1: 0x98948c, a0: 0.35, drag: 2 });
     } else if (s.kind === 'shell') {
@@ -535,6 +539,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     }
     const out = G.minis.some((m) => m.owner === owner);
     for (const m of mslot.models) { const dk = m._dock || (m._dock = find(m, 'D_Dock')); if (dk) dk.visible = !out; }
+  } else if (d.type === 'cluster') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireCluster(owner, slot, d, aim, dmgMul, team); if (me) G.stats.shots++; }
   } else if (d.type === 'stasis') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; castStasis(owner, slot, d, aim); if (me) G.stats.shots++; }
   } else if (d.type === 'smoke') {
@@ -1773,7 +1779,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -4012,6 +4018,196 @@ function updateGrid(dt) {
   for (let k = 0; k < 4; k++) { const z = G.zones[k], v = GRID.uZ.value[k]; if (z) v.set(z.x, z.z, z.st === 'live' ? 2 : 1, z.t); else v.set(0, 0, 0, 0); }
 }
 
+// ---- tornadoes (prairie): a few funnels wander the map. Inside 30 m they drag you toward the core; in the 7 m core you are
+// lifted, spun and battered (10 AP/s), then flung out. Enemies under 1500 HP get dragged and shredded too (24 HP/s).
+export const TWIST = { pull: 34, core: 8, pullV: 9, swirl: 6, dps: 14, edps: 14, hold: 1.6, fling: 30, speed: 6.5 };
+G.twisters = [];
+let twTex = null;
+function twisterTex() {
+  if (twTex) return twTex;
+  const cv = document.createElement('canvas'); cv.width = 128; cv.height = 64; const g = cv.getContext('2d');
+  g.clearRect(0, 0, 128, 64);
+  for (let k = 0; k < 70; k++) {
+    const x = Math.random() * 128, w = 2 + Math.random() * 10, a = 0.15 + Math.random() * 0.5;
+    const gr = g.createLinearGradient(x - w, 0, x + w, 0); gr.addColorStop(0, 'rgba(255,255,255,0)'); gr.addColorStop(0.5, 'rgba(255,255,255,' + a + ')'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.save(); g.translate(0, 0); g.transform(1, 0, -0.6, 1, 0, 0); g.fillRect(x - w, 0, w * 2 + 40, 64); g.restore();
+  }
+  g.globalCompositeOperation = 'destination-in'; const fv = g.createLinearGradient(0, 0, 0, 64); fv.addColorStop(0, 'rgba(0,0,0,0)'); fv.addColorStop(0.25, 'rgba(0,0,0,1)'); fv.addColorStop(0.75, 'rgba(0,0,0,1)'); fv.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = fv; g.fillRect(0, 0, 128, 64);
+  twTex = new THREE.CanvasTexture(cv); twTex.wrapS = THREE.RepeatWrapping; twTex.wrapT = THREE.ClampToEdgeWrapping; return twTex;
+}
+export function clearTwisters() { for (const t of G.twisters) t.o.parent && t.o.parent.remove(t.o); G.twisters.length = 0; G.inTwist = false; G.twistHold = 0; }
+export function startTwisters(n) {
+  clearTwisters();
+  for (let k = 0; k < n; k++) {
+    const o = new THREE.Group(), segs = [];
+    for (let j = 0; j < 9; j++) {
+      const y0 = j * 8, r0 = 2.4 + Math.pow(j / 9, 1.6) * 22, r1 = 2.4 + Math.pow((j + 1) / 9, 1.6) * 22;
+      const tex = twisterTex().clone(); tex.needsUpdate = true; tex.repeat.set(2 + j * 0.4, 1);
+      const m = new THREE.Mesh(new THREE.CylinderGeometry(r1 * 1.08, r0 * 0.94, 12, 28, 1, true), new THREE.MeshBasicMaterial({ map: tex, color: 0x6e604c, transparent: true, opacity: 0.85 - j * 0.04, side: THREE.DoubleSide, depthWrite: false }));
+      m.position.y = y0 + 4.2; m.renderOrder = 3; o.add(m); segs.push(m);
+    }
+    G.scene.add(o);
+    const a = k / n * 6.283 + 0.7, r = 70 + Math.random() * 50;
+    G.twisters.push({ x: Math.cos(a) * r, z: Math.sin(a) * r, tx: 0, tz: 0, reT: 0, ph: Math.random() * 6, o, segs, cool: 0 });
+  }
+}
+function updateTwisters(dt) {
+  const p = G.player, T = TWIST; let inP = false;
+  for (const t of G.twisters) {
+    t.ph += dt; t.reT -= dt; t.cool = Math.max(0, t.cool - dt);
+    if (t.reT <= 0) {   // pick a new heading; drift toward the player a fair share of the time
+      t.reT = 7 + Math.random() * 5;
+      if (p && Math.random() < 0.45) { t.tx = p.pos.x + (Math.random() - 0.5) * 50; t.tz = p.pos.z + (Math.random() - 0.5) * 50; }
+      else { const lim = ARENA - 30; t.tx = (Math.random() * 2 - 1) * lim; t.tz = (Math.random() * 2 - 1) * lim; }
+    }
+    const dx = t.tx - t.x, dz = t.tz - t.z, L = Math.hypot(dx, dz) || 1, v = Math.min(T.speed, L);
+    t.x += dx / L * v * dt + Math.sin(t.ph * 0.7) * 1.2 * dt; t.z += dz / L * v * dt + Math.cos(t.ph * 0.6) * 1.2 * dt;
+    t.o.position.set(t.x, groundAt(t.x, t.z, 0) , t.z);
+    for (let j = 0; j < t.segs.length; j++) {
+      const s = t.segs[j]; s.rotation.y = -t.ph * (3.2 - j * 0.18); s.position.x = Math.sin(t.ph * 0.9 + j * 0.45) * j * 0.55; s.position.z = Math.cos(t.ph * 0.8 + j * 0.4) * j * 0.55;
+      s.material.map.offset.x = t.ph * (0.25 + j * 0.03);
+    }
+    if (Math.random() < 0.9) {   // dust skirt and debris
+      const a = Math.random() * 6.283, r = 3 + Math.random() * 9;
+      G.fx.emit('smoke', { x: t.x + Math.cos(a) * r, y: 0.6, z: t.z + Math.sin(a) * r, vx: -Math.sin(a) * 9, vy: 2 + Math.random() * 3, vz: Math.cos(a) * 9, life: 1.6, s0: 3, s1: 8, c0: 0x9a8a6a, c1: 0x7a6c54, a0: 0.4, a1: 0, drag: 0.6 });
+    }
+    if (Math.random() < 0.35) { const a = Math.random() * 6.283; G.fx.sparks(new V3(t.x + Math.cos(a) * 4, 1 + Math.random() * 14, t.z + Math.sin(a) * 4), new V3(-Math.sin(a), 0.6, Math.cos(a)), 1, 0x5a4a38, 16, 1.2, 0.25, 0.9); }
+    // the player
+    if (p && p.alive && !(G.blinkInv > 0)) {
+      const ex = p.pos.x - t.x, ez = p.pos.z - t.z, d = Math.hypot(ex, ez) || 0.01, hy = p.pos.y - groundAt(t.x, t.z, 0);
+      if (d < T.pull && hy < 40) {
+        const k = 1 - d / T.pull, nx = ex / d, nz = ez / d;
+        const pv = (T.pullV * k + 1.5) * dt, sv = T.swirl * k * dt;
+        p.pos.x += -nx * pv - nz * sv; p.pos.z += -nz * pv + nx * sv;
+        if (d < 12) G.fx.trauma = Math.min(1, G.fx.trauma + dt * 0.6);
+        if (d < T.core && t.cool <= 0) {
+          inP = true; G.twistHold = (G.twistHold || 0) + dt; G.twistT_ = (G.twistT_ || 0) + dt;
+          p.grounded = false; p.vel.y = Math.max(p.vel.y, Math.max(2, 12 - hy * 0.6));
+          p.pos.x += -nz * 10 * dt; p.pos.z += nx * 10 * dt;
+          hurtPlayer(T.dps * dt, 'twister');
+          if (G.twistHold > T.hold) {   // flung out
+            G.twistHold = 0; t.cool = 3; G.twistFlings = (G.twistFlings || 0) + 1;
+            p.vel.x = nx * T.fling - nz * 10; p.vel.z = nz * T.fling + nx * 10; p.vel.y = 9;
+            G.fx.trauma = Math.min(1, G.fx.trauma + 0.5); sfx('boom', 0);
+          }
+          if (!G.twistSaid) { G.twistSaid = true; G.onHint && G.onHint('被龙卷卷住了 · 每秒掉装甲 · 推进或急闪逃出漏斗，或者等它把你甩出去', 4); }
+        }
+      }
+    }
+    for (const e of G.enemies) {
+      if (!(e instanceof Enemy) || !e.alive || e.dying || e.maxHp > 1500 || e.kind === 'boss' || e.cloaked) continue;
+      const ex = e.pos.x - t.x, ez = e.pos.z - t.z, d = Math.hypot(ex, ez) || 0.01;
+      if (d > T.pull || e.c.y - groundAt(t.x, t.z, 0) > 40) continue;
+      const k = 1 - d / T.pull;
+      e.pos.x -= ex / d * (T.pullV * 0.7 * k) * dt + ez / d * T.swirl * k * dt; e.pos.z -= ez / d * (T.pullV * 0.7 * k) * dt - ex / d * T.swirl * k * dt;
+      if (d < T.core) { e.hp -= T.edps * dt; G.twistDmgE = (G.twistDmgE || 0) + T.edps * dt; e.flash = 0.05; if (e.hp <= 0) e.die(); }
+    }
+  }
+  if (!inP) G.twistHold = Math.max(0, (G.twistHold || 0) - dt * 2);
+  G.inTwist = inP;
+}
+
+// Blinker: a phase-shift assault drone. It circles at range plinking, then marks a spot behind its target (red ring, 0.75 s),
+// blinks there and fires a shotgun burst, then sits exposed for 1.3 s (takes x1.6 damage) before blinking back out.
+export const BLINK = { hp: 420, mark: 0.75, pellets: 7, dmg: 7, cd: [6, 9], exposed: 1.3, behind: 10 };
+export class Blinker extends Enemy {
+  constructor(pos) {
+    super('blinker', 'E_Blinker', pos, BLINK.hp, 1.7); this.boom = 0.8; this.obj.scale.setScalar(1.4);
+    this.vel = new V3(); this.orbit = Math.random() < 0.5 ? 1 : -1; this.ph = Math.random() * 6; this.st = 'hover'; this.stT = 2 + Math.random() * 3;
+    this.spot = new V3(); this.lockOn = null; this.c.copy(pos);
+  }
+  hit(dmg, at, label) { if (this.st === 'exposed') dmg *= 1.6; super.hit(dmg); }
+  jump(to) {
+    G.fx.flash(this.c, 0xc060ff, 18, 20, 0.2); G.fx.ring(this.c.clone(), null, 1, 5, 0.3, 0xd080ff);
+    G.fx.lightning(this.c.clone(), to.clone(), 0xc080ff, 0.18, 0.12, 0.6);
+    this.pos.copy(to); this.c.copy(to); this.vel.set(0, 0, 0);
+    G.fx.flash(this.c, 0xc060ff, 22, 24, 0.25); G.fx.ring(this.c.clone(), null, 1, 6, 0.35, 0xd080ff);
+    sfx('blink', G.player ? G.player.pos.distanceTo(this.pos) : 0);
+  }
+  update(dt) {
+    this.ph += dt; this.stT -= dt;
+    const ring = this.n.BL_Ring; if (ring) { ring.rotation.y += dt * (this.st === 'mark' ? 30 : 6); ring.scale.setScalar(this.st === 'exposed' ? 1.4 + Math.sin(this.ph * 20) * 0.2 : 1); }
+    const p = this.tg(), pc = p.center(playerC);
+    if (this.st === 'hover') {
+      const ang = Math.atan2(this.pos.z - pc.z, this.pos.x - pc.x) + this.orbit * dt * 0.5;
+      const tx = pc.x + Math.cos(ang) * 34, tz = pc.z + Math.sin(ang) * 34, ty = groundAt(this.pos.x, this.pos.z, 99) + 7 + Math.sin(this.ph) * 1.5;
+      _a.set(tx - this.pos.x, ty - this.pos.y, tz - this.pos.z); const L = _a.length(); if (L > 0) _a.multiplyScalar(Math.min(16, L * 1.2) / L);
+      this.vel.lerp(_a, 1 - Math.exp(-2 * dt)); this.pos.addScaledVector(this.vel, dt);
+      const s = pointInSolid(this.pos, 1.5); if (s) { this.pos.y = s.max.y + 2.5; this.vel.y = Math.max(this.vel.y, 2); }
+      this.pos.x = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.x)); this.pos.z = Math.max(-ARENA + 3, Math.min(ARENA - 3, this.pos.z));
+      this.c.copy(this.pos);
+      if (this.checkLos(dt) && this.c.distanceTo(pc) < 70) {
+        this.fireT -= dt;
+        if (this.fireT <= 0) { this.fireT = 1.4 + Math.random(); this.volley(pc, 2, 5, 0.05, 'blinker-gun'); }
+      }
+      if (this.stT <= 0 && this.c.distanceTo(pc) < 80) {   // mark a spot behind the target
+        let bx, bz;
+        if (p === G.player) { const ya = p.aimYaw + (Math.random() < 0.5 ? 1 : -1) * (1.4 + Math.random() * 0.45); bx = Math.sin(ya); bz = Math.cos(ya); }   // behind-left or behind-right: the ring lands at the edge of the screen, not under the camera else { const a = Math.random() * 6.28; bx = Math.cos(a); bz = Math.sin(a); }
+        const sp = new V3(p.pos.x + bx * BLINK.behind + (Math.random() - 0.5) * 4, 0, p.pos.z + bz * BLINK.behind + (Math.random() - 0.5) * 4);
+        sp.x = Math.max(-ARENA + 6, Math.min(ARENA - 6, sp.x)); sp.z = Math.max(-ARENA + 6, Math.min(ARENA - 6, sp.z));
+        sp.y = groundAt(sp.x, sp.z, p.pos.y + 6) + 3.5; if (pointInSolid(sp, 1.5)) sp.y += 5;
+        this.spot.copy(sp); this.st = 'mark'; this.stT = BLINK.mark; this.lockOn = p; G.blinkMarks = (G.blinkMarks || 0) + 1;
+        G.fx.warn(new V3(sp.x, groundAt(sp.x, sp.z, sp.y), sp.z), 3, BLINK.mark);
+        { const g0 = groundAt(sp.x, sp.z, sp.y); G.fx.streak(new V3(sp.x, g0, sp.z), new V3(sp.x, g0 + 14, sp.z), 0.5, 0xc060ff, BLINK.mark + 0.1); }
+        sfx('warn', p === G.player ? 0 : 30); G.onBlink && G.onBlink(this);
+      }
+    } else if (this.st === 'mark') {
+      if (Math.random() < 0.4) G.fx.emit('add', { x: this.spot.x + (Math.random() - 0.5) * 1.6, y: this.spot.y + (Math.random() - 0.5) * 1.6, z: this.spot.z + (Math.random() - 0.5) * 1.6, life: 0.2, s0: 0.35, s1: 0.05, c0: 0xc060ff });
+      this.c.copy(this.pos);
+      if (this.stT <= 0) { this.jump(this.spot); this.st = 'strike'; this.stT = 0.22; }
+    } else if (this.st === 'strike') {
+      this.c.copy(this.pos);
+      if (this.stT <= 0) { this.volley(pc, BLINK.pellets, BLINK.dmg, 0.11, 'blinker-burst'); this.st = 'exposed'; this.stT = BLINK.exposed; }
+    } else if (this.st === 'exposed') {
+      this.pos.y += Math.sin(this.ph * 3) * 0.3 * dt; this.c.copy(this.pos);
+      if (this.stT <= 0) {
+        const a = Math.random() * 6.283, to = new V3(pc.x + Math.cos(a) * 36, 0, pc.z + Math.sin(a) * 36);
+        to.x = Math.max(-ARENA + 6, Math.min(ARENA - 6, to.x)); to.z = Math.max(-ARENA + 6, Math.min(ARENA - 6, to.z)); to.y = groundAt(to.x, to.z, 99) + 8;
+        this.jump(to); this.st = 'hover'; this.stT = BLINK.cd[0] + Math.random() * (BLINK.cd[1] - BLINK.cd[0]); this.lockOn = null;
+      }
+    }
+    this.obj.rotation.y = Math.atan2(this.pos.x - pc.x, this.pos.z - pc.z);
+    this.obj.rotation.z = this.vel.x * 0.015;
+  }
+  volley(pc, n, dmg, spread, label) {
+    G.curLabel = label; G.curShooter = this;
+    for (let k = 0; k < n; k++) {
+      const mp = this.n['Muzzle_BK' + (1 + (k & 1))].getWorldPosition(_a).clone();
+      const aim = n > 2 ? pc : lead(mp, 140, _b, this.tg());
+      _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * spread; _d.y += (Math.random() - 0.5) * spread * 0.6; _d.z += (Math.random() - 0.5) * spread;
+      spawnShot({ p: mp, v: _d.normalize().multiplyScalar(130), dmg, team: 'E', kind: 'ebullet', color: 0xd070ff, w: n > 2 ? 0.32 : 0.24, len: 4, life: 1.2, label });
+    }
+    G.curShooter = null;
+    G.fx.muzzle(this.c, _d, 0xd080ff, n > 2 ? 1.6 : 0.7); sfx(n > 2 ? 'cannon' : 'eshot', this.pos.distanceTo(G.player.pos));
+  }
+}
+
+// CM-6 cluster mortar: lobs a carrier shell at the aim point; on the way down it splits into ten bomblets that blanket ~11 m.
+function fireCluster(owner, slot, d, aim, dmgMul, team) {
+  const mp = owner.muzzlePos(slot, new V3(), 0).clone();
+  const hx = aim.x - mp.x, hz = aim.z - mp.z, h0 = Math.hypot(hx, hz), h = Math.max(4, Math.min(d.range, h0)), dy = aim.y - mp.y, v = d.speed, g = d.grav;
+  const disc = v ** 4 - g * (g * h * h + 2 * dy * v * v);
+  const th = disc > 0 ? Math.atan((v * v + Math.sqrt(disc)) / (g * h)) : Math.PI / 4;   // high arc: the bomblets rain down
+  const dir = new V3(hx / (h0 || 1) * Math.cos(th), Math.sin(th), hz / (h0 || 1) * Math.cos(th)).normalize();
+  const end = h0 > d.range ? new V3(mp.x + hx / h0 * d.range, aim.y, mp.z + hz / h0 * d.range) : aim.clone();
+  const s = spawnShot({ p: mp, v: dir.multiplyScalar(v), dmg: 0, team, kind: 'grenade', grav: g, life: 9, color: 0xffd080, label: team === 'P' ? 'p-cluster' : 'cluster' });
+  s.cluster = { n: d.n, R: d.R, dmg: d.dmg * dmgMul, splash: d.splash, aim: end };
+  G.fx.muzzle(mp, dir, 0xffc070, 2); sfx('grenade', G.player ? G.player.pos.distanceTo(mp) : 0);
+}
+function splitCluster(s, at) {
+  const C = s.cluster, g = s.grav, vy = -Math.min(0, s.v.y), hgt = Math.max(1, at.y - groundAt(at.x, at.z, at.y));
+  const tf = (vy * 0 + Math.sqrt(vy * vy + 2 * g * hgt) - vy) / g + 0.0001;
+  const cx = C.aim.x, cz = C.aim.z;
+  for (let k = 0; k < C.n; k++) {
+    const a = k / C.n * 6.283 + Math.random() * 0.5, r = C.R * Math.sqrt((k + 0.5) / C.n);
+    const tx = cx + Math.cos(a) * r, tz = cz + Math.sin(a) * r;
+    const b = spawnShot({ p: at, v: new V3((tx - at.x) / tf, s.v.y * 0.6, (tz - at.z) / tf), dmg: C.dmg, team: s.team, kind: 'grenade', splash: C.splash, grav: g, life: 4, color: 0xffb050, label: s.label });
+    b.bomblet = true;
+  }
+  G.clusterSplits = (G.clusterSplits || 0) + 1;
+  G.fx.flash(at, 0xffd090, 16, 18, 0.15); G.fx.sparks(at, null, 10, 0xffd090, 14, 0.6, 0.3, 0.2);
+}
+
 export function dropRepair(pos) {
   if (G.noRepair) return;
   const o = cloneKit('P_Repair'); o.position.copy(pos); o.position.y = Math.max(1.5, groundAt(pos.x, pos.z, pos.y) + 1.5);
@@ -4063,6 +4259,7 @@ export function updateCombat(dt) {
   updateStasis(dt);
   if (ACID.on) updateAcid(dt);
   if (GRID.on) updateGrid(dt);
+  if (G.twisters.length) updateTwisters(dt);
   updateShots(dt);
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

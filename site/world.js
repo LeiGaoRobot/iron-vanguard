@@ -54,7 +54,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid';
+  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister';
   LAVA.on = forge; GRID.on = grid; const PR = PLAT.R;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
@@ -96,7 +96,11 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       diffuseColor.rgb = mix(diffuseColor.rgb, leafC, lfk * step(0.45, h21(lc)) * (1.0 - stripe) * 0.75);` : ''}${jungle ? `
       float jm = smoothstep(0.35, 0.7, vn2(vWP.xz / 9.0) * 0.65 + vn2(vWP.xz / 2.2) * 0.35);
       vec3 soil = mix(vec3(0.22, 0.17, 0.11), vec3(0.17, 0.29, 0.11), jm) * (0.86 + 0.14 * vn2(vWP.xz / 0.6));
-      diffuseColor.rgb = mix(soil, diffuseColor.rgb * vec3(0.62, 0.7, 0.56), 0.18 + 0.55 * stripe);` : ''}${toxic ? `
+      diffuseColor.rgb = mix(soil, diffuseColor.rgb * vec3(0.62, 0.7, 0.56), 0.18 + 0.55 * stripe);` : ''}${twister ? `
+      float gm = vn2(vWP.xz / 13.0) * 0.6 + vn2(vWP.xz / 3.5) * 0.4;
+      vec3 grass = mix(vec3(0.24, 0.32, 0.12), vec3(0.5, 0.46, 0.2), smoothstep(0.3, 0.75, gm)) * (0.82 + 0.22 * vn2(vWP.xz / 0.5));
+      grass = mix(grass, vec3(0.3, 0.24, 0.16), smoothstep(0.72, 0.8, vn2(vWP.xz / 8.0 + 5.1)) * 0.8);
+      diffuseColor.rgb = mix(grass, diffuseColor.rgb * vec3(0.7, 0.66, 0.58), 0.12 + 0.6 * stripe);` : ''}${toxic ? `
       float tn = vn2(vWP.xz / 7.0) * 0.6 + vn2(vWP.xz / 2.0) * 0.4;
       vec3 slab = diffuseColor.rgb * vec3(0.62, 0.62, 0.52) * (0.85 + 0.2 * vn2(vWP.xz / 0.8));
       slab = mix(slab, vec3(0.27, 0.21, 0.12), smoothstep(0.45, 0.7, tn) * 0.75);
@@ -292,6 +296,10 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   if (grid) {   // power plant: transmission pylons and transformers
     scatter(14, 5, (x, z) => { place.push({ kit: 'P_Pylon', matrix: M4(x, 0, z, rnd() < 0.5 ? 0 : Math.PI / 2, 1.1) }); addSolid(x, z, 3.0, 3.0, 11, 0, 'pylon'); });
     scatter(22, 3, (x, z) => { const r = rnd() < 0.5 ? 0 : Math.PI / 2; place.push({ kit: 'P_Transformer', matrix: M4(x, 0, z, r, 1) }); addSolid(x, z, r ? 2.2 : 3.2, r ? 3.2 : 2.2, 3.2, 0, 'transformer'); });
+  }
+  if (twister) {   // prairie: wind turbines (solid masts) and hay bales
+    scatter(12, 8, (x, z) => { place.push({ kit: 'P_Turbine', matrix: M4(x, 0, z, rnd() * 6.28, 1.15) }); addSolid(x, z, 1.8, 1.8, 16, 0, 'turbine'); });
+    scatter(40, 2, (x, z) => { place.push({ kit: 'P_Hay', matrix: M4(x, 0, z, rnd() * 6.28, 0.9 + rnd() * 0.3) }); addSolid(x, z, 1.7, 1.7, 1.5, 0, 'hay'); });
   }
   if (toxic) {   // chemical works: storage tanks (solid) and drum stacks
     scatter(16, 5, (x, z) => { place.push({ kit: 'P_Tank', matrix: M4(x, 0, z, rnd() * 6.28, 0.9 + rnd() * 0.25) }); addSolid(x, z, 6.2, 6.2, 8, 0, 'tank'); });

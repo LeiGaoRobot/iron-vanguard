@@ -107,6 +107,9 @@ M = dict(
     HiveGlow=mat("HiveGlow", "#ffe0a0", 0.3, emit="#ffa020", strength=2.2),
     Pylon=mat("Pylon", "#5a6470", 0.5, metal=0.6),
     Insul=mat("Insul", "#c8d0d8", 0.35),
+    BlinkGlow=mat("BlinkGlow", "#f0c8ff", 0.3, emit="#c050ff", strength=2.2),
+    Turbine=mat("Turbine", "#e6e8ea", 0.45),
+    Hay=mat("Hay", "#c8a050", 0.95),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -1180,6 +1183,48 @@ def build_grid():
         cyl((x, 0, 2.9), 0.16, 0.6, M["Insul"], K, verts=10)
     box((0, -1.02, 1.9), (0.9, 0.02, 0.5), M["Hazard"], K)
 
+def build_blinker():
+    # Blinker: a lean phase-shift assault drone. Arrowhead hull, two swept fins, a violet phase ring at the back, twin shotgun pods. front = +Y
+    K = kit("E_Blinker")
+    box((0, 0, 0), (0.9, 1.8, 0.5), M["EArmor"], K, bevel=0.08)
+    wedge((0, 1.25, 0), (0.8, 0.8, 0.42), M["EArmor2"], K, taper=0.15)
+    box((0, 0.5, 0.32), (0.5, 0.7, 0.16), M["Black"], K, bevel=0.03)
+    box((0, 1.0, 0.3), (0.34, 0.12, 0.08), M["EEye"], K)
+    for s_ in (-1, 1):
+        box((s_ * 1.0, -0.3, 0.0), (1.3, 0.7, 0.08), M["EArmor2"], K, rot=(0, 0, s_ * -0.5))
+        box((s_ * 1.55, -0.55, 0.0), (0.14, 0.5, 0.12), M["BlinkGlow"], K, rot=(0, 0, s_ * -0.5))
+        cyl((s_ * 0.55, 0.7, -0.22), 0.13, 1.1, M["Frame"], K, rot=ALONG_Y, verts=10)
+        muzzle("Muzzle_BK%d" % (1 if s_ < 0 else 2), (s_ * 0.55, 1.3, -0.22), K)
+    ring = empty("BL_Ring", (0, -1.1, 0), K)
+    torus((0, 0, 0), 0.62, 0.09, M["BlinkGlow"], ring, rot=(math.pi / 2, 0, 0))
+    ball((0, 0, 0), 0.26, M["BlinkGlow"], ring)
+
+def build_cluster():
+    K = kit("S_Cluster")
+    # cluster mortar: a stubby wide tube on a trunnion, hazard bands, a loader box behind
+    box((0, -0.25, 0), (0.7, 0.8, 0.55), M["Frame"], K, bevel=0.05)
+    cyl((0, 0.35, 0.18), 0.3, 1.2, M["Armor"], K, rot=(-math.pi / 2 + 0.45, 0, 0), verts=14)
+    cyl((0, 0.62, 0.45), 0.34, 0.12, M["Hazard"], K, rot=(-math.pi / 2 + 0.45, 0, 0), verts=14)
+    cyl((0, 0.66, 0.48), 0.22, 0.13, M["Black"], K, rot=(-math.pi / 2 + 0.45, 0, 0), verts=14)
+    for s_ in (-1, 1):
+        cyl((s_ * 0.36, 0.1, 0.05), 0.1, 0.16, M["Armor2"], K, rot=(0, math.pi / 2, 0), verts=10)
+    muzzle("Muzzle_Cluster", (0, 0.72, 0.55), K)
+
+def build_twister():
+    # prairie set pieces: a wind turbine with a spinning rotor, and a round hay bale
+    K = kit("P_Turbine")
+    cyl((0, 0, 7.0), 0.45, 14.0, M["Turbine"], K, verts=14, r2=0.28)
+    box((0, 0, 14.2), (0.9, 2.0, 0.9), M["Turbine"], K, bevel=0.15)
+    rot_ = empty("WT_Rotor", (0, 1.1, 14.2), K)
+    ball((0, 0, 0), 0.4, M["Turbine"], rot_)
+    for k in range(3):
+        a = k * 2 * math.pi / 3
+        box((math.sin(a) * 3.2, 0.05, math.cos(a) * 3.2), (0.45, 0.08, 6.2), M["Turbine"], rot_, rot=(0, a, 0))
+    box((0, -0.2, 0.5), (1.6, 1.6, 1.0), M["Pylon"], K)
+    K = kit("P_Hay")
+    cyl((0, 0, 0.75), 0.8, 1.3, M["Hay"], K, rot=(0, math.pi / 2, 0), verts=16)
+    cyl((0, 0, 0.75), 0.82, 0.08, M["Rust"], K, rot=(0, math.pi / 2, 0), verts=16)
+
 def build_smoke():
     K = kit("S_Smoke")
     # shoulder smoke launcher: three angled grey canister tubes on a cradle
@@ -1637,7 +1682,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
