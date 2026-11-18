@@ -18,6 +18,7 @@ export const G = {
 };
 
 export const WEAPONS = {
+  ricochet: { slot: 'arm', name: 'RB-4 跳弹枪', en: 'RB-4 Ricochet', desc: '撞墙反弹 3 次 · 反弹后转向附近敌机 · 每弹一次 +25%', type: 'bullet', rate: 0.11, dmg: 14, speed: 240, spread: 0.008, mag: 36, reload: 2.0, color: 0x80ffd0, w: 0.22, len: 6, life: 1.8, bounce: 3, sfx: 'rifle', recoil: 0.15 },
   rifle: { slot: 'arm', name: 'AR-77 突击步枪', en: 'AR-77 Rifle', desc: '全自动 · 精准 · 均衡', type: 'bullet', rate: 0.1, dmg: 17, speed: 320, spread: 0.005, mag: 40, reload: 1.7, color: 0xffd27a, w: 0.22, len: 7, sfx: 'rifle', recoil: 0.18 },
   gatling: { slot: 'arm', name: 'GX-6 加特林', en: 'GX-6 Gatling', desc: '需预转 · 高射速 · 散布大', type: 'bullet', rate: 0.042, spinUp: 0.45, dmg: 8.5, speed: 290, spread: 0.022, mag: 200, reload: 3.0, color: 0xffb860, w: 0.18, len: 6, sfx: 'gatling', recoil: 0.08 },
   coil: { slot: 'arm', name: 'LC-3 闪电线圈', en: 'LC-3 Arc Coil', desc: '自动索敌 · 连锁 3 个目标', type: 'chain', rate: 0.5, dmg: 44, range: 60, chains: 3, chainR: 18, mag: 14, reload: 2.2, sfx: 'coil', recoil: 0.3 },
@@ -53,7 +54,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -287,6 +288,7 @@ function updateShots(DT) {
     }
     if (w.solid) {
       _c.copy(_a).addScaledVector(_d, w.t);
+      if (s.bounce > 0 && w.solid.kind !== 'icewall' && w.solid.kind !== 'barrel') { ricochet(s, _c.clone(), w.solid); continue; }
       impact(s, _c.clone(), null);
       if (w.solid.isBarrel === undefined && w.solid.ref && w.solid.kind === 'barrel') hitBarrel(w.solid.ref, s.dmg);
       if (w.solid.kind === 'icewall') hitIceWall(w.solid.ref, s.dmg, _c);
@@ -356,6 +358,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
           _d.normalize();
           const sh = spawnShot({ p: mp, v: _d.clone().multiplyScalar(d.speed * (n > 1 ? 0.9 + Math.random() * 0.2 : 1)), dmg: d.dmg * dmgMul, team, kind: isP ? 'bullet' : 'ebullet', color: isP ? d.color : 0xff6a40, w: d.w, len: d.len, life: d.life || 1.6, chill: isP && team === 'P' ? d.chill : 0 });
           if (d.flak && team === 'P') { sh.flak = d.flak; sh.splash = d.splash; }
+          if (d.bounce && team === 'P') sh.bounce = d.bounce;
         }
         if (n > 1 && me) fx.trauma = Math.min(1, fx.trauma + 0.12);
         fx.muzzle(mp, _d, d.chill ? 0x9fe8ff : isP ? 0xffd27a : 0xff8a50, n > 1 ? 1.9 : d.spinUp ? 0.9 : 1.1);
@@ -1805,7 +1808,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -4882,6 +4885,198 @@ export class Deflector extends Enemy {
   }
 }
 
+
+// ---- Rammer: a ram-plowed assault tank. Armoured in front; it aims (red lane), then charges in a straight line.
+// Hitting a wall stuns it for a few seconds, and while stunned (or from behind) it takes extra damage.
+export const RAM = { hp: 1250, r: 3.2, walk: 5.5, want: 40, aim: 1.15, lock: 0.35, speed: 31, len: 74, hitW: 4.2, dmg: 62, push: 24, stun: 2.8, rec: 1.3, cd: [3.6, 5.6], front: 0.2, back: 1.6, gunCd: [2.0, 2.6], gunDmg: 7 };
+export class Rammer extends Enemy {
+  constructor(pos) {
+    super('rammer', 'E_Rammer', pos, RAM.hp, RAM.r); this.boom = 1.9; this.obj.scale.setScalar(1.35);
+    this.vel = new V3(); this.yaw = Math.random() * 6.28; this.st = 'walk'; this.stT = RAM.cd[0] + Math.random() * 2; this.dir = new V3(1, 0, 0);
+    this.fwd = new V3(0, 0, -1); this.gunT = 1.5; this.strafe = Math.random() < 0.5 ? 1 : -1; this.swT = 3; this.prog = 0; this.hitDone = false; this.autoD = false;
+    this.c.set(pos.x, pos.y + 1.8, pos.z);
+  }
+  hit(dmg, at, label) {
+    if (!this.alive || this.dying) return;
+    if (this.st === 'stun') dmg *= RAM.back;
+    else if (!G.pierce) {
+      const src = at && at.distanceTo(this.c) > 0.6 ? at : G.curSrc;
+      if (src) {
+        _a.set(src.x - this.c.x, 0, src.z - this.c.z).normalize(); const d = _a.dot(this.fwd);
+        if (d > 0.35) { dmg *= RAM.front; G.ramBlocked = (G.ramBlocked || 0) + 1; if (Math.random() < 0.3) G.fx.sparks(_b.copy(this.c).addScaledVector(this.fwd, 3.4), this.fwd, 3, 0xffd090, 10, 1, 0.2, 0.2); }
+        else if (d < -0.35) dmg *= RAM.back;
+      }
+    }
+    super.hit(dmg);
+  }
+  update(dt) {
+    const P = G.player, tg = this.tg(), pc = tg.center(playerC);
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1;
+    this.stT -= dt; let spin = 0;
+    if (this.st === 'walk') {
+      this.swT -= dt; if (this.swT <= 0) { this.swT = 3 + Math.random() * 3; this.strafe *= -1; }
+      this.slideT = Math.max(0, (this.slideT || 0) - dt);
+      let toward = dist > RAM.want + 8 ? 1 : dist < RAM.want - 16 ? -0.6 : 0.15; if (this.slideT > 0) toward *= 0.15;
+      const sw = this.slideT > 0 ? 1.2 : 0.5;
+      const tx = (dx / dist * toward - dz / dist * this.strafe * sw) * RAM.walk, tz = (dz / dist * toward + dx / dist * this.strafe * sw) * RAM.walk;
+      this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-1.6 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-1.6 * dt));
+      this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+      if (collideCyl(this.pos, 3.0, 3)) blockedSlide(this);
+      this.yaw += angDiff(Math.atan2(-dx, -dz), this.yaw) * Math.min(1, dt * 1.4);
+      spin = Math.hypot(this.vel.x, this.vel.z);
+      if (this.stT <= 0 && dist < 90 && this.checkLos(dt)) {
+        this.st = 'aim'; this.stT = RAM.aim; this.autoD = Math.random() < 0.62; G.ramCharges = (G.ramCharges || 0) + 1;
+        sfx('jetdive', dist * 0.6);
+        if (!G.ramSaid && tg === P) { G.ramSaid = true; G.onHint && G.onHint('破城锤要冲锋 · 地面红线就是冲锋路线 · 横向闪开；它撞墙后会瘫痪几秒，正面装甲只吃两成伤害，绕到背后打', 4.5); }
+      }
+    } else if (this.st === 'aim') {
+      if (this.stT > RAM.lock) {   // the lane tracks the target (with lead) until just before the charge
+        const tv = tg === P ? P.vel : (tg.vel || _c.set(0, 0, 0)), lt = dist / RAM.speed;
+        this.dir.set(pc.x + tv.x * lt * 0.85 - this.pos.x, 0, pc.z + tv.z * lt * 0.85 - this.pos.z); if (this.dir.lengthSq() < 1) this.dir.set(dx, 0, dz); this.dir.normalize();
+      }
+      this.yaw += angDiff(Math.atan2(-this.dir.x, -this.dir.z), this.yaw) * Math.min(1, dt * 8);
+      this.vel.multiplyScalar(Math.exp(-5 * dt)); this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+      spin = 6 + Math.sin(G.time * 30) * 3;
+      if (Math.random() < 0.5) G.fx.emit('smoke', { x: this.pos.x - this.fwd.x * 3, y: this.pos.y + 2.4, z: this.pos.z - this.fwd.z * 3, vy: 2, life: 0.8, s0: 1, s1: 2.4, c0: 0x4a4440, c1: 0x2a2624, a0: 0.5, drag: 1.5 });
+      const fl = this.stT < RAM.lock ? (Math.sin(G.time * 50) > 0 ? 1 : 0.35) : 0.7;
+      for (const sd of [-RAM.hitW * 0.7, RAM.hitW * 0.7]) G.fx.streak(_d.set(this.pos.x - this.dir.z * sd, 0.3, this.pos.z + this.dir.x * sd), _b.set(this.pos.x + this.dir.x * RAM.len - this.dir.z * sd, 0.3, this.pos.z + this.dir.z * RAM.len + this.dir.x * sd), 0.45 * fl, 0xff3020);
+      if (this.stT <= 0) { this.st = 'charge'; this.prog = 0; this.hitDone = false; sfx('bigboom', dist * 0.5); }
+    } else if (this.st === 'charge') {
+      this.vel.copy(this.dir).multiplyScalar(RAM.speed); this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt; this.prog += RAM.speed * dt;
+      this.yaw = Math.atan2(-this.dir.x, -this.dir.z); spin = RAM.speed;
+      if (Math.random() < 0.7) G.fx.dust(_d.set(this.pos.x, this.pos.y + 0.3, this.pos.z), 1, 2.2, 4);
+      if (!this.hitDone) for (const e of entsFor('E')) {
+        if (e.isBarrel || e.isMine || Math.hypot(e.c.x - this.c.x, e.c.z - this.c.z) > (e.r || 1) + RAM.hitW || e.c.y - this.c.y > 8 || e.c.y < this.c.y - 4) continue;   // the plow flings debris up: hovering low over it is not safe
+        this.hitDone = true; G.curSrc = this.pos; G.curLabel = 'rammer'; dealDamage(e, RAM.dmg, 'E', this.c, 'rammer');
+        if (e.isPlayer) { P.vel.x = this.dir.x * RAM.push; P.vel.z = this.dir.z * RAM.push; P.vel.y = Math.max(P.vel.y, 9); P.grounded = false; G.ramHits = (G.ramHits || 0) + 1; }
+        G.fx.sparks(this.c.clone().addScaledVector(this.fwd, 3), this.fwd, 18, 0xffc080, 18, 1.2, 0.35, 0.25); G.fx.trauma = Math.min(1, G.fx.trauma + 0.5); sfx('bigboom', 0);
+        break;
+      }
+      // bowl smaller enemies aside
+      for (const e of G.enemies) if (e !== this && e.alive && e.pos && e.kind !== 'boss' && e.maxHp < 1500 && e.c && Math.hypot(e.c.x - this.c.x, e.c.z - this.c.z) < (e.r || 1) + 2.8 && e.c.y - this.pos.y < 4) { const sx = -this.dir.z, sz = this.dir.x, sg = (e.c.x - this.c.x) * sx + (e.c.z - this.c.z) * sz > 0 ? 1 : -1; e.pos.x += sx * sg * 8 * dt; e.pos.z += sz * sg * 8 * dt; }
+      _d.copy(this.pos); _d.y += 2.6; const tall = collideCyl(_d, 3.0, 1);   // low barriers and crates are ploughed through; only real walls stop it
+      if (tall) { this.pos.x = _d.x; this.pos.z = _d.z; }
+      else if (collideCyl(_c.copy(this.pos), 3.0, 2.6) && Math.random() < 0.5) G.fx.sparks(_b.copy(this.c).addScaledVector(this.fwd, 3.2), this.fwd, 3, 0xffc080, 12, 1, 0.25, 0.2);
+      const wall = tall || Math.abs(this.pos.x) > ARENA - 5 || Math.abs(this.pos.z) > ARENA - 5;
+      if (wall) {
+        this.st = 'stun'; this.stT = RAM.stun; G.ramStuns = (G.ramStuns || 0) + 1; this.vel.set(0, 0, 0);
+        const at = this.c.clone().addScaledVector(this.fwd, 3.5);
+        G.fx.sparks(at, this.fwd.clone().multiplyScalar(-1), 30, 0xffd090, 22, 1.4, 0.45, 0.3); G.fx.emit('smoke', { x: at.x, y: at.y, z: at.z, vy: 1, life: 2, s0: 4, s1: 9, c0: 0x6a5a48, c1: 0x4a4038, a0: 0.5, drag: 1.2 });
+        G.fx.trauma = Math.min(1, G.fx.trauma + 0.4 * Math.max(0, 1 - this.pos.distanceTo(P.pos) / 70)); sfx('bigboom', this.pos.distanceTo(P.pos));
+        if (!G.ramStunSaid) { G.ramStunSaid = true; G.onHint && G.onHint('破城锤撞墙瘫痪 · 2.8 秒内全方位 ×1.6 伤害', 3); }
+      } else if (this.prog > RAM.len) { this.st = 'rec'; this.stT = RAM.rec; }
+    } else if (this.st === 'stun') {
+      spin = 0; if (Math.random() < 0.35) G.fx.sparks(_d.copy(this.c).setY(this.c.y + 1.5), null, 1, 0xffb060, 8, 0.8, 0.3, 0.18);
+      if (this.stT <= 0) { this.st = 'walk'; this.stT = RAM.cd[0] + Math.random() * (RAM.cd[1] - RAM.cd[0]); }
+    } else {   // recover after a miss
+      this.vel.multiplyScalar(Math.exp(-3 * dt)); this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt; collideCyl(this.pos, 3.0, 3);
+      spin = this.vel.length();
+      if (this.stT <= 0) { this.st = 'walk'; this.stT = RAM.cd[0] + Math.random() * (RAM.cd[1] - RAM.cd[0]); }
+    }
+    this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.6, 2.5);
+    this.obj.rotation.y = this.yaw; this.fwd.set(-Math.sin(this.yaw), 0, -Math.cos(this.yaw));
+    for (let k = 1; k <= 6; k++) { const w = this.n['RM_Wheel' + k]; if (w) w.rotation.x -= spin * dt / 0.75; }
+    if (this.n.RM_Gun) this.n.RM_Gun.rotation.y += angDiff(angDiff(Math.atan2(-dx, -dz), this.yaw), this.n.RM_Gun.rotation.y) * Math.min(1, dt * 3);
+    this.c.set(this.pos.x, this.pos.y + 1.8, this.pos.z);
+    // roof gun: short bursts while it isn't charging
+    if ((this.st === 'walk' || this.st === 'rec') && dist < 90 && this.checkLos(dt)) {
+      this.gunT -= dt;
+      if (this.gunT <= 0) {
+        this.gunT = RAM.gunCd[0] + Math.random() * (RAM.gunCd[1] - RAM.gunCd[0]);
+        for (let k = 0; k < 3; k++) G.queue.push({ label: 'rammer-gun', t: k * 0.13, fn: () => {
+          if (!this.alive) return;
+          const m = this.n.Muzzle_RM, mp = m ? m.getWorldPosition(new V3()) : this.c.clone().setY(this.c.y + 1.5);
+          const aim = lead(mp, 150, _b, this.tg()); _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.y += (Math.random() - 0.5) * 0.04; _d.z += (Math.random() - 0.5) * 0.05;
+          spawnShot({ p: mp, v: _d.normalize().multiplyScalar(150), dmg: RAM.gunDmg, team: 'E', kind: 'ebullet', color: 0xff6a40, w: 0.28, len: 5, label: 'rammer-gun' });
+          G.fx.muzzle(mp, _d, 0xff8a50, 0.9); sfx('eshot', this.pos.distanceTo(G.player.pos));
+        } });
+      }
+    }
+  }
+}
+
+// ---- Earthquakes: every ~20 s the ground shakes; fissures (warned lanes) erupt and rocks fall around the player
+export const QUAKE = { every: [17, 23], first: 14, warn: 2.4, dur: 7, fis: 3, fgap: 1.9, fwarn: 1.6, ferupt: 2.6, fW: 2.6, fLen: 66, fDmg: 30, eDmg: 26, rocks: 6, rockR: 4.5, rockDmg: 34, rockT: 1.3 };
+export function startQuakes() { G.quake = { st: 'calm', t: QUAKE.first, fis: [], n: 0 }; }
+export function clearQuakes() { G.quake = null; }
+function fissureAt(P, lead) {
+  const a = Math.random() * Math.PI, ox = (Math.random() - 0.5) * 2 * (lead ? 2 : 10), oz = (Math.random() - 0.5) * 2 * (lead ? 2 : 10);
+  const cx = P.pos.x + P.vel.x * (lead ? 1.4 : 0.6) + ox, cz = P.pos.z + P.vel.z * (lead ? 1.4 : 0.6) + oz, ux = Math.cos(a), uz = Math.sin(a);
+  return { ax: cx - ux * QUAKE.fLen / 2, az: cz - uz * QUAKE.fLen / 2, ux, uz, st: 'warn', t: QUAKE.fwarn, autoD: Math.random() < 0.65 };
+}
+export function fissureDist(f, x, z) {   // distance from a point to the fissure segment
+  const px = x - f.ax, pz = z - f.az, t = Math.max(0, Math.min(QUAKE.fLen, px * f.ux + pz * f.uz));
+  return Math.hypot(px - f.ux * t, pz - f.uz * t);
+}
+function updateQuakes(dt) {
+  const Q = G.quake, P = G.player; if (!Q || !P) return;
+  Q.t -= dt;
+  if (Q.st === 'calm') {
+    if (Q.t <= 0) { Q.st = 'rumble'; Q.t = QUAKE.warn; G.onQuake && G.onQuake(); sfx('rumble', 0); }
+  } else if (Q.st === 'rumble') {
+    G.fx.trauma = Math.max(G.fx.trauma, 0.12 + 0.1 * (1 - Q.t / QUAKE.warn));
+    if (Q.t <= 0) {
+      Q.st = 'quake'; Q.t = QUAKE.dur; Q.n++; G.quakes = (G.quakes || 0) + 1;
+      for (let k = 0; k < QUAKE.fis; k++) G.queue.push({ label: 'fissure', t: k * QUAKE.fgap, fn: () => { if (G.quake && G.player) G.quake.fis.push(fissureAt(G.player, k === 0)); } });
+      for (let k = 0; k < QUAKE.rocks; k++) G.queue.push({ label: 'quake-rock', t: 0.6 + k * (QUAKE.dur - 1.6) / QUAKE.rocks, fn: () => {
+        const p = G.player; if (!p || !G.quake) return;
+        const lead = Math.random() < 0.5, r = lead ? 1.5 : 5 + Math.random() * 12, a = Math.random() * 6.28;
+        const x = p.pos.x + (lead ? p.vel.x * QUAKE.rockT : 0) + Math.cos(a) * r, z = p.pos.z + (lead ? p.vel.z * QUAKE.rockT : 0) + Math.sin(a) * r, y = groundAt(x, z, 99);
+        const T = QUAKE.rockT, g = 22, h = 42, v0 = (h - 0.5 * g * T * T) / T;
+        spawnShot({ p: new V3(x, y + h, z), v: new V3(0, -v0, 0), dmg: QUAKE.rockDmg, team: 'E', kind: 'shell', grav: g, splash: QUAKE.rockR, life: T + 1, color: 0x8a7a60, label: 'quake-rock' });
+        G.fx.warn(new V3(x, y, z), QUAKE.rockR, T);
+      } });
+    }
+  } else if (Q.st === 'quake') {
+    G.fx.trauma = Math.max(G.fx.trauma, 0.22);
+    if (Q.t <= 0 && !Q.fis.length) { Q.st = 'calm'; Q.t = QUAKE.every[0] + Math.random() * (QUAKE.every[1] - QUAKE.every[0]); }
+  }
+  for (let i = Q.fis.length - 1; i >= 0; i--) {
+    const f = Q.fis[i]; f.t -= dt;
+    const L = QUAKE.fLen, bx = f.ax + f.ux * L, bz = f.az + f.uz * L;
+    if (f.st === 'warn') {
+      const fl = f.t < 0.4 ? (Math.sin(G.time * 50) > 0 ? 1 : 0.4) : 0.75;
+      G.fx.streak(_d.set(f.ax, 0.25, f.az), _b.set(bx, 0.25, bz), 0.5 * fl, 0xff7020);
+      if (Math.random() < 0.6) { const t = Math.random() * L; G.fx.dust(_d.set(f.ax + f.ux * t, 0.4, f.az + f.uz * t), 1, 1.6, 3); }
+      if (f.t <= 0) { f.st = 'erupt'; f.t = QUAKE.ferupt; sfx('bigboom', fissureDist(f, P.pos.x, P.pos.z)); G.fx.trauma = Math.min(1, G.fx.trauma + 0.25); }
+    } else {
+      G.fx.streak(_d.set(f.ax, 0.3, f.az), _b.set(bx, 0.3, bz), QUAKE.fW * 0.9, 0xff5a18);
+      for (let k = 0; k < 3; k++) {
+        const t = Math.random() * L, x = f.ax + f.uz * 0 + f.ux * t, z = f.az + f.uz * t;
+        G.fx.emit('add', { x, y: 0.5, z, vy: 6 + Math.random() * 6, life: 0.5, s0: 2.2, s1: 0.6, c0: 0xffa040, c1: 0xff3010 });
+        if (Math.random() < 0.3) G.fx.emit('smoke', { x, y: 1, z, vy: 3, life: 1.4, s0: 2, s1: 5, c0: 0x5a4a3e, c1: 0x3a302a, a0: 0.45, drag: 1.2 });
+      }
+      if (P.alive && P.pos.y - groundAt(P.pos.x, P.pos.z, P.pos.y + 1) < 1.6 && fissureDist(f, P.pos.x, P.pos.z) < QUAKE.fW) { hurtPlayer(QUAKE.fDmg * dt, 'fissure'); G.fisT = (G.fisT || 0) + dt; }
+      for (const e of G.enemies) if (e.alive && !e.dying && e.pos && e.kind !== 'boss' && e.pos.y - groundAt(e.pos.x, e.pos.z, 99) < 1.6 && fissureDist(f, e.pos.x, e.pos.z) < QUAKE.fW + (e.r || 1) * 0.4) e.hit(QUAKE.eDmg * dt);
+      if (f.t <= 0) Q.fis.splice(i, 1);
+    }
+  }
+}
+
+// ---- RB-4 ricochet rounds: bounce off walls and the floor, turn toward a nearby enemy and hit harder each bounce
+export const RICO = { mul: 1.25, seek: 32, home: 0.75 };
+const _rn = new V3();
+function ricochet(s, at, so) {
+  let nx = 0, ny = 0, nz = 0;
+  if (so === 'floor') ny = 1;
+  else {
+    const ds = [at.x - so.min.x, so.max.x - at.x, at.y - so.min.y, so.max.y - at.y, at.z - so.min.z, so.max.z - at.z].map(Math.abs), m = Math.min(...ds), i = ds.indexOf(m);
+    if (i === 0) nx = -1; else if (i === 1) nx = 1; else if (i === 2) ny = -1; else if (i === 3) ny = 1; else if (i === 4) nz = -1; else nz = 1;
+  }
+  const vn = s.v.x * nx + s.v.y * ny + s.v.z * nz;
+  if (vn < 0) { s.v.x -= 2 * vn * nx; s.v.y -= 2 * vn * ny; s.v.z -= 2 * vn * nz; }
+  s.bounce--; s.dmg *= RICO.mul; s.life = Math.max(s.life, 0.7); s.color = 0x60ffc8; s.age = Math.min(s.age, 0.02); s.len = 4;
+  let best = null, bd = RICO.seek;
+  for (const e of entsFor('P')) { if (e.isBarrel || e.isMine || !e.alive || e.holo) continue; const dd = e.c.distanceTo(at); if (dd < bd && clearLine(at, e.c)) { bd = dd; best = e; } }
+  const sp = s.v.length() * 0.92;
+  if (best) { _rn.subVectors(best.c, at).normalize(); s.v.normalize().lerp(_rn, RICO.home).normalize().multiplyScalar(sp); G.ricoSeek = (G.ricoSeek || 0) + 1; }
+  else s.v.multiplyScalar(0.92);
+  s.x = at.x + nx * 0.08; s.y = at.y + ny * 0.08; s.z = at.z + nz * 0.08;
+  G.ricochets = (G.ricochets || 0) + 1;
+  G.fx.sparks(at, _rn.set(nx, ny, nz), 3, 0x9fffe0, 10, 0.6, 0.18, 0.16);
+  if (Math.random() < 0.12) sfx('ricochet', G.player ? G.player.pos.distanceTo(at) : 0);
+}
+
 // ---- LM-3 bounding mines -----------------------------------------------------------------------------------------
 const pmGeo = new THREE.CylinderGeometry(0.42, 0.5, 0.28, 10), pmLight = new THREE.SphereGeometry(0.13, 8, 6);
 const pmMat = new THREE.MeshStandardMaterial({ color: 0x3a3c40, roughness: 0.6, metalness: 0.4 });
@@ -4987,7 +5182,7 @@ export function updateCombat(dt) {
   if (GRID.on) updateGrid(dt);
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
-  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt);
+  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

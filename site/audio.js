@@ -121,6 +121,7 @@ export function sfx(name, d = 0, pan = 0) {
       case 'catch': tone(t, 'square', 880, 1320, 0.05 * k, 0.06); noise(t, 0.05, 'bandpass', 2400, 2, 0.1 * k, 0.04, pan); break;
       case 'cryo': noise(t, 0.09, 'highpass', 3500, 1, 0.14 * k, 0.08, pan); tone(t, 'triangle', 2400, 1600, 0.04 * k, 0.06); break;
       case 'freeze': noise(t, 0.5, 'highpass', 2500, 2, 0.3 * k, 0.45, pan, 6000); for (let i = 0; i < 5; i++) tone(t + i * 0.04, 'sine', 2600 + i * 400, 1800 + i * 300, 0.06 * k, 0.15); break;
+      case 'ricochet': tone(t, 'triangle', 2400, 900, 0.035 * k, 0.16); noise(t, 0.05, 'highpass', 3000, 1, 0.05 * k, 0.05, pan, 5000); break;
       case 'rumble': noise(t, 0.7, 'lowpass', 140, 1, 0.3 * k, 0.6, pan, 90); tone(t, 'sine', 48, 36, 0.14 * k, 0.6, 0.08); break;
       case 'erupt': noise(t, 1.0, 'lowpass', 600, 1, 0.55 * k, 0.9, pan, 120); tone(t, 'sawtooth', 70, 30, 0.2 * k, 0.8); break;
       case 'grav': tone(t, 'sine', 220, 38, 0.32 * k, 1.1); tone(t, 'sawtooth', 110, 30, 0.08 * k, 1.0); noise(t, 1.0, 'lowpass', 400, 1, 0.25 * k, 0.9, pan, 80); for (let i = 0; i < 4; i++) tone(t + 0.15 + i * 0.12, 'triangle', 900 - i * 160, 300 - i * 50, 0.05 * k, 0.12); break;

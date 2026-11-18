@@ -11,7 +11,7 @@ import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff, PHYS } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 // rail loop for the train mission: a 118 x 82 m oval, closed (last point == first)
@@ -119,6 +119,12 @@ const MISSIONS = {
     { title: 'WAVE 2', sub: '储罐区 · 栅栏与炮火', spawn: { fencer: 2, bulwark: 1, gunship: 1, walker: 1, drone: 2 } },
     { title: 'WAVE 3', sub: '反应釜 · 敌方机甲小队', spawn: { fencer: 2, raider: 1, lancer: 1, mender: 1, drone: 2 } },
     { title: 'FINAL WAVE', sub: '「暴君」与栅栏网 · 把它引进酸雾里', spawn: { boss: 'tyrant', bossHp: 0.9, fencer: 2, drone: 2 } },
+  ] },
+  quake: { name: '断层城 · 地震', en: 'FAULT LINE', desc: '断层带上的废城 · 每二十秒一次地震：先闷响预警，随后三条地裂依次喷发（橙色线预警，站在地面上会被灼烧，悬空可以躲开），碎石落在你周围（红圈）· 破城锤会瞄准冲锋，正面装甲很厚，撞墙后瘫痪 · 头目「暴君」', seed: 307, env: 'quake', reward: 6800, quake: true, waves: [
+    { title: 'WAVE 1', sub: '断层带 · 破城锤', spawn: { rammer: 1, walker: 3, drone: 2, crawler: 4 } },
+    { title: 'WAVE 2', sub: '塌陷街区 · 双破城锤', spawn: { rammer: 2, bulwark: 1, walker: 2, gunship: 1 } },
+    { title: 'WAVE 3', sub: '震中 · 敌方机甲', spawn: { rammer: 1, raider: 1, lancer: 1, mender: 1, crawler: 4 } },
+    { title: 'FINAL WAVE', sub: '「暴君」在震中等你', spawn: { boss: 'tyrant', bossHp: 1.2, rammer: 1 } },
   ] },
   scrap: { name: '废料场 · 电磁吊', en: 'SCRAPYARD', desc: '生锈的废料场 · 三台电磁起重机轮流通电，把四周的机甲（敌我都算）吸到磁盘下面，断电时整堆废铁砸下来 · 偏导机的磁场会把你的实弹推偏，导弹、光束、近战不受影响 · 头目「暴君」', seed: 301, env: 'scrap', cranes: [[-58, -36, 0.4], [62, -18, -0.9], [4, 62, 1.6]], reward: 6700, waves: [
     { title: 'WAVE 1', sub: '废料场 · 偏导机护着谁', spawn: { deflector: 1, walker: 4, drone: 2, crawler: 5 } },
@@ -238,6 +244,7 @@ const ENVS = {
   sky3: { top: 0x060c26, hor: 0x3a6ab8, fog: [300, 2400], hemi: [0xb8ccff, 0x202838, 0.42], sun: [0xfff6ec, 2.5], env: 0.24, exp: 0.95, dir: [-0.4, 0.42, 0.55], disc: 0.6, stars: 0.5, earth: [0, -1, 0] },
   sky4: { top: 0x000002, hor: 0x0c1c40, fog: [500, 3200], hemi: [0xa8b4cc, 0x101420, 0.3], sun: [0xffffff, 2.6], env: 0.2, exp: 0.95, dir: [0.5, 0.42, -0.5], disc: 0.2, stars: 1, earth: [0, -1, 0] },
   dune: { top: 0x8a6e58, hor: 0xe0b890, fog: [50, 340], hemi: [0xffe4c4, 0x6a5038, 0.6], sun: [0xffd4a4, 2.0], env: 0.32, exp: 0.9, dir: [-0.4, 0.45, 0.45], disc: 0.7, sand: true },
+  quake: { top: 0x786e64, hor: 0xc8b49a, fog: [50, 300], hemi: [0xe4d6c2, 0x463c34, 0.55], sun: [0xffe0b8, 1.6], env: 0.24, exp: 0.86, dir: [0.45, 0.42, -0.6], disc: 0.45, dust: true },
   scrap: { top: 0x6a6470, hor: 0xc8a888, fog: [50, 320], hemi: [0xe8d0b8, 0x4a3a30, 0.55], sun: [0xffd8a8, 1.5], env: 0.24, exp: 0.86, dir: [-0.5, 0.38, 0.55], disc: 0.4, dust: true },
   salt: { top: 0x5f8fc8, hor: 0xf0e4d0, fog: [80, 440], hemi: [0xfff2e0, 0x9a9286, 0.62], sun: [0xfff0d6, 1.7], env: 0.26, exp: 0.78, dir: [0.15, 0.2, -0.97], disc: 0.9 },
   gale: { top: 0x55626e, hor: 0xc0bfb2, fog: [55, 340], hemi: [0xd8dccc, 0x4a463a, 0.58], sun: [0xfff0d8, 1.45], env: 0.26, exp: 0.9, dir: [-0.45, 0.42, 0.5], disc: 0.3, sand: true },
@@ -251,7 +258,7 @@ const ENVS = {
   meteor: { top: 0x050414, hor: 0x3c2050, fog: [110, 680], hemi: [0xd0b0ff, 0x2a1a2c, 0.5], sun: [0xffc0a0, 1.7], env: 0.26, exp: 0.98, dir: [-0.45, 0.4, 0.55], disc: 0.4, stars: 0.8, earth: [0, -1, 0] },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { deflector: 200, mirage: 260, blimp: 420, frost: 180, watch: 250, blinker: 160, hive: 300, swarm: 5, fencer: 110, prism: 220, skimmer: 200, splitter: 60, jet: 220, eel: 200, grappler: 240, train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
+const KILL_CR = { rammer: 240, deflector: 200, mirage: 260, blimp: 420, frost: 180, watch: 250, blinker: 160, hive: 300, swarm: 5, fencer: 110, prism: 220, skimmer: 200, splitter: 60, jet: 220, eel: 200, grappler: 240, train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -763,6 +770,7 @@ function mixWave(n, rnd) {
   if (n >= 5) pool.push(['blimp', 5, 1]);
   if (n >= 4) pool.push(['mirage', 4, 1]);
   if (n >= 3) pool.push(['deflector', 3, 1]);
+  if (n >= 3) pool.push(['rammer', 3, 1]);
   const sp = {}; let budget = 5 + n * 2.6, total = 0;
   while (budget > 0.9 && total < 24) {
     const [k, c, max] = pool[Math.floor(rnd() * pool.length)];
@@ -784,7 +792,7 @@ function makePlayer() {
 const wingOn = () => !!(save.wing && cfg.wing);
 function clearWorld() {
   if (G.wing) G.wing.dispose(); if (G.core) G.core.dispose();
-  clearDecoys(); clearWells(); clearChill(); clearStrikes(); clearDiscs(); clearMeteors(); clearHooks(); clearSmokes(); clearStasis(); clearAcid(); clearGrid(); clearTwisters(); clearBarrage(); clearIce(); clearWind(); clearStickies(); clearCranes(); clearPMines(); G.defl = []; G.deflected = 0; G.magnetOn = 0; G.scrapDrops = 0; G.pmBlown = 0; G.deflDown = 0; G.magSaid = false; G.deflSaid = false; G.holoSpawned = 0; G.holoPopped = 0; G.stuckN = 0; G.holoSaid = false; G.bombsDropped = 0; G.windSaid = false; G.bombSaid = false; G.frozeSaid = false; G.holeSaid = false; G.spotSaid = false; G.twistSaid = false; G.blinkSaid = false; G.gridSaid = false; G.hiveSaid = false; G.levSaid = false; G.levSwimSaid = false; G.smokeN = 0; G.levBreaches = 0; G.meteorSaid = false; G.wadeSaid = false; G.tether = null; G.blinkInv = 0; G.eelSaid = false; G.jetSaid = false; G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
+  clearDecoys(); clearWells(); clearChill(); clearStrikes(); clearDiscs(); clearMeteors(); clearHooks(); clearSmokes(); clearStasis(); clearAcid(); clearGrid(); clearTwisters(); clearBarrage(); clearIce(); clearWind(); clearStickies(); clearCranes(); clearPMines(); clearQuakes(); G.ramSaid = false; G.ramStunSaid = false; G.quakeSaid = false; G.ramCharges = 0; G.ramHits = 0; G.ramStuns = 0; G.ramBlocked = 0; G.quakes = 0; G.fisT = 0; G.ricochets = 0; G.ricoSeek = 0; G.defl = []; G.deflected = 0; G.magnetOn = 0; G.scrapDrops = 0; G.pmBlown = 0; G.deflDown = 0; G.magSaid = false; G.deflSaid = false; G.holoSpawned = 0; G.holoPopped = 0; G.stuckN = 0; G.holoSaid = false; G.bombsDropped = 0; G.windSaid = false; G.bombSaid = false; G.frozeSaid = false; G.holeSaid = false; G.spotSaid = false; G.twistSaid = false; G.blinkSaid = false; G.gridSaid = false; G.hiveSaid = false; G.levSaid = false; G.levSwimSaid = false; G.smokeN = 0; G.levBreaches = 0; G.meteorSaid = false; G.wadeSaid = false; G.tether = null; G.blinkInv = 0; G.eelSaid = false; G.jetSaid = false; G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
   for (const e of G.enemies) e.remove ? e.remove() : null;
   G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0; clearMinis(); clearMines(); snipeSaid = false; G.mendSaid = false; G.mineSaid = false; G.jamSaid = false; G.jammed = null; clearZones();
   for (const k of G.pickups) scene.remove(k.o);
@@ -803,7 +811,7 @@ function newGame() {
   Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
   const M = MISSIONS[cfg.mission];
   G.echoLo = setEcho({ R: cfg.R, L: cfg.L, S: cfg.S, frame: cfg.frame });
-  PHYS.g = M.grav || 1; PHYS.grip = M.grip || 1; if (M.ice) startIce(); if (M.wind) startWind(); G.glare = !!M.glare; if (M.cranes) startCranes(M.cranes); G.meteorOn = !!M.meteors; if (M.acid) startAcid(M.acid); if (M.twisters) startTwisters(M.twisters); G.acidSaid = false; G.fenceSaid = false; G.linkSaid = false; if (tide) { tide.y = tide.yT = M.tide[0]; WATER.y = tide.y; } if (M.ascend) setStage(0, true); clearWells(); G.eruptT = 8; G.freezes = 0; G.lavaT = 0; G.eruptions = 0; G.burrowUps = 0;
+  PHYS.g = M.grav || 1; PHYS.grip = M.grip || 1; if (M.ice) startIce(); if (M.wind) startWind(); G.glare = !!M.glare; if (M.cranes) startCranes(M.cranes); if (M.quake) startQuakes(); G.meteorOn = !!M.meteors; if (M.acid) startAcid(M.acid); if (M.twisters) startTwisters(M.twisters); G.acidSaid = false; G.fenceSaid = false; G.linkSaid = false; if (tide) { tide.y = tide.yT = M.tide[0]; WATER.y = tide.y; } if (M.ascend) setStage(0, true); clearWells(); G.eruptT = 8; G.freezes = 0; G.lavaT = 0; G.eruptions = 0; G.burrowUps = 0;
   if (M.defense) {
     G.core = new Reactor(scene, new V3(0, 0, 0), M.coreHp); G.friends.push(G.core);
     G.player.pos.set(0, 0, 22);
@@ -923,6 +931,7 @@ G.onDrop = (at, cg, ds, crashed) => {
 };
 G.onSpot = (e) => { if (!G.spotSaid) { G.spotSaid = true; showHint('被探照灯照到了 · 炮弹会落在你脚下的红圈 · 躲到掩体后挡住灯光、用干扰弹，或打掉灯塔头部的探照灯', 4.5); } };
 G.onDeflDown = (f) => { if (!G.deflSaid) { G.deflSaid = true; showHint('偏导场过载 · 3 秒内实弹能打进去 · 持续射击会让磁场过载，贴进磁场里开火也不会被推偏', 4.5); } };
+G.onQuake = () => { if (!G.quakeSaid) { G.quakeSaid = true; showHint('地震要来了 · 地裂会沿橙色线喷发（站在地面上才会被烧，悬空能躲）· 碎石落在红圈里', 4.5); } };
 G.onMagnet = (c) => { if (!G.magSaid) { G.magSaid = true; showHint('电磁吊在通电 · 38 m 内的机甲会被吸到磁盘下，断电后废铁砸下（红圈）· 推进逃开，或者把敌人引过去', 5); } };
 G.onHolo = (e) => { if (!G.holoSaid) { G.holoSaid = true; showHint('幻象机投出了全息无人机和两个镜像分身 · 幻象一碰就碎、子弹无害 · 真身躲在太阳方向 · 声呐能把幻象全部照没', 5); } };
 G.onWindShift = () => { G.windShiftT = 3; if (!G.windSaid) { G.windSaid = true; showHint('风向 3 秒后改变 · 右上角箭头是风吹去的方向 · 空中被吹得最厉害，火箭和炮弹也会顺风偏', 4.5); } };
@@ -950,6 +959,7 @@ function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.burrower || 0); k++) new Burrower(spot(60 * R, 100 * R, false, b));
   for (let k = 0; k < (S.grappler || 0); k++) new Grappler(spot(70 * R, 115 * R, true, b));
   for (let k = 0; k < (S.eel || 0); k++) new Eel(spot(60 * R, 100 * R, true, b));
+  for (let k = 0; k < (S.rammer || 0); k++) new Rammer(spot(80 * R, 125 * R, false, b));
   for (let k = 0; k < (S.deflector || 0); k++) new Deflector(spot(40 * R, 70 * R, true, b));
   for (let k = 0; k < (S.mirage || 0); k++) new Mirage(spot(45 * R, 80 * R, true, b));
   for (let k = 0; k < (S.blimp || 0); k++) new Airship(spot(60 * R, 110 * R, true, b));
@@ -1550,6 +1560,7 @@ const MEDALS = [
   { id: 'sandking', name: '驯沙', desc: '击败沙海巨虫', cr: 1500, tally: 'leviathan', need: 1 },
   { id: 'mirrorbreak', name: '裂镜', desc: '累计击毁 20 台棱镜', cr: 1200, tally: 'prism', need: 20 },
   { id: 'unfence', name: '断网', desc: '累计击毁 20 台栅栏机', cr: 1200, tally: 'fencer', need: 20 },
+  { id: 'unram', name: '拆城', desc: '累计击毁 12 台破城锤', cr: 1300, tally: 'rammer', need: 12 },
   { id: 'undefl', name: '消磁', desc: '累计击落 12 架偏导机', cr: 1300, tally: 'deflector', need: 12 },
   { id: 'unmirage', name: '破妄', desc: '累计击落 12 架幻象机', cr: 1300, tally: 'mirage', need: 12 },
   { id: 'unblimp', name: '坠艇', desc: '累计击落 10 艘飞艇', cr: 1500, tally: 'blimp', need: 10 },
@@ -1903,6 +1914,16 @@ function autoIntent(dt) {
     const t = Math.max(0, Math.min(1, ((p.pos.x - ax) * dx + (p.pos.z - az) * dz) / L2)), cx = ax + dx * t, cz = az + dz * t, dd = Math.hypot(p.pos.x - cx, p.pos.z - cz);
     if (dd < 7) { let nx = p.pos.x - cx, nz = p.pos.z - cz; if (dd < 0.5) { nx = -dz; nz = dx; } const nl = Math.hypot(nx, nz) || 1; goal = new V3(p.pos.x + nx / nl * 14, 0, p.pos.z + nz / nl * 14); break; }
   }
+  if (!goal) for (const e of G.enemies) {
+    if (e.kind !== 'rammer' || !e.alive || e.st !== 'aim' || !e.autoD || e.stT > 0.75) continue;
+    const px = p.pos.x - e.pos.x, pz = p.pos.z - e.pos.z, along = px * e.dir.x + pz * e.dir.z, side = px * -e.dir.z + pz * e.dir.x;
+    if (along > -4 && along < RAM.len + 4 && Math.abs(side) < RAM.hitW + 4) { const sg = side >= 0 ? 1 : -1; goal = new V3(p.pos.x - e.dir.z * sg * 14, 0, p.pos.z + e.dir.x * sg * 14); break; }
+  }
+  if (!goal && G.quake) for (const f of G.quake.fis) {
+    if (!f.autoD || (f.st === 'warn' && f.t > 0.9)) continue;
+    const px = p.pos.x - f.ax, pz = p.pos.z - f.az, side = px * -f.uz + pz * f.ux;
+    if (fissureDist(f, p.pos.x, p.pos.z) < QUAKE.fW + 3) { const sg = side >= 0 ? 1 : -1; goal = new V3(p.pos.x - f.uz * sg * 10, 0, p.pos.z + f.ux * sg * 10); break; }
+  }
   if (!goal && G.cranes) for (const c of G.cranes) {
     if (!(c.st === 'on' || (c.st === 'fall' && c.t > 0.2)) || !c.autoD) continue;
     const dx = p.pos.x - c.x, dz = p.pos.z - c.z, dd = Math.hypot(dx, dz);
@@ -2130,7 +2151,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=38');
+    await loadKit('./assets/kit.glb?v=39');
     ensureArena();
     makePlayer();
     setState('title');

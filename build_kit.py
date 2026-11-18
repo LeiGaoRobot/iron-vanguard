@@ -119,6 +119,8 @@ M = dict(
     HoloGlow=mat("HoloGlow", "#e0c8ff", 0.2, emit="#b070ff", strength=2.2),
     StickyGlow=mat("StickyGlow", "#ffb0a0", 0.3, emit="#ff4030", strength=2.0),
     MagGlow=mat("MagGlow", "#c8e6ff", 0.2, emit="#4aa8ff", strength=2.2),
+    RamGlow=mat("RamGlow", "#ffd0a0", 0.3, emit="#ff6a20", strength=2.4),
+    RicoGlow=mat("RicoGlow", "#d8fff0", 0.2, emit="#40ffc0", strength=2.0),
     Rust2=mat("Rust2", "#5a3a26", 0.9, metal=0.2),
 )
 
@@ -1918,7 +1920,51 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod()
+
+def build_rammer():
+    # Rammer: a low six-wheeled assault tank with a huge wedge ram plow (RM_Plow) in front, a thick front glacis,
+    # wheels RM_Wheel1..6 (spin around X), two glowing exhaust vents at the back (its weak side), and a small
+    # roof gun (RM_Gun, Muzzle_RM). front = +Y
+    K = kit("E_Rammer")
+    box((0, 0, 1.5), (3.4, 5.2, 1.5), M["EArmor"], K, bevel=0.2)
+    box((0, -0.4, 2.55), (2.6, 3.2, 0.7), M["EArmor2"], K, bevel=0.15)
+    wedge((0, 2.3, 1.7), (3.2, 1.2, 1.7), M["EArmor2"], K, taper=0.5)
+    box((0, 0.9, 2.95), (1.4, 0.12, 0.12), M["EEye"], K)
+    for s_ in (-1, 1):
+        box((s_ * 1.85, 0, 1.1), (0.4, 5.4, 0.9), M["Frame"], K)
+        for k in range(3):
+            w = empty("RM_Wheel%d" % (k * 2 + (1 if s_ < 0 else 2)), (s_ * 1.85, -1.8 + k * 1.8, 0.75), K)
+            cyl((0, 0, 0), 0.75, 0.5, M["Black"], w, rot=(0, math.pi / 2, 0), verts=14)
+            cyl((s_ * 0.27, 0, 0), 0.35, 0.06, M["Joint"], w, rot=(0, math.pi / 2, 0), verts=10)
+            box((s_ * 0.28, 0, 0), (0.06, 1.1, 0.16), M["Hazard"], w)
+    pl = empty("RM_Plow", (0, 3.1, 1.3), K)
+    wedge((0, 0.2, 0), (4.2, 1.0, 2.2), M["Rust"], pl, taper=0.25)
+    for k in range(5):
+        box(((k - 2) * 0.8, 0.75, -0.6), (0.25, 0.5, 0.5), M["Frame"], pl, rot=(0.6, 0, 0))
+    box((0, 0.15, 1.15), (4.0, 0.3, 0.14), M["Hazard"], pl)
+    for s_ in (-1, 1):
+        box((s_ * 0.85, -2.65, 1.9), (0.9, 0.2, 0.8), M["RamGlow"], K)
+        box((s_ * 0.85, -2.72, 1.9), (1.05, 0.12, 0.12), M["Frame"], K)
+        cyl((s_ * 0.85, -2.4, 3.0), 0.22, 0.9, M["Frame"], K, verts=10)
+    g = empty("RM_Gun", (0, -0.6, 3.1), K)
+    box((0, 0, 0.2), (0.8, 0.9, 0.45), M["EArmor"], g, bevel=0.06)
+    cyl((0, 0.85, 0.25), 0.09, 1.1, M["Joint"], g, rot=ALONG_Y, verts=8)
+    muzzle("Muzzle_RM", (0, 1.45, 3.35), K)
+
+def build_ricochet():
+    K = kit("W_Ricochet")
+    # ricochet gun: slab receiver with a green-lit angled deflector vane over the muzzle and a drum magazine
+    box((0, 0.1, 0.05), (0.42, 0.95, 0.4), M["Frame"], K, bevel=0.05)
+    box((0, 0.05, 0.28), (0.34, 0.7, 0.08), M["Armor"], K, bevel=0.02)
+    cyl((0.3, 0.05, -0.05), 0.2, 0.18, M["Armor2"], K, rot=(0, math.pi / 2, 0), verts=14)
+    cyl((0.4, 0.05, -0.05), 0.12, 0.04, M["RicoGlow"], K, rot=(0, math.pi / 2, 0), verts=10)
+    cyl((0, 1.0, 0.06), 0.09, 0.9, M["Joint"], K, rot=ALONG_Y, verts=10)
+    box((0, 1.38, 0.2), (0.34, 0.12, 0.05), M["RicoGlow"], K, rot=(0.5, 0, 0))
+    box((0, 1.3, -0.08), (0.3, 0.3, 0.04), M["Armor2"], K, rot=(-0.4, 0, 0))
+    box((-0.22, 0.3, 0.05), (0.04, 0.5, 0.2), M["Hazard"], K)
+    muzzle("Muzzle_Ricochet", (0, 1.5, 0.06), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
