@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import * as BufferGeometryUtils from 'three/addons/utils/BufferGeometryUtils.js';
 import { cloneKit, bakeStatic } from './kit.js';
 
+export const RAYF = { skipIce: false };   // ice walls stop enemy fire only: rays traced for the player's side skip them
 export const WATER = { on: false, y: -50 };   // storm surge: flat water plane at height y (mechs wade slower below it)
 export const PLAT = { R: 0 };   // sky elevator: round deck of radius R, void beyond (0 = normal square arena)
 export const ARENA = 170;          // playable half-size (m)
@@ -54,7 +55,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister';
+  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister';
   LAVA.on = forge; GRID.on = grid; const PR = PLAT.R;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
@@ -72,7 +73,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
 
   // ---- floor: 4 m concrete tiles with per-tile tone + seams, 16 m darker lane lines
   const floorMat = panelMaterial(0x80848a, {
-    rough: storm ? 0.5 : 0.92, metal: storm ? 0.25 : 0.1, frag: `
+    rough: storm ? 0.5 : icelake ? 0.45 : 0.92, metal: storm || icelake ? 0.25 : 0.1, frag: `
       vec2 cell = floor(vWP.xz / 4.0);
       float tone = 0.9 + 0.12 * h21(cell) + 0.03 * h21(floor(vWP.xz / 1.0));
       diffuseColor.rgb *= tone;
@@ -107,7 +108,14 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float pv = vn2(vWP.xz / 11.0 + 3.7) * 0.75 + vn2(vWP.xz / 3.0) * 0.25;
       float pud = smoothstep(0.69, 0.74, pv);
       slab = mix(slab, vec3(0.2, 0.22, 0.08), smoothstep(0.58, 0.69, pv) * 0.55);
-      diffuseColor.rgb = mix(slab, vec3(0.36, 0.5, 0.1), pud * 0.9);` : ''}${cyber ? `
+      diffuseColor.rgb = mix(slab, vec3(0.36, 0.5, 0.1), pud * 0.9);` : ''}${icelake ? `
+      float icr1 = abs(vn2(vWP.xz / 6.0) - 0.5), icr2 = abs(vn2(vWP.xz / 2.1 + 4.3) - 0.5);
+      vec3 icec = mix(vec3(0.36, 0.52, 0.64), vec3(0.58, 0.7, 0.8), vn2(vWP.xz / 14.0)) * (0.92 + 0.08 * vn2(vWP.xz / 0.7));
+      icec = mix(icec, vec3(0.16, 0.3, 0.42), smoothstep(0.6, 0.8, vn2(vWP.xz / 9.0 + 2.0)) * 0.55);
+      icec = mix(icec, vec3(0.8, 0.88, 0.94), smoothstep(0.62, 0.78, vn2(vWP.xz / 4.0 + 8.0)) * 0.3);
+      float icrk = (1.0 - smoothstep(0.0, 0.014, icr1)) * 0.75 + (1.0 - smoothstep(0.0, 0.008, icr2)) * 0.4;
+      icec = mix(icec, vec3(0.86, 0.93, 0.98), icrk);
+      diffuseColor.rgb = mix(icec, diffuseColor.rgb, 0.08 + 0.7 * stripe);` : ''}${cyber ? `
       diffuseColor.rgb = mix(vec3(0.035, 0.03, 0.06) * (0.8 + 0.4 * h21(floor(vWP.xz / 8.0))), diffuseColor.rgb * 0.3, stripe);` : ''}${grid ? `
       diffuseColor.rgb *= vec3(0.42, 0.45, 0.5);` : ''}${PR ? `
       float rr = length(vWP.xz), aa = atan(vWP.z, vWP.x);
@@ -410,6 +418,7 @@ export function raySolids(o, d, maxT, noFloor = false) {
   let best = maxT, bs = null;
   if (!noFloor && d.y < -1e-6) { const t = -o.y / d.y; if (t > 0 && t < best && (!PLAT.R || Math.hypot(o.x + d.x * t, o.z + d.z * t) < PLAT.R)) { best = t; bs = 'floor'; } }
   for (const s of solids) {
+    if (RAYF.skipIce && s.kind === 'icewall') continue;
     let t0 = 0, t1 = best;
     for (const ax of ['x', 'y', 'z']) {
       const inv = 1 / (d[ax] || 1e-9);

@@ -1,6 +1,6 @@
 // Weapons, projectiles, enemies, damage.  Shared state lives in G.
 import * as THREE from 'three';
-import { barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD, GRID } from './world.js';
+import { RAYF, barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD, GRID } from './world.js';
 import { cloneKit, nodes, find, recolor } from './kit.js';
 import { Mech, angDiff, PALETTES } from './mech.js';
 import { sfx } from './audio.js';
@@ -37,6 +37,7 @@ export const WEAPONS = {
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
   drones: { slot: 'shoulder', name: 'DP-4 攻击无人机', en: 'DP-4 Drone Pod', desc: '放出 2 架无人机 · 自动攻击 14 秒', type: 'drones', count: 2, dur: 14, dmg: 6, rate: 0.17, range: 80, cd: 18, sfx: 'drone' },
   emp: { slot: 'shoulder', name: 'EP-5 电磁脉冲', en: 'EP-5 EMP Burst', desc: '周围 26 m 敌机瘫痪 2.5 秒（头目 0.8 秒）· 瘫痪中受伤 +30% · 清除来袭弹药与地雷', type: 'emp', radius: 26, dmg: 85, stun: 2.5, bossStun: 0.8, cd: 11, sfx: 'emp' },
+  icewall: { slot: 'shoulder', name: 'IW-1 冰墙', en: 'IW-1 Ice Wall', desc: '在身前 9 m 立起一排冰柱 · 挡住敌方子弹与视线，你的射击可以穿过 · 700 耐久 · 10 秒', type: 'icewall', hp: 700, dur: 10, cd: 15, sfx: 'freeze' },
   chaff: { slot: 'shoulder', name: 'CF-3 干扰弹', en: 'CF-3 Chaff', desc: '抛出一圈热焰弹 · 80 m 内来袭导弹全部转向 · 4 秒内探照灯看不见你', type: 'chaff', R: 80, dur: 4, cd: 11, sfx: 'decoy' },
   cluster: { slot: 'shoulder', name: 'CM-6 集束迫击炮', en: 'CM-6 Cluster Mortar', desc: '高抛弹道 · 下落时分裂成 10 枚子弹药 · 覆盖 11 m · 可越过掩体', type: 'cluster', range: 130, speed: 62, grav: 30, n: 10, R: 11, dmg: 42, splash: 4, cd: 9, sfx: 'grenade' },
   grav: { slot: 'shoulder', name: 'GW-1 重力井', en: 'GW-1 Gravity Well', desc: '发射奇点 · 3 秒内把周围敌机拖向中心并吞掉敌弹 · 结束时坍缩爆炸', type: 'grav', speed: 75, range: 95, R: 20, pull: 15, dur: 3, dps: 26, burst: 150, burstR: 11, cd: 14, sfx: 'grav' },
@@ -50,7 +51,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -189,6 +190,8 @@ function impact(s, at, ent) {
     fx.sparks(at, _a.copy(s.v).normalize().multiplyScalar(-1), ent ? 6 : 4, s.team === 'P' ? 0xffd27a : 0xff7a50, 14, 0.8, 0.25, 0.22);
     fx.emit('add', { x: at.x, y: at.y, z: at.z, life: 0.08, s0: ent ? 1.4 : 0.9, c0: s.color });
     if (ent && ent.isPlayer) sfx('hurt');
+    if (s.frostP && ent && ent.isPlayer) addPChill(s.frostP);
+    if (s.frostP) fx.emit('add', { x: at.x, y: at.y, z: at.z, life: 0.25, s0: 2.2, s1: 0.4, c0: 0xc8f2ff });
   }
 }
 
@@ -196,9 +199,14 @@ function updateShots(DT) {
   const fx = G.fx;
   const entsP = entsFor('P'), entsE = entsFor('E');
   for (let i = G.shots.length - 1; i >= 0; i--) {
-    const s = G.shots[i];
+    const s = G.shots[i]; RAYF.skipIce = s.team === 'P';
     const dt = s.team === 'E' && G.stasis.length ? DT * stasisShotK(s.x, s.y, s.z) : DT;   // enemy shots crawl inside a stasis field
     s.age += dt; s.life -= dt;
+    if (s.frostP && s.age > 0.12 && G.player && G.player.alive) {   // frost orbs bend gently toward you: a sideways boost still beats them
+      const sp = s.v.length(), pc = G.player.center(_c); _a.set(pc.x - s.x, pc.y - s.y, pc.z - s.z).normalize(); _b.copy(s.v).divideScalar(sp || 1);
+      if (_a.dot(_b) > 0.2) { _b.lerp(_a, Math.min(1, 0.9 * dt)).normalize(); s.v.copy(_b).multiplyScalar(sp); }
+      if (Math.random() < 0.5) fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.25, s0: 0.9, s1: 0.2, c0: 0xc8f2ff });
+    }
     if (s.kind === 'missile') {
       const tgt = s.target && s.target.alive && !s.target.dying ? s.target.c : s.aim;
       if (s.age > 0.18 && tgt) {
@@ -247,7 +255,7 @@ function updateShots(DT) {
       if (near) { impact(s, _b.clone(), null); G.shots.splice(i, 1); continue; }
     }
     // vs entities
-    const h = segHit(_a, _b, s.team === 'P' ? entsP : entsE, s.kind === 'plasma' ? 0.6 : s.kind === 'flame' ? 0.4 + s.age * 2.5 : 0);
+    const h = segHit(_a, _b, s.team === 'P' ? entsP : entsE, s.kind === 'plasma' ? 0.6 : s.frostP ? 1.1 : s.kind === 'flame' ? 0.4 + s.age * 2.5 : 0);
     // vs world
     const L = _a.distanceTo(_b); _d.subVectors(_b, _a).divideScalar(L || 1);
     const w = raySolids(_a, _d, L);
@@ -274,6 +282,7 @@ function updateShots(DT) {
       _c.copy(_a).addScaledVector(_d, w.t);
       impact(s, _c.clone(), null);
       if (w.solid.isBarrel === undefined && w.solid.ref && w.solid.kind === 'barrel') hitBarrel(w.solid.ref, s.dmg);
+      if (w.solid.kind === 'icewall') hitIceWall(w.solid.ref, s.dmg, _c);
       G.shots.splice(i, 1); continue;
     }
     s.x = _b.x; s.y = _b.y; s.z = _b.z;
@@ -296,6 +305,7 @@ function updateShots(DT) {
 // ------------------------------------------------------------------ weapon firing (player + boss share this)
 // owner: Mech; team 'P'|'E'; held: trigger; aim: world point; target: entity or null; locks: entities for missiles
 export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, dmgMul = 1) {
+  RAYF.skipIce = team === 'P';
   const d = ws.d, fx = G.fx, mslot = owner.slots[slot];
   G.curSrc = owner.pos;
   const isP = team === 'P', me = isP && owner === G.player;
@@ -540,6 +550,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     }
     const out = G.minis.some((m) => m.owner === owner);
     for (const m of mslot.models) { const dk = m._dock || (m._dock = find(m, 'D_Dock')); if (dk) dk.visible = !out; }
+  } else if (d.type === 'icewall') {
+    if (pressed && ws.cd <= 0 && isP) { if (raiseIceWall(owner, d)) { ws.cd = d.cd; if (me) G.stats.shots++; } else ws.cd = 0.5; }
   } else if (d.type === 'chaff') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; popChaff(owner, slot, d); if (me) G.stats.shots++; }
   } else if (d.type === 'cluster') {
@@ -1782,7 +1794,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -4321,6 +4333,195 @@ function popChaff(owner, slot, d) {
   sfx('decoy', 0);
 }
 
+// ---- frozen lake: slick ice (PHYS.grip), ice holes that crack open under you, frost sleds whose orbs chill you.
+export const ICE = { every: [4, 6.5], warn: 1.5, open: 11, R: 6.5, max: 5, dps: 26, edps: 16 };
+export const FROST = { hp: 720, range: 40, cd: [2.2, 2.9], burst: 4, gap: 0.2, speed: 62, dmg: 9, chill: 0.22, freeze: 1.1, decay: 0.16 };
+G.holes = []; G.icewalls = []; G.pChill = 0; G.frozenT = 0;
+const crackTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 128; const g = c.getContext('2d'); g.strokeStyle = '#ffffff'; g.lineCap = 'round';
+  for (let k = 0; k < 9; k++) { let x = 64, y = 64, a = k / 9 * 6.283 + Math.random() * 0.5; g.lineWidth = 2.6; g.beginPath(); g.moveTo(x, y);
+    for (let j = 0; j < 7; j++) { a += (Math.random() - 0.5) * 0.9; x += Math.cos(a) * 9; y += Math.sin(a) * 9; g.lineTo(x, y); g.lineWidth = 2.6 - j * 0.3; }
+    g.stroke(); }
+  g.lineWidth = 1.5; g.beginPath(); g.arc(64, 64, 30 + Math.random() * 8, 0, 6.283); g.stroke();
+  return new THREE.CanvasTexture(c); })();
+const holeGeo = new THREE.CircleGeometry(1, 32).rotateX(-Math.PI / 2), rimGeo = new THREE.RingGeometry(0.9, 1.12, 32).rotateX(-Math.PI / 2);
+const holeMat = new THREE.MeshStandardMaterial({ color: 0x0a2534, roughness: 0.04, metalness: 0.4, emissive: 0x041824, transparent: true, opacity: 0.96 });
+const rimMat = new THREE.MeshStandardMaterial({ color: 0xe8f6ff, roughness: 0.4, transparent: true });
+export function startIce() { G.iceOn = true; G.iceT = 6; }
+export function clearIce() {
+  for (const h of G.holes) for (const m of h.meshes) m.parent && m.parent.remove(m);
+  for (const w of G.icewalls) shatterWall(w, true);
+  G.holes.length = 0; G.icewalls.length = 0; G.iceOn = false; if (G.iceShell) G.iceShell.visible = false; G.pChill = 0; G.frozenT = 0; G.freezeN = 0; G.holeN = 0; G.holeTime = 0; G.wallBlocked = 0; G.wallN = 0; G.frostFired = 0; G.frostHits = 0;
+  if (G.player) G.player.slowMul = 1;
+}
+export function addPChill(v) {
+  if (G.frozenT > 0 || !G.player || !G.player.alive) return;
+  G.pChill = Math.min(1, G.pChill + v); G.pChillT = 1.4; G.frostHits = (G.frostHits || 0) + 1;
+  if (G.pChill >= 1) { G.frozenT = FROST.freeze; G.pChill = 0.35; G.freezeN = (G.freezeN || 0) + 1; sfx('freeze', 0); G.fx.ring(G.player.center(new V3()), null, 1, 5, 0.4, 0xc8f2ff); G.onFrozen && G.onFrozen(); }
+}
+function openHole() {
+  const p = G.player; if (!p) return;
+  for (let tries = 0; tries < 8; tries++) {
+    const lead = 0.6 + Math.random() * 0.8, a = Math.random() * 6.283, r = tries < 4 ? Math.random() * 6 : 6 + Math.random() * 14;
+    const x = p.pos.x + p.vel.x * lead + Math.cos(a) * r, z = p.pos.z + p.vel.z * lead + Math.sin(a) * r;
+    if (Math.abs(x) > ARENA - 10 || Math.abs(z) > ARENA - 10) continue;
+    if (pointInSolid(_a.set(x, 1, z), ICE.R * 0.7)) continue;
+    if (G.holes.some((h) => Math.hypot(h.x - x, h.z - z) < h.R + ICE.R + 2)) continue;
+    const y = groundAt(x, z, 1) + 0.05, R = ICE.R * (0.85 + Math.random() * 0.3);
+    const crack = new THREE.Mesh(holeGeo, new THREE.MeshBasicMaterial({ map: crackTex, transparent: true, opacity: 0, depthWrite: false, color: 0xf4fbff }));
+    crack.position.set(x, y + 0.03, z); crack.scale.setScalar(R * 1.25); crack.rotation.y = Math.random() * 6.28; G.scene.add(crack);
+    G.holes.push({ x, z, y, R, st: 'crack', t: ICE.warn, meshes: [crack], crack });
+    G.fx.warn(new V3(x, y, z), R, ICE.warn); sfx('snap', Math.hypot(x - p.pos.x, z - p.pos.z)); G.holeN = (G.holeN || 0) + 1;
+    return;
+  }
+}
+function updateIce(dt) {
+  const p = G.player;
+  if (G.pChillT > 0) G.pChillT -= dt; else G.pChill = Math.max(0, G.pChill - FROST.decay * dt);
+  let slow = 1 - 0.5 * G.pChill;
+  if (!G.iceShell) { const g = new THREE.IcosahedronGeometry(1, 1); const pa = g.attributes.position; for (let q = 0; q < pa.count; q++) { const k = 0.85 + Math.random() * 0.3; pa.setXYZ(q, pa.getX(q) * k, pa.getY(q) * k * 1.6, pa.getZ(q) * k); } g.computeVertexNormals();
+    G.iceShell = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0xcdeeff, roughness: 0.1, metalness: 0.1, emissive: 0x3a8ab0, emissiveIntensity: 0.4, transparent: true, opacity: 0.55, flatShading: true, depthWrite: false })); G.iceShell.visible = false; G.scene.add(G.iceShell); }
+  G.iceShell.visible = G.frozenT > 0 && !!p;
+  if (G.iceShell.visible) { const c = p.center(_b); G.iceShell.position.copy(c); G.iceShell.scale.setScalar(2.6); }
+  if (G.frozenT > 0) {
+    G.frozenT -= dt; slow = 0;
+    if (p && Math.random() < 0.4) { const c = p.center(_a); G.fx.emit('add', { x: c.x + (Math.random() - 0.5) * 3, y: c.y + (Math.random() - 0.5) * 4, z: c.z + (Math.random() - 0.5) * 3, life: 0.35, s0: 0.5, s1: 0.1, c0: 0xd8f6ff }); }
+    if (G.frozenT <= 0 && p) { G.fx.sparks(p.center(_a).clone(), null, 18, 0xe0f6ff, 14, 1.2, 0.4, 0.25); sfx('snap', 0); }
+  }
+  // holes
+  if (G.iceOn && p && p.alive) {
+    G.iceT -= dt;
+    if (G.iceT <= 0) { G.iceT = ICE.every[0] + Math.random() * (ICE.every[1] - ICE.every[0]); if (G.holes.filter((h) => h.st === 'open').length < ICE.max) openHole(); }
+  }
+  let inHole = false;
+  for (let i = G.holes.length - 1; i >= 0; i--) {
+    const h = G.holes[i]; h.t -= dt;
+    if (h.st === 'crack') {
+      h.crack.material.opacity = Math.min(0.9, (1 - h.t / ICE.warn) * 1.1);
+      if (h.t <= 0) {
+        h.st = 'open'; h.t = ICE.open; h.crack.material.opacity = 0.35;
+        const w = new THREE.Mesh(holeGeo, holeMat.clone()); w.position.set(h.x, h.y + 0.02, h.z); w.scale.setScalar(h.R); G.scene.add(w);
+        const rim = new THREE.Mesh(rimGeo, rimMat.clone()); rim.position.set(h.x, h.y + 0.05, h.z); rim.scale.setScalar(h.R); G.scene.add(rim);
+        h.meshes.push(w, rim); h.water = w; h.rim = rim;
+        for (let k = 0; k < 14; k++) { const a = Math.random() * 6.283, r = h.R * Math.sqrt(Math.random()); G.fx.emit('add', { x: h.x + Math.cos(a) * r, y: h.y + 0.5, z: h.z + Math.sin(a) * r, vy: 4 + Math.random() * 4, life: 0.6, s0: 1.2, s1: 0.3, c0: 0xe8f8ff }); }
+        G.fx.sparks(new V3(h.x, h.y + 0.5, h.z), new V3(0, 1, 0), 16, 0xe8f8ff, 12, 1, 0.5, 0.3);
+        sfx('boom', p ? Math.hypot(h.x - p.pos.x, h.z - p.pos.z) + 20 : 50);
+      }
+    } else {
+      if (h.t < 1.5) { const k = Math.max(0, h.t / 1.5); h.water.material.opacity = 0.96 * k; h.rim.material.opacity = k; h.crack.material.opacity = 0.35 * k; }
+      if (h.t <= 0) { for (const m of h.meshes) m.parent && m.parent.remove(m); G.holes.splice(i, 1); continue; }
+      const live = h.t > 0.6;
+      if (live && p && p.alive) {
+        const d = Math.hypot(p.pos.x - h.x, p.pos.z - h.z);
+        if (d < h.R - 0.6 && p.pos.y - h.y < 0.9) {
+          inHole = true; hurtPlayer(ICE.dps * dt, 'icehole'); G.holeTime = (G.holeTime || 0) + dt;
+          if (Math.random() < 0.3) G.fx.emit('add', { x: p.pos.x + (Math.random() - 0.5) * 3, y: h.y + 0.4, z: p.pos.z + (Math.random() - 0.5) * 3, vy: 3, life: 0.4, s0: 1, s1: 0.2, c0: 0xcfeeff });
+          G.onHole && G.onHole();
+        }
+      }
+      if (live) for (const e of G.enemies) {
+        if (!e.alive || e.dying || e.kind === 'watch' || e.kind === 'frost' || e.maxHp > 3000) continue;
+        if (Math.hypot(e.pos.x - h.x, e.pos.z - h.z) < h.R - 0.6 && e.pos.y - h.y < 0.9) { G.curLabel = 'p-icehole'; e.hit(ICE.edps * dt); if (e.hp <= 0 && !e.dying) e.die(); }
+      }
+    }
+  }
+  if (inHole) slow *= 0.45;
+  if (p) p.slowMul = slow;
+}
+
+export class Frostcaster extends Enemy {
+  constructor(pos) {
+    super('frost', 'E_Frost', pos, FROST.hp, 2.2); this.boom = 1.2; this.obj.scale.setScalar(1.25);
+    this.vel = new V3(); this.orbit = Math.random() < 0.5 ? 1 : -1; this.ph = Math.random() * 6; this.burst = 0; this.bT = 0; this.fireT = 1.5 + Math.random() * 2; this.flipT = 4 + Math.random() * 4;
+    this.pos.y = groundAt(pos.x, pos.z, 50) + 1.1; this.c.set(this.pos.x, this.pos.y + 1.4, this.pos.z); this.head = 0;
+  }
+  update(dt) {
+    this.ph += dt; this.flipT -= dt; if (this.flipT <= 0) { this.flipT = 5 + Math.random() * 5; this.orbit *= -1; }
+    const p = this.tg(), pc = p.center(playerC);
+    const dx = this.pos.x - pc.x, dz = this.pos.z - pc.z, dist = Math.hypot(dx, dz) || 1;
+    const ang = Math.atan2(dz, dx) + this.orbit * dt * 0.35, rr = dist + (FROST.range - dist) * Math.min(1, dt * 0.8);
+    const tx = pc.x + Math.cos(ang) * rr, tz = pc.z + Math.sin(ang) * rr;
+    _a.set(tx - this.pos.x, 0, tz - this.pos.z); const L = _a.length(); if (L > 0) _a.multiplyScalar(Math.min(11, L * 1.5) / L);
+    this.vel.lerp(_a, 1 - Math.exp(-1.2 * dt));   // a sled: it carves wide arcs
+    const nx = this.pos.x + this.vel.x * dt, nz = this.pos.z + this.vel.z * dt;
+    if (pointInSolid(_b.set(nx, this.pos.y + 1, nz), 2.2)) { this.vel.multiplyScalar(-0.5); this.orbit *= -1; }
+    else { this.pos.x = nx; this.pos.z = nz; }
+    this.pos.x = Math.max(-ARENA + 4, Math.min(ARENA - 4, this.pos.x)); this.pos.z = Math.max(-ARENA + 4, Math.min(ARENA - 4, this.pos.z));
+    this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 3) + 1.1 + Math.sin(this.ph * 2.2) * 0.12;
+    this.c.set(this.pos.x, this.pos.y + 1.4, this.pos.z);
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    if (sp > 0.8) this.head += angDiff(Math.atan2(-this.vel.x, -this.vel.z), this.head) * Math.min(1, dt * 3);
+    this.obj.rotation.y = this.head; this.obj.rotation.z = -this.orbit * Math.min(0.18, sp * 0.015);
+    const aimYaw = Math.atan2(-(pc.x - this.pos.x), -(pc.z - this.pos.z));
+    const tur = this.n.FR_Turret; if (tur) tur.rotation.y += angDiff(aimYaw - this.head, tur.rotation.y) * Math.min(1, dt * 4);
+    if (Math.random() < 0.25) G.fx.emit('add', { x: this.pos.x + (Math.random() - 0.5) * 2, y: this.pos.y - 0.9, z: this.pos.z + (Math.random() - 0.5) * 2, vy: 0.4, life: 0.5, s0: 0.9, s1: 0.2, c0: 0xbfe8ff });
+    if (this.burst > 0) {
+      this.bT -= dt;
+      if (this.bT <= 0) { this.bT = FROST.gap; this.burst--; this.shoot(); }
+    } else if (dist < 90 && this.checkLos(dt)) {
+      this.fireT -= dt;
+      if (this.fireT <= 0) { this.fireT = FROST.cd[0] + Math.random() * (FROST.cd[1] - FROST.cd[0]); this.burst = FROST.burst; this.bT = 0.35; sfx('charge', this.pos.distanceTo(G.player.pos)); }
+    }
+  }
+  shoot() {
+    const m = this.n.Muzzle_FR; if (!m) return;
+    const mp = m.getWorldPosition(_a).clone(), aim = lead(mp, FROST.speed, _b, this.tg());
+    _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.04; _d.y += (Math.random() - 0.5) * 0.03; _d.z += (Math.random() - 0.5) * 0.04;
+    G.curLabel = 'frost-orb'; G.curShooter = this;
+    const s = spawnShot({ p: mp, v: _d.normalize().multiplyScalar(FROST.speed), dmg: FROST.dmg, team: 'E', kind: 'ebullet', color: 0xa8e8ff, w: 0.8, len: 2.4, life: 2.6, label: 'frost-orb' });
+    s.frostP = FROST.chill; G.curShooter = null; G.frostFired = (G.frostFired || 0) + 1;
+    G.fx.muzzle(mp, _d, 0xa8e8ff, 1.2); sfx('eshot', this.pos.distanceTo(G.player.pos));
+  }
+}
+
+// IW-1 ice wall: five ice pillars in a row 9 m ahead, square to your aim. They stop enemy shots and block enemy sight
+// (your own fire passes through: player-side rays skip `icewall` solids), share 700 HP and melt after 10 s.
+const iceBlockMat = new THREE.MeshStandardMaterial({ color: 0xbfe8ff, roughness: 0.12, metalness: 0.1, emissive: 0x2a6a90, emissiveIntensity: 0.35, transparent: true, opacity: 0.8, flatShading: true });
+function raiseIceWall(owner, d) {
+  const yaw = owner.aimYaw, fx_ = -Math.sin(yaw), fz = -Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+  const cx = owner.pos.x + fx_ * 9, cz = owner.pos.z + fz * 9;
+  const w = { hp: d.hp, maxHp: d.hp, t: d.dur, blocks: [], grow: 0 };
+  for (let k = -2; k <= 2; k++) {
+    const x = cx + rx * k * 2.3, z = cz + rz * k * 2.3;
+    if (Math.abs(x) > ARENA - 2 || Math.abs(z) > ARENA - 2 || pointInSolid(_a.set(x, 1, z), 0.5)) continue;
+    const y = groundAt(x, z, owner.pos.y + 2), h = 5.6 + Math.random() * 1.2;
+    const geo = new THREE.CylinderGeometry(0.95, 1.3, h, 6, 3); const pa = geo.attributes.position;   // a rough hexagonal ice column
+    for (let q = 0; q < pa.count; q++) { const yy = pa.getY(q); if (Math.abs(yy) < h / 2 - 0.01) { pa.setX(q, pa.getX(q) * (0.85 + Math.random() * 0.3)); pa.setZ(q, pa.getZ(q) * (0.85 + Math.random() * 0.3)); } }
+    geo.computeVertexNormals();
+    const m = new THREE.Mesh(geo, iceBlockMat.clone());
+    m.position.set(x, y + h / 2, z); m.rotation.set((Math.random() - 0.5) * 0.08, yaw + (Math.random() - 0.5) * 0.2, (Math.random() - 0.5) * 0.08);
+    m.castShadow = true; m.scale.y = 0.05; G.scene.add(m);
+    const cap = new THREE.Mesh(new THREE.ConeGeometry(0.9, 1.4, 5), m.material); cap.position.set(0, h / 2 + 0.5, (Math.random() - 0.5) * 0.4); cap.rotation.y = Math.random(); m.add(cap);
+    const sol = addSolid(x, z, 2.4, 2.4, h, y, 'icewall', w);
+    w.blocks.push({ m, sol, h, y });
+    G.fx.emit('add', { x, y: y + 0.5, z, vy: 5, life: 0.5, s0: 2, s1: 0.4, c0: 0xd8f6ff });
+  }
+  if (!w.blocks.length) return false;
+  G.icewalls.push(w); G.wallN = (G.wallN || 0) + 1; sfx('freeze', 0);
+  return true;
+}
+function shatterWall(w, quiet) {
+  for (const b of w.blocks) {
+    b.m.parent && b.m.parent.remove(b.m); removeSolid(b.sol);
+    if (!quiet) { G.fx.sparks(new V3(b.m.position.x, b.y + b.h * 0.5, b.m.position.z), null, 10, 0xd8f6ff, 14, 1.2, 0.5, 0.3); G.fx.emit('add', { x: b.m.position.x, y: b.y + b.h * 0.4, z: b.m.position.z, vy: 1, life: 0.6, s0: 3, s1: 1, c0: 0xc8eeff }); }
+  }
+  w.blocks.length = 0; w.dead = true;
+  if (!quiet) sfx('snap', G.player ? 10 : 0);
+}
+function hitIceWall(w, dmg, at) {
+  if (w.dead) return; w.hp -= dmg; G.wallBlocked = (G.wallBlocked || 0) + dmg;
+  if (at && Math.random() < 0.5) G.fx.sparks(at, null, 3, 0xd8f6ff, 8, 0.6, 0.25, 0.2);
+  if (w.hp <= 0) { shatterWall(w); const i = G.icewalls.indexOf(w); if (i >= 0) G.icewalls.splice(i, 1); }
+}
+function updateIceWalls(dt) {
+  for (let i = G.icewalls.length - 1; i >= 0; i--) {
+    const w = G.icewalls[i]; w.t -= dt; w.grow = Math.min(1, w.grow + dt * 4);
+    const k = w.hp / w.maxHp;
+    for (const b of w.blocks) { b.m.scale.y = 0.05 + 0.95 * (1 - (1 - w.grow) ** 3); b.m.position.y = b.y + b.h * b.m.scale.y / 2; b.m.material.opacity = 0.5 + 0.3 * k; b.m.material.emissiveIntensity = 0.2 + 0.25 * k; }
+    if (w.t < 1) for (const b of w.blocks) b.m.material.opacity *= Math.max(0.1, w.t);
+    if (w.t <= 0) { shatterWall(w); G.icewalls.splice(i, 1); }
+  }
+}
+
 export function dropRepair(pos) {
   if (G.noRepair) return;
   const o = cloneKit('P_Repair'); o.position.copy(pos); o.position.y = Math.max(1.5, groundAt(pos.x, pos.z, pos.y) + 1.5);
@@ -4329,6 +4530,7 @@ export function dropRepair(pos) {
 }
 
 export function updateCombat(dt) {
+  RAYF.skipIce = false;
   for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; q.fn(); } }
   for (const e of G.enemies) {
     G.curLabel = e.kind;
@@ -4374,7 +4576,8 @@ export function updateCombat(dt) {
   if (GRID.on) updateGrid(dt);
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
-  updateShots(dt);
+  updateIce(dt); updateIceWalls(dt);
+  updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
     k.o.rotation.y += dt * 2; k.o.position.y += Math.sin(k.t * 3) * dt * 0.5;

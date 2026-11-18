@@ -11,7 +11,7 @@ import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff, PHYS } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 // rail loop for the train mission: a 118 x 82 m oval, closed (last point == first)
@@ -120,6 +120,12 @@ const MISSIONS = {
     { title: 'WAVE 3', sub: '反应釜 · 敌方机甲小队', spawn: { fencer: 2, raider: 1, lancer: 1, mender: 1, drone: 2 } },
     { title: 'FINAL WAVE', sub: '「暴君」与栅栏网 · 把它引进酸雾里', spawn: { boss: 'tyrant', bossHp: 0.9, fencer: 2, drone: 2 } },
   ] },
+  icelake: { name: '冰湖 · 薄冰', en: 'FROZEN LAKE', desc: '结冰的湖港 · 冰面打滑，脚下冰层会裂开成冰窟 · 寒霜炮的冰弹叠满就把你冻住 · 头目「暴君」', seed: 289, env: 'icelake', ice: true, grip: 0.3, reward: 6400, waves: [
+    { title: 'WAVE 1', sub: '冰面 · 刹车要提前 · 冰层裂纹处马上会塌', spawn: { frost: 2, walker: 3, drone: 3, crawler: 4 } },
+    { title: 'WAVE 2', sub: '码头 · 寒霜炮编队', spawn: { frost: 3, bulwark: 1, gunship: 1, walker: 2 } },
+    { title: 'WAVE 3', sub: '湖心 · 敌方机甲小队', spawn: { frost: 3, raider: 1, lancer: 1, mender: 1 } },
+    { title: 'FINAL WAVE', sub: '「暴君」踏冰而来', spawn: { boss: 'tyrant', bossHp: 1, frost: 2, drone: 2 } },
+  ] },
   lockdown: { name: '封锁线 · 探照灯', en: 'LOCKDOWN', desc: '宵禁中的封锁区 · 瞭望塔探照灯来回扫，被照到就招来炮击 · 打掉灯塔或躲进阴影 · 头目「暴君」', seed: 277, env: 'lockdown', reward: 6300, waves: [
     { title: 'WAVE 1', sub: '检查站 · 别站进探照灯的光圈 · 被照到后用掩体挡住视线', spawn: { watch: 2, walker: 2, drone: 3, crawler: 4 } },
     { title: 'WAVE 2', sub: '仓储区 · 灯塔与炮火', spawn: { watch: 2, bulwark: 1, gunship: 1, walker: 2 } },
@@ -214,6 +220,7 @@ const ENVS = {
   sky3: { top: 0x060c26, hor: 0x3a6ab8, fog: [300, 2400], hemi: [0xb8ccff, 0x202838, 0.42], sun: [0xfff6ec, 2.5], env: 0.24, exp: 0.95, dir: [-0.4, 0.42, 0.55], disc: 0.6, stars: 0.5, earth: [0, -1, 0] },
   sky4: { top: 0x000002, hor: 0x0c1c40, fog: [500, 3200], hemi: [0xa8b4cc, 0x101420, 0.3], sun: [0xffffff, 2.6], env: 0.2, exp: 0.95, dir: [0.5, 0.42, -0.5], disc: 0.2, stars: 1, earth: [0, -1, 0] },
   dune: { top: 0x8a6e58, hor: 0xe0b890, fog: [50, 340], hemi: [0xffe4c4, 0x6a5038, 0.6], sun: [0xffd4a4, 2.0], env: 0.32, exp: 0.9, dir: [-0.4, 0.45, 0.45], disc: 0.7, sand: true },
+  icelake: { top: 0x5a7aa2, hor: 0xc4d2de, fog: [60, 360], hemi: [0xd6e8ff, 0x4c5c6c, 0.55], sun: [0xffe2c4, 1.35], env: 0.24, exp: 0.82, dir: [0.55, 0.32, -0.45], disc: 0.3 },
   lockdown: { top: 0x04060b, hor: 0x161c2a, fog: [30, 250], hemi: [0x5a6a8a, 0x0a0c10, 0.26], sun: [0x9ab0d8, 0.45], env: 0.1, exp: 1.1, dir: [-0.3, 0.7, 0.4], disc: 0.25 },
   twister: { top: 0x3e4236, hor: 0xb4a47a, fog: [50, 320], hemi: [0xd8d0b0, 0x3a3424, 0.6], sun: [0xffe6b8, 1.5], env: 0.28, exp: 0.95, dir: [0.5, 0.5, -0.4], disc: 0.35, sand: true },
   grid: { top: 0x0c1424, hor: 0x2e3e58, fog: [45, 330], hemi: [0x9ab4e0, 0x141820, 0.34], sun: [0xb8ccff, 0.8], env: 0.16, exp: 1.04, dir: [0.4, 0.55, -0.5], disc: 0.3 },
@@ -223,7 +230,7 @@ const ENVS = {
   meteor: { top: 0x050414, hor: 0x3c2050, fog: [110, 680], hemi: [0xd0b0ff, 0x2a1a2c, 0.5], sun: [0xffc0a0, 1.7], env: 0.26, exp: 0.98, dir: [-0.45, 0.4, 0.55], disc: 0.4, stars: 0.8, earth: [0, -1, 0] },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { watch: 250, blinker: 160, hive: 300, swarm: 5, fencer: 110, prism: 220, skimmer: 200, splitter: 60, jet: 220, eel: 200, grappler: 240, train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
+const KILL_CR = { frost: 180, watch: 250, blinker: 160, hive: 300, swarm: 5, fencer: 110, prism: 220, skimmer: 200, splitter: 60, jet: 220, eel: 200, grappler: 240, train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -731,6 +738,7 @@ function mixWave(n, rnd) {
   if (n >= 4) pool.push(['hive', 4, 1]);
   if (n >= 3) pool.push(['blinker', 3, 2]);
   if (n >= 4) pool.push(['watch', 3.5, 1]);
+  if (n >= 3) pool.push(['frost', 3, 2]);
   const sp = {}; let budget = 5 + n * 2.6, total = 0;
   while (budget > 0.9 && total < 24) {
     const [k, c, max] = pool[Math.floor(rnd() * pool.length)];
@@ -752,7 +760,7 @@ function makePlayer() {
 const wingOn = () => !!(save.wing && cfg.wing);
 function clearWorld() {
   if (G.wing) G.wing.dispose(); if (G.core) G.core.dispose();
-  clearDecoys(); clearWells(); clearChill(); clearStrikes(); clearDiscs(); clearMeteors(); clearHooks(); clearSmokes(); clearStasis(); clearAcid(); clearGrid(); clearTwisters(); clearBarrage(); G.spotSaid = false; G.twistSaid = false; G.blinkSaid = false; G.gridSaid = false; G.hiveSaid = false; G.levSaid = false; G.levSwimSaid = false; G.smokeN = 0; G.levBreaches = 0; G.meteorSaid = false; G.wadeSaid = false; G.tether = null; G.blinkInv = 0; G.eelSaid = false; G.jetSaid = false; G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
+  clearDecoys(); clearWells(); clearChill(); clearStrikes(); clearDiscs(); clearMeteors(); clearHooks(); clearSmokes(); clearStasis(); clearAcid(); clearGrid(); clearTwisters(); clearBarrage(); clearIce(); G.frozeSaid = false; G.holeSaid = false; G.spotSaid = false; G.twistSaid = false; G.blinkSaid = false; G.gridSaid = false; G.hiveSaid = false; G.levSaid = false; G.levSwimSaid = false; G.smokeN = 0; G.levBreaches = 0; G.meteorSaid = false; G.wadeSaid = false; G.tether = null; G.blinkInv = 0; G.eelSaid = false; G.jetSaid = false; G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
   for (const e of G.enemies) e.remove ? e.remove() : null;
   G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0; clearMinis(); clearMines(); snipeSaid = false; G.mendSaid = false; G.mineSaid = false; G.jamSaid = false; G.jammed = null; clearZones();
   for (const k of G.pickups) scene.remove(k.o);
@@ -771,7 +779,7 @@ function newGame() {
   Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
   const M = MISSIONS[cfg.mission];
   G.echoLo = setEcho({ R: cfg.R, L: cfg.L, S: cfg.S, frame: cfg.frame });
-  PHYS.g = M.grav || 1; G.meteorOn = !!M.meteors; if (M.acid) startAcid(M.acid); if (M.twisters) startTwisters(M.twisters); G.acidSaid = false; G.fenceSaid = false; G.linkSaid = false; if (tide) { tide.y = tide.yT = M.tide[0]; WATER.y = tide.y; } if (M.ascend) setStage(0, true); clearWells(); G.eruptT = 8; G.freezes = 0; G.lavaT = 0; G.eruptions = 0; G.burrowUps = 0;
+  PHYS.g = M.grav || 1; PHYS.grip = M.grip || 1; if (M.ice) startIce(); G.meteorOn = !!M.meteors; if (M.acid) startAcid(M.acid); if (M.twisters) startTwisters(M.twisters); G.acidSaid = false; G.fenceSaid = false; G.linkSaid = false; if (tide) { tide.y = tide.yT = M.tide[0]; WATER.y = tide.y; } if (M.ascend) setStage(0, true); clearWells(); G.eruptT = 8; G.freezes = 0; G.lavaT = 0; G.eruptions = 0; G.burrowUps = 0;
   if (M.defense) {
     G.core = new Reactor(scene, new V3(0, 0, 0), M.coreHp); G.friends.push(G.core);
     G.player.pos.set(0, 0, 22);
@@ -890,6 +898,8 @@ G.onDrop = (at, cg, ds, crashed) => {
   for (let k = 0; k < (cg.crawler || 0); k++) new Crawler(ring(i++, n, 3));
 };
 G.onSpot = (e) => { if (!G.spotSaid) { G.spotSaid = true; showHint('被探照灯照到了 · 炮弹会落在你脚下的红圈 · 躲到掩体后挡住灯光、用干扰弹，或打掉灯塔头部的探照灯', 4.5); } };
+G.onFrozen = () => { if (!G.frozeSaid) { G.frozeSaid = true; showHint('被冻住了 · 冰弹会叠加寒冷，叠满就冻结 1 秒 · 躲开淡蓝色冰弹，或用冰墙挡住寒霜炮', 4.5); } };
+G.onHole = () => { if (!G.holeSaid) { G.holeSaid = true; showHint('掉进冰窟了 · 冰水持续扣装甲并减速 · 看到冰面裂纹和红圈就跳开，悬停也能越过', 4.5); } };
 G.onBlink = (e) => { if (!G.blinkSaid && e.lockOn === G.player) { G.blinkSaid = true; showHint('闪影 · 地上的紫红圈就是它要瞬移到的位置 · 转身对准，或在它现身前急闪离开 · 开火后它会停顿片刻', 4.5); } };
 G.onHive = (e) => { if (!G.hiveSaid && G.player && e.c.distanceTo(G.player.pos) < 110) { G.hiveSaid = true; showHint('蜂巢 · 一次放出六架自爆无人机 · 优先打掉蜂巢，蜂群用高射炮或范围武器清', 4.5); } };
 G.onFence = (e) => { if (!G.fenceSaid && G.player && e.c.distanceTo(G.player.pos) < 90) { G.fenceSaid = true; showHint('激光栅栏 · 两台栅栏机之间的红线马上横扫过来 · 起跳或推进越过它，绕到端头，或击毁其中一台', 4.5); } };
@@ -911,6 +921,7 @@ function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.burrower || 0); k++) new Burrower(spot(60 * R, 100 * R, false, b));
   for (let k = 0; k < (S.grappler || 0); k++) new Grappler(spot(70 * R, 115 * R, true, b));
   for (let k = 0; k < (S.eel || 0); k++) new Eel(spot(60 * R, 100 * R, true, b));
+  for (let k = 0; k < (S.frost || 0); k++) new Frostcaster(spot(55 * R, 100 * R, false, b));
   for (let k = 0; k < (S.watch || 0); k++) new Watchtower(spot(55 * R, 110 * R, false, b));
   for (let k = 0; k < (S.blinker || 0); k++) new Blinker(spot(60 * R, 100 * R, true, b));
   for (let k = 0; k < (S.hive || 0); k++) new Hive(spot(70 * R, 110 * R, true, b));
@@ -975,7 +986,7 @@ let odPressed = false;
 function activateOD() {
   const p = G.player, o = G.od;
   if (!o || o.t > 0 || o.k < 1 || !p.alive || run.won) return;
-  o.t = o.dur; o.k = 0; o.ringT = 0; o.uses = (o.uses || 0) + 1;
+  o.t = o.dur; o.k = 0; o.ringT = 0; o.uses = (o.uses || 0) + 1; G.pChill = 0; G.frozenT = 0;
   const c = p.center(new V3());
   G.curLabel = 'p-od'; explodeAt(c, 16, 160, 'P', 2.2, 0xffa040); G.curLabel = null;
   fx.ring(new V3(p.pos.x, 0.4, p.pos.z), null, 1, 22, 0.6, 0xffa040);
@@ -1507,6 +1518,7 @@ const MEDALS = [
   { id: 'sandking', name: '驯沙', desc: '击败沙海巨虫', cr: 1500, tally: 'leviathan', need: 1 },
   { id: 'mirrorbreak', name: '裂镜', desc: '累计击毁 20 台棱镜', cr: 1200, tally: 'prism', need: 20 },
   { id: 'unfence', name: '断网', desc: '累计击毁 20 台栅栏机', cr: 1200, tally: 'fencer', need: 20 },
+  { id: 'unfrost', name: '破冰', desc: '累计击毁 15 台寒霜炮', cr: 1200, tally: 'frost', need: 15 },
   { id: 'unwatch', name: '熄灯', desc: '累计击毁 15 座瞭望塔', cr: 1200, tally: 'watch', need: 15 },
   { id: 'unblink', name: '破影', desc: '累计击毁 15 架闪影', cr: 1200, tally: 'blinker', need: 15 },
   { id: 'unhive', name: '灭巢', desc: '累计击毁 10 座蜂巢', cr: 1200, tally: 'hive', need: 10 },
@@ -1749,6 +1761,7 @@ function drawHUD(dt) {
   // hurt vignette
   G.hud.hurt = Math.max(0, G.hud.hurt - dt * 1.2);
   $('spotTag').style.display = G.spotT > 0 && G.player.alive && state === 'play' ? 'block' : 'none';
+  $('frostVig').style.opacity = G.player.alive && state === 'play' ? (G.frozenT > 0 ? 0.95 : Math.min(0.8, G.pChill * 0.8)).toFixed(2) : '0';
   $('acidVig').style.opacity = G.inAcid && G.player.alive ? (0.55 + Math.sin(performance.now() / 160) * 0.08).toFixed(2) : '0';
   if (G.inAcid && !G.acidSaid) { G.acidSaid = true; showHint('酸雾 · 雾里每秒腐蚀装甲 · 离开绿色雾区（敌机进去也会被腐蚀）', 4); }
   $('stormVig').style.opacity = run.ring && run.ring.out > 0 && G.player.alive ? Math.min(0.9, 0.4 + run.ring.out / 40 + Math.sin(performance.now() / 140) * 0.06).toFixed(2) : '0';
@@ -1922,19 +1935,21 @@ function autoIntent(dt) {
   const empK = G.pw.S.d.type === 'emp', empNear = empK && (G.enemies.some((e) => e.alive && !e.dying && e.c.distanceTo(p.pos) < 22) || G.shots.some((sh) => sh.team === 'E' && sh.kind !== 'bullet' && sh.kind !== 'ebullet' && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 20));
   const sonK = G.pw.S.d.type === 'sonar', sonNear = sonK && (!!G.jammed || G.enemies.some((e) => e.kind === 'stalker' && e.alive && !(e.markT > 0) && e.c.distanceTo(p.pos) < 75) || G.enemies.filter((e) => e.alive && !e.dying && !(e.markT > 0) && e.c.distanceTo(p.pos) < 70).length >= 3);
   const smkK = G.pw.S.d.type === 'smoke';
+  const iwK = G.pw.S.d.type === 'icewall', iwNear = iwK && (G.hud.hurt > 0.2 || incomingAny() || G.pChill > 0.4 || G.enemies.filter((e) => e.alive && !e.dying && e.c.distanceTo(p.pos) < 70).length >= 4);
   const chfK = G.pw.S.d.type === 'chaff', chfNear = chfK && (G.spotT > 0 || G.shots.some((sh) => sh.team === 'E' && sh.kind === 'missile' && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 45));
   const stsK = G.pw.S.d.type === 'stasis', stsNear = stsK && !!tgt && d < 58 && (bigT || incomingAny() || G.enemies.filter((e) => e.alive && !e.dying && e.c.distanceTo(tgt.c) < 14).length >= 3);
-  auto.sT -= dt; const sPress = auto.sT <= 0 && (empK ? empNear : sonK ? sonNear : chfK ? chfNear : stsK ? stsNear : smkK ? G.hud.hurt > 0.25 : los && !(mirror && refl(G.pw.S))) && (G.pw.S.d.type !== 'orbital' || (!!G.lockTarget && d < 150)); if (sPress) auto.sT = 0.6;
+  auto.sT -= dt; const sPress = auto.sT <= 0 && (empK ? empNear : sonK ? sonNear : iwK ? iwNear : chfK ? chfNear : stsK ? stsNear : smkK ? G.hud.hurt > 0.25 : los && !(mirror && refl(G.pw.S))) && (G.pw.S.d.type !== 'orbital' || (!!G.lockTarget && d < 150)); if (sPress) auto.sT = 0.6;
   const sniped = G.enemies.some((e) => e.kind === 'stalker' && e.st === 'aim' && e.lockOn === p && e.stT < 0.5);
   const incoming = G.shots.some((sh) => sh.team === 'E' && sh.kind === 'missile' && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 22);
   const shellAt = G.barrage.some((b) => b.t < 0.55 && Math.hypot(b.p.x - p.pos.x, b.p.z - p.pos.z) < WATCH.R + 1 && b.vol && b.vol.autoD);
+  const holeAt = p.pos.y < 1.5 && G.holes.some((h) => (h.st === 'open' || h.t < 0.6) && Math.hypot(h.x - p.pos.x, h.z - p.pos.z) < h.R + 1 && (h.autoD ?? (h.autoD = Math.random() < 0.6)));
   const blinkAt = G.enemies.some((e) => e.kind === 'blinker' && e.st === 'mark' && e.lockOn === p && e.stT < 0.35 && (e.autoD ?? (e.autoD = Math.random() < 0.55)));
   const leapNear = G.enemies.some((e) => (e.kind === 'crawler' && e.st === 'leap' && e.c.distanceTo(p.pos) < 12) || (e.kind === 'burrower' && e.st === 'warn' && Math.hypot(e.spot.x - p.pos.x, e.spot.z - p.pos.z) < 7) || (e.isLev && e.st === 'warn' && Math.hypot(e.spot.x - p.pos.x, e.spot.z - p.pos.z) < 12));
   const fire = (slot) => !!los && !(mirror && refl(G.pw[slot])) && (G.pw[slot].d.type !== 'blade' || d < 36) && (G.pw[slot].d.type !== 'pile' || d < 24) && (G.pw[slot].d.type !== 'flame' || d < 20) && (!G.pw[slot].d.chill || d < 66) && (G.pw[slot].d.type !== 'disc' || d < 52) && (G.pw[slot].d.type !== 'sonic' || d < 30) && (G.pw[slot].d.type !== 'hook' || (d < 66 && !bigT)) && (G.pw[slot].d.type !== 'charge' || Math.random() < 0.985) && (!G.pw[slot].d.flak || d < 100);
   const odNow = G.od.k >= 1 && (G.bosses.some((b) => b.alive && b.c.distanceTo(p.pos) < 80) || G.enemies.filter((e) => e.alive && e.c.distanceTo(p.pos) < 60).length >= 3);
   const blinkK = G.pw.S.d.type === 'blink';
   const blinkP = blinkK && G.pw.S.ammo > 0 && (G.tether ? Math.random() < 0.08 : (leapNear || sniped) ? Math.random() < 0.2 : incoming ? Math.random() < 0.1 : G.hud.hurt > 0.35 ? Math.random() < 0.05 : run.ring && run.ring.out > -3 ? Math.random() < 0.05 : false);
-  return { od: odNow, f, s, boost: d > 70 || !!goal || (flamer && bigT && d > 18), qboost: (!!G.tether && !blinkK && Math.random() < 0.06) || (G.hud.hurt > 0.35 && Math.random() < 0.05) || (incoming && Math.random() < 0.25) || (sniped && Math.random() < 0.035) || (leapNear && Math.random() < 0.3) || (blinkAt && Math.random() < 0.35) || (shellAt && Math.random() < 0.3), jump, hover: auto.hover > 0, b0: fire('R'), b2: fire('L'), e: blinkK ? blinkP : sPress };
+  return { od: odNow, f, s, boost: d > 70 || !!goal || (flamer && bigT && d > 18), qboost: (!!G.tether && !blinkK && Math.random() < 0.06) || (G.hud.hurt > 0.35 && Math.random() < 0.05) || (incoming && Math.random() < 0.25) || (sniped && Math.random() < 0.035) || (leapNear && Math.random() < 0.3) || (blinkAt && Math.random() < 0.35) || (shellAt && Math.random() < 0.3) || (holeAt && Math.random() < 0.3), jump: jump || holeAt, hover: auto.hover > 0, b0: fire('R'), b2: fire('L'), e: blinkK ? blinkP : sPress };
 }
 
 // ------------------------------------------------------------------ simulation step
@@ -1993,14 +2008,15 @@ function step(dt) {
   const ad = G.aimPoint.clone().sub(chest);
   const aimPitch = Math.atan2(ad.y, Math.hypot(ad.x, ad.z) || 1);
   const aimYaw = Math.hypot(ad.x, ad.z) > 6 ? Math.atan2(-ad.x, -ad.z) : cam.yaw;
-  p.update(dt, { mx, mz, boost: A.boost, qboost: A.qboost, jump: A.jump, hover: A.hover, aimYaw, aimPitch });
+  const frz = G.frozenT > 0;   // frozen solid: no input, no fire
+  p.update(dt, frz ? { mx: 0, mz: 0, aimYaw: p.aimYaw, aimPitch } : { mx, mz, boost: A.boost, qboost: A.qboost, jump: A.jump, hover: A.hover, aimYaw, aimPitch });
   updateCamera(dt);
   camera.updateMatrixWorld();
   updateAim();
   if (A.od) activateOD();
   updateOD(dt);
   if (chipOn('nano') && G.player.alive && state === 'play' && G.time - G.hurtAt > 5) G.player.hp = Math.min(G.player.maxHp, G.player.hp + G.player.maxHp * 0.006 * dt);
-  if (p.alive && !run.won) {
+  if (p.alive && !run.won && !frz) {
     const dm = dmgMul() * (G.od.t > 0 ? OD.dmg : 1);
     G.curLabel = 'p-' + G.pw.R.key; weaponTick(dt, p, 'R', G.pw.R, A.b0, G.aimPoint, G.lockTarget, 'P', G.locks, dm);
     G.curLabel = 'p-' + G.pw.L.key; weaponTick(dt, p, 'L', G.pw.L, A.b2, G.aimPoint, G.lockTarget, 'P', G.locks, dm);
@@ -2067,7 +2083,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=34');
+    await loadKit('./assets/kit.glb?v=35');
     ensureArena();
     makePlayer();
     setState('title');
