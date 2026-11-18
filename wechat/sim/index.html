@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+<title>Iron Vanguard · WeChat sim</title>
+<style>
+  html, body { margin: 0; height: 100%; background: #000; overflow: hidden; touch-action: none; }
+  canvas { display: block; width: 100vw; height: 100vh; }
+  #log { position: fixed; left: 6px; bottom: 4px; color: #ff9a8a; font: 12px monospace; white-space: pre; pointer-events: none; }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="log"></div>
+<script>
+// Runs minigame/game.js inside a Web Worker: no DOM, no window, no document, like the WeChat runtime.
+// A fake `wx` in the worker maps to OffscreenCanvas; touches (and the mouse, as touch 0) are forwarded.
+const cv = document.getElementById('c'), log = document.getElementById('log');
+const off = cv.transferControlToOffscreen();
+const worker = new Worker('./worker.js');
+let seq = 0; const pending = {};
+worker.onmessage = (e) => {
+  const m = e.data;
+  if (m.type === 'log') { log.textContent = (log.textContent + '\n' + m.text).split('\n').slice(-8).join('\n'); }
+  if (m.type === 'reply' && pending[m.id]) { pending[m.id](m.value); delete pending[m.id]; }
+};
+// test hook: await __sim(code) evaluates code in the worker (inside an async function) and returns the result
+window.__sim = (code) => new Promise((res) => { const id = ++seq; pending[id] = res; worker.postMessage({ type: 'eval', id, code }); });
+fetch('../minigame/assets/kit.glb').then((r) => r.arrayBuffer()).then((glb) => {
+  worker.postMessage({ type: 'boot', canvas: off, w: innerWidth, h: innerHeight, dpr: devicePixelRatio, glb }, [off, glb]);
+});
+const tl = (list) => [...list].map((t) => ({ identifier: t.identifier, clientX: t.clientX, clientY: t.clientY }));
+for (const ty of ['touchstart', 'touchmove', 'touchend', 'touchcancel']) {
+  addEventListener(ty, (e) => { e.preventDefault(); worker.postMessage({ type: 'touch', ev: ty, touches: tl(e.touches), changedTouches: tl(e.changedTouches) }); }, { passive: false });
+}
+let down = false;
+const mt = (ev, e) => worker.postMessage({ type: 'touch', ev, touches: down ? [{ identifier: 99, clientX: e.clientX, clientY: e.clientY }] : [], changedTouches: [{ identifier: 99, clientX: e.clientX, clientY: e.clientY }] });
+addEventListener('mousedown', (e) => { down = true; mt('touchstart', e); });
+addEventListener('mousemove', (e) => { if (down) mt('touchmove', e); });
+addEventListener('mouseup', (e) => { down = false; mt('touchend', e); });
+addEventListener('resize', () => worker.postMessage({ type: 'resize', w: innerWidth, h: innerHeight }));
+</script>
+</body>
+</html>

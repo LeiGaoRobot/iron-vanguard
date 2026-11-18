@@ -1,0 +1,7 @@
+{
+  "name": "iron-vanguard-wechat",
+  "private": true,
+  "description": "WeChat mini-game build of Iron Vanguard (prototype)",
+  "scripts": { "build": "node build.mjs" },
+  "devDependencies": { "esbuild": "0.25.10", "three": "0.184.0" }
+}

@@ -7,7 +7,9 @@ export const KIT = {};
 
 export async function loadKit(url) {
   let buf;
-  if (window.__MA_KIT) {
+  if (window.__MA_KIT_LOAD) {   // WeChat mini-game build: the host hands over the GLB bytes
+    buf = await window.__MA_KIT_LOAD();
+  } else if (window.__MA_KIT) {
     const b64 = window.__MA_KIT.split(',')[1];
     const bin = atob(b64); const u8 = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);

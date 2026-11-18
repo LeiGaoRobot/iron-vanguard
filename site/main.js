@@ -430,7 +430,7 @@ function resize() {
 }
 addEventListener('resize', resize);
 
-G.scene = scene; G.camera = camera;
+G.scene = scene; G.camera = camera; G.renderer = renderer; G.composer = composer; G.bloom = bloom;
 const fx = new FX(scene); G.fx = fx;
 
 // ------------------------------------------------------------------ mech callbacks (sounds, dust, shake)
@@ -1954,6 +1954,7 @@ function frame(now) {
 function render(dt) {
   if (state === 'play' || state === 'pause') drawHUD(dt);
   composer.render();
+  if (G.afterRender) G.afterRender(dt);   // WeChat build draws its canvas HUD here
 }
 
 // ------------------------------------------------------------------ test hooks
