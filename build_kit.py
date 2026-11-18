@@ -86,6 +86,10 @@ M = dict(
     EelGlow=mat("EelGlow", "#9ad8ec", 0.2, emit="#30c8ff", strength=2.2),
     EelSkin=mat("EelSkin", "#1c2a34", 0.45, metal=0.5),
     SplitGlow=mat("SplitGlow", "#ffb0f0", 0.2, emit="#ff40d0", strength=1.8),
+    LevGlow=mat("LevGlow", "#ffc080", 0.3, emit="#ff7a20", strength=2.0),
+    LevSkin=mat("LevSkin", "#8a6c4c", 0.75),
+    LevPlate=mat("LevPlate", "#54443a", 0.55, metal=0.3),
+    SmokeTube=mat("SmokeTube", "#6a7078", 0.5, metal=0.4),
     Sonar=mat("Sonar", "#c8fff8", 0.25, emit="#40f0e0", strength=1.8),
 )
 
@@ -951,6 +955,41 @@ def build_hook():
         box((math.cos(a) * 0.12, 0.16, math.sin(a) * 0.12), (0.05, 0.22, 0.05), M["Hazard"], h, rot=(math.sin(a) * 0.6, 0, -math.cos(a) * 0.6))
     muzzle("Muzzle_Hook", (0, 1.25, 0.02), K)
 
+def build_lev():
+    # Leviathan sandworm. Head: armoured cylinder with three mandibles around a glowing maw. front = +Y
+    K = kit("E_LevHead")
+    cyl((0, -0.2, 0), 1.5, 2.2, M["LevSkin"], K, rot=(math.pi / 2, 0, 0), verts=16)
+    cyl((0, 1.05, 0), 1.35, 0.5, M["LevPlate"], K, rot=(math.pi / 2, 0, 0), verts=16, r2=1.55)
+    cyl((0, 1.32, 0), 0.9, 0.08, M["LevGlow"], K, rot=(math.pi / 2, 0, 0), verts=16)
+    for k in range(6):
+        a = k / 6 * math.pi * 2
+        box((math.cos(a) * 1.45, -0.3, math.sin(a) * 1.45), (0.7, 1.9, 0.35), M["LevPlate"], K, bevel=0.1, rot=(0, -a, 0) if False else (0, 0, 0))
+    for k in range(3):
+        a = k / 3 * math.pi * 2 + math.pi / 2
+        m = empty(f"LV_Jaw{k}", (math.cos(a) * 1.0, 1.2, math.sin(a) * 1.0), K)
+        box((math.cos(a) * 0.25, 0.75, math.sin(a) * 0.25), (0.45, 1.6, 0.45), M["LevPlate"], m, bevel=0.12, rot=(math.sin(a) * -0.35, 0, math.cos(a) * 0.35))
+        box((math.cos(a) * 0.05, 1.55, math.sin(a) * 0.05), (0.25, 0.7, 0.25), M["Joint"], m, bevel=0.06, rot=(math.sin(a) * 0.45, 0, -math.cos(a) * 0.45))
+    for s_ in (-1, 1):
+        ball((s_ * 0.9, 0.7, 0.95), 0.18, M["LevGlow"], K, sub=1)
+    K = kit("E_LevSeg")
+    cyl((0, 0, 0), 1.3, 2.0, M["LevSkin"], K, rot=(math.pi / 2, 0, 0), verts=14)
+    torus((0, 0.95, 0), 1.25, 0.12, M["LevGlow"], K, rot=(math.pi / 2, 0, 0))
+    for k in range(5):
+        a = (k - 2) * 0.55 + math.pi / 2
+        box((math.cos(a) * 1.3, 0.0, math.sin(a) * 1.3), (0.6, 1.7, 0.3), M["LevPlate"], K, bevel=0.1)
+    box((0, -0.2, -1.25), (0.5, 1.2, 0.3), M["LevPlate"], K, bevel=0.08)
+
+def build_smoke():
+    K = kit("S_Smoke")
+    # shoulder smoke launcher: three angled grey canister tubes on a cradle
+    box((0, -0.1, 0.2), (0.7, 0.8, 0.32), M["Armor2"], K, bevel=0.05)
+    for k in range(3):
+        x = (k - 1) * 0.22
+        cyl((x, 0.25, 0.52), 0.1, 0.62, M["SmokeTube"], K, rot=(-math.pi / 2 + 0.5, 0, 0), verts=10)
+        cyl((x, 0.5, 0.68), 0.11, 0.05, M["Hazard"], K, rot=(-math.pi / 2 + 0.5, 0, 0), verts=10)
+    box((0.36, -0.1, 0.2), (0.04, 0.6, 0.2), M["Accent"], K)
+    muzzle("Muzzle_Smoke", (0, 0.6, 0.75), K)
+
 def build_eel():
     # Eel: armoured serpent drone. Head and one body segment are separate kits; the game strings 9 segments behind the head. front = +Y
     K = kit("E_EelHead")
@@ -1397,7 +1436,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

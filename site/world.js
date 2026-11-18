@@ -52,7 +52,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss';
+  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss';
   LAVA.on = forge; const PR = PLAT.R;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
@@ -81,7 +81,11 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float ed = max(abs(vWP.x), abs(vWP.z));
       float stripe = step(${ARENA.toFixed(1)} - 3.0, ed) * step(ed, ${ARENA.toFixed(1)} - 1.6) * step(0.5, fract((vWP.x + vWP.z) / 4.0));
       diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.85, 0.62, 0.08), stripe * 0.9);${desert ? `
-      diffuseColor.rgb *= vec3(1.18, 1.0, 0.74) * (0.94 + 0.12 * h21(floor(vWP.xz / 11.0)));` : ''}${ash ? `
+      diffuseColor.rgb *= vec3(1.18, 1.0, 0.74) * (0.94 + 0.12 * h21(floor(vWP.xz / 11.0)));` : ''}${dune ? `
+      float drip = 0.5 + 0.5 * sin(vWP.x * 0.55 + vWP.z * 0.2 + sin(vWP.z * 0.08 + vWP.x * 0.03) * 4.0);
+      float dbig = 0.5 + 0.5 * sin(vWP.x * 0.045 + sin(vWP.z * 0.03) * 2.0);
+      vec3 dsand = vec3(0.78, 0.6, 0.4) * (0.8 + 0.1 * drip + 0.12 * dbig + 0.05 * h21(floor(vWP.xz / 0.5)));
+      diffuseColor.rgb = mix(dsand, diffuseColor.rgb, 0.12 + 0.75 * stripe);` : ''}${ash ? `
       diffuseColor.rgb *= vec3(0.62, 0.55, 0.52) * (0.85 + 0.25 * h21(floor(vWP.xz / 6.0)));` : ''}${autumn ? `
       float lfk = smoothstep(0.55, 0.85, h21(floor(vWP.xz / 7.0)) * 0.65 + h21(floor(vWP.xz / 2.3)) * 0.35);
       vec2 lc = floor(vWP.xz / 0.5);

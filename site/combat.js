@@ -40,11 +40,12 @@ export const WEAPONS = {
   decoy: { slot: 'shoulder', name: 'HD-1 全息诱饵', en: 'HD-1 Holo Decoy', desc: '投射机体全息影像 6 秒 · 吸引敌方火力（头目不易上当）· 被打碎时放出电磁冲击', type: 'decoy', hp: 380, dur: 6, cd: 20, burst: 70, burstR: 11, sfx: 'decoy' },
   orbital: { slot: 'shoulder', name: 'OS-1 轨道打击', en: 'OS-1 Orbital Strike', desc: '标记落点 · 1.4 秒后卫星光柱从天而降 · 半径 9 m 重击 · 落点灼烧 2 秒 · 锁定时卫星跟踪目标直到落下前 0.4 秒', type: 'orbital', dmg: 360, R: 9, delay: 1.4, dps: 40, burnT: 2, range: 170, cd: 13, sfx: 'orbital' },
   sentry: { slot: 'shoulder', name: 'TR-3 哨戒炮塔', en: 'TR-3 Sentry Turret', desc: '在前方架设自动炮塔 15 秒 · 双管速射 75 m 内敌机 · 吸引部分火力 · 耐久 400 · 同时只能有 1 座', type: 'sentry', hp: 400, dur: 15, dmg: 10, rate: 0.11, range: 75, cd: 22, sfx: 'sentry' },
+  smoke: { slot: 'shoulder', name: 'SM-2 烟幕弹', en: 'SM-2 Smoke Screen', desc: '在身前炸开 12 m 烟幕 8 秒 · 烟幕外的敌人看不穿它，无法瞄准烟里的你 · 已发射的导弹照样追踪', type: 'smoke', R: 12, dur: 8, cd: 16, sfx: 'smoke' },
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'hook', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -460,6 +461,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     }
     const out = G.minis.some((m) => m.owner === owner);
     for (const m of mslot.models) { const dk = m._dock || (m._dock = find(m, 'D_Dock')); if (dk) dk.visible = !out; }
+  } else if (d.type === 'smoke') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; popSmoke(owner, slot, d); if (me) G.stats.shots++; }
   } else if (d.type === 'sentry') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Sentry(owner, slot, d, dmgMul); sfx('sentry', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'decoy') {
@@ -1000,6 +1003,41 @@ function updateHooks(dt) {
     fx.streak(mp, P, 0.09, 0x8a929a); fx.streak(mp, P, 0.03, 0xffd8a0);
   }
 }
+// SM-2 smoke screen: a cloud that blocks enemy line of sight through it (an enemy inside the cloud still sees out / in)
+G.smokes = [];
+function popSmoke(owner, slot, d) {
+  const a = owner.aimYaw, p = new V3(owner.pos.x - Math.sin(a) * 4, 0, owner.pos.z - Math.cos(a) * 4);
+  p.y = groundAt(p.x, p.z, owner.pos.y + 2) + d.R * 0.42;
+  G.smokes.push({ c: p, R: d.R, t: d.dur, T: d.dur, puffT: 0 });
+  const mp = owner.muzzlePos(slot, new V3(), 0);
+  G.fx.streak(mp, p, 0.3, 0xc8ccd0); G.fx.flash(p, 0xd0d4d8, 20, 14, 0.2);
+  sfx('smoke', G.player ? G.player.pos.distanceTo(p) : 0);
+  G.smokeN = (G.smokeN || 0) + 1;
+  for (const e of G.enemies) if (e.losT !== undefined) e.losT = 0;
+  for (let k = 0; k < 60; k++) G.fx.emit('smoke', { x: p.x + (Math.random() - 0.5) * 6, y: p.y - 3 + Math.random() * 5, z: p.z + (Math.random() - 0.5) * 6, vx: (Math.random() - 0.5) * 20, vy: Math.random() * 6, vz: (Math.random() - 0.5) * 20, life: d.dur * (0.5 + Math.random() * 0.4), s0: 6, s1: 16, c0: 0xa4a8ac, c1: 0x8c9094, a0: 0.9, a1: 0, drag: 2.2 });
+}
+export function smokeBlocks(a, b) {
+  for (const s of G.smokes) {
+    const R = s.R * Math.min(1, s.t / 1.2, (s.T - s.t) / 0.4 + 0.3);
+    if (a.distanceTo(s.c) < R * 0.9) continue;   // the viewer is inside this cloud
+    _d.subVectors(b, a); const L2 = _d.lengthSq(); let k = L2 > 0 ? _c.subVectors(s.c, a).dot(_d) / L2 : 0; k = Math.max(0, Math.min(1, k));
+    const dx = a.x + _d.x * k - s.c.x, dy = a.y + _d.y * k - s.c.y, dz = a.z + _d.z * k - s.c.z;
+    if (dx * dx + dy * dy + dz * dz < R * R) return true;
+  }
+  return false;
+}
+function updateSmokes(dt) {
+  for (let i = G.smokes.length - 1; i >= 0; i--) {
+    const s = G.smokes[i]; s.t -= dt; s.puffT -= dt;
+    if (s.t <= 0) { G.smokes.splice(i, 1); continue; }
+    if (s.puffT <= 0 && s.t > 1.5) {
+      s.puffT = 0.05;
+      const a = Math.random() * 6.28, r = Math.random() * s.R * 0.8;
+      G.fx.emit('smoke', { x: s.c.x + Math.cos(a) * r, y: s.c.y - s.R * 0.4 + Math.random() * s.R * 0.9, z: s.c.z + Math.sin(a) * r, vx: (Math.random() - 0.5) * 1.5, vy: 0.4, vz: (Math.random() - 0.5) * 1.5, life: 3.2, s0: 9, s1: 16, c0: 0xa4a8ac, c1: 0x8c9094, a0: 0.75, a1: 0, drag: 1 });
+    }
+  }
+}
+export function clearSmokes() { G.smokes.length = 0; }
 export function clearHooks() { for (const H of G.hooks) H.o.parent && H.o.parent.remove(H.o); G.hooks.length = 0; }
 export function clearDiscs() { for (const D of G.discs) D.o.parent && D.o.parent.remove(D.o); G.discs.length = 0; }
 export function clearStrikes() { for (const S of G.strikes) S.o.parent && S.o.parent.remove(S.o); G.strikes.length = 0; }
@@ -1214,7 +1252,7 @@ class Enemy {
   tg() { return pickTarget(this); }
   checkLos(dt) {
     this.losT -= dt;
-    if (this.losT <= 0) { this.losT = 0.3 + Math.random() * 0.2; this.los = clearLine(this.c, this.tg().center(playerC)); }
+    if (this.losT <= 0) { this.losT = 0.3 + Math.random() * 0.2; const tc = this.tg().center(playerC); this.los = clearLine(this.c, tc) && !smokeBlocks(this.c, tc); }
     return this.los;
   }
 }
@@ -1582,7 +1620,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -1643,7 +1681,7 @@ export class Boss {
     if (!p._ent) p.center(playerC);
     const ent = p._ent; const aim = lead(this.c, 200, _c, p).clone();
     aim.x += (Math.random() - 0.5) * 2.5; aim.y += (Math.random() - 0.5) * 2; aim.z += (Math.random() - 0.5) * 2.5;
-    const los = clearLine(this.c, pc) && dist < 140;
+    const los = clearLine(this.c, pc) && dist < 140 && !smokeBlocks(this.c, pc);
     A.burstT -= dt; if (A.burstT <= 0) { A.burst = A.burst > 0 ? 0 : 1; A.burstT = A.burst ? 1.4 + Math.random() : 1 + Math.random() * 1.5; }
     const trig = (k) => {
       const t = this.ws[k].d.type;
@@ -2076,7 +2114,7 @@ export class Stalker extends Enemy {
       if (!this.dest || this.stT < -8) { this.dest = this.pickDest(pc); this.stT = 0; }
       const ex = this.dest.x - this.pos.x, ez = this.dest.z - this.pos.z, ed = Math.hypot(ex, ez);
       if (ed < 3 || this.stT < -7.5) {
-        if (dist < 135 && clearLine(_a.set(this.pos.x, this.pos.y + 3.6, this.pos.z), pc)) { this.st = 'aim'; this.stT = 1.65; this.stag = 0; this.lockOn = p; this.aimPt.copy(pc); sfx('snipe', dist); G.onSnipe && G.onSnipe(this, p); }
+        if (dist < 135 && clearLine(_a.set(this.pos.x, this.pos.y + 3.6, this.pos.z), pc) && !smokeBlocks(_a, pc)) { this.st = 'aim'; this.stT = 1.65; this.stag = 0; this.lockOn = p; this.aimPt.copy(pc); sfx('snipe', dist); G.onSnipe && G.onSnipe(this, p); }
         else { this.dest = null; }
       } else {
         const sp = 10;
@@ -3046,6 +3084,148 @@ export class Skimmer extends Enemy {
   }
 }
 
+// Leviathan: giant sandworm boss. Hunts underground (only a sand wake shows), marks a red circle under its target,
+// then breaches in a huge arc and dives back in; sometimes (more often below half health) it swims along the surface
+// half-exposed, spitting acid. Only the parts above ground can be hit; the head takes extra damage.
+export const LEV = { hp: 9000, n: 14, gap: 5.0, depth: -12, hunt: 24, swim: 14, warn: 1.05, breach: 80, breachR: 11 };
+export class Leviathan extends Enemy {
+  constructor(pos, hpMul = 1) {
+    super('boss', 'E_LevHead', new V3(pos.x, LEV.depth, pos.z), LEV.hp * hpMul, 4.2);
+    this.isLev = true; this.boom = 3; this.B = { name: '沙海巨虫 LEVIATHAN', phase2: ['巨虫狂暴', '它开始在沙面上游动、喷吐酸液 · 身体露出时集中火力'] };
+    this.obj.scale.setScalar(2.4);
+    this.phase = 1; this.st = 'hunt'; this.stT = 4; this.vel = new V3(0, 0, -LEV.hunt); this.spot = new V3(); this.ph = 0; this.touchT = 0; this.spitT = 2; this.rumT = 0; this.weave = Math.random() * 6;
+    this.trail = []; for (let i = 0; i < Math.ceil(LEV.n * LEV.gap / 0.5) + 12; i++) this.trail.push(new V3(pos.x, LEV.depth, pos.z + i * 0.5));
+    this.segs = [];
+    for (let i = 0; i < LEV.n; i++) { const o = cloneKit('E_LevSeg'); o.scale.setScalar(2.2 * (1 - i * 0.035)); o.position.set(pos.x, LEV.depth, pos.z + (i + 1) * LEV.gap); G.scene.add(o); this.segs.push(o); }
+    const self = this;
+    const mk = (key, c, r, mul) => { const pt = { kind: 'cpart', key, owner: self, c, r, mul, get alive() { return self.alive && !self.dying && c.y > -1.5; } }; pt.hit = (dmg, at, label) => self.hitPart(pt, dmg, label); return pt; };
+    this.parts = [mk('head', this.c, 4.4, 1.4)];
+    for (let i = 0; i < LEV.n; i += 1) this.parts.push(mk('seg' + i, this.segs[i].position, 3.0 * (1 - i * 0.03), 1));
+    this.c.copy(this.pos);
+  }
+  hitPart(pt, dmg, label) {
+    const key = (label || '?') + '|' + G.time;
+    if (this.hitKey === key && this.hitPt !== pt) return;
+    this.hitKey = key; this.hitPt = pt;
+    this.hit(dmg * pt.mul);
+  }
+  hit(dmg) {
+    super.hit(dmg);
+    if (this.phase === 1 && this.alive && this.hp < this.maxHp * 0.5) { this.phase = 2; G.onBossPhase && G.onBossPhase(this); }
+  }
+  die() { this.dying = true; this.alive = false; this.deathT = 3.2; this.hp = 0; G.stats.kills++; G.onKill && G.onKill(this); }
+  remove() { super.remove(); for (const o of this.segs) o.parent && o.parent.remove(o); }
+  surfaceFx(x, z, n = 1, big = 1) {
+    const y = groundAt(x, z, 2) + 0.4;
+    G.fx.smoke(_a.set(x, y, z), n, 3 * big, 1.4, 0xc8a070, 2.5, 0.5);
+  }
+  update(dt) {
+    const P = this.pos;
+    if (this.dying) {
+      this.deathT -= dt;
+      if (Math.random() < 0.25) { const o = this.segs[Math.floor(Math.random() * this.segs.length)].position; if (o.y > -2) { G.fx.explosion(o, 1.2, 0xffa050); sfx('boom', G.player.pos.distanceTo(o)); } }
+      P.y -= dt * 4; for (const o of this.segs) o.position.y -= dt * 3;
+      if (this.deathT <= 0) { G.fx.flash(this.c, 0xffa060, 100, 70, 0.6); this.remove(); }
+      return;
+    }
+    const t = this.tg(), tc = t.center(playerC), tv = t.vel || _b.set(0, 0, 0);
+    this.ph += dt; this.stT -= dt; this.touchT -= dt;
+    const dx = tc.x - P.x, dz = tc.z - P.z, hd = Math.hypot(dx, dz) || 1;
+    const fast = this.phase === 2 ? 1.25 : 1;
+    if (this.st === 'hunt') {
+      const sp = LEV.hunt * fast, k = 1 - Math.exp(-1.5 * dt);
+      this.vel.x += (dx / hd * sp - this.vel.x) * k; this.vel.z += (dz / hd * sp - this.vel.z) * k;
+      this.vel.y = (LEV.depth - P.y) * 2;
+      this.rumT -= dt; if (this.rumT <= 0) { this.rumT = 0.08; if (P.y > LEV.depth - 2) this.surfaceFx(P.x, P.z, 1, 0.8); }
+      if (this.stT <= 0 && hd < 34) {
+        if (Math.random() < (this.phase === 2 ? 0.55 : 0.35)) { this.st = 'rise'; this.stT = 1.0; }
+        else {
+          this.spot.set(tc.x + tv.x * 0.9, 0, tc.z + tv.z * 0.9);
+          if (pointInSolid(_a.set(this.spot.x, 1, this.spot.z), 4)) this.spot.set(tc.x, 0, tc.z);
+          this.spot.y = groundAt(this.spot.x, this.spot.z, 2);
+          G.fx.warn(this.spot, LEV.breachR, LEV.warn); this.st = 'warn'; this.stT = LEV.warn; sfx('erupt', G.player.pos.distanceTo(this.spot));
+          if (!G.levSaid) { G.levSaid = true; G.onHint && G.onHint('巨虫靠震动追踪 · 红圈就是它破土的位置 · 冲出红圈，等它露出身体再打', 4); }
+        }
+      }
+    } else if (this.st === 'warn') {
+      this.vel.set((this.spot.x - P.x) * 4, (-7 - P.y) * 3, (this.spot.z - P.z) * 4);
+      if (Math.random() < 0.7) this.surfaceFx(this.spot.x + (Math.random() - 0.5) * 12, this.spot.z + (Math.random() - 0.5) * 12, 1, 1.2);
+      G.fx.trauma = Math.min(1, (G.fx.trauma || 0) + dt * 0.4 * Math.max(0, 1 - G.player.pos.distanceTo(this.spot) / 60));
+      if (this.stT <= 0) {
+        P.set(this.spot.x, -3, this.spot.z);
+        let ax = tc.x - P.x, az = tc.z - P.z, al = Math.hypot(ax, az);
+        if (al < 4) { const a = Math.random() * 6.28; ax = Math.cos(a); az = Math.sin(a); al = 1; }
+        this.vel.set(ax / al * 15, 34, az / al * 15);
+        this.st = 'air';
+        G.curLabel = 'lev-breach'; G.curSrc = this.spot;
+        explodeAt(_a.copy(this.spot).setY(this.spot.y + 1), LEV.breachR, LEV.breach, 'E', 2.4, 0xd8b070);
+        const pp = G.player; if (pp && pp.alive && Math.hypot(pp.pos.x - this.spot.x, pp.pos.z - this.spot.z) < LEV.breachR && pp.pos.y < this.spot.y + 4) pp.vel.y = Math.max(pp.vel.y, 15);
+        this.surfaceFx(this.spot.x, this.spot.z, 14, 3.5); G.fx.trauma = Math.min(1, (G.fx.trauma || 0) + 0.6); sfx('bigboom', G.player.pos.distanceTo(this.spot));
+        G.levBreaches = (G.levBreaches || 0) + 1;
+      }
+    } else if (this.st === 'air') {
+      this.vel.y -= 30 * dt;
+      if (P.y < -3 && this.vel.y < 0) {
+        this.surfaceFx(P.x, P.z, 10, 3); G.curLabel = 'lev-dive'; explodeAt(_a.set(P.x, groundAt(P.x, P.z, 2) + 1, P.z), 7, 30, 'E', 1.6, 0xd8b070);
+        this.st = 'hunt'; this.stT = (this.phase === 2 ? 1.4 : 2.2) + Math.random() * 1.5;
+      }
+    } else if (this.st === 'rise' || this.st === 'swim') {
+      if (this.st === 'rise' && this.stT <= 0) { this.st = 'swim'; this.stT = 7; G.onHint && !G.levSwimSaid && (G.levSwimSaid = true, G.onHint('巨虫浮上沙面游动 · 全身都能打', 2.5)); }
+      const w = Math.sin(this.ph * 1.3 + this.weave) * 0.7;
+      const ox = dx / hd, oz = dz / hd, orb = hd < 26 ? -0.6 : hd > 45 ? 0.6 : 0;
+      const tx = ox * orb - oz * (1 - Math.abs(orb)) + -oz * w, tz = oz * orb + ox * (1 - Math.abs(orb)) + ox * w, tl = Math.hypot(tx, tz) || 1;
+      const sp = LEV.swim * fast, k = 1 - Math.exp(-1.2 * dt);
+      this.vel.x += (tx / tl * sp - this.vel.x) * k; this.vel.z += (tz / tl * sp - this.vel.z) * k;
+      this.vel.y = ((this.st === 'rise' ? -1.2 : -0.4) + groundAt(P.x, P.z, 2) - P.y) * 3;
+      this.rumT -= dt; if (this.rumT <= 0) { this.rumT = 0.1; this.surfaceFx(P.x, P.z, 1, 1.2); }
+      if (this.st === 'swim') {
+        this.spitT -= dt;
+        if (this.spitT <= 0 && hd < 90) {
+          this.spitT = this.phase === 2 ? 0.9 : 1.3;
+          for (let k2 = 0; k2 < (this.phase === 2 ? 4 : 3); k2++) {
+            const Tf = 1.3 + Math.random() * 0.4, g = 24;
+            const aim = new V3(tc.x + tv.x * Tf * 0.5 + (Math.random() - 0.5) * 8, 0, tc.z + tv.z * Tf * 0.5 + (Math.random() - 0.5) * 8); aim.y = groundAt(aim.x, aim.z, tc.y);
+            const src = _a.set(P.x, P.y + 3, P.z).clone();
+            spawnShot({ p: src, v: new V3((aim.x - src.x) / Tf, (aim.y - src.y + 0.5 * g * Tf * Tf) / Tf, (aim.z - src.z) / Tf), dmg: 26, team: 'E', kind: 'shell', splash: 5, life: Tf + 1, grav: g, label: 'lev-acid', color: 0xb0ff60 });
+          }
+          sfx('spit', G.player.pos.distanceTo(P));
+        }
+        if (this.stT <= 0) { this.st = 'hunt'; this.stT = 3 + Math.random() * 2; }
+      }
+    }
+    P.addScaledVector(this.vel, dt);
+    P.x = Math.max(-ARENA + 12, Math.min(ARENA - 12, P.x)); P.z = Math.max(-ARENA + 12, Math.min(ARENA - 12, P.z));
+    // trail + segments
+    if (this.trail[0].distanceTo(P) > 0.5) { const q = this.trail.pop(); q.copy(P); this.trail.unshift(q); }
+    let idx = 0, acc = 0, prev = this.trail[0];
+    for (let i = 0; i < this.segs.length; i++) {
+      const want = (i + 1) * LEV.gap;
+      while (idx < this.trail.length - 1) { const sl = this.trail[idx].distanceTo(this.trail[idx + 1]); if (acc + sl >= want) break; acc += sl; idx++; }
+      const a = this.trail[idx], b = this.trail[Math.min(idx + 1, this.trail.length - 1)], sl = a.distanceTo(b) || 1;
+      const o = this.segs[i];
+      o.position.copy(a).lerp(b, Math.min(1, (want - acc) / sl));
+      o.lookAt(_c.copy(o.position).add(_d.subVectors(o.position, i ? this.segs[i - 1].position : P)));
+      prev = o.position;
+    }
+    if (this.vel.lengthSq() > 1) this.obj.lookAt(_c.copy(P).sub(this.vel));
+    for (let j = 0; j < 3; j++) { const jw = this.n['LV_Jaw' + j]; if (jw) jw.rotation.y = Math.sin(this.ph * (this.st === 'air' ? 10 : 3) + j) * 0.25; }
+    this.c.copy(P);
+    // body contact with exposed parts
+    const pp = G.player;
+    if (this.touchT <= 0 && pp && pp.alive) {
+      const pc = pp.center(_a);
+      for (const pt of this.parts) {
+        if (pt.c.y < -1) continue;
+        if (Math.hypot(pc.x - pt.c.x, pc.z - pt.c.z) < pt.r + 1.8 && Math.abs(pc.y - pt.c.y) < pt.r + 3) {
+          this.touchT = 1; G.curSrc = pt.c; damagePlayer(this.st === 'air' ? 40 : 26, pt.c, 'lev-body');
+          const kx = pc.x - pt.c.x, kz = pc.z - pt.c.z, kl = Math.hypot(kx, kz) || 1; pp.vel.x += kx / kl * 14; pp.vel.z += kz / kl * 14; pp.vel.y = Math.max(pp.vel.y, 6);
+          break;
+        }
+      }
+    }
+  }
+}
+
 export class Jammer extends Enemy {
   constructor(pos) {
     super('jammer', 'E_Jammer', pos, 380, 2.8); this.boom = 1; this.obj.scale.setScalar(1.3);
@@ -3391,6 +3571,7 @@ export function updateCombat(dt) {
   updateStrikes(dt);
   updateDiscs(dt);
   updateHooks(dt);
+  updateSmokes(dt);
   updateShots(dt);
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
