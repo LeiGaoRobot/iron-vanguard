@@ -23,7 +23,7 @@ export const FRAMES = {
 };
 
 const WALK = 10, BOOST = 25, GRAV = 27, JUMP = 13;
-export const PHYS = { g: 1, grip: 1 };   // grip: ground traction (frozen lake 0.3: you slide)   // gravity multiplier (lunar mission 0.4)
+export const PHYS = { g: 1, grip: 1, wx: 0, wz: 0 };   // wx/wz: wind (gale ridge) added to every mech's target velocity   // grip: ground traction (frozen lake 0.3: you slide)   // gravity multiplier (lunar mission 0.4)
 export const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.PI * 2; while (d < -Math.PI) d += Math.PI * 2; return d; };
 
 
@@ -88,7 +88,7 @@ export class Mech {
     for (const s of Object.values(this.slots)) for (const m of s.models) m.parent && m.parent.remove(m);
     this.slots = {};
     this.loadout = { ...loadout };
-    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', grenade: 'W_Grenade', pile: 'W_Pile', flamer: 'W_Flamer', cryo: 'W_Cryo', shield: 'S_Shield', drones: 'S_Drones', emp: 'S_Emp', decoy: 'S_Decoy', grav: 'S_Grav', orbital: 'S_Orbital', disc: 'W_Disc', blink: 'S_Blink', sonar: 'S_Sonar', sentry: 'S_Sentry', hook: 'W_Hook', smoke: 'S_Smoke', sonic: 'W_Sonic', stasis: 'S_Stasis', flak: 'W_Flak', cluster: 'S_Cluster', chaff: 'S_Chaff', icewall: 'S_IceWall' };
+    const kitOf = { rifle: 'W_Rifle', gatling: 'W_Gatling', coil: 'W_Coil', rail: 'W_Rail', missile: 'S_Missile', cannon: 'S_Cannon', laser: 'S_Laser', blade: 'W_Blade', shotgun: 'W_Shotgun', grenade: 'W_Grenade', pile: 'W_Pile', flamer: 'W_Flamer', cryo: 'W_Cryo', shield: 'S_Shield', drones: 'S_Drones', emp: 'S_Emp', decoy: 'S_Decoy', grav: 'S_Grav', orbital: 'S_Orbital', disc: 'W_Disc', blink: 'S_Blink', sonar: 'S_Sonar', sentry: 'S_Sentry', hook: 'W_Hook', smoke: 'S_Smoke', sonic: 'W_Sonic', stasis: 'S_Stasis', flak: 'W_Flak', cluster: 'S_Cluster', chaff: 'S_Chaff', icewall: 'S_IceWall', rockets: 'S_Rockets' };
     const mk = (slot, key, mounts) => {
       const models = [], muzzles = [];
       for (const mt of mounts) {
@@ -138,7 +138,8 @@ export class Mech {
     const wade = WATER.on ? Math.max(0, Math.min(1, (WATER.y - this.pos.y) / 3)) : 0; this.wade = wade;
     const top = (this.boosting ? BOOST * F.boost * (1 - 0.25 * wade) : WALK * F.speed * (1 - 0.4 * wade)) * mlen * (this.slowMul ?? 1);
     const acc = this.grounded ? (this.boosting ? 70 : 55) * PHYS.grip : (this.boosting ? 32 : 12);
-    const tx = dx * top, tz = dz * top;
+    const wk = this.grounded ? 0.22 : 0.62;   // the wind shoves you, much harder in the air
+    const tx = dx * top + PHYS.wx * wk, tz = dz * top + PHYS.wz * wk;
     const k = this.qbT > 0 ? 1 - Math.exp(-2.2 * dt) : 1 - Math.exp(-acc / Math.max(6, top + 6) * dt * 1.6);
     if (!lunging) { this.vel.x += (tx - this.vel.x) * k; this.vel.z += (tz - this.vel.z) * k; }
     if (this.boosting) drain += this.grounded ? 14 : 20;

@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import { RAYF, barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD, GRID } from './world.js';
 import { cloneKit, nodes, find, recolor } from './kit.js';
-import { Mech, angDiff, PALETTES } from './mech.js';
+import { Mech, angDiff, PALETTES, PHYS } from './mech.js';
 import { sfx } from './audio.js';
 
 const V3 = THREE.Vector3;
@@ -37,6 +37,7 @@ export const WEAPONS = {
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
   drones: { slot: 'shoulder', name: 'DP-4 攻击无人机', en: 'DP-4 Drone Pod', desc: '放出 2 架无人机 · 自动攻击 14 秒', type: 'drones', count: 2, dur: 14, dmg: 6, rate: 0.17, range: 80, cd: 18, sfx: 'drone' },
   emp: { slot: 'shoulder', name: 'EP-5 电磁脉冲', en: 'EP-5 EMP Burst', desc: '周围 26 m 敌机瘫痪 2.5 秒（头目 0.8 秒）· 瘫痪中受伤 +30% · 清除来袭弹药与地雷', type: 'emp', radius: 26, dmg: 85, stun: 2.5, bossStun: 0.8, cd: 11, sfx: 'emp' },
+  rockets: { slot: 'shoulder', name: 'RP-12 火箭巢', en: 'RP-12 Rocket Pod', desc: '一次齐射 12 枚无制导火箭 · 扇形覆盖 · 会被风吹偏 · 每枚 30 / 4.5 m 溅射', type: 'rockets', n: 12, gap: 0.045, speed: 110, dmg: 30, splash: 4.5, spread: 0.14, cd: 8, sfx: 'missile' },
   icewall: { slot: 'shoulder', name: 'IW-1 冰墙', en: 'IW-1 Ice Wall', desc: '在身前 9 m 立起一排冰柱 · 挡住敌方子弹与视线，你的射击可以穿过 · 700 耐久 · 10 秒', type: 'icewall', hp: 700, dur: 10, cd: 15, sfx: 'freeze' },
   chaff: { slot: 'shoulder', name: 'CF-3 干扰弹', en: 'CF-3 Chaff', desc: '抛出一圈热焰弹 · 80 m 内来袭导弹全部转向 · 4 秒内探照灯看不见你', type: 'chaff', R: 80, dur: 4, cd: 11, sfx: 'decoy' },
   cluster: { slot: 'shoulder', name: 'CM-6 集束迫击炮', en: 'CM-6 Cluster Mortar', desc: '高抛弹道 · 下落时分裂成 10 枚子弹药 · 覆盖 11 m · 可越过掩体', type: 'cluster', range: 130, speed: 62, grav: 30, n: 10, R: 11, dmg: 42, splash: 4, cd: 9, sfx: 'grenade' },
@@ -51,7 +52,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -207,6 +208,7 @@ function updateShots(DT) {
       if (_a.dot(_b) > 0.2) { _b.lerp(_a, Math.min(1, 0.9 * dt)).normalize(); s.v.copy(_b).multiplyScalar(sp); }
       if (Math.random() < 0.5) fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.25, s0: 0.9, s1: 0.2, c0: 0xc8f2ff });
     }
+    if (WIND.on && s.kind !== 'flame') { const wk = s.kind === 'bullet' || s.kind === 'ebullet' ? 0.25 : 0.9; s.v.x += WIND.x * wk * dt; s.v.z += WIND.z * wk * dt; }
     if (s.kind === 'missile') {
       const tgt = s.target && s.target.alive && !s.target.dying ? s.target.c : s.aim;
       if (s.age > 0.18 && tgt) {
@@ -249,9 +251,9 @@ function updateShots(DT) {
         G.shots.splice(i, 1); continue;
       }
     }
-    if (s.flak && s.team === 'P') {   // proximity fuse
+    if (s.flak) {   // proximity fuse (player flak; airship bombs)
       let near = null;
-      for (const e of entsP) if (!e.isBarrel && !e.isMine && e.alive && e.c.distanceTo(_b) < s.flak + (e.r || 1) * 0.5) { near = e; break; }
+      for (const e of (s.team === 'P' ? entsP : entsE)) if (!e.isBarrel && !e.isMine && e.alive && e.c.distanceTo(_b) < s.flak + (e.r || 1) * 0.5) { near = e; break; }
       if (near) { impact(s, _b.clone(), null); G.shots.splice(i, 1); continue; }
     }
     // vs entities
@@ -550,6 +552,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     }
     const out = G.minis.some((m) => m.owner === owner);
     for (const m of mslot.models) { const dk = m._dock || (m._dock = find(m, 'D_Dock')); if (dk) dk.visible = !out; }
+  } else if (d.type === 'rockets') {
+    if (pressed && ws.cd <= 0) { ws.cd = d.cd; fireRockets(owner, slot, d, aim, dmgMul, team); if (me) G.stats.shots += d.n; }
   } else if (d.type === 'icewall') {
     if (pressed && ws.cd <= 0 && isP) { if (raiseIceWall(owner, d)) { ws.cd = d.cd; if (me) G.stats.shots++; } else ws.cd = 0.5; }
   } else if (d.type === 'chaff') {
@@ -1794,7 +1798,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -4522,6 +4526,102 @@ function updateIceWalls(dt) {
   }
 }
 
+// ---- gale ridge: a strong wind that swings round every 14-20 s (3 s warning). It is added to every mech's target
+// velocity (PHYS.wx/wz, x0.22 on the ground, x0.62 in the air) and bends projectiles (x0.25 for bullets, x0.9 for the rest).
+export const WIND = { on: false, x: 0, z: 0, a: 0, str: 0, ta: 0, tstr: 0, t: 0, next: 0, nstr: 0, warned: false };
+export function startWind() { WIND.on = true; WIND.a = WIND.ta = Math.random() * 6.283; WIND.str = WIND.tstr = 9; WIND.t = 16; WIND.next = 0; WIND.warned = false; G.windShifts = 0; }
+export function clearWind() { WIND.on = false; WIND.x = WIND.z = 0; PHYS.wx = PHYS.wz = 0; }
+function updateWind(dt) {
+  if (!WIND.on) return;
+  WIND.t -= dt;
+  if (WIND.t < 3 && !WIND.warned) { WIND.warned = true; WIND.next = WIND.ta + (Math.random() < 0.5 ? 1 : -1) * (1.0 + Math.random() * 1.6); WIND.nstr = 8 + Math.random() * 4; G.onWindShift && G.onWindShift(WIND.next); }
+  if (WIND.t <= 0) { WIND.t = 14 + Math.random() * 6; WIND.warned = false; WIND.ta = WIND.next; WIND.tstr = WIND.nstr; G.windShifts = (G.windShifts || 0) + 1; sfx('rumble', 0); }
+  WIND.a += angDiff(WIND.ta, WIND.a) * Math.min(1, dt * 1.2); WIND.str += (WIND.tstr - WIND.str) * Math.min(1, dt * 0.8);
+  const gust = WIND.str * (1 + 0.22 * Math.sin(G.time * 1.3) + 0.12 * Math.sin(G.time * 3.7));
+  WIND.x = Math.cos(WIND.a) * gust; WIND.z = Math.sin(WIND.a) * gust; PHYS.wx = WIND.x; PHYS.wz = WIND.z;
+  const cp = G.camera.position;   // blown dust round the camera
+  for (let k = 0; k < 2; k++) {
+    const x = cp.x + (Math.random() - 0.5) * 70 - WIND.x * 2, z = cp.z + (Math.random() - 0.5) * 70 - WIND.z * 2;
+    G.fx.emit('smoke', { x, y: 0.5 + Math.random() * 6, z, vx: WIND.x * 1.8, vy: 0.2, vz: WIND.z * 1.8, life: 1.6, s0: 1.2, s1: 3.2, c0: 0xb8ae98, c1: 0x9a927e, a0: 0.22, drag: 0.1 });
+  }
+}
+
+// Airship: a slow armoured blimp 30 m up. It holds a point upwind of its target so the gale carries it over, drops a stick of
+// six bombs when it passes overhead (red rings where each will land), and its gondola guns fire two-round bursts.
+export const BLIMP = { hp: 2600, alt: 30, speed: 8, bombs: 8, gap: 0.42, cd: [6, 8], dmg: 42, R: 6, gunCd: [2.4, 3.2], gunDmg: 5 };
+export class Airship extends Enemy {
+  constructor(pos) {
+    super('blimp', 'E_Blimp', pos, BLIMP.hp, 6.5); this.boom = 3.2; this.obj.scale.setScalar(1.15);
+    this.vel = new V3(); this.head = Math.random() * 6.28; this.bombT = 4 + Math.random() * 3; this.stick = 0; this.sT = 0; this.gunT = 2;
+    this.pos.y = groundAt(pos.x, pos.z, 99) + BLIMP.alt; this.c.copy(this.pos); this.ph = Math.random() * 6;
+  }
+  update(dt) {
+    this.ph += dt;
+    const p = this.tg(), pc = p.center(playerC);
+    const wl = Math.hypot(WIND.x, WIND.z) || 1, ux = WIND.on ? WIND.x / wl : 0, uz = WIND.on ? WIND.z / wl : 0;
+    const ax = pc.x - ux * 18, az = pc.z - uz * 18;   // hold upwind of the target: the drift brings it over
+    _a.set(ax - this.pos.x, 0, az - this.pos.z); const L = _a.length(); if (L > 0) _a.multiplyScalar(Math.min(BLIMP.speed, L * 0.4) / L);
+    this.vel.lerp(_a, 1 - Math.exp(-0.6 * dt));
+    this.pos.x += (this.vel.x + WIND.x * 0.75) * dt; this.pos.z += (this.vel.z + WIND.z * 0.75) * dt;
+    this.pos.x = Math.max(-ARENA + 8, Math.min(ARENA - 8, this.pos.x)); this.pos.z = Math.max(-ARENA + 8, Math.min(ARENA - 8, this.pos.z));
+    let ty = groundAt(this.pos.x, this.pos.z, 99) + BLIMP.alt + Math.sin(this.ph * 0.5) * 1.2;
+    const s = pointInSolid(_b.set(this.pos.x, ty - 6, this.pos.z), 6); if (s) ty = Math.max(ty, s.max.y + 12);
+    this.pos.y += (ty - this.pos.y) * Math.min(1, dt * 0.8); this.c.copy(this.pos);
+    const mvx = this.vel.x + WIND.x * 0.75, mvz = this.vel.z + WIND.z * 0.75;
+    if (Math.hypot(mvx, mvz) > 0.5) this.head += angDiff(Math.atan2(-this.vel.x - 0.001, -this.vel.z), this.head) * Math.min(1, dt * 0.5);
+    this.obj.rotation.y = this.head; this.obj.rotation.z = Math.sin(this.ph * 0.7) * 0.03;
+    for (const k of ['AS_Prop1', 'AS_Prop2']) if (this.n[k]) this.n[k].rotation.z += dt * 18;
+    // bombing run
+    const hd = Math.hypot(pc.x - this.pos.x, pc.z - this.pos.z);
+    this.bombT -= dt;
+    if (this.stick > 0) {
+      this.sT -= dt;
+      if (this.sT <= 0) { this.sT = BLIMP.gap; this.stick--; this.drop(); }
+    } else if (this.bombT <= 0 && hd < 30) { this.stick = BLIMP.bombs; this.sT = 0; this.bombT = BLIMP.cd[0] + Math.random() * (BLIMP.cd[1] - BLIMP.cd[0]); sfx('warn', hd); G.onBombRun && G.onBombRun(this); }
+    // gondola guns
+    if (this.c.distanceTo(pc) < 95 && this.checkLos(dt)) {
+      this.gunT -= dt;
+      if (this.gunT <= 0) {
+        this.gunT = BLIMP.gunCd[0] + Math.random() * (BLIMP.gunCd[1] - BLIMP.gunCd[0]); G.curLabel = 'blimp-gun'; G.curShooter = this;
+        for (const k of [1, 2]) { const m = this.n['Muzzle_AS' + k]; if (!m) continue; const mp = m.getWorldPosition(_a).clone(), aim = lead(mp, 140, _b, p);
+          _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.z += (Math.random() - 0.5) * 0.05;
+          spawnShot({ p: mp, v: _d.normalize().multiplyScalar(140), dmg: BLIMP.gunDmg, team: 'E', kind: 'ebullet', color: 0xffa060, w: 0.24, len: 4, life: 1.2, label: 'blimp-gun' }); }
+        G.curShooter = null; sfx('eshot', this.pos.distanceTo(G.player.pos));
+      }
+    }
+  }
+  drop() {
+    const fx_ = -Math.sin(this.head), fz = -Math.cos(this.head);
+    const bp = new V3(this.pos.x - fx_ * 0.7, this.pos.y - 4.6, this.pos.z - fz * 0.7);
+    const vy = -4, g = 20, h = bp.y - groundAt(bp.x, bp.z, bp.y), t = (vy + Math.sqrt(vy * vy + 2 * g * h)) / g;
+    // aimed stick: each bomb is tossed toward where the target will be, the stick walking along the target's path
+    const tp = this.tg(), tv = tp.vel || _c.set(0, 0, 0), k = BLIMP.bombs - 1 - this.stick, off = (k - (BLIMP.bombs - 1) / 2) * 2.2;
+    const tl = Math.hypot(tv.x, tv.z) || 1, ox = Math.abs(tl) > 1 ? tv.x / tl : fx_, oz = Math.abs(tl) > 1 ? tv.z / tl : fz;
+    const gx = tp.pos.x + tv.x * t + ox * off, gz = tp.pos.z + tv.z * t + oz * off;
+    let vx = (gx - bp.x - 0.45 * WIND.x * t * t) / t, vz = (gz - bp.z - 0.45 * WIND.z * t * t) / t;
+    const hv = Math.hypot(vx, vz); if (hv > 16) { vx *= 16 / hv; vz *= 16 / hv; }
+    const lx = bp.x + vx * t + 0.45 * WIND.x * t * t, lz = bp.z + vz * t + 0.45 * WIND.z * t * t;
+    G.fx.warn(new V3(lx, groundAt(lx, lz, 1), lz), BLIMP.R, t);
+    G.curLabel = 'blimp-bomb';
+    spawnShot({ p: bp, v: new V3(vx, vy, vz), dmg: BLIMP.dmg, team: 'E', kind: 'grenade', grav: g, splash: BLIMP.R, flak: 4.5, life: 8, color: 0x505048, label: 'blimp-bomb' });
+    G.bombsDropped = (G.bombsDropped || 0) + 1;
+  }
+}
+
+// RP-12 rocket pod: a salvo of 12 unguided rockets in a flat fan toward the aim point. They drop a little and the wind bends them.
+function fireRockets(owner, slot, d, aim, dmgMul, team) {
+  for (let i = 0; i < d.n; i++) G.queue.push({ label: G.curLabel, t: i * d.gap, fn: () => {
+    if (!owner.alive) return;
+    const mp = owner.muzzlePos(slot, new V3(), 0).clone();
+    _d.subVectors(aim, mp).normalize();
+    const yaw = Math.atan2(_d.x, _d.z) + ((i / (d.n - 1)) - 0.5) * d.spread * 2 + (Math.random() - 0.5) * 0.03, pit = Math.asin(Math.max(-1, Math.min(1, _d.y))) + 0.02 + (Math.random() - 0.5) * 0.03;
+    const v = new V3(Math.sin(yaw) * Math.cos(pit), Math.sin(pit), Math.cos(yaw) * Math.cos(pit)).multiplyScalar(d.speed);
+    spawnShot({ p: mp, v, dmg: d.dmg * dmgMul, team, kind: 'missile', splash: d.splash, target: null, aim: null, life: 2.4, maxSpeed: d.speed, turn: 0 });
+    G.fx.muzzle(mp, v.clone().normalize(), 0xffc070, 0.7); owner.slots.S.recoil = 0.3;
+    if (i % 3 === 0) sfx('missile', owner === G.player ? 0 : 40);
+  } });
+}
+
 export function dropRepair(pos) {
   if (G.noRepair) return;
   const o = cloneKit('P_Repair'); o.position.copy(pos); o.position.y = Math.max(1.5, groundAt(pos.x, pos.z, pos.y) + 1.5);
@@ -4576,7 +4676,7 @@ export function updateCombat(dt) {
   if (GRID.on) updateGrid(dt);
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
-  updateIce(dt); updateIceWalls(dt);
+  updateIce(dt); updateIceWalls(dt); updateWind(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

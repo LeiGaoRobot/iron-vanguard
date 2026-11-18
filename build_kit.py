@@ -114,6 +114,8 @@ M = dict(
     Flare=mat("Flare", "#ffd0a0", 0.3, emit="#ff9040", strength=1.6),
     FrostGlow=mat("FrostGlow", "#c8f2ff", 0.2, emit="#58c8ff", strength=2.4),
     Rime=mat("Rime", "#c6d6e2", 0.5, metal=0.1),
+    Envelope=mat("Envelope", "#8a8f80", 0.75, metal=0.05),
+    Envelope2=mat("Envelope2", "#6e7364", 0.75, metal=0.05),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -1307,6 +1309,58 @@ def build_icewall():
     box((0, -0.4, 0.1), (0.95, 0.04, 0.3), M["Hazard"], K)
     muzzle("Muzzle_IceWall", (0, 0.2, 0.55), K)
 
+def build_blimp():
+    # Airship: a 16 m armoured gas envelope with ribs, a gondola slung underneath with two gun turrets and a bomb bay,
+    # two engine pods on outriggers with propellers (AS_Prop1/2) and cruciform tail fins. front = +Y
+    K = kit("E_Blimp")
+    ball((0, 0, 0), 1.0, M["Envelope"], K, scale=(3.0, 8.0, 3.0), sub=3)
+    for k in range(-3, 4):
+        y = k * 1.9; r = 3.0 * math.sqrt(max(0.05, 1 - (y / 8.0) ** 2)) + 0.04
+        torus((0, y, 0), r, 0.07, M["Envelope2"], K, rot=(math.pi / 2, 0, 0))
+    box((0, 0, 2.9), (0.5, 9.0, 0.3), M["Envelope2"], K, bevel=0.1)
+    for (rx, ry) in ((0, 0), (math.pi / 2, 0)):
+        pass
+    for s_ in (-1, 1):
+        box((s_ * 1.5, -6.9, 0), (2.6, 1.8, 0.14), M["EArmor2"], K, bevel=0.04)
+        box((0, -6.9, s_ * 1.5), (0.14, 1.8, 2.6), M["EArmor2"], K, bevel=0.04)
+    box((0, -7.7, 0), (0.4, 0.3, 0.4), M["Hazard"], K)
+    # gondola
+    box((0, 0.6, -3.35), (1.7, 5.0, 1.2), M["EArmor"], K, bevel=0.15)
+    wedge((0, 3.4, -3.35), (1.5, 0.8, 1.0), M["EArmor2"], K, taper=0.4)
+    box((0, 3.2, -3.1), (1.2, 0.4, 0.3), M["Glass"], K, bevel=0.04)
+    box((0, 3.6, -3.4), (0.8, 0.06, 0.12), M["EEye"], K)
+    box((0, -0.6, -4.0), (1.1, 2.0, 0.12), M["Hazard"], K)
+    box((0, -0.6, -3.96), (0.8, 1.7, 0.1), M["Black"], K)
+    for s_ in (-1, 1):
+        box((s_ * 0.5, 0.6, -2.5), (0.12, 3.8, 0.7), M["Frame"], K)
+        side = 1 if s_ < 0 else 2
+        cyl((s_ * 0.95, 2.0, -3.7), 0.32, 0.35, M["EArmor2"], K, verts=12)
+        cyl((s_ * 0.95, 2.45, -3.75), 0.07, 0.8, M["Black"], K, rot=ALONG_Y, verts=8)
+        muzzle("Muzzle_AS%d" % side, (s_ * 0.95, 2.9, -3.75), K)
+        # engine pods
+        box((s_ * 2.7, -1.5, -1.6), (2.2, 0.3, 0.25), M["Frame"], K)
+        cyl((s_ * 3.9, -1.5, -1.6), 0.55, 2.0, M["EArmor"], K, rot=ALONG_Y, verts=14)
+        cyl((s_ * 3.9, -2.6, -1.6), 0.3, 0.3, M["Black"], K, rot=ALONG_Y, verts=10)
+        p = empty("AS_Prop%d" % side, (s_ * 3.9, -2.85, -1.6), K)
+        for a in (0, math.pi / 2):
+            box((0, 0, 0), (2.4, 0.06, 0.22), M["Black"], p, rot=(0, a, 0))
+        cyl((s_ * 3.9, -0.5, -1.6), 0.45, 0.06, M["EEye"], K, rot=ALONG_Y, verts=14)
+
+def build_rockets():
+    K = kit("S_Rockets")
+    # rocket pod: a deep box with a 4x3 honeycomb of open tubes, hazard band, side handles
+    box((0, 0, 0), (0.95, 1.1, 0.7), M["Armor"], K, bevel=0.06)
+    box((0, 0.56, 0), (0.88, 0.06, 0.62), M["Frame"], K)
+    for i in range(4):
+        for j in range(3):
+            x, z = -0.33 + i * 0.22, -0.2 + j * 0.2
+            cyl((x, 0.58, z), 0.085, 0.08, M["Black"], K, rot=ALONG_Y, verts=8)
+            cyl((x, 0.6, z), 0.05, 0.03, M["Hazard"], K, rot=ALONG_Y, verts=8)
+    box((0, -0.1, 0.38), (0.96, 0.5, 0.06), M["Hazard"], K)
+    for s_ in (-1, 1):
+        box((s_ * 0.52, -0.2, 0), (0.08, 0.5, 0.25), M["Frame"], K)
+    muzzle("Muzzle_Rockets", (0, 0.7, 0), K)
+
 def build_smoke():
     K = kit("S_Smoke")
     # shoulder smoke launcher: three angled grey canister tubes on a cradle
@@ -1764,7 +1818,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
