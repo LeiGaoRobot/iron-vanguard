@@ -37,6 +37,7 @@ export const WEAPONS = {
   laser: { slot: 'shoulder', name: 'LZ-1 光束炮', en: 'LZ-1 Beam Laser', desc: '持续照射 2.2 秒', type: 'beam', dps: 135, dur: 2.2, range: 150, cd: 7.5, sfx: 'laser' },
   drones: { slot: 'shoulder', name: 'DP-4 攻击无人机', en: 'DP-4 Drone Pod', desc: '放出 2 架无人机 · 自动攻击 14 秒', type: 'drones', count: 2, dur: 14, dmg: 6, rate: 0.17, range: 80, cd: 18, sfx: 'drone' },
   emp: { slot: 'shoulder', name: 'EP-5 电磁脉冲', en: 'EP-5 EMP Burst', desc: '周围 26 m 敌机瘫痪 2.5 秒（头目 0.8 秒）· 瘫痪中受伤 +30% · 清除来袭弹药与地雷', type: 'emp', radius: 26, dmg: 85, stun: 2.5, bossStun: 0.8, cd: 11, sfx: 'emp' },
+  chaff: { slot: 'shoulder', name: 'CF-3 干扰弹', en: 'CF-3 Chaff', desc: '抛出一圈热焰弹 · 80 m 内来袭导弹全部转向 · 4 秒内探照灯看不见你', type: 'chaff', R: 80, dur: 4, cd: 11, sfx: 'decoy' },
   cluster: { slot: 'shoulder', name: 'CM-6 集束迫击炮', en: 'CM-6 Cluster Mortar', desc: '高抛弹道 · 下落时分裂成 10 枚子弹药 · 覆盖 11 m · 可越过掩体', type: 'cluster', range: 130, speed: 62, grav: 30, n: 10, R: 11, dmg: 42, splash: 4, cd: 9, sfx: 'grenade' },
   grav: { slot: 'shoulder', name: 'GW-1 重力井', en: 'GW-1 Gravity Well', desc: '发射奇点 · 3 秒内把周围敌机拖向中心并吞掉敌弹 · 结束时坍缩爆炸', type: 'grav', speed: 75, range: 95, R: 20, pull: 15, dur: 3, dps: 26, burst: 150, burstR: 11, cd: 14, sfx: 'grav' },
   blink: { slot: 'shoulder', name: 'BL-2 跃迁推进器', en: 'BL-2 Blink Drive', desc: '向移动方向瞬移 22 m · 0.35 秒无敌 · 挣断钩锁 · 原地残影 0.3 秒后爆裂 · 2 次充能（各 5.5 秒）', type: 'blink', dist: 22, inv: 0.35, burst: 110, burstR: 9, mag: 2, rech: 5.5, sfx: 'blink' },
@@ -49,7 +50,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster'];
+export const SHOULDER_KEYS = ['missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -539,6 +540,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     }
     const out = G.minis.some((m) => m.owner === owner);
     for (const m of mslot.models) { const dk = m._dock || (m._dock = find(m, 'D_Dock')); if (dk) dk.visible = !out; }
+  } else if (d.type === 'chaff') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; popChaff(owner, slot, d); if (me) G.stats.shots++; }
   } else if (d.type === 'cluster') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireCluster(owner, slot, d, aim, dmgMul, team); if (me) G.stats.shots++; }
   } else if (d.type === 'stasis') {
@@ -1779,7 +1782,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -4208,6 +4211,116 @@ function splitCluster(s, at) {
   G.fx.flash(at, 0xffd090, 16, 18, 0.15); G.fx.sparks(at, null, 10, 0xffd090, 14, 0.6, 0.3, 0.2);
 }
 
+// ---- lockdown: searchlight watchtowers. Each tower sweeps a 62 m light cone across the ground. If it catches you (in the
+// cone, line of sight) you are SPOTTED for 2.5 s and every lit tower keeps its beam on you; while spotted, artillery walks
+// in on your position (3 shells every 3.6 s, red rings 1.2 s ahead, 40 each). Break line of sight, pop chaff or kill the
+// towers. The hit sphere is the lamp head, above the solid legs.
+export const WATCH = { hp: 900, range: 66, half: 0.26, spot: 3.5, every: 3.4, first: 1.4, shells: 5, warn: 1.2, dmg: 48, R: 6, sweep: 1.1, rate: 0.42 };
+G.barrage = [];
+const beamGeo = (() => { const h = WATCH.range, r = h * Math.tan(WATCH.half); return new THREE.ConeGeometry(r, h, 28, 1, true).translate(0, -h / 2, 0).rotateX(-Math.PI / 2); })();
+const beamTex = (() => { const c = document.createElement('canvas'); c.width = 4; c.height = 128; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 128);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.45, '#b0b0b0'); gr.addColorStop(0.85, '#505050'); gr.addColorStop(1, '#202020'); g.fillStyle = gr; g.fillRect(0, 0, 4, 128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();   // bright at the lamp, gone by the far end (additive: black = invisible)
+const poolTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.6, '#808080'); gr.addColorStop(1, '#000000'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t; })();
+export class Watchtower extends Enemy {
+  constructor(pos) {
+    super('watch', 'E_Watch', pos, WATCH.hp, 2.4); this.boom = 2.4; this.obj.scale.setScalar(1.1);
+    this.pos.y = groundAt(pos.x, pos.z, 50);
+    this.c.set(this.pos.x, this.pos.y + 9.8, this.pos.z);
+    this.solid = addSolid(this.pos.x, this.pos.z, 3.0, 3.0, 7.0, 0, 'watch');
+    this.yaw0 = Math.random() * 6.28; this.ph = Math.random() * 6; this.reT = 0; this.lock = 0; this.yaw = this.yaw0; this.pitch = 0.22;
+    this.beam = new THREE.Mesh(beamGeo, new THREE.MeshBasicMaterial({ color: 0xfff0c0, map: beamTex, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    this.beam.renderOrder = 4; G.scene.add(this.beam);
+    this.pool = new THREE.Mesh(new THREE.CircleGeometry(1, 28).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xfff0c0, map: poolTex, transparent: true, opacity: 0.18, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    this.pool.renderOrder = 3; G.scene.add(this.pool);
+  }
+  remove() { super.remove(); removeSolid(this.solid); this.beam.parent && this.beam.parent.remove(this.beam); this.pool.parent && this.pool.parent.remove(this.pool); }
+  die() { super.die(); this.beam.visible = false; this.pool.visible = false; }
+  update(dt) {
+    this.ph += dt; this.reT -= dt;
+    const p = G.player, pc = p.center(playerC);
+    const head = this.n.WH_Head;
+    const lamp = (this.n.WH_Lamp || head).getWorldPosition(_a).clone();
+    const dx = pc.x - lamp.x, dz = pc.z - lamp.z, hd = Math.hypot(dx, dz) || 1;
+    if (this.reT <= 0) { this.reT = 4 + Math.random() * 3; this.yaw0 = Math.atan2(-dx, -dz) + (Math.random() - 0.5) * 0.8; }   // swing the sweep toward the player now and then
+    let wantYaw, wantPitch;
+    const stun = G.chaffT > 0;
+    if (this.lock > 0 && !stun) { this.lock -= dt; wantYaw = Math.atan2(-dx, -dz); wantPitch = Math.atan2(lamp.y - pc.y, hd); }
+    else { wantYaw = this.yaw0 + Math.sin(this.ph * WATCH.rate) * WATCH.sweep; wantPitch = 0.12 + Math.sin(this.ph * 0.55) * 0.16; }
+    this.yaw += angDiff(wantYaw, this.yaw) * Math.min(1, dt * (this.lock > 0 ? 3 : 1.5)); this.pitch += (wantPitch - this.pitch) * Math.min(1, dt * 2);
+    if (head) head.rotation.y = this.yaw; if (head) head.rotation.x = -this.pitch;
+    const dir = _d.set(-Math.sin(this.yaw) * Math.cos(this.pitch), -Math.sin(this.pitch), -Math.cos(this.yaw) * Math.cos(this.pitch));
+    this.beam.position.copy(lamp); _b.copy(lamp).add(dir); this.beam.lookAt(_b);
+    // seen from inside the cone (the beam is on you) the double-sided additive surface washes out the whole screen: fade it
+    const cp = G.camera.position; _c.set(cp.x - lamp.x, cp.y - lamp.y, cp.z - lamp.z); const cl = _c.length() || 1, ca = _c.dot(dir) / cl, inC = cl < WATCH.range * 1.1 ? THREE.MathUtils.clamp((ca - Math.cos(WATCH.half * 2.6)) / (Math.cos(WATCH.half * 1.1) - Math.cos(WATCH.half * 2.6)), 0, 1) : 0;
+    this.beam.material.opacity = (this.lock > 0 ? 0.55 : 0.36) * (stun ? 0.3 : 1) * (1 - 0.9 * inC) * (0.9 + 0.1 * Math.sin(this.ph * 30));
+    this.beam.material.color.setHex(this.lock > 0 ? 0xffd0a0 : 0xfff0c0);
+    // light pool where the beam meets the ground
+    const tg = dir.y < -0.02 ? Math.min(WATCH.range, (lamp.y - groundAt(lamp.x, lamp.z, 0)) / -dir.y) : WATCH.range;
+    const gx = lamp.x + dir.x * tg, gz = lamp.z + dir.z * tg;
+    this.pool.position.set(gx, groundAt(gx, gz, lamp.y) + 0.15, gz); this.pool.scale.setScalar(Math.max(2, tg * Math.tan(WATCH.half) * 1.2)); this.pool.visible = tg < WATCH.range;
+    this.pool.material.opacity = (this.lock > 0 ? 0.45 : 0.28) * (stun ? 0.3 : 1);
+    // detection
+    if (!stun && p.alive) {
+      _c.set(pc.x - lamp.x, pc.y - lamp.y, pc.z - lamp.z); const L = _c.length();
+      if (L < WATCH.range && _c.dot(dir) / L > Math.cos(WATCH.half) && clearLine(lamp, pc)) {
+        if (!(G.spotT > 0)) { G.barrageT = Math.max(G.barrageT || 0, WATCH.first); G.spots = (G.spots || 0) + 1; sfx('alarm', 0); G.onSpot && G.onSpot(this); }
+        G.spotT = WATCH.spot; this.lock = WATCH.spot;
+        for (const e of G.enemies) if (e.kind === 'watch' && e.alive && e !== this && e.c.distanceTo(pc) < WATCH.range + 10) e.lock = Math.max(e.lock, 1.2);   // the others swing over
+      }
+    }
+  }
+}
+export function clearBarrage() { G.barrage.length = 0; G.spotT = 0; G.barrageT = 0; G.chaffT = 0; G.spots = G.spotTime = G.shellsFired = G.shellHits = G.chaffN = G.chaffBroke = G.chaffDiverted = 0; }
+function updateBarrage(dt) {
+  const p = G.player;
+  if (G.chaffT > 0) G.chaffT -= dt;
+  for (let i = G.barrage.length - 1; i >= 0; i--) {
+    const b = G.barrage[i]; b.t -= dt;
+    if (b.t < 0.5 && !b.fell) { b.fell = true; G.fx.streak(new V3(b.p.x + 6, b.p.y + 60, b.p.z - 4), b.p.clone(), 0.5, 0xffa070, 0.5); }
+    if (b.t <= 0) {   // the blast throws up a 12 m column: hovering low over the ring does not save you
+      G.barrage.splice(i, 1); G.shellsFired = (G.shellsFired || 0) + 1;
+      G.fx.explosion(b.p, 1.1, 0xffa050); G.fx.decal(b.p, WATCH.R * 0.9); sfx('boom', p ? p.pos.distanceTo(b.p) : 50);
+      G.fx.emit('add', { x: b.p.x, y: b.p.y + 5, z: b.p.z, vy: 6, life: 0.35, s0: 7, s1: 3, c0: 0xffb060 });
+      if (p && p.alive) { const h = Math.hypot(p.pos.x - b.p.x, p.pos.z - b.p.z), hy = p.pos.y - b.p.y; if (h < WATCH.R + 1 && hy < 12) { hurtPlayer(WATCH.dmg * (1 - 0.5 * Math.min(1, h / (WATCH.R + 1))), 'watch-shell'); G.shellHits = (G.shellHits || 0) + 1; } }
+    }
+  }
+  if (G.spotT > 0) {
+    G.spotT -= dt; G.spotTime = (G.spotTime || 0) + dt;
+    G.barrageT -= dt;
+    if (G.barrageT <= 0 && p.alive) {
+      G.barrageT = WATCH.every; G.volley = { autoD: Math.random() < 0.5 };   // the autopilot's reaction roll is per volley, not per shell
+      for (let k = 0; k < WATCH.shells; k++) {
+        const lead = (WATCH.warn + k * 0.25) * (0.15 + k * 0.24), a = Math.random() * 6.28, r = 1 + Math.random() * 2.5;   // shells walk from where you are to where you will be when they land   // walk the shells along the line you are moving on
+        const x = p.pos.x + p.vel.x * lead + Math.cos(a) * r, z = p.pos.z + p.vel.z * lead + Math.sin(a) * r;
+        const pt = new V3(x, groundAt(x, z, p.pos.y + 3) + 0.2, z);
+        G.barrage.push({ p: pt, t: WATCH.warn + k * 0.25, vol: G.volley }); G.fx.warn(pt.clone(), WATCH.R, WATCH.warn + k * 0.25);
+      }
+      sfx('artillery', 0);
+    }
+  }
+}
+
+// CF-3 chaff: a burst of flares. Enemy missiles within 80 m chase the flares instead, and for 4 s searchlights cannot see
+// you (a lit beam loses you at once).
+function popChaff(owner, slot, d) {
+  const mp = owner.muzzlePos(slot, new V3(), 0).clone();
+  const flares = [];
+  for (let k = 0; k < 8; k++) {
+    const a = k / 8 * 6.283 + Math.random() * 0.4, v = new V3(Math.cos(a) * 9, 10 + Math.random() * 6, Math.sin(a) * 9);
+    const f = mp.clone().addScaledVector(v, 0.6); flares.push(f);
+    G.fx.sparks(mp, v.clone().normalize(), 4, 0xffc070, 16, 1.2, 0.5, 0.25);
+    G.fx.emit('add', { x: f.x, y: f.y, z: f.z, vx: v.x * 0.6, vy: v.y * 0.4, vz: v.z * 0.6, life: 1.8, s0: 1.6, s1: 0.4, c0: 0xffd090 });
+  }
+  let n = 0;
+  for (const s of G.shots) if (s.team === 'E' && s.kind === 'missile' && Math.hypot(s.x - mp.x, s.y - mp.y, s.z - mp.z) < d.R) { s.target = null; s.aim = flares[n % flares.length].clone().add(new V3(0, 6, 0)); n++; }
+  G.chaffDiverted = (G.chaffDiverted || 0) + n; G.chaffN = (G.chaffN || 0) + 1;
+  if (G.spotT > 0) G.chaffBroke = (G.chaffBroke || 0) + 1;
+  G.chaffT = d.dur; G.spotT = 0; for (const e of G.enemies) if (e.kind === 'watch') e.lock = 0;
+  sfx('decoy', 0);
+}
+
 export function dropRepair(pos) {
   if (G.noRepair) return;
   const o = cloneKit('P_Repair'); o.position.copy(pos); o.position.y = Math.max(1.5, groundAt(pos.x, pos.z, pos.y) + 1.5);
@@ -4260,6 +4373,7 @@ export function updateCombat(dt) {
   if (ACID.on) updateAcid(dt);
   if (GRID.on) updateGrid(dt);
   if (G.twisters.length) updateTwisters(dt);
+  updateBarrage(dt);
   updateShots(dt);
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

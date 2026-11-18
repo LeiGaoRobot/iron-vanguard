@@ -110,6 +110,8 @@ M = dict(
     BlinkGlow=mat("BlinkGlow", "#f0c8ff", 0.3, emit="#c050ff", strength=2.2),
     Turbine=mat("Turbine", "#e6e8ea", 0.45),
     Hay=mat("Hay", "#c8a050", 0.95),
+    Lamp=mat("Lamp", "#fff6d8", 0.2, emit="#fff0c0", strength=3.0),
+    Flare=mat("Flare", "#ffd0a0", 0.3, emit="#ff9040", strength=1.6),
 )
 
 # ---------------------------------------------------------------- helpers
@@ -1225,6 +1227,42 @@ def build_twister():
     cyl((0, 0, 0.75), 0.8, 1.3, M["Hay"], K, rot=(0, math.pi / 2, 0), verts=16)
     cyl((0, 0, 0.75), 0.82, 0.08, M["Rust"], K, rot=(0, math.pi / 2, 0), verts=16)
 
+def build_watch():
+    # Watchtower: a four-legged lattice tower with a guard hut and a swivelling searchlight head. front = +Y
+    K = kit("E_Watch")
+    for (x, y) in ((-1, -1), (1, -1), (1, 1), (-1, 1)):
+        box((x * 1.25, y * 1.25, 3.4), (0.22, 0.22, 6.9), M["EArmor2"], K, rot=(-y * 0.07, x * 0.07, 0))
+    for k in range(3):
+        z = 1.2 + k * 2.1; s = 1.45 - k * 0.1
+        for (dx, dy, sx, sy) in ((0, -s, 2 * s, 0.1), (0, s, 2 * s, 0.1), (-s, 0, 0.1, 2 * s), (s, 0, 0.1, 2 * s)):
+            box((dx, dy, z), (sx, sy, 0.1), M["Frame"], K)
+    box((0, 0, 7.05), (3.2, 3.2, 0.3), M["EArmor"], K, bevel=0.04)
+    box((0, 0, 7.7), (2.2, 2.2, 1.0), M["EArmor2"], K, bevel=0.05)
+    box((0, 1.12, 7.8), (1.6, 0.05, 0.4), M["EEye"], K)
+    for (x, y) in ((-1.5, -1.5), (1.5, -1.5), (1.5, 1.5), (-1.5, 1.5)):
+        cyl((x, y, 7.55), 0.05, 0.7, M["Frame"], K, verts=6)
+    h = empty("WH_Head", (0, 0, 8.6), K)
+    cyl((0, 0, -0.2), 0.3, 0.4, M["Frame"], h, verts=10)
+    cyl((0, 0.15, 0.35), 0.62, 0.95, M["EArmor"], h, rot=ALONG_Y, verts=16)
+    cyl((0, 0.64, 0.35), 0.55, 0.06, M["Lamp"], h, rot=ALONG_Y, verts=16)
+    cyl((0, 0.66, 0.35), 0.66, 0.08, M["Hazard"], h, rot=ALONG_Y, verts=16)
+    for s_ in (-1, 1):
+        box((s_ * 0.7, 0.1, 0.25), (0.08, 0.5, 0.6), M["Frame"], h)
+    empty("WH_Lamp", (0, 0.72, 0.35), h)
+
+def build_chaff():
+    K = kit("S_Chaff")
+    # chaff/flare dispenser: a slab launcher with a 3x2 grid of short tubes, hazard trim
+    box((0, 0, 0), (0.8, 0.8, 0.5), M["Frame"], K, bevel=0.05)
+    box((0, 0.05, 0.28), (0.72, 0.68, 0.08), M["Armor"], K, bevel=0.02)
+    for i in range(3):
+        for j in range(2):
+            x, y = -0.24 + i * 0.24, -0.14 + j * 0.3
+            cyl((x, y, 0.38), 0.085, 0.22, M["Black"], K, verts=10)
+            cyl((x, y, 0.42), 0.055, 0.2, M["Flare"], K, verts=8)
+    box((0, 0.42, 0.1), (0.8, 0.04, 0.3), M["Hazard"], K)
+    muzzle("Muzzle_Chaff", (0, 0, 0.55), K)
+
 def build_smoke():
     K = kit("S_Smoke")
     # shoulder smoke launcher: three angled grey canister tubes on a cradle
@@ -1682,7 +1720,7 @@ def build_props():
     box((0, 0, 0.26), (0.6, 0.4, 0.08), M["Ammo"], K)
 
 build_mech()
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

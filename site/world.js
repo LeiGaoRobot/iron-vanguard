@@ -54,7 +54,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister';
+  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister';
   LAVA.on = forge; GRID.on = grid; const PR = PLAT.R;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;

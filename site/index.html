@@ -88,6 +88,7 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 #banner small { display: block; font-family: var(--cn); font-size: 16px; letter-spacing: 3px; color: var(--dim); font-weight: 400; margin-top: 4px; }
 #banner.show { opacity: 1; }
 #banner.warn { color: #ff7a5a; text-shadow: 0 0 18px rgba(255, 80, 40, 0.7); }
+#spotTag { position: absolute; top: 118px; left: 50%; transform: translateX(-50%); pointer-events: none; padding: 4px 14px; border: 1px solid rgba(255, 110, 80, 0.8); background: rgba(90, 10, 0, 0.55); color: #ffb090; font-size: 14px; letter-spacing: 2px; display: none; }
 #acidVig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 40%, rgba(150, 200, 40, 0.42) 88%, rgba(200, 230, 60, 0.5) 100%); opacity: 0; }
 #stormVig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 35%, rgba(150, 70, 255, 0.5) 85%, rgba(60, 255, 200, 0.45) 100%); opacity: 0; }
 #hurt { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 50%, rgba(255, 30, 10, 0.55) 100%); opacity: 0; }
@@ -217,6 +218,7 @@ body.touchmode #mAlert { top: 30%; }
 <div id="hud" class="hidden">
   <div id="hurt"></div>
   <div id="acidVig"></div>
+  <div id="spotTag">已被发现 · 炮击来袭 · SPOTTED</div>
   <div id="stormVig"></div>
   <div id="locks"></div>
   <div id="marks"></div>
