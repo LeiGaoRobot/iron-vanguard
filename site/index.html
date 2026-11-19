@@ -144,7 +144,9 @@ button.primary:hover { background: #9af0ff; }
 #tMods .chip:hover { border-color: #ffb040; }
 #tMods .chip.on { border-color: #ffb040; color: #ffd08a; background: rgba(255, 150, 40, 0.15); }
 #tMods .chip.forced { cursor: default; border-style: dashed; }
-.mlist { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 3px; }
+.mlist { display: grid; grid-template-columns: repeat(16, minmax(0, 1fr)); gap: 3px; overflow-y: auto; scrollbar-width: none; padding-top: 5px; overscroll-behavior: contain; }
+.mlist::-webkit-scrollbar { display: none; }
+#tMisN { font-weight: 400; font-size: 11px; color: var(--dim); letter-spacing: 0; margin-left: 6px; }
 #title .card { max-width: 1276px; padding-left: 20px; padding-right: 20px; }
 .mis { text-align: left; padding: 3px 1px; letter-spacing: 0; display: flex; flex-direction: column; gap: 0; min-width: 0; line-height: 1.25; }
 .mis b { font-size: 9px; white-space: nowrap; letter-spacing: -1px; }
@@ -152,14 +154,14 @@ button.primary:hover { background: #9af0ff; }
 .mis small { color: var(--dim); font-size: 12px; line-height: 1.5; }
 .mis small.best { color: var(--amber); }
 #mList { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; margin-top: 6px; }
-#mList .medal { display: flex; gap: 6px; align-items: center; padding: 1px 7px; line-height: 1.15; border: 1px solid rgba(95, 227, 255, 0.18); background: rgba(10, 16, 24, 0.5); opacity: 0.72; }
+#mList .medal { display: flex; gap: 4px; align-items: center; padding: 1px 5px; line-height: 1.15; border: 1px solid rgba(95, 227, 255, 0.18); background: rgba(10, 16, 24, 0.5); opacity: 0.72; }
 #mList .medal.on { opacity: 1; border-color: var(--amber); background: rgba(255, 190, 80, 0.1); }
 #mList .medal i { font-style: normal; font-size: 18px; color: var(--dim); width: 16px; text-align: center; }
 #mList .medal.on i { color: var(--amber); }
 #mList .medal div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
-#mList .medal b { font-size: 12.5px; line-height: 1.1; }
-#mList .medal small { color: var(--dim); font-size: 10.5px; line-height: 1.1; }
-#mList .medal em { font-style: normal; font-size: 11px; color: var(--amber); white-space: nowrap; }
+#mList .medal b { font-size: 12px; line-height: 1.1; }
+#mList .medal small { color: var(--dim); font-size: 10px; line-height: 1.1; }
+#mList .medal em { font-style: normal; font-size: 10.5px; color: var(--amber); white-space: nowrap; }
 #mList .mp { display: block; height: 3px; background: rgba(255, 255, 255, 0.12); margin-top: 2px; }
 #mList .mp span { display: block; height: 100%; background: var(--cyan); }
 .res .medal { color: var(--amber); }
@@ -286,7 +288,7 @@ body.touchmode #mAlert { top: 30%; }
     <h1>IRON <span>VANGUARD</span></h1>
     <div class="sub">钢翼先锋 · 机甲作战</div>
     <div style="color: var(--dim); font-size: 14px; line-height: 1.7">驾驶可定制的人形机甲出击。击毁敌机赚取资金，在机库强化机体。</div>
-    <div class="gsec"><h3>选择任务</h3><div class="mlist" id="tMission"></div><div class="mrow"><div id="tMisDesc"></div><div id="tMods"><span>挑战</span></div></div></div>
+    <div class="gsec"><h3>选择任务 <small id="tMisN"></small></h3><div class="mlist" id="tMission"></div><div class="mrow"><div id="tMisDesc"></div><div id="tMods"><span>挑战</span></div></div></div>
     <div class="keys">
       <b>WASD</b><span>移动 · 鼠标转向瞄准</span>
       <b>SHIFT</b><span>按下 = 瞬间推进（急闪），按住 = 地面高速滑行</span>

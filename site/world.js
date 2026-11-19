@@ -61,6 +61,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
     for (let i = 0; road && i < road.length - 1; i++) {
+      if (road.skip && road.skip.includes(i)) continue;   // a jump between two separate road branches
       const [ax, az] = road[i], [bx, bz] = road[i + 1], dx = bx - ax, dz = bz - az, L = dx * dx + dz * dz;
       const t = Math.max(0, Math.min(1, ((x - ax) * dx + (z - az) * dz) / L));
       best = Math.min(best, Math.hypot(x - ax - dx * t, z - az - dz * t));
@@ -400,6 +401,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   } else if (road) {   // asphalt strip + dashed centre line, laid just above the floor
     const geos = [], dash = [];
     for (let i = 0; i < road.length - 1; i++) {
+      if (road.skip && road.skip.includes(i)) continue;
       const [ax, az] = road[i], [bx, bz] = road[i + 1], L = Math.hypot(bx - ax, bz - az), yaw = Math.atan2(bx - ax, bz - az);
       geos.push(new THREE.PlaneGeometry(10, L + 10).rotateX(-Math.PI / 2).rotateY(yaw).translate((ax + bx) / 2, 0.03 + i * 0.002, (az + bz) / 2));
       for (let d = 4; d < L - 2; d += 9) dash.push(new THREE.PlaneGeometry(0.4, 4).rotateX(-Math.PI / 2).rotateY(yaw).translate(ax + (bx - ax) * d / L, 0.06, az + (bz - az) * d / L));

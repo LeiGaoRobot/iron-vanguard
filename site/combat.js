@@ -65,6 +65,7 @@ export const WEAPONS = {
   rod: { slot: 'shoulder', name: 'LR-1 避雷针', en: 'LR-1 Lightning Rod', desc: '在前方 6 m 插下避雷针 14 秒 · 每 0.9 秒放电打 22 m 内最近的敌机（36，再连锁 1 个）· 雷暴里 14 m 内不会被雷劈 · 同时只能有 1 根', type: 'rod', dur: 14, zap: 0.9, dmg: 36, R: 22, chains: 2, cover: 14, cd: 18, sfx: 'sentry' },
   sentry: { slot: 'shoulder', name: 'TR-3 哨戒炮塔', en: 'TR-3 Sentry Turret', desc: '在前方架设自动炮塔 15 秒 · 双管速射 75 m 内敌机 · 吸引部分火力 · 耐久 400 · 同时只能有 1 座', type: 'sentry', hp: 400, dur: 15, dmg: 10, rate: 0.11, range: 75, cd: 22, sfx: 'sentry' },
   stasis: { slot: 'shoulder', name: 'TS-1 时滞场', en: 'TS-1 Stasis Field', desc: '在准星处展开 14 m 时滞球 5 秒 · 球内敌机动作放慢到三成、敌弹几乎停在空中 · 头目只放慢一半', type: 'stasis', range: 60, R: 14, dur: 5, k: 0.3, bossK: 0.6, shotK: 0.12, cd: 17, sfx: 'stasis' },
+  hack: { slot: 'shoulder', name: 'HK-1 入侵模块', en: 'HK-1 Hack Module', desc: '发射追踪入侵飞镖 · 命中普通敌机后上传 0.8 秒，使其倒戈 10 秒：替你攻击附近的敌人、吸引敌方火力 · 头目 / 大型目标 / 部分特殊兵种无法入侵：改为 150 伤害并瘫痪 1.5 秒 · 冷却 16 秒', type: 'hack', speed: 110, cd: 16, dur: 10, up: 0.8, fail: 150, stun: 1.5, sfx: 'cannon' },
   ciws: { slot: 'shoulder', name: 'PD-3 近防炮', en: 'PD-3 CIWS', desc: '按下后肩部近防炮自动开火 8 秒 · 优先击落 45 m 内来袭的导弹 / 炮弹 / 巡航导弹（每发约一半几率打爆），其次扫射 35 m 内的无人机等小型飞行敌机 · 冷却 15 秒', type: 'ciws', dur: 8, cd: 15, R: 45, airR: 35, rate: 0.085, dmg: 16, kill: 0.55, sfx: 'gatling' },
   net: { slot: 'shoulder', name: 'NT-4 捕获网', en: 'NT-4 Net Launcher', desc: '发射追踪捕获网 · 地面敌机被缠住 2.5 秒无法移动（仍能开火）· 小型飞行敌机直接被网落（140 伤害）· 头目与大型目标减速 40% · 信使被缠住 3 秒：车速 −65%、受到伤害 +30% · 冷却 7 秒', type: 'net', dmg: 30, air: 140, root: 2.5, speed: 70, cd: 7, sfx: 'cannon' },
   smoke: { slot: 'shoulder', name: 'SM-2 烟幕弹', en: 'SM-2 Smoke Screen', desc: '在身前炸开 12 m 烟幕 8 秒 · 烟幕外的敌人看不穿它，无法瞄准烟里的你 · 已发射的导弹照样追踪', type: 'smoke', R: 12, dur: 8, cd: 16, sfx: 'smoke' },
@@ -72,7 +73,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -85,7 +86,7 @@ const _a = new V3(), _b = new V3(), _c = new V3(), _d = new V3();
 function entsFor(team) {
   const out = [];
   if (team === 'P') {
-    for (const e of G.enemies) if (e.alive && !e.dying) { if (e.parts) { for (const pt of e.parts) if (pt.alive) out.push(pt); } else out.push(e); }
+    for (const e of G.enemies) if (e.alive && !e.dying && !e.hacked) { if (e.parts) { for (const pt of e.parts) if (pt.alive) out.push(pt); } else out.push(e); }
     for (const b of barrels) if (!b.dead) out.push(b.ent || (b.ent = { isBarrel: true, b, c: b.pos, r: 1.5, get alive() { return !b.dead; }, hit: (dmg) => hitBarrel(b, dmg) }));
     for (const m of G.mines) if (m.alive) out.push(m);
   } else {
@@ -147,6 +148,7 @@ const isAlly = (l) => !!l && l.startsWith('ally');
 export function hurtPlayer(dmg, label) { G.curSrc = null; damagePlayer(dmg, null, label); }
 function damagePlayer(dmg, src, label) {
   const p = G.player; if (!p || !p.alive || G.godMode || G.blinkInv > 0) return;
+  if (G.curShooter && G.curShooter.hacked) return;   // a hacked enemy's direct attacks never hit you
   const blk = shieldBlock(p, src || G.curSrc);
   if (blk) { G.stats.blocked = (G.stats.blocked || 0) + dmg * blk; if (Math.random() < 0.3) sfx('shield', 0); }
   if (G.curShooter && G.curShooter.rally) { dmg *= HERALD.dmg; G.rallyHits = (G.rallyHits || 0) + 1; }   // rallied by a herald
@@ -177,6 +179,8 @@ export function explodeAt(pos, radius, dmg, team, size = 1, color) {
   if (pos.y < 2) G.fx.decal(pos, radius * 0.9);
   const d = G.player ? G.player.pos.distanceTo(pos) : 50;
   sfx(size > 1.5 ? 'bigboom' : 'boom', d);
+  if (team === 'E' && G.curShooter && G.curShooter.hacked) team = 'P';
+  if (team !== 'E' && G.webs.length) for (const w of G.webs) if (Math.hypot(w.x - pos.x, w.z - pos.z) < w.R + radius && pos.y - w.y < radius + 3) w.hp -= dmg * 1.5;   // blasts tear webs apart
   const lists = team === 'P' ? [entsFor('P')] : team === 'E' ? [entsFor('E')] : [entsFor('P'), entsFor('E').filter((e) => e.isPlayer)];
   for (const ents of lists) for (const e of ents) {
     const dist = e.c.distanceTo(pos) - e.r * 0.6;
@@ -190,6 +194,8 @@ export function spawnShot(o) {
   const s = { x: o.p.x, y: o.p.y, z: o.p.z, v: o.v.clone(), life: o.life ?? 2.5, dmg: o.dmg, team: o.team, kind: o.kind, splash: o.splash || 0,
     burn: o.burn || 0, burnT: o.burnT || 0, chill: o.chill || 0, label: o.label || G.curLabel || o.kind, color: o.color ?? 0xffd27a, w: o.w ?? 0.2, len: o.len ?? 6, target: o.target || null, aim: o.aim ? o.aim.clone() : null, age: 0, speed: o.v.length(), maxSpeed: o.maxSpeed || 0, size: o.size || 1, turn: o.turn || 5.5, grav: o.grav ?? 6 };
   if (o.flak) s.flak = o.flak; if (o.sticky) s.sticky = true;
+  if (o.web) s.web = true;
+  if (s.team === 'E' && G.curShooter && G.curShooter.hacked) { s.team = 'P'; s.dmg *= HACK.dmg; s.label = 'hack-' + G.curShooter.kind; s.target = null; G.hackShots = (G.hackShots || 0) + 1; G.shots.push(s); return s; }
   if (s.team === 'E' && G.curShooter) G.curShooter.pingT = FOG.ping;   // fog harbour: firing shows you on the radar
   if (s.team === 'E' && G.curShooter && G.curShooter.rally) s.dmg *= HERALD.dmg;
   if (s.team === 'E' && G.curShooter && G.curShooter.emp) s.dmg *= SUPPLY.empDmg;
@@ -200,6 +206,7 @@ export function spawnShot(o) {
 
 function impact(s, at, ent) {
   const fx = G.fx; G.curLabel = s.label;
+  if (s.web) { webSplat(s, at, ent); return; }
   if (s.sticky) { stickAt(s, at, ent); return; }
   if (s.cluster) { splitCluster(s, at.clone().setY(at.y + 2)); return; }
   if (s.bomblet) { explodeAt(at, s.splash, s.dmg, s.team, 0.45, 0xffb050); return; }
@@ -651,6 +658,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireCluster(owner, slot, d, aim, dmgMul, team); if (me) G.stats.shots++; }
   } else if (d.type === 'stasis') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; castStasis(owner, slot, d, aim); if (me) G.stats.shots++; }
+  } else if (d.type === 'hack') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireHack(owner, slot, d, dmgMul, aim, target); if (me) G.stats.shots++; }
   } else if (d.type === 'ciws') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; G.ciwsL = G.ciwsL.filter((c) => c.owner !== owner); G.ciwsL.push({ owner, slot, d, mul: dmgMul, t: d.dur, fT: 0, me }); sfx('repair', 0); if (me) G.stats.shots++; }
   } else if (d.type === 'net') {
@@ -1458,7 +1467,7 @@ class Enemy {
   die() { this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this); this.explode(); }
   explode() { explodeAt(this.c, 5, 30, 'P', this.boom || 1); this.remove(); }
   remove() { this.obj.parent && this.obj.parent.remove(this.obj); this.gone = true; }
-  tg() { return pickTarget(this); }
+  tg() { return this.hacked ? hackTarget(this) : pickTarget(this); }
   checkLos(dt) {
     this.losT -= dt;
     if (this.losT <= 0) { this.losT = 0.3 + Math.random() * 0.2; const tc = this.tg().center(playerC); this.los = clearLine(this.c, tc) && !smokeBlocks(this.c, tc); }
@@ -1906,7 +1915,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -7778,6 +7787,333 @@ function updateCiws(dt) {
   }
 }
 
+// ------------------------------------------------------------------ v49 Evacuation: weaver spider walkers and their webs, the
+// HK-1 hack module (an enemy fights for you for a while), civilians walking to an evac pad and a rescue shuttle
+export const WEAVE = { hp: 820, r: 2.8, speed: 7, keep: [20, 36], burst: 4, gap: 0.12, gunCd: [2.2, 3.0], dmg: 11, webCd: [4.5, 6.5], webR: 7, webT: 13, webDmg: 14, webHp: 70, stick: 2.4, slow: 0.45, civSlow: 0.3, grav: 2.4 };
+export const HACK = { kinds: ['turret', 'drone', 'walker', 'bulwark', 'gunship', 'skimmer', 'frost', 'blinker', 'weaver', 'howitzer'], maxHp: 2000, dmg: 0.8 };
+G.webs = []; G.hacks = []; G.webT = 0;
+G.queue.push = function (...a) { for (const q of a) if (q && q.sh === undefined) q.sh = G.curShooter; return Array.prototype.push.apply(this, a); };
+const webGeo = new THREE.CircleGeometry(1, 28), dartGeo = new THREE.OctahedronGeometry(0.4, 0), hackRingGeo = new THREE.TorusGeometry(1, 0.09, 6, 28), ZV = new V3(), _hc = new THREE.Color();
+let webTex = null, webMesh = null;
+function webTexture() {
+  if (webTex) return webTex;
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256; const g = cv.getContext('2d');
+  g.strokeStyle = 'rgba(240, 248, 255, 0.95)'; g.translate(128, 128); const N = 14;
+  g.lineWidth = 2.4;
+  for (let k = 0; k < N; k++) { const a = k / N * Math.PI * 2; g.beginPath(); g.moveTo(0, 0); g.lineTo(Math.cos(a) * 126, Math.sin(a) * 126); g.stroke(); }
+  g.lineWidth = 1.5;
+  for (let r = 10; r < 124; r += 9) { g.beginPath(); for (let k = 0; k <= N; k++) { const a = k / N * Math.PI * 2, rr = r + (k % 2) * 2.5; k ? g.lineTo(Math.cos(a) * rr, Math.sin(a) * rr) : g.moveTo(Math.cos(a) * rr, Math.sin(a) * rr); } g.stroke(); }
+  webTex = new THREE.CanvasTexture(cv); webTex.colorSpace = THREE.SRGBColorSpace;
+  return webTex;
+}
+function addWeb(x, z, yRef) {
+  const y = groundAt(x, z, yRef + 3);
+  if (G.webs.length >= 14) { const o = G.webs.shift(); o.m.parent && o.m.parent.remove(o.m); o.m.material.dispose(); }
+  const m = new THREE.Mesh(webGeo, new THREE.MeshBasicMaterial({ map: webTexture(), color: 0xe8f4ff, transparent: true, opacity: 0, depthWrite: false }));
+  m.rotation.set(-Math.PI / 2, 0, Math.random() * 6); m.position.set(x, y + 0.1, z); m.scale.setScalar(WEAVE.webR); m.renderOrder = 3; G.scene.add(m);
+  G.webs.push({ x, z, y, R: WEAVE.webR, t: WEAVE.webT, T: WEAVE.webT, hp: WEAVE.webHp, m });
+  G.websMade = (G.websMade || 0) + 1;
+}
+export function webAt(x, z, y) { for (const w of G.webs) if (Math.hypot(x - w.x, z - w.z) < w.R && y - w.y < 1.6) return w; return null; }
+function webSplat(s, at, ent) {
+  if (ent) dealDamage(ent, s.dmg, s.team, at);
+  G.fx.sparks(at, null, 10, 0xeef6ff, 8, 0.8, 0.4, 0.2);
+  if (s.team === 'P') { const h = ent && (ent.kind === 'cpart' ? ent.owner : ent); if (h && h.alive && !h.isBarrel && !h.isMine) h.stunT = Math.max(h.stunT || 0, 1.2); return; }   // a hacked weaver's web just binds its target
+  if (ent && ent.isPlayer) { G.webT = Math.max(G.webT, WEAVE.stick); G.webHits = (G.webHits || 0) + 1; G.onWebbed && G.onWebbed(); }
+  if (ent && ent.isCiv) { const c = G.friends.find((f) => f._ent === ent); if (c) c.webT = 4; }
+  addWeb(at.x, at.z, at.y);
+}
+function updateWebs(dt) {
+  const P = G.player;
+  for (let i = G.webs.length - 1; i >= 0; i--) {
+    const w = G.webs[i]; w.t -= dt;
+    for (const f of G.fires) if (Math.hypot(f.x - w.x, f.z - w.z) < w.R + f.R) { w.hp -= 80 * dt; break; }   // fire burns silk
+    if (w.t <= 0 || w.hp <= 0) {
+      if (w.hp <= 0) { G.fx.sparks(new V3(w.x, w.y + 0.5, w.z), null, 14, 0xffd0a0, 10, 1, 0.4, 0.2); G.websBurnt = (G.websBurnt || 0) + 1; }
+      w.m.parent && w.m.parent.remove(w.m); w.m.material.dispose(); G.webs.splice(i, 1); continue;
+    }
+    w.m.material.opacity = 0.62 * Math.min(1, (w.T - w.t) / 0.25, w.t / 1.5) * (0.55 + 0.45 * Math.max(0, w.hp) / WEAVE.webHp);
+  }
+  if (!P) return;
+  if (P.alive && P.grounded && webAt(P.pos.x, P.pos.z, P.pos.y)) G.webT = Math.max(G.webT, 0.35);
+  if (G.webT > 0 && P.qbT > 0.05) { G.webT = 0; G.webBroke = (G.webBroke || 0) + 1; G.fx.sparks(P.center(_a).clone(), null, 18, 0xeef6ff, 12, 1, 0.4, 0.22); }   // a quick boost tears you free
+  if (G.webT > 0 && P.alive) {
+    G.webT -= dt; G.webbedT = (G.webbedT || 0) + dt;
+    P.webMul = WEAVE.slow; P.webG = P.grounded ? 1 : WEAVE.grav;
+    if (!webMesh) { webMesh = new THREE.Mesh(netGeo, new THREE.MeshBasicMaterial({ color: 0xeef6ff, wireframe: true, transparent: true, opacity: 0.6, fog: false })); G.scene.add(webMesh); }
+    if (!webMesh.parent) G.scene.add(webMesh);
+    P.center(webMesh.position); webMesh.scale.setScalar(2.6 * P.scale); webMesh.rotation.y += dt * 0.6; webMesh.material.opacity = 0.6 * Math.min(1, G.webT * 2);
+  } else {
+    P.webMul = 1; P.webG = 1; G.webT = 0;
+    if (webMesh && webMesh.parent) webMesh.parent.remove(webMesh);
+  }
+}
+export function clearWebs() { for (const w of G.webs) { w.m.parent && w.m.parent.remove(w.m); w.m.material.dispose(); } G.webs.length = 0; G.webT = 0; if (webMesh && webMesh.parent) webMesh.parent.remove(webMesh); if (G.player) { G.player.webMul = 1; G.player.webG = 1; } }
+
+export class Weaver extends Enemy {
+  constructor(pos) {
+    super('weaver', 'E_Weaver', pos, WEAVE.hp, WEAVE.r); this.boom = 1.3;
+    this.pos.y = groundAt(pos.x, pos.z, 40); this.yaw = Math.random() * 6; this.vel = new V3(); this.gait = Math.random() * 6;
+    this.sideT = 0; this.strafe = Math.random() < 0.5 ? 1 : -1; this.stT = 3; this.burst = 0; this.burstT = 0; this.gunT = 1.2 + Math.random(); this.webCd = 1.5 + Math.random() * 1.5;
+    this.legs = []; for (let k = 0; k < 8; k++) this.legs.push(this.n['WV_L' + k]);
+    this.c.set(this.pos.x, this.pos.y + 2.0, this.pos.z);
+  }
+  update(dt) {
+    const t = this.tg(), tc = t.center ? t.center(playerC) : playerC.copy(t.pos);
+    const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, dl = Math.hypot(dx, dz) || 1;
+    this.blindT = this.los ? 0 : (this.blindT || 0) + dt;
+    this.stT -= dt; if (this.stT <= 0) { this.stT = 2.5 + Math.random() * 2.5; this.strafe *= -1; }
+    let toward = dl > WEAVE.keep[1] || this.blindT > 3 ? 1 : dl < WEAVE.keep[0] ? -0.8 : 0, fx_ = dx / dl, fz = dz / dl;
+    const gl = goalDir(this, this.pos); if (gl) { fx_ = gl.x; fz = gl.z; toward = 1; }
+    if (this.sideT > 0) { this.sideT -= dt; toward *= 0.2; }
+    const sw = this.sideT > 0 ? 1.3 : gl ? 0.2 : 0.55;
+    const tx = (fx_ * toward - fz * this.strafe * sw) * WEAVE.speed, tz = (fz * toward + fx_ * this.strafe * sw) * WEAVE.speed;
+    this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-2.5 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-2.5 * dt));
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    this.pos.x = Math.max(-ARENA + 5, Math.min(ARENA - 5, this.pos.x)); this.pos.z = Math.max(-ARENA + 5, Math.min(ARENA - 5, this.pos.z));
+    if (collideCyl(this.pos, 2.4, 3) && !(this.sideT > 0)) { this.sideT = 1.2; this.strafe *= -1; }
+    this.pos.y += (groundAt(this.pos.x, this.pos.z, this.pos.y + 2) - this.pos.y) * Math.min(1, dt * 8);
+    const sp = Math.hypot(this.vel.x, this.vel.z), amp = Math.min(1, sp / 3);
+    this.yaw += angDiff(Math.atan2(-dx, -dz), this.yaw) * Math.min(1, dt * 3);   // the body keeps facing its target, the legs scuttle sideways
+    this.obj.rotation.set(0, this.yaw, 0);
+    this.gait += dt * (2 + sp * 1.6);
+    for (let k = 0; k < 8; k++) {
+      const L = this.legs[k]; if (!L) continue;
+      const side = k < 4 ? -1 : 1, ph = this.gait + ((k + (k < 4 ? 0 : 1)) % 2) * Math.PI;
+      L.rotation.y = Math.sin(ph) * 0.3 * amp; L.rotation.z = side * Math.max(0, Math.cos(ph)) * 0.32 * amp;
+    }
+    this.c.set(this.pos.x, this.pos.y + 2.0 + Math.sin(this.gait * 2) * 0.05 * amp, this.pos.z);
+    const los = this.checkLos(dt);
+    this.gunT -= dt;
+    if (this.gunT <= 0 && los && dl < 70) { this.gunT = WEAVE.gunCd[0] + Math.random() * (WEAVE.gunCd[1] - WEAVE.gunCd[0]); this.burst = WEAVE.burst; this.burstT = 0; }
+    if (this.burst > 0) {
+      this.burstT -= dt;
+      if (this.burstT <= 0) {
+        this.burst--; this.burstT = WEAVE.gap;
+        const mp = this.n.Muzzle_WvGun ? this.n.Muzzle_WvGun.getWorldPosition(_a).clone() : this.c.clone();
+        const aim = lead(mp, 120, _b, t); _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.y += (Math.random() - 0.5) * 0.03; _d.z += (Math.random() - 0.5) * 0.05;
+        spawnShot({ p: mp, v: _d.normalize().multiplyScalar(120), dmg: WEAVE.dmg, team: 'E', kind: 'ebullet', color: 0xd8b0ff, w: 0.22, len: 4, label: 'weaver-needle' });
+        G.fx.muzzle(mp, _d, 0xc8a0ff, 0.9); sfx('eshot', dl);
+      }
+    }
+    this.webCd -= dt;   // web glob: a lobbed silk bundle aimed where the target is going; it leaves a sticky patch
+    if (this.webCd <= 0 && dl < 60 && los) {
+      this.webCd = WEAVE.webCd[0] + Math.random() * (WEAVE.webCd[1] - WEAVE.webCd[0]);
+      const mp = this.n.Muzzle_Web ? this.n.Muzzle_Web.getWorldPosition(new V3()) : new V3(this.pos.x, this.pos.y + 3, this.pos.z);
+      mp.y += 0.6;
+      const D = Math.hypot(tc.x - mp.x, tc.z - mp.z), Tf = 0.7 + D / 60, g = 20;
+      const aim = new V3().copy(tc).addScaledVector(t.vel || ZV, Tf * 0.85);
+      const v = new V3((aim.x - mp.x) / Tf, (aim.y - mp.y + 0.5 * g * Tf * Tf) / Tf, (aim.z - mp.z) / Tf);
+      spawnShot({ p: mp, v, dmg: WEAVE.webDmg, team: 'E', kind: 'shell', splash: 0, life: Tf + 1.5, grav: g, label: 'weaver-web', color: 0xeef6ff, size: 1.6, web: true });
+      G.fx.muzzle(mp, _d.copy(v).normalize(), 0xeef6ff, 1.4); sfx('eshell', dl); G.webShots = (G.webShots || 0) + 1;
+    }
+  }
+}
+
+// ---- HK-1 hack module
+function fireHack(owner, slot, d, dmgMul, aim, target) {
+  const mp = owner.muzzlePos(slot, new V3(), 0), v = new V3().subVectors(aim, mp).normalize().multiplyScalar(d.speed);
+  const m = new THREE.Mesh(dartGeo, new THREE.MeshBasicMaterial({ color: 0x70ffb8, fog: false })); m.position.copy(mp); G.scene.add(m);
+  let tgt = target && target.alive ? target : null;
+  if (!tgt) { let bd = 0.95; for (const e of entsFor('P')) { if (!e.alive || e.isBarrel || e.isMine || !e.c) continue; _c.subVectors(e.c, mp); const dl = _c.length(); if (dl > 130) continue; const k = _c.dot(v) / (dl * d.speed); if (k > bd) { bd = k; tgt = e; } } }
+  G.hacks.push({ p: mp.clone(), v, t: 1.7, d, mul: dmgMul, tgt, m });
+  G.fx.muzzle(mp, _d.copy(v).normalize(), 0x70ffb8, 1.3); sfx('cannon', 0);
+}
+export function hackable(h) { return !!h && HACK.kinds.includes(h.kind) && h.maxHp <= HACK.maxHp * G.diff.hp && !h.hacked && !h.cloaked && !h.veil && h.alive && !h.dying; }
+function hackHit(e, n) {
+  const h = e.kind === 'cpart' ? e.owner : e, d = n.d;
+  if (!h || !h.alive || h.dying) return;
+  if (hackable(h)) {
+    h.stunT = Math.max(h.stunT || 0, d.up); G.hackTries = (G.hackTries || 0) + 1;
+    if (G.player) G.fx.streak(G.player.center(_a).clone(), h.c.clone(), 0.3, 0x70ffb8, d.up);
+    G.fx.ring(h.c.clone(), null, 0.5, (h.r || 2) * 1.8, d.up, 0x70ffb8);
+    G.queue.push({ label: 'hack', t: d.up, fn: () => { if (h.alive && !h.dying && !h.hacked) hackOn(h, d.dur); } });
+  } else {
+    dealDamage(e, d.fail * n.mul, 'P', n.p, 'hack');
+    if (h.alive) h.stunT = Math.max(h.stunT || 0, h.kind === 'boss' || h.kind === 'raider' || h.maxHp > 3000 ? 0.6 : d.stun);
+    G.fx.sparks(n.p.clone(), null, 14, 0x70ffb8, 10, 1, 0.3, 0.2); G.hackFail = (G.hackFail || 0) + 1;
+  }
+}
+function hackOn(h, dur) {
+  h.hacked = true; h.hackT = dur; h.hfoeT = 0; h.goalP0 = h.goalP; h.goalP = null;
+  const f = { isHackAlly: true, h, pos: h.pos, get vel() { return h.vel || ZV; }, get alive() { return h.alive && !h.dying && h.hacked; }, center: (o) => o.copy(h.c), foeW: 1.0, foeWAir: 1.0, foeWBoss: 1.1, hit: (dmg) => h.hit(dmg) };
+  f._ent = { isAlly: true, isHack: true, c: new V3(), r: h.r || 2, get alive() { return f.alive; }, hit: (dmg, src, label) => h.hit(dmg, src) };
+  h.hackF = f; G.friends.push(f);
+  h.obj.traverse((o) => { if (o.isMesh && !o.userData.hm) { o.userData.hm = o.material; const m = o.material.clone(); if (m.emissive) { m.emissive.setHex(0x30ff90); m.emissiveIntensity = 0.45; } else if (m.color) m.color.lerp(_hc.setHex(0x70ffb8), 0.4); o.material = m; } });
+  h.hackRing = new THREE.Mesh(hackRingGeo, new THREE.MeshBasicMaterial({ color: 0x70ffb8, transparent: true, opacity: 0.85, fog: false })); h.hackRing.rotation.x = -Math.PI / 2; G.scene.add(h.hackRing);
+  for (const e of G.enemies) if (e !== h && e.alive && e.c && e.c.distanceTo(h.c) < 70) e.tgT = 0;
+  G.hacked = (G.hacked || 0) + 1; G.onHacked && G.onHacked(h);
+  G.fx.ring(h.c.clone(), null, 1, (h.r || 2) * 3, 0.4, 0x70ffb8); sfx('shield', G.player ? G.player.pos.distanceTo(h.pos) * 0.5 : 0);
+}
+function hackOff(h) {
+  h.hacked = false; h.tgT = 0; h.goalP = h.goalP0 || null;
+  const i = G.friends.indexOf(h.hackF); if (i >= 0) G.friends.splice(i, 1);
+  for (const e of G.enemies) if (e.foe === h.hackF) e.tgT = 0;
+  h.hackF = null;
+  h.obj.traverse((o) => { if (o.isMesh && o.userData.hm) { o.material.dispose(); o.material = o.userData.hm; o.userData.hm = null; } });
+  if (h.hackRing) { h.hackRing.parent && h.hackRing.parent.remove(h.hackRing); h.hackRing.material.dispose(); h.hackRing = null; }
+  if (h.alive && h.c) G.fx.sparks(h.c.clone(), null, 10, 0x70ffb8, 8, 0.8, 0.3, 0.2);
+}
+function hackTarget(self) {   // a hacked enemy goes for the nearest enemy it can see; with none around it trails the player
+  if (self.hfoe && self.hfoe.alive && G.time < self.hfoeT) return self.hfoe;
+  self.hfoeT = G.time + 0.6;
+  let best = null, bd = 95;
+  for (const e of G.enemies) {
+    if (e === self || !e.alive || e.dying || e.hacked || !e.c || e.cloaked) continue;
+    const d = e.c.distanceTo(self.c); if (d < bd) { bd = d; best = e; }
+  }
+  if (best) { const e = best; self.hfoe = e._px || (e._px = { isEnemyProxy: true, pos: e.pos || e.c, get vel() { return e.vel || ZV; }, get alive() { return e.alive && !e.dying && !e.hacked; }, center: (o) => o.copy(e.c) }); return self.hfoe; }
+  const P = G.player;
+  self.hfoe = self._idle || (self._idle = { pos: new V3(), vel: ZV, alive: true, center: (o) => o.copy(self._idle.pos) });
+  if (P) self._idle.pos.set(P.pos.x, P.pos.y + 140, P.pos.z);
+  return self.hfoe;
+}
+function updateHacks(dt) {
+  for (let i = G.hacks.length - 1; i >= 0; i--) {
+    const n = G.hacks[i]; n.t -= dt;
+    if (n.tgt && n.tgt.alive && n.tgt.c) { const sp = n.v.length(); _a.subVectors(n.tgt.c, n.p).normalize(); _b.copy(n.v).divideScalar(sp); if (_a.dot(_b) > 0) { _b.lerp(_a, Math.min(1, 4 * dt)).normalize(); n.v.copy(_b).multiplyScalar(sp); } }
+    const L = n.v.length() * dt; _d.copy(n.v).normalize();
+    const w = raySolids(n.p, _d, L);
+    let hit = null;
+    for (const e of entsFor('P')) { if (!e.alive || e.isBarrel || e.isMine || !e.c) continue; if (e.c.distanceTo(n.p) < (e.r || 1.5) + 1.0) { hit = e; break; } }
+    if (hit) { hackHit(hit, n); n.t = 0; }
+    else if (w.solid || n.t <= 0) { G.fx.sparks(n.p, null, 6, 0x70ffb8, 8, 0.8, 0.3, 0.2); n.t = 0; }
+    else n.p.addScaledVector(n.v, dt);
+    n.m.position.copy(n.p); n.m.rotation.x += dt * 9; n.m.rotation.y += dt * 7;
+    if (Math.random() < 0.6) G.fx.emit('add', { x: n.p.x, y: n.p.y, z: n.p.z, life: 0.25, s0: 0.5, s1: 0.1, c0: 0x70ffb8, c1: 0x104830 });
+    if (n.t <= 0) { n.m.parent && n.m.parent.remove(n.m); n.m.material.dispose(); G.hacks.splice(i, 1); }
+  }
+  for (const h of G.enemies) {
+    if (!h.hacked) continue;
+    h.hackT -= dt;
+    if (h.hackT <= 0 || !h.alive || h.dying) { hackOff(h); continue; }
+    if (h.hackRing) { h.hackRing.position.set(h.c.x, h.c.y + (h.r || 2) + 1.2, h.c.z); h.hackRing.scale.setScalar((h.r || 2) * 0.8); h.hackRing.rotation.z += dt * 2; h.hackRing.material.opacity = h.hackT < 2 ? 0.4 + 0.45 * (Math.sin(h.hackT * 18) > 0 ? 1 : 0) : 0.85; }
+    if (Math.random() < 0.1) G.fx.sparks(_a.copy(h.c).add(_b.set((Math.random() - 0.5) * 3, Math.random() * 2, (Math.random() - 0.5) * 3)), null, 1, 0x70ffb8, 5, 0.8, 0.3, 0.2);
+  }
+}
+export function clearHacks() {
+  for (const n of G.hacks) { n.m.parent && n.m.parent.remove(n.m); } G.hacks.length = 0;
+  for (const h of G.enemies) if (h.hacked) hackOff(h);
+}
+
+// ---- civilians and the rescue shuttle
+export const EVAC = { pad: [0, 8], routes: [
+    [[-112, 76], [-70, 52], [-28, 24], [0, 8]],
+    [[114, 66], [70, 46], [26, 22], [0, 8]],
+    [[10, -120], [6, -70], [2, -26], [0, 8]],
+  ], total: 60, goal: 40, maxLost: 15, hp: 40, civK: 0.7, spd: 3.3, run: 4.8, group: 4, gap: 6.5, first: 4, shuttle: [40, 14], land: 4, load: 9, cap: 12, foeW: 1.25, waitR: [10.5, 13.5] };
+export const EVAC_ROAD = (() => { const R = EVAC.routes, r = [...R[0], ...R[1].slice(0, 3).reverse(), ...R[2]]; r.skip = [6]; return r; })();
+class Civ {
+  constructor(route, j) {
+    this.isCiv = true; this.route = route; this.i = 1; this.alive = true; this.maxHp = EVAC.hp; this.hp = this.maxHp;
+    this.foeW = EVAC.foeW; this.foeWAir = EVAC.foeW; this.foeWBoss = 4;
+    const [x0, z0] = route[0], [x1, z1] = route[1], dl = Math.hypot(x1 - x0, z1 - z0), ux = (x1 - x0) / dl, uz = (z1 - z0) / dl;
+    this.off = (j - 1.5) * 0.8 + (Math.random() - 0.5) * 0.6;
+    this.pos = new V3(x0 + ux * (9 + j * 1.3) - uz * this.off, 0, z0 + uz * (9 + j * 1.3) + ux * this.off); this.pos.y = groundAt(this.pos.x, this.pos.z, 20);
+    this.vel = new V3(); this.spd = EVAC.spd * (0.9 + Math.random() * 0.2); this.ph = Math.random() * 6; this.st = 'walk'; this.webT = 0; this.scareT = 0; this.scared = false; this.yaw = Math.atan2(-ux, -uz);
+    this.obj = cloneKit('P_Civ'); this.obj.scale.setScalar(1.3); this.n = nodes(this.obj); this.obj.position.copy(this.pos); G.scene.add(this.obj);
+    const me = this; this._ent = { isAlly: true, isCiv: true, c: new V3(), r: 1.1, get alive() { return me.alive; }, hit: (d) => me.damage(d) };
+    G.friends.push(this);
+  }
+  center(o) { return o.set(this.pos.x, this.pos.y + 1.2, this.pos.z); }
+  hit(d) { this.damage(d); }
+  damage(d) {
+    if (!this.alive || (G.curShooter && G.curShooter.hacked)) return;
+    const lb = G.curLabel || '?';
+    d *= EVAC.civK * (lb.startsWith('boss-') ? 0.4 : lb === 'weaver-needle' ? 0.5 : 1); this.hp -= d * G.diff.dmg; G.civDmg = (G.civDmg || 0) + d * G.diff.dmg;   // a boss's splash is aimed at you, civilians only catch the edge
+    G.civLog = G.civLog || {}; G.civLog[lb] = (G.civLog[lb] || 0) + d * G.diff.dmg;
+    if (this.hp <= 0) this.die();
+  }
+  leave() {
+    this.alive = false; this.obj.parent && this.obj.parent.remove(this.obj);
+    const i = G.friends.indexOf(this); if (i >= 0) G.friends.splice(i, 1);
+    for (const e of G.enemies) if (e.foe === this) e.tgT = 0;
+  }
+  die() { this.leave(); if (G.evac) G.evac.lost++; G.fx.sparks(this.center(_a).clone(), null, 8, 0xff6040, 6, 0.8, 0.3, 0.2); G.fx.smoke(this.pos, 2, 1.5, 1.2, 0x4a4440, 1, 0.6); G.onCivLost && G.onCivLost(this); }
+  board() { this.leave(); if (G.evac) G.evac.saved++; G.onCivSaved && G.onCivSaved(this); }
+  update(dt) {
+    const E = G.evac, sh = E.sh;
+    let tx = this.pos.x, tz = this.pos.z, spd = this.spd;
+    this.scareT -= dt;
+    if (this.scareT <= 0) { this.scareT = 0.5; this.scared = false; for (const e of G.enemies) if (e.alive && !e.dying && !e.hacked && e.c && Math.hypot(e.c.x - this.pos.x, e.c.z - this.pos.z) < 24) { this.scared = true; break; } }
+    if (this.scared) spd = EVAC.run;
+    if (this.st === 'walk') {
+      const w = this.route[this.i];
+      if (this.i >= this.route.length - 1) {
+        if (!this.wait) { const a = Math.atan2(this.pos.z - w[1], this.pos.x - w[0]) + (Math.random() - 0.5) * 1.0, r = EVAC.waitR[0] + Math.random() * (EVAC.waitR[1] - EVAC.waitR[0]); this.wait = [w[0] + Math.cos(a) * r, w[1] + Math.sin(a) * r]; }
+        tx = this.wait[0]; tz = this.wait[1]; if (Math.hypot(tx - this.pos.x, tz - this.pos.z) < 1.2) this.st = 'wait';
+      } else {
+        const p0 = this.route[this.i - 1], dl = Math.hypot(w[0] - p0[0], w[1] - p0[1]) || 1, nx = -(w[1] - p0[1]) / dl, nz = (w[0] - p0[0]) / dl;
+        tx = w[0] + nx * this.off * 1.6; tz = w[1] + nz * this.off * 1.6;
+        if (Math.hypot(tx - this.pos.x, tz - this.pos.z) < 3) this.i++;
+      }
+    } else if (this.st === 'wait') { spd = 0; if (sh.st === 'load' && sh.room > 0) { this.st = 'board'; sh.room--; } }
+    if (this.st === 'board') {
+      if (sh.st !== 'load') this.st = 'wait';
+      else { tx = EVAC.pad[0]; tz = EVAC.pad[1] + 5; spd = EVAC.run; if (Math.hypot(tx - this.pos.x, tz - this.pos.z) < 2.2) { this.board(); return; } }
+    }
+    if (this.webT > 0 || webAt(this.pos.x, this.pos.z, this.pos.y)) { this.webT = Math.max(0, this.webT - dt); spd *= WEAVE.civSlow; this.webbed = true; } else this.webbed = false;
+    let dx = tx - this.pos.x, dz = tz - this.pos.z; const dl = Math.hypot(dx, dz);
+    if (dl > 0.3 && spd > 0) { dx /= dl; dz /= dl; this.vel.x += (dx * spd - this.vel.x) * Math.min(1, dt * 6); this.vel.z += (dz * spd - this.vel.z) * Math.min(1, dt * 6); }
+    else this.vel.multiplyScalar(Math.exp(-8 * dt));
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    collideCyl(this.pos, 0.5, 1.6);
+    this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 1.5);
+    const sp = Math.hypot(this.vel.x, this.vel.z), k = Math.min(1, sp / 2.5);
+    if (sp > 0.4) this.yaw += angDiff(Math.atan2(-this.vel.x, -this.vel.z), this.yaw) * Math.min(1, dt * 8);
+    else if (this.st === 'wait') this.yaw += angDiff(Math.atan2(-(EVAC.pad[0] - this.pos.x), -(EVAC.pad[1] - this.pos.z)), this.yaw) * Math.min(1, dt * 3);
+    this.ph += dt * (2 + sp * 2.4);
+    const n = this.n, sw = Math.sin(this.ph) * 0.7 * k;
+    if (n.CV_LegL) { n.CV_LegL.rotation.x = sw; n.CV_LegR.rotation.x = -sw; }
+    if (n.CV_ArmL) { const up = this.scared && sp > 0.5 ? -2.6 : 0; n.CV_ArmL.rotation.x = this.scared ? up + sw * 0.3 : -sw * 0.8; n.CV_ArmR.rotation.x = this.scared ? up - sw * 0.3 : sw * 0.8; }
+    if (this.st === 'wait' && sh.st === 'down') { if (n.CV_ArmR) n.CV_ArmR.rotation.x = -2.8 + Math.sin(this.ph * 3) * 0.3; }   // waving at the shuttle
+    this.obj.position.copy(this.pos); this.obj.rotation.set(0, this.yaw, 0);
+  }
+}
+export function startEvac() {
+  clearEvac();
+  const E = G.evac = { civs: [], saved: 0, lost: 0, spawned: 0, k: 0, spawnT: EVAC.first, objs: [], trips: 0 };
+  for (const r of EVAC.routes) { const x = r[0][0], z = r[0][1], y = groundAt(x, z, 20), o = cloneKit('P_Shelter'); o.position.set(x, y, z); G.scene.add(o); E.objs.push(o); addSolid(x, z, 7.2, 7.2, 4.5, y, 'shelter'); }
+  const px = EVAC.pad[0], pz = EVAC.pad[1], pad = cloneKit('P_EvacPad'); pad.position.set(px, groundAt(px, pz, 20), pz); G.scene.add(pad); E.objs.push(pad); E.pad = pad; E.padN = nodes(pad);
+  const so = cloneKit('A_Shuttle'); so.visible = false; so.position.set(px, 200, pz); G.scene.add(so); E.objs.push(so);
+  E.sh = { obj: so, n: nodes(so), st: 'away', t: EVAC.shuttle[0], y: 200, ph: 0, room: 0, ramp: 0 };
+}
+export function clearEvac() {
+  const E = G.evac; if (!E) return;
+  for (const c of E.civs) if (c.alive) c.leave();
+  for (const o of E.objs) o.parent && o.parent.remove(o);
+  G.evac = null;
+}
+function updateShuttle(dt) {
+  const E = G.evac, S = E.sh, o = S.obj, n = S.n, px = EVAC.pad[0], pz = EVAC.pad[1], gy = E.pad.position.y, H = 70;
+  S.ph += dt; S.t -= dt;
+  if (S.st === 'away') { o.visible = false; if (S.t <= 0) { S.st = 'down'; S.t = EVAC.land; o.visible = true; G.onShuttle && G.onShuttle('down'); } }
+  else if (S.st === 'down') { const k = Math.max(0, S.t / EVAC.land); S.y = gy + 0.2 + H * k * k; if (S.t <= 0) { S.st = 'load'; S.t = EVAC.load; S.room = EVAC.cap; G.fx.ring(new V3(px, gy + 0.4, pz), null, 2, 16, 0.6, 0xc8c0b0); G.onShuttle && G.onShuttle('load'); } }
+  else if (S.st === 'load') {
+    S.y = gy + 0.2;
+    const boarding = E.civs.some((c) => c.alive && c.st === 'board'), waiting = E.civs.some((c) => c.alive && c.st === 'wait');
+    if (S.t <= 0 && !boarding || (S.room <= 0 && !boarding) || (S.t < EVAC.load - 3 && !boarding && !waiting)) { S.st = 'up'; S.t = EVAC.land; E.trips++; G.onShuttle && G.onShuttle('up'); }
+  } else if (S.st === 'up') { const k = 1 - Math.max(0, S.t / EVAC.land); S.y = gy + 0.2 + H * k * k; if (S.t <= 0) { S.st = 'away'; S.t = EVAC.shuttle[1]; } }
+  o.position.set(px, S.y + (S.st === 'load' ? 0 : Math.sin(S.ph * 1.3) * 0.25), pz);
+  for (let k = 0; k < 4; k++) if (n['SHU_Fan' + k]) n['SHU_Fan' + k].rotation.y += dt * (S.st === 'load' ? 14 : 34);
+  S.ramp += ((S.st === 'load' ? 1 : 0) - S.ramp) * Math.min(1, dt * 3); if (n.SHU_Ramp) n.SHU_Ramp.rotation.x = -1.15 * S.ramp;
+  if (o.visible && S.y - gy < 14 && Math.random() < 0.5) { const a = Math.random() * 6.3, r = 6 + Math.random() * 8; G.fx.smoke(_a.set(px + Math.cos(a) * r, gy + 0.3, pz + Math.sin(a) * r), 1, 2.2, 1.6, 0xb8b0a0, 1, 0.5); }
+  if (E.padN.EP_Lights) E.padN.EP_Lights.visible = S.st === 'away' ? true : (S.ph * 2.5) % 1 < 0.55;
+}
+function updateEvac(dt) {
+  const E = G.evac; if (!E) return;
+  E.spawnT -= dt;
+  if (E.spawnT <= 0 && E.spawned < EVAC.total) {
+    E.spawnT = EVAC.gap; const ri = E.k++ % 3, r = EVAC.routes[ri], nn = Math.min(EVAC.group, EVAC.total - E.spawned);
+    for (let j = 0; j < nn; j++) E.civs.push(new Civ(r, j));
+    E.spawned += nn; G.onCivGroup && G.onCivGroup(ri);
+  }
+  for (const c of E.civs) if (c.alive) c.update(dt);
+  if (E.civs.length > 30) E.civs = E.civs.filter((c) => c.alive);
+  updateShuttle(dt);
+}
+export function evacWalking() { const E = G.evac; return E ? E.civs.filter((c) => c.alive && c.st === 'walk') : []; }
+
 // ------------------------------------------------------------------ v47 Pursuit: a data courier drives a loop of the city
 // and stops at four upload stations; at 100% upload the mission is lost. Stay within 24 m while it uploads to jam it.
 export const COURIER = { path: [[-120, -60], [-70, -125], [50, -120], [125, -75], [125, 40], [75, 115], [-35, 125], [-125, 75]], stations: [1, 3, 5, 7],
@@ -8030,7 +8366,7 @@ export function clearNets() { for (const n of G.nets) { n.m.parent && n.m.parent
 
 export function updateCombat(dt) {
   RAYF.skipIce = false;
-  for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; q.fn(); } }
+  for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; if (q.sh && q.sh.hacked) G.curShooter = q.sh; q.fn(); G.curShooter = null; } }
   const hers = G.enemies.filter((e) => e.kind === 'herald' && e.alive && !e.dying && !(e.stunT > 0));
   for (const e of G.enemies) {
     G.curLabel = e.kind; if (e.pingT > 0) e.pingT -= dt;
@@ -8062,7 +8398,7 @@ export function updateCombat(dt) {
   G.curLabel = null;
   LAVA.uT.value = G.time;
   if (G.blinkInv > 0) G.blinkInv -= dt;
-  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt); updateBurn(dt); updateBeacon(dt); updateLance(dt); updateGrav(dt); updatePursuit(dt); updateFires(dt); updateNets(dt); updateSky(dt); updateCiws(dt);
+  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt); updateBurn(dt); updateBeacon(dt); updateLance(dt); updateGrav(dt); updatePursuit(dt); updateFires(dt); updateNets(dt); updateSky(dt); updateCiws(dt); updateWebs(dt); updateHacks(dt); updateEvac(dt);
   updateMarks(dt);
   updateBurning(dt);
   updateChill(dt);
