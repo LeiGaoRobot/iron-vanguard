@@ -18,6 +18,7 @@ export const G = {
 };
 
 export const WEAPONS = {
+  needler: { slot: 'arm', name: 'NX-8 针刺枪', en: 'NX-8 Needler', desc: '追踪锁定目标的钢针 · 扎在敌机上 · 同一目标扎满 8 根一起引爆（100 / 4.5 m）· 3 秒没补针就脱落', type: 'bullet', needle: true, rate: 0.085, dmg: 5, speed: 150, spread: 0.02, mag: 48, reload: 2.2, color: 0xff70e0, w: 0.16, len: 3, life: 1.6, sfx: 'rifle', recoil: 0.08 },
   ricochet: { slot: 'arm', name: 'RB-4 跳弹枪', en: 'RB-4 Ricochet', desc: '撞墙反弹 3 次 · 反弹后转向附近敌机 · 每弹一次 +25%', type: 'bullet', rate: 0.11, dmg: 14, speed: 240, spread: 0.008, mag: 36, reload: 2.0, color: 0x80ffd0, w: 0.22, len: 6, life: 1.8, bounce: 3, sfx: 'rifle', recoil: 0.15 },
   rifle: { slot: 'arm', name: 'AR-77 突击步枪', en: 'AR-77 Rifle', desc: '全自动 · 精准 · 均衡', type: 'bullet', rate: 0.1, dmg: 17, speed: 320, spread: 0.005, mag: 40, reload: 1.7, color: 0xffd27a, w: 0.22, len: 7, sfx: 'rifle', recoil: 0.18 },
   gatling: { slot: 'arm', name: 'GX-6 加特林', en: 'GX-6 Gatling', desc: '需预转 · 高射速 · 散布大', type: 'bullet', rate: 0.042, spinUp: 0.45, dmg: 8.5, speed: 290, spread: 0.022, mag: 200, reload: 3.0, color: 0xffb860, w: 0.18, len: 6, sfx: 'gatling', recoil: 0.08 },
@@ -54,7 +55,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -192,6 +193,7 @@ function impact(s, at, ent) {
   }
   else {
     if (ent) dealDamage(ent, s.dmg, s.team, at);
+    if (s.needle && ent && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly) embedNeedle(ent, at);
     if (s.chill && ent && ent.alive && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly) { chillAdd(ent.kind === 'cpart' ? ent.owner : ent, s.chill); fx.sparks(at, null, 3, 0xd8f6ff, 6, 0.8, 0.3, 0.2); }
     fx.sparks(at, _a.copy(s.v).normalize().multiplyScalar(-1), ent ? 6 : 4, s.team === 'P' ? 0xffd27a : 0xff7a50, 14, 0.8, 0.25, 0.22);
     fx.emit('add', { x: at.x, y: at.y, z: at.z, life: 0.08, s0: ent ? 1.4 : 0.9, c0: s.color });
@@ -214,6 +216,10 @@ function updateShots(DT) {
       if (Math.random() < 0.5) fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.25, s0: 0.9, s1: 0.2, c0: 0xc8f2ff });
     }
     if (s.team === 'P' && s.kind === 'bullet' && G.defl && G.defl.length) deflectShot(s, dt);
+    if (s.needle && s.target && s.target.alive && !s.target.dying && s.target.c && s.age > 0.04) {   // needles curve toward the locked target
+      const sp = s.v.length(); _a.subVectors(s.target.c, _c.set(s.x, s.y, s.z)).normalize(); _b.copy(s.v).divideScalar(sp || 1);
+      if (_a.dot(_b) > 0.3) { _b.lerp(_a, Math.min(1, 3.2 * dt)).normalize(); s.v.copy(_b).multiplyScalar(sp); }
+    }
     if (WIND.on && s.kind !== 'flame') { const wk = s.kind === 'bullet' || s.kind === 'ebullet' ? 0.25 : 0.9; s.v.x += WIND.x * wk * dt; s.v.z += WIND.z * wk * dt; }
     if (s.kind === 'missile') {
       const tgt = s.target && s.target.alive && !s.target.dying ? s.target.c : s.aim;
@@ -359,6 +365,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
           const sh = spawnShot({ p: mp, v: _d.clone().multiplyScalar(d.speed * (n > 1 ? 0.9 + Math.random() * 0.2 : 1)), dmg: d.dmg * dmgMul, team, kind: isP ? 'bullet' : 'ebullet', color: isP ? d.color : 0xff6a40, w: d.w, len: d.len, life: d.life || 1.6, chill: isP && team === 'P' ? d.chill : 0 });
           if (d.flak && team === 'P') { sh.flak = d.flak; sh.splash = d.splash; }
           if (d.bounce && team === 'P') sh.bounce = d.bounce;
+          if (d.needle && team === 'P') { sh.needle = true; sh.target = target && target.alive ? target : null; }
         }
         if (n > 1 && me) fx.trauma = Math.min(1, fx.trauma + 0.12);
         fx.muzzle(mp, _d, d.chill ? 0x9fe8ff : isP ? 0xffd27a : 0xff8a50, n > 1 ? 1.9 : d.spinUp ? 0.9 : 1.1);
@@ -1808,7 +1815,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { needler: 'rifle', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -5077,6 +5084,157 @@ function ricochet(s, at, so) {
   if (Math.random() < 0.12) sfx('ricochet', G.player ? G.player.pos.distanceTo(at) : 0);
 }
 
+
+// ---- Leaper: a biped that leaps onto where you are going (red ring), slams down with a shockwave and recovers.
+// In the air it takes x1.5 damage, and a quarter of its HP taken mid-leap knocks it out of the sky (no slam, stunned).
+export const LEAP = { hp: 820, r: 2.4, walk: 9, want: [20, 36], cd: [3.4, 5.0], crouch: 0.65, T: 1.25, apex: 13, R: 7.5, dmg: 46, up: 11, lag: 1.0, airMul: 1.5, knock: 0.25, stun: 2.4, gunCd: [1.9, 2.5], pel: 5, pdmg: 6, spread: 0.09 };
+export class Leaper extends Enemy {
+  constructor(pos) {
+    super('leaper', 'E_Leaper', pos, LEAP.hp, LEAP.r); this.boom = 1.3;
+    this.vel = new V3(); this.yaw = Math.random() * 6.28; this.st = 'stalk'; this.stT = 2 + Math.random() * 2.5; this.gunT = 1.5;
+    this.strafe = Math.random() < 0.5 ? 1 : -1; this.swT = 2; this.A = new V3(); this.B = new V3(); this.ft = 0; this.airDmg = 0; this.downed = false; this.cr = 0;
+    this.c.set(pos.x, pos.y + 3.6, pos.z);
+  }
+  hit(dmg, at, label) {
+    if (!this.alive || this.dying) return;
+    if (this.st === 'air') {
+      dmg *= LEAP.airMul; this.airDmg += dmg;
+      if (!this.downed && this.airDmg >= this.maxHp * LEAP.knock && this.hp - dmg > 0) {
+        this.downed = true; this.st = 'fall'; G.leapDowned = (G.leapDowned || 0) + 1; G.onTally && G.onTally('leapDown');
+        this.vel.set((this.B.x - this.A.x) / LEAP.T * 0.35, 2, (this.B.z - this.A.z) / LEAP.T * 0.35);
+        G.fx.sparks(this.c, null, 20, 0xffc080, 16, 1.2, 0.35, 0.25); sfx('shieldbreak', G.player.pos.distanceTo(this.pos));
+        if (!G.leapDownSaid) { G.leapDownSaid = true; G.onHint && G.onHint('跃击者被打下来了 · 它在空中受伤 ×1.5，摔落后瘫痪 2.4 秒', 3); }
+      }
+    } else if (this.st === 'lag' || this.st === 'down') dmg *= 1.25;
+    super.hit(dmg);
+  }
+  update(dt) {
+    const P = G.player, tg = this.tg(), pc = tg.center(playerC);
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1;
+    this.stT -= dt; let crouch = 0, tuck = 0;
+    if (this.st === 'stalk') {
+      this.swT -= dt; if (this.swT <= 0) { this.swT = 1.5 + Math.random() * 2; this.strafe *= -1; }
+      this.slideT = Math.max(0, (this.slideT || 0) - dt);
+      let toward = dist > LEAP.want[1] ? 1 : dist < LEAP.want[0] ? -0.7 : 0; if (this.slideT > 0) toward *= 0.15;
+      const sw = this.slideT > 0 ? 1.2 : 0.8;
+      const tx = (dx / dist * toward - dz / dist * this.strafe * sw) * LEAP.walk, tz = (dz / dist * toward + dx / dist * this.strafe * sw) * LEAP.walk;
+      this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-3 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-3 * dt));
+      this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+      if (collideCyl(this.pos, 2.2, 4)) blockedSlide(this);
+      this.yaw += angDiff(Math.atan2(-dx, -dz), this.yaw) * Math.min(1, dt * 4);
+      crouch = 0.15 + 0.12 * Math.abs(Math.sin(G.time * 9));
+      if (dist < 60 && this.checkLos(dt)) {
+        this.gunT -= dt;
+        if (this.gunT <= 0) {
+          this.gunT = LEAP.gunCd[0] + Math.random() * (LEAP.gunCd[1] - LEAP.gunCd[0]);
+          const m = this.n.Muzzle_LP, mp = m ? m.getWorldPosition(new V3()) : this.c.clone(); const aim = lead(mp, 160, _b, tg);
+          for (let k = 0; k < LEAP.pel; k++) {
+            _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * LEAP.spread; _d.y += (Math.random() - 0.5) * LEAP.spread * 0.6; _d.z += (Math.random() - 0.5) * LEAP.spread;
+            spawnShot({ p: mp, v: _d.normalize().multiplyScalar(160), dmg: LEAP.pdmg, team: 'E', kind: 'ebullet', color: 0xff8a40, w: 0.24, len: 4, life: 0.6, label: 'leaper-gun' });
+          }
+          G.fx.muzzle(mp, _d, 0xffa050, 1.3); sfx('eshell', dist);
+        }
+      }
+      if (this.stT <= 0 && dist < 75 && this.los) { this.st = 'crouch'; this.stT = LEAP.crouch; }
+    } else if (this.st === 'crouch') {
+      crouch = 1 - Math.max(0, this.stT) / LEAP.crouch; this.vel.multiplyScalar(Math.exp(-8 * dt));
+      this.yaw += angDiff(Math.atan2(-dx, -dz), this.yaw) * Math.min(1, dt * 6);
+      if (this.stT <= 0) {   // jump onto where the target will be when it lands
+        const tv = tg === P ? P.vel : (tg.vel || _c.set(0, 0, 0)), T = LEAP.T;
+        let bx = pc.x + tv.x * T * 0.85, bz = pc.z + tv.z * T * 0.85;
+        bx = Math.max(-ARENA + 6, Math.min(ARENA - 6, bx)); bz = Math.max(-ARENA + 6, Math.min(ARENA - 6, bz));
+        this.B.set(bx, 0, bz); if (pointInSolid(_d.set(bx, 1, bz), 2)) this.B.set(tg.pos.x, 0, tg.pos.z);
+        this.B.y = groundAt(this.B.x, this.B.z, 99);
+        this.A.copy(this.pos); this.st = 'air'; this.ft = 0; this.airDmg = 0; this.downed = false; this.autoD = Math.random() < 0.6;
+        G.fx.warn(this.B.clone(), LEAP.R, T); G.leaps = (G.leaps || 0) + 1; sfx('jetdive', dist * 0.5);
+        for (let k = 0; k < 8; k++) G.fx.dust(_d.set(this.pos.x, this.pos.y + 0.3, this.pos.z), 1, 2.4, 6);
+        if (!G.leapSaid && tg === P) { G.leapSaid = true; G.onHint && G.onHint('跃击者起跳 · 红圈是它的落点，落地冲击波 7 m · 它在空中受伤 ×1.5，打掉四分之一血就会摔下来', 4.5); }
+      }
+    } else if (this.st === 'air') {
+      this.ft += dt; const k = Math.min(1, this.ft / LEAP.T); tuck = 1;
+      this.pos.x = this.A.x + (this.B.x - this.A.x) * k; this.pos.z = this.A.z + (this.B.z - this.A.z) * k;
+      this.pos.y = this.A.y + (this.B.y - this.A.y) * k + 4 * LEAP.apex * k * (1 - k);
+      this.yaw += angDiff(Math.atan2(-(this.B.x - this.A.x), -(this.B.z - this.A.z)), this.yaw) * Math.min(1, dt * 6);
+      if (Math.random() < 0.8) G.fx.emit('add', { x: this.pos.x - this.fwdX() * 1.2, y: this.pos.y + 3.8, z: this.pos.z - this.fwdZ() * 1.2, vy: -6, life: 0.2, s0: 1.4, s1: 0.4, c0: 0xffa040, c1: 0xff4010 });
+      if (k >= 1) {
+        G.curLabel = 'leaper-slam'; explodeAt(this.B.clone().setY(this.B.y + 0.6), LEAP.R, LEAP.dmg, 'E', 1.1, 0xffa060);
+        G.fx.ring(this.B.clone().setY(this.B.y + 0.3), new V3(0, 1, 0), 1, LEAP.R, 0.35, 0xffc080);
+        if (P.alive && Math.hypot(P.pos.x - this.B.x, P.pos.z - this.B.z) < LEAP.R && P.pos.y - this.B.y < 4) { P.vel.y = Math.max(P.vel.y, LEAP.up); P.grounded = false; G.leapHits = (G.leapHits || 0) + 1; }
+        else if (P.alive && Math.hypot(P.pos.x - this.B.x, P.pos.z - this.B.z) < LEAP.R && P.pos.y - this.B.y < 13) { hurtPlayer(LEAP.dmg * 0.7, 'leaper-slam'); G.leapHits = (G.leapHits || 0) + 1; }   // the shock column reaches hovering mechs too
+        G.fx.trauma = Math.min(1, G.fx.trauma + 0.4 * Math.max(0, 1 - this.pos.distanceTo(P.pos) / 50));
+        for (let q = 0; q < 10; q++) G.fx.dust(_d.set(this.B.x, this.B.y + 0.3, this.B.z), 1, 3, 9);
+        this.st = 'lag'; this.stT = LEAP.lag; this.vel.set(0, 0, 0);
+      }
+    } else if (this.st === 'fall') {
+      tuck = 0.5; this.vel.y -= 30 * dt; this.pos.addScaledVector(this.vel, dt); this.obj.rotation.z = Math.sin(G.time * 14) * 0.3;
+      const gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 1);
+      const sd = pointInSolid(this.pos, 2); if (sd && this.pos.y < sd.max.y) { this.pos.y = sd.max.y; this.vel.set(0, this.vel.y, 0); }
+      if (this.pos.y <= gy) { this.pos.y = gy; this.st = 'down'; this.stT = LEAP.stun; this.obj.rotation.z = 0; G.fx.dust(_d.set(this.pos.x, gy + 0.3, this.pos.z), 6, 3, 6); sfx('boom', this.pos.distanceTo(P.pos)); }
+    } else {   // lag after landing, or down after being shot out of the air
+      crouch = this.st === 'down' ? 1 : 0.7;
+      if (this.st === 'down' && Math.random() < 0.3) G.fx.sparks(_d.copy(this.c), null, 1, 0xffb060, 8, 0.8, 0.3, 0.18);
+      if (this.stT <= 0) { this.st = 'stalk'; this.stT = LEAP.cd[0] + Math.random() * (LEAP.cd[1] - LEAP.cd[0]); }
+    }
+    if (this.st !== 'air' && this.st !== 'fall') this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.8, 2);
+    this.cr += ((tuck ? -0.6 * tuck : crouch) - this.cr) * Math.min(1, dt * 12);
+    for (const L of ['LP_LegL', 'LP_LegR']) if (this.n[L]) this.n[L].rotation.x = this.cr * 0.55;
+    this.obj.rotation.y = this.yaw;
+    this.c.set(this.pos.x, this.pos.y + 3.6 - Math.max(0, this.cr) * 0.9, this.pos.z);
+  }
+  fwdX() { return -Math.sin(this.yaw); }
+  fwdZ() { return -Math.cos(this.yaw); }
+}
+
+// ---- Solar flares: every ~23 s the sun flares for 5.5 s. Anything outside a building's shadow burns (you and enemies)
+export const FLARE = { first: 16, every: [20, 26], warn: 3, dur: 5.5, dmg: 26, edmg: 22 };
+const _fo = new V3();
+export function startFlares() { G.flare = { st: 'calm', t: FLARE.first, k: 0, n: 0, exposed: false }; }
+export function clearFlares() { G.flare = null; }
+export function inShade(x, y, z) { _fo.set(x, y, z); return raySolids(_fo, G.sunDir, 160, true).solid !== null; }
+function updateFlares(dt) {
+  const F = G.flare, P = G.player; if (!F || !P) return;
+  F.t -= dt;
+  if (F.st === 'calm') {
+    F.k = Math.max(0, F.k - dt * 1.2);
+    if (F.t <= 0) { F.st = 'warn'; F.t = FLARE.warn; G.onFlare && G.onFlare(); sfx('alarm', 0); }
+  } else if (F.st === 'warn') {
+    F.k = 0.3 * (1 - F.t / FLARE.warn);
+    if (F.t <= 0) { F.st = 'flare'; F.t = FLARE.dur; F.n++; G.flares = (G.flares || 0) + 1; sfx('bigboom', 60); }
+  } else {
+    F.k = Math.min(1, F.k + dt * 2.5);
+    if (P.alive && !inShade(P.pos.x, P.pos.y + 2.5, P.pos.z)) { hurtPlayer(FLARE.dmg * dt, 'flare'); G.flareT = (G.flareT || 0) + dt; if (Math.random() < 0.3) G.fx.emit('smoke', { x: P.pos.x, y: P.pos.y + 3, z: P.pos.z, vy: 2, life: 0.8, s0: 1, s1: 2.5, c0: 0x8a7a68, c1: 0x5a5048, a0: 0.35, drag: 1.5 }); }
+    for (const e of G.enemies) if (e.alive && !e.dying && e.c && e.kind !== 'boss' && !e.holo && !inShade(e.c.x, e.c.y, e.c.z)) { e.hit(FLARE.edmg * dt); G.flareE = (G.flareE || 0) + FLARE.edmg * dt; }
+    if (F.t <= 0) { F.st = 'calm'; F.t = FLARE.every[0] + Math.random() * (FLARE.every[1] - FLARE.every[0]); }
+  }
+  F.exposed = F.st !== 'calm' && P.alive && !inShade(P.pos.x, P.pos.y + 2.5, P.pos.z);
+}
+
+// ---- NX-8 needler: homing needles stick in what they hit; eight in one target detonate together
+export const NEEDLE = { burst: 8, dmg: 100, R: 4.5, keep: 3 };
+const ndGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.8, 5);
+const ndMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff60e0).multiplyScalar(1.6), toneMapped: false });
+function clearNeedles(h) { for (const m of h.ndl || []) m.parent && m.parent.remove(m); h.ndl = []; h.needles = 0; }
+export function resetNeedles() { if (G.needled) for (const h of G.needled) clearNeedles(h); G.needled = new Set(); }
+function embedNeedle(ent, at) {
+  const h = ent.kind === 'cpart' ? ent.owner : ent; if (!h || !h.alive || h.dying || !h.obj) return;
+  G.needled = G.needled || new Set();
+  h.needles = (h.needles || 0) + 1; h.needleT = NEEDLE.keep;
+  const m = new THREE.Mesh(ndGeo, ndMat); m.position.copy(at); m.rotation.set(Math.random() * 3, Math.random() * 3, 0); G.scene.add(m); h.obj.attach(m); (h.ndl = h.ndl || []).push(m);
+  G.needled.add(h);
+  if (h.needles >= NEEDLE.burst) {
+    const c = h.c.clone(); clearNeedles(h); G.curLabel = 'needle-burst';
+    explodeAt(c, NEEDLE.R, NEEDLE.dmg, 'P', 0.8, 0xff60e0); G.fx.sparks(c, null, 24, 0xff80e8, 18, 1, 0.35, 0.2); G.fx.flash(c, 0xff60e0, 30, 18, 0.15);
+    G.needleBursts = (G.needleBursts || 0) + 1; sfx('zap', G.player ? G.player.pos.distanceTo(c) : 0);
+  }
+}
+function updateNeedles(dt) {
+  if (!G.needled) return;
+  for (const h of G.needled) {
+    if (!h.alive || h.gone) { clearNeedles(h); G.needled.delete(h); continue; }
+    h.needleT -= dt; if (h.needleT <= 0) { clearNeedles(h); G.needled.delete(h); }
+  }
+}
+
 // ---- LM-3 bounding mines -----------------------------------------------------------------------------------------
 const pmGeo = new THREE.CylinderGeometry(0.42, 0.5, 0.28, 10), pmLight = new THREE.SphereGeometry(0.13, 8, 6);
 const pmMat = new THREE.MeshStandardMaterial({ color: 0x3a3c40, roughness: 0.6, metalness: 0.4 });
@@ -5182,7 +5340,7 @@ export function updateCombat(dt) {
   if (GRID.on) updateGrid(dt);
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
-  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt);
+  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

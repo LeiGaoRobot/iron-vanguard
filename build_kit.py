@@ -121,6 +121,7 @@ M = dict(
     MagGlow=mat("MagGlow", "#c8e6ff", 0.2, emit="#4aa8ff", strength=2.2),
     RamGlow=mat("RamGlow", "#ffd0a0", 0.3, emit="#ff6a20", strength=2.4),
     RicoGlow=mat("RicoGlow", "#d8fff0", 0.2, emit="#40ffc0", strength=2.0),
+    NeedleGlow=mat("NeedleGlow", "#ffd0f4", 0.2, emit="#ff50d8", strength=2.2),
     Rust2=mat("Rust2", "#5a3a26", 0.9, metal=0.2),
 )
 
@@ -1964,7 +1965,45 @@ def build_ricochet():
     box((-0.22, 0.3, 0.05), (0.04, 0.5, 0.2), M["Hazard"], K)
     muzzle("Muzzle_Ricochet", (0, 1.5, 0.06), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet()
+
+def build_leaper():
+    # Leaper: a hunched biped on two long digitigrade legs (LP_LegL / LP_LegR, pivot at the hip, rotate around X
+    # to crouch), a wedge head with a slit eye, two jump-jet vents on the back and a twin scattergun under the chin
+    # (Muzzle_LP). Origin at the feet. front = +Y
+    K = kit("E_Leaper")
+    box((0, 0, 4.0), (2.0, 2.4, 1.5), M["EArmor"], K, bevel=0.2)
+    wedge((0, 1.4, 4.2), (1.5, 1.0, 1.0), M["EArmor2"], K, taper=0.45)
+    box((0, 1.95, 4.3), (0.9, 0.1, 0.14), M["EEye"], K)
+    box((0, -0.6, 4.9), (1.6, 1.4, 0.4), M["EArmor2"], K, bevel=0.08)
+    for s_ in (-1, 1):
+        box((s_ * 0.55, -1.25, 4.2), (0.5, 0.25, 0.8), M["RamGlow"], K)
+        cyl((s_ * 0.55, -1.15, 3.6), 0.28, 0.5, M["Frame"], K, verts=10)
+        leg = empty("LP_Leg" + ("L" if s_ < 0 else "R"), (s_ * 0.95, 0, 3.4), K)
+        box((0, -0.55, -0.75), (0.5, 0.55, 1.8), M["EArmor"], leg, rot=(-0.55, 0, 0), bevel=0.08)
+        box((0, -0.85, -2.25), (0.36, 0.36, 1.6), M["Frame"], leg, rot=(0.45, 0, 0))
+        box((0, -0.25, -3.25), (0.55, 1.3, 0.3), M["Black"], leg, bevel=0.05)
+        ball((0, -0.95, -1.55), 0.3, M["Joint"], leg, sub=1)
+        box((s_ * 0.3, -0.55, -0.7), (0.06, 0.4, 1.2), M["Hazard"], leg, rot=(-0.55, 0, 0))
+    g = empty("LP_Gun", (0, 1.3, 3.35), K)
+    box((0, 0, 0), (0.9, 0.7, 0.45), M["Frame"], g, bevel=0.05)
+    for s_ in (-1, 1):
+        cyl((s_ * 0.22, 0.6, 0), 0.12, 0.8, M["Joint"], g, rot=ALONG_Y, verts=10)
+    muzzle("Muzzle_LP", (0, 2.3, 3.35), K)
+
+def build_needler():
+    K = kit("W_Needler")
+    # needler: slim receiver, a clear-topped magazine full of glowing pink needles, a narrow fluted barrel
+    box((0, 0.1, 0.05), (0.38, 0.9, 0.38), M["Frame"], K, bevel=0.05)
+    box((0, 0.05, 0.26), (0.3, 0.7, 0.07), M["Armor"], K, bevel=0.02)
+    for k in range(5):
+        cyl((-0.08 + k * 0.04, 0.15, 0.36), 0.018, 0.34, M["NeedleGlow"], K, rot=ALONG_Y, verts=6)
+    box((0, 0.15, 0.36), (0.26, 0.42, 0.03), M["Black"], K)
+    cyl((0, 0.95, 0.06), 0.07, 0.8, M["Joint"], K, rot=ALONG_Y, verts=10)
+    cyl((0, 1.35, 0.06), 0.1, 0.12, M["NeedleGlow"], K, rot=ALONG_Y, verts=10)
+    box((-0.21, 0.3, 0.05), (0.04, 0.5, 0.2), M["Hazard"], K)
+    muzzle("Muzzle_Needler", (0, 1.45, 0.06), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

@@ -92,6 +92,8 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 #windTag { position: absolute; top: 118px; right: 24px; pointer-events: none; padding: 4px 12px; border: 1px solid rgba(220, 210, 180, 0.6); background: rgba(40, 36, 28, 0.5); color: #efe6cc; font-size: 13px; letter-spacing: 1px; display: none; }
 #windTag b { display: inline-block; margin-left: 6px; font-size: 16px; transition: transform 0.2s; }
 #windTag.shift { border-color: rgba(255, 170, 80, 0.9); color: #ffd090; }
+#flareTag { position: absolute; top: 118px; left: 50%; transform: translateX(-50%); pointer-events: none; padding: 4px 14px; border: 1px solid rgba(255, 190, 90, 0.9); background: rgba(110, 50, 0, 0.6); color: #ffe0a0; font-size: 14px; letter-spacing: 2px; display: none; }
+#flareTag.safe { border-color: rgba(120, 200, 255, 0.8); background: rgba(0, 30, 60, 0.55); color: #b8e4ff; }
 #spotTag { position: absolute; top: 118px; left: 50%; transform: translateX(-50%); pointer-events: none; padding: 4px 14px; border: 1px solid rgba(255, 110, 80, 0.8); background: rgba(90, 10, 0, 0.55); color: #ffb090; font-size: 14px; letter-spacing: 2px; display: none; }
 #frostVig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 38%, rgba(150, 210, 255, 0.4) 82%, rgba(225, 245, 255, 0.7) 100%); opacity: 0; }
 #acidVig { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 40%, rgba(150, 200, 40, 0.42) 88%, rgba(200, 230, 60, 0.5) 100%); opacity: 0; }
@@ -150,14 +152,14 @@ button.primary:hover { background: #9af0ff; }
 .mis small { color: var(--dim); font-size: 12px; line-height: 1.5; }
 .mis small.best { color: var(--amber); }
 #mList { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 2px; margin-top: 8px; }
-#mList .medal { display: flex; gap: 10px; align-items: center; padding: 1px 7px; line-height: 1.15; border: 1px solid rgba(95, 227, 255, 0.18); background: rgba(10, 16, 24, 0.5); opacity: 0.72; }
+#mList .medal { display: flex; gap: 6px; align-items: center; padding: 1px 7px; line-height: 1.15; border: 1px solid rgba(95, 227, 255, 0.18); background: rgba(10, 16, 24, 0.5); opacity: 0.72; }
 #mList .medal.on { opacity: 1; border-color: var(--amber); background: rgba(255, 190, 80, 0.1); }
-#mList .medal i { font-style: normal; font-size: 22px; color: var(--dim); width: 22px; text-align: center; }
+#mList .medal i { font-style: normal; font-size: 18px; color: var(--dim); width: 16px; text-align: center; }
 #mList .medal.on i { color: var(--amber); }
 #mList .medal div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 1px; }
 #mList .medal b { font-size: 13.5px; }
-#mList .medal small { color: var(--dim); font-size: 11.5px; }
-#mList .medal em { font-style: normal; font-size: 12px; color: var(--amber); white-space: nowrap; }
+#mList .medal small { color: var(--dim); font-size: 11px; }
+#mList .medal em { font-style: normal; font-size: 11px; color: var(--amber); white-space: nowrap; }
 #mList .mp { display: block; height: 3px; background: rgba(255, 255, 255, 0.12); margin-top: 3px; }
 #mList .mp span { display: block; height: 100%; background: var(--cyan); }
 .res .medal { color: var(--amber); }
@@ -226,6 +228,7 @@ body.touchmode #mAlert { top: 30%; }
   <div id="frostVig"></div>
   <div id="glare"></div>
   <div id="windTag">风向 WIND <b>&uarr;</b></div>
+  <div id="flareTag"></div>
   <div id="spotTag">已被发现 · 炮击来袭 · SPOTTED</div>
   <div id="stormVig"></div>
   <div id="locks"></div>
