@@ -155,6 +155,9 @@ M = dict(
     WeaverPaint=mat("WeaverPaint", "#2c2438", 0.35, metal=0.45), WebSilk=mat("WebSilk", "#eef4f6", 0.3, emit="#d8f0ff", strength=0.9),
     CivVest=mat("CivVest", "#ff8a20", 0.6), CivSkin=mat("CivSkin", "#d9a77c", 0.7), RescuePaint=mat("RescuePaint", "#e9edf0", 0.4, metal=0.2),
     EvacGlow=mat("EvacGlow", "#d8ffe0", 0.3, emit="#58ff90", strength=1.7), HackPod=mat("HackPod", "#d8fff0", 0.25, emit="#40ffb0", strength=2.0),
+    ReviverPaint=mat("ReviverPaint", "#d4d8cc", 0.4, metal=0.35), Nanite=mat("Nanite", "#c8ffd0", 0.2, emit="#30ff78", strength=2.4),
+    PylonPaint=mat("PylonPaint", "#3a3440", 0.5, metal=0.4), PylonGlow=mat("PylonGlow", "#ffd0c0", 0.2, emit="#ff4a2a", strength=2.6),
+    CamoLens=mat("CamoLens", "#c8f4ff", 0.1, emit="#60d8ff", strength=1.6),
     FogLampGlow=mat("FogLampGlow", "#fff6e0", 0.2, emit="#ffe0a0", strength=2.6),
     LurkEye=mat("LurkEye", "#ff7060", 0.2, emit="#ff3020", strength=2.5),
     LurkCore=mat("LurkCore", "#2a2c30", 0.5, metal=0.5),
@@ -2987,7 +2990,71 @@ def build_hack():
     ball((-0.22, -0.2, 1.22), 0.05, M["HackPod"], K, sub=1)
     muzzle("Muzzle_Hack", (0, 0.45, 0.55), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack()
+
+def build_reviver():
+    # reviver: a slow hover barge that rebuilds wrecks. a flat pale hull, a glowing green nanite tank on top, a spinning
+    # ring round the waist (RV_Ring, spins about Z), a green emitter dome underneath (RV_Emit marks the beam origin),
+    # two side thruster pods, two short gripper arms forward and a red sensor eye with a pulse gun (Muzzle_RvGun).
+    # front = +Y, about 5 m across, origin at the hull centre
+    K = kit("E_Reviver")
+    ball((0, 0, 0), 1.9, M["ReviverPaint"], K, scale=(1.0, 1.25, 0.55), sub=2)
+    box((0, 0, 0.55), (1.9, 2.6, 0.5), M["EArmor2"], K, bevel=0.15)
+    cyl((0, -0.3, 1.25), 0.75, 1.1, M["Nanite"], K, verts=14)
+    for z in (0.75, 1.8):
+        cyl((0, -0.3, z), 0.85, 0.12, M["Frame"], K, verts=14)
+    for sx in (-1, 1):
+        cyl((sx * 0.55, 0.9, 1.05), 0.28, 0.7, M["Nanite"], K, verts=10)
+    r = empty("RV_Ring", (0, 0, -0.05), K)
+    torus((0, 0, 0), 2.35, 0.13, M["Hazard"], r)
+    for k in range(6):
+        import math as _m
+        a = k * _m.pi / 3
+        box((_m.cos(a) * 2.35, _m.sin(a) * 2.35, 0), (0.4, 0.4, 0.3), M["Nanite"], r, rot=(0, 0, a))
+    ball((0, 0, -0.85), 0.9, M["Nanite"], K, scale=(1.0, 1.0, 0.55), sub=2)
+    empty("RV_Emit", (0, 0, -1.3), K)
+    for sx in (-1, 1):
+        cyl((sx * 2.3, -0.4, -0.1), 0.45, 1.6, M["EArmor"], K, rot=ALONG_Y, verts=12)
+        cyl((sx * 2.3, -1.25, -0.1), 0.36, 0.2, M["Nanite"], K, rot=ALONG_Y, verts=12)
+        box((sx * 1.5, -0.4, -0.1), (0.9, 0.5, 0.25), M["Frame"], K)
+        box((sx * 0.75, 2.4, -0.35), (0.16, 1.1, 0.16), M["Joint"], K)
+        for gx in (-0.12, 0.12):
+            box((sx * 0.75 + gx, 3.0, -0.5), (0.06, 0.25, 0.3), M["Black"], K)
+    ball((0, 2.25, 0.15), 0.32, M["EEye"], K, sub=1)
+    cyl((0, 2.6, -0.2), 0.09, 0.7, M["Black"], K, rot=ALONG_Y, verts=8)
+    muzzle("Muzzle_RvGun", (0, 3.0, -0.2), K)
+
+def build_pylon():
+    # enemy power pylon: a 10 m hex column on a wide concrete plinth, three red glowing core bands, a spinning crown of
+    # vanes on top (PY_Ring, spins about Z) and four cables running to ground anchors. origin at the ground centre
+    K = kit("E_Pylon")
+    cyl((0, 0, 0.5), 4.4, 1.0, M["Concrete"], K, verts=6)
+    cyl((0, 0, 1.2), 3.2, 0.5, M["PylonPaint"], K, verts=6)
+    cyl((0, 0, 5.2), 1.5, 8.0, M["PylonPaint"], K, verts=6, r2=1.1)
+    for z in (3.0, 5.4, 7.8):
+        cyl((0, 0, z), 1.62 - (z - 3.0) * 0.07, 0.45, M["PylonGlow"], K, verts=6)
+    for sx, sy in ((1, 1), (-1, 1), (1, -1), (-1, -1)):
+        box((sx * 2.4, sy * 2.4, 1.1), (0.9, 0.9, 0.9), M["Hazard"], K)
+        cyl((sx * 1.6, sy * 1.6, 4.8), 0.08, 7.3, M["Black"], K, rot=(sy * 0.32, -sx * 0.32, 0), verts=5)
+    r = empty("PY_Ring", (0, 0, 9.6), K)
+    for k in range(6):
+        import math as _m
+        a = k * _m.pi / 3
+        box((_m.cos(a) * 1.4, _m.sin(a) * 1.4, 0), (1.3, 0.18, 0.55), M["PylonPaint"], r, rot=(0, 0, a))
+    ball((0, 0, 9.7), 0.8, M["PylonGlow"], K, sub=2)
+
+def build_camo():
+    # OC-1 optical camo: a flat pod with a 3 x 2 array of glass lens cells, a cyan glow strip and two small emitter fins
+    K = kit("S_Camo")
+    box((0, 0, 0.16), (0.64, 0.72, 0.32), M["Armor2"], K, bevel=0.06)
+    for i in range(3):
+        for j in range(2):
+            box((-0.2 + i * 0.2, -0.12 + j * 0.24, 0.34), (0.16, 0.2, 0.05), M["CamoLens"], K)
+    box((0, 0.37, 0.18), (0.52, 0.05, 0.16), M["CamoLens"], K)
+    for sx in (-1, 1):
+        box((sx * 0.3, -0.25, 0.52), (0.04, 0.3, 0.3), M["Frame"], K, rot=(0.3, 0, 0))
+    muzzle("Muzzle_Camo", (0, 0.4, 0.4), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

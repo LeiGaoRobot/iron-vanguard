@@ -65,6 +65,7 @@ export const WEAPONS = {
   rod: { slot: 'shoulder', name: 'LR-1 避雷针', en: 'LR-1 Lightning Rod', desc: '在前方 6 m 插下避雷针 14 秒 · 每 0.9 秒放电打 22 m 内最近的敌机（36，再连锁 1 个）· 雷暴里 14 m 内不会被雷劈 · 同时只能有 1 根', type: 'rod', dur: 14, zap: 0.9, dmg: 36, R: 22, chains: 2, cover: 14, cd: 18, sfx: 'sentry' },
   sentry: { slot: 'shoulder', name: 'TR-3 哨戒炮塔', en: 'TR-3 Sentry Turret', desc: '在前方架设自动炮塔 15 秒 · 双管速射 75 m 内敌机 · 吸引部分火力 · 耐久 400 · 同时只能有 1 座', type: 'sentry', hp: 400, dur: 15, dmg: 10, rate: 0.11, range: 75, cd: 22, sfx: 'sentry' },
   stasis: { slot: 'shoulder', name: 'TS-1 时滞场', en: 'TS-1 Stasis Field', desc: '在准星处展开 14 m 时滞球 5 秒 · 球内敌机动作放慢到三成、敌弹几乎停在空中 · 头目只放慢一半', type: 'stasis', range: 60, R: 14, dur: 5, k: 0.3, bossK: 0.6, shotK: 0.12, cd: 17, sfx: 'stasis' },
+  camo: { slot: 'shoulder', name: 'OC-1 光学迷彩', en: 'OC-1 Optical Camo', desc: '隐身 7 秒 · 敌人看不见 10 m 外的你（头目 16 m），只会朝你隐身时的位置开火，来袭导弹失去锁定 · 隐身中造成的伤害 ×1.5，命中后 0.8 秒现形 · 冷却 20 秒', type: 'camo', dur: 7, cd: 20, sfx: 'decoy' },
   hack: { slot: 'shoulder', name: 'HK-1 入侵模块', en: 'HK-1 Hack Module', desc: '发射追踪入侵飞镖 · 命中普通敌机后上传 0.8 秒，使其倒戈 10 秒：替你攻击附近的敌人、吸引敌方火力 · 头目 / 大型目标 / 部分特殊兵种无法入侵：改为 150 伤害并瘫痪 1.5 秒 · 冷却 16 秒', type: 'hack', speed: 110, cd: 16, dur: 10, up: 0.8, fail: 150, stun: 1.5, sfx: 'cannon' },
   ciws: { slot: 'shoulder', name: 'PD-3 近防炮', en: 'PD-3 CIWS', desc: '按下后肩部近防炮自动开火 8 秒 · 优先击落 45 m 内来袭的导弹 / 炮弹 / 巡航导弹（每发约一半几率打爆），其次扫射 35 m 内的无人机等小型飞行敌机 · 冷却 15 秒', type: 'ciws', dur: 8, cd: 15, R: 45, airR: 35, rate: 0.085, dmg: 16, kill: 0.55, sfx: 'gatling' },
   net: { slot: 'shoulder', name: 'NT-4 捕获网', en: 'NT-4 Net Launcher', desc: '发射追踪捕获网 · 地面敌机被缠住 2.5 秒无法移动（仍能开火）· 小型飞行敌机直接被网落（140 伤害）· 头目与大型目标减速 40% · 信使被缠住 3 秒：车速 −65%、受到伤害 +30% · 冷却 7 秒', type: 'net', dmg: 30, air: 140, root: 2.5, speed: 70, cd: 7, sfx: 'cannon' },
@@ -73,7 +74,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -89,6 +90,7 @@ function entsFor(team) {
     for (const e of G.enemies) if (e.alive && !e.dying && !e.hacked) { if (e.parts) { for (const pt of e.parts) if (pt.alive) out.push(pt); } else out.push(e); }
     for (const b of barrels) if (!b.dead) out.push(b.ent || (b.ent = { isBarrel: true, b, c: b.pos, r: 1.5, get alive() { return !b.dead; }, hit: (dmg) => hitBarrel(b, dmg) }));
     for (const m of G.mines) if (m.alive) out.push(m);
+    for (const w of G.wrecks) if (w.alive) out.push(w.ent);
   } else {
     const p = G.player;
     if (p && p.alive) { p._ent = p._ent || { isPlayer: true, c: new V3(), r: 2.1 * p.scale, get alive() { return p.alive; }, hit: (dmg, src, label) => damagePlayer(dmg, src, label) }; p.center(p._ent.c); out.push(p._ent); }
@@ -134,6 +136,7 @@ export const OD = { fill: 2600, dur: 10, dmg: 1.4, armor: 0.65 };
 function dealDamage(ent, dmg, team, at, label) {
   if (!ent.alive) return;
   if (team === 'P' && G.pBoostT > 0) dmg *= SUPPLY.dmg;
+  if (team === 'P' && G.camo && G.camo.t > 0 && !ent.isBarrel) { const lb = label || G.curLabel || ''; if (!isAlly(lb) && !lb.startsWith('hack')) { G.camoBonus = (G.camoBonus || 0) + dmg * (CAMO.dmg - 1); dmg *= CAMO.dmg; if (G.camo.revT < 0) G.camo.revT = CAMO.grace; } }
   if (team === 'P') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.stunT > 0) dmg *= STUN_VULN; if (h.markT > 0) dmg *= h.maxHp > 3000 ? WEAPONS.sonar.bossVuln : WEAPONS.sonar.vuln; if (h.corr > 0) { G.corrBonus = (G.corrBonus || 0) + dmg * CORR.per * h.corr; dmg *= 1 + CORR.per * h.corr; } if (h.hornT > 0) { G.hornBlocked = (G.hornBlocked || 0) + dmg * (1 - HERALD.hornK); dmg *= HERALD.hornK; } }   // EMP-stunned targets take extra damage
   if ((team === 'P' || team === 'X') && !G.pierce && !ent.isBarrel && !ent.isMine && !ent.isPlayer && !ent.isAlly && G.player) {   // warden dome: hits from outside are absorbed
     const w = domeAt(ent.c);
@@ -658,6 +661,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireCluster(owner, slot, d, aim, dmgMul, team); if (me) G.stats.shots++; }
   } else if (d.type === 'stasis') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; castStasis(owner, slot, d, aim); if (me) G.stats.shots++; }
+  } else if (d.type === 'camo') {
+    if (pressed && ws.cd <= 0 && isP && !(G.camo && G.camo.t > 0)) { ws.cd = d.cd; fireCamo(owner, d); if (me) G.stats.shots++; }
   } else if (d.type === 'hack') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireHack(owner, slot, d, dmgMul, aim, target); if (me) G.stats.shots++; }
   } else if (d.type === 'ciws') {
@@ -1437,12 +1442,15 @@ export function pickTarget(self) {
   self.tgT = G.time + 1 + Math.random() * 0.5;
   let best = G.player, bs = 1e9;
   const from = self.pos || self.c;
+  const hid = camoHidden(from, self);
+  if (hid) best = null;
   for (const f of [G.player, ...G.friends]) {
-    if (!f || !f.alive) continue;
+    if (!f || !f.alive || (hid && f === G.player)) continue;
     const w = f === G.player ? 1 : f.foeWBoss && (self.kind === 'boss' || self.kind === 'raider' || self.isColossus || self.isTrain) ? f.foeWBoss : (self.kind === 'drone' || self.kind === 'gunship' ? f.foeWAir ?? f.foeW : f.foeW) ?? 1.15;
     const sc = Math.hypot(f.pos.x - from.x, f.pos.z - from.z) * w;
     if (sc < bs) { bs = sc; best = f; }
   }
+  if (!best) best = G.player;
   self.foe = best;
   return best;
 }
@@ -1915,7 +1923,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -8364,6 +8372,266 @@ function updateNets(dt) {
 }
 export function clearNets() { for (const n of G.nets) { n.m.parent && n.m.parent.remove(n.m); } G.nets.length = 0; }
 
+// ------------------------------------------------------------------ v50 Sabotage: four enemy power pylons that only demolition
+// charges can bring down (you plant them, ground enemies try to defuse them), revivers that rebuild wrecks into enemies,
+// and the OC-1 optical camo
+export const CAMO = { see: 10, bossSee: 16, grace: 0.8, dmg: 1.5 };
+G.camo = null; G.wrecks = [];
+export function camoHidden(from, self) {
+  const C = G.camo, P = G.player; if (!C || !(C.t > 0) || !P || !P.alive || !from) return false;
+  const big = self && (self.kind === 'boss' || self.kind === 'raider' || self.isColossus);
+  return Math.hypot(P.pos.x - from.x, P.pos.z - from.z) > (big ? CAMO.bossSee : CAMO.see);
+}
+function camoMats(P, on) {
+  if (on && !P._cm) { P._cm = []; P.root.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material)) { const m = o.material.clone(); m.transparent = true; m.depthWrite = false; m.opacity = 0.16; if (m.emissive) { m.emissive.setHex(0x3aa8d8); m.emissiveIntensity = 0.5; } P._cm.push([o, o.material, m, o.castShadow]); } }); }
+  if (!P._cm) return;
+  for (const [o, m0, m1, cs] of P._cm) { o.material = on ? m1 : m0; o.castShadow = on ? false : cs; }
+}
+function fireCamo(owner, d) {
+  const P = owner, at = P.pos.clone();
+  const C = G.camo = { t: d.dur, revT: -1, T: d.dur };
+  C.ghost = { isCamoGhost: true, pos: at, vel: new V3(), get alive() { return G.camo === C && C.t > 0; }, center: (o) => o.set(at.x, at.y + 2.6 * P.scale, at.z), foeW: 1, foeWAir: 1, foeWBoss: 1 };
+  G.friends.push(C.ghost);
+  for (const e of G.enemies) e.tgT = 0;
+  for (const sh of G.shots) if (sh.team === 'E' && sh.target && sh.target.isPlayer) { sh.target = null; G.camoLost = (G.camoLost || 0) + 1; }
+  camoMats(P, true);
+  G.fx.ring(new V3(at.x, at.y + 0.3, at.z), null, 1, 7, 0.4, 0x60d8ff); G.fx.sparks(P.center(new V3()), null, 16, 0x9ff0ff, 10, 1, 0.4, 0.2);
+  sfx('decoy', 0); G.camoUses = (G.camoUses || 0) + 1; G.onCamo && G.onCamo(true);
+}
+function endCamo() {
+  const C = G.camo; if (!C) return;
+  const i = G.friends.indexOf(C.ghost); if (i >= 0) G.friends.splice(i, 1);
+  G.camo = null; for (const e of G.enemies) e.tgT = 0;
+  if (G.player) { camoMats(G.player, false); G.fx.sparks(G.player.center(new V3()), null, 12, 0x9ff0ff, 8, 1, 0.3, 0.2); }
+  G.onCamo && G.onCamo(false);
+}
+function updateCamo(dt) {
+  const C = G.camo; if (!C) return;
+  const P = G.player; if (!P || !P.alive) { endCamo(); return; }
+  C.t -= dt; G.camoT = (G.camoT || 0) + dt;
+  if (C.revT >= 0) { C.revT -= dt; if (C.revT <= 0) C.t = 0; }
+  if (C.t <= 0) { endCamo(); return; }
+  if (P._cm) { const op = C.revT >= 0 ? 0.35 + 0.3 * Math.abs(Math.sin(G.time * 30)) : 0.12 + 0.06 * Math.sin(G.time * 7); for (const r of P._cm) r[2].opacity = op; }
+}
+export function clearCamo() { if (G.camo) endCamo(); G.camo = null; }
+
+// ---- wrecks: an enemy that dies near a reviver leaves a wreck for 26 s. it can be shot / blasted apart (160 HP)
+export const REVIVE = { hp: 950, r: 2.6, speed: 10, hover: 8, keep: 46, scan: 110, near: 110, chan: 3, interrupt: 170, cd: 2.5, max: 4, gunCd: 2.6, gunR: 60, dmg: 9, hpK: 0.6, wreckHp: 160, wreckT: 26, maxWrecks: 10 };
+const REV_MAKE = { walker: (p) => new Walker(p), drone: (p) => new Drone(p), bulwark: (p) => new Bulwark(p), gunship: (p) => new Gunship(p), weaver: (p) => new Weaver(p), turret: (p) => new Turret(p), frost: (p) => new Frostcaster(p), leaper: (p) => new Leaper(p), torcher: (p) => new Torcher(p), anchor: (p) => new Anchor(p), howitzer: (p) => new Howitzer(p), prism: (p) => new Prism(p), skimmer: (p) => new Skimmer(p), blinker: (p) => new Blinker(p) };
+export function noteWreck(e) {
+  if (!e || e.revived || !REV_MAKE[e.kind] || !e.c) return;
+  if (!G.enemies.some((r) => r.kind === 'reviver' && r.alive && !r.dying && r.c.distanceTo(e.c) < REVIVE.near)) return;
+  if (G.wrecks.length >= REVIVE.maxWrecks) removeWreck(G.wrecks[0]);
+  const x = e.c.x, z = e.c.z, y = groundAt(x, z, e.c.y + 1);
+  const obj = cloneKit('P_Hulk'); obj.scale.setScalar(0.34); obj.position.set(x, y, z); obj.rotation.y = Math.random() * 6.28; G.scene.add(obj);
+  const w = { kind: e.kind, x, z, y, hp: REVIVE.wreckHp * G.diff.hp, t: REVIVE.wreckT, obj, alive: true, claim: null, smokeT: 0 };
+  w.ent = { isBarrel: true, isWreck: true, w, c: new V3(x, y + 1, z), r: 2.4, get alive() { return w.alive; }, hit: (dmg) => { if (!w.alive) return; w.hp -= dmg; if (w.hp <= 0) { G.wrecksBroken = (G.wrecksBroken || 0) + 1; G.fx.sparks(w.ent.c.clone(), null, 18, 0xffb060, 12, 1, 0.4, 0.2); G.fx.explosion(w.ent.c.clone(), 0.9, 0xff8040); removeWreck(w); } } };
+  G.wrecks.push(w); G.wrecksMade = (G.wrecksMade || 0) + 1;
+}
+function removeWreck(w) {
+  w.alive = false; w.obj.parent && w.obj.parent.remove(w.obj);
+  const i = G.wrecks.indexOf(w); if (i >= 0) G.wrecks.splice(i, 1);
+}
+function updateWrecks(dt) {
+  for (let i = G.wrecks.length - 1; i >= 0; i--) {
+    const w = G.wrecks[i]; w.t -= dt;
+    if (w.claim && (!w.claim.alive || w.claim.dying || w.claim.wreck !== w)) w.claim = null;
+    if (w.t <= 0) { removeWreck(w); continue; }
+    if (w.t < 2) w.obj.scale.setScalar(0.34 * Math.max(0.05, w.t / 2));
+    w.smokeT -= dt; if (w.smokeT <= 0) { w.smokeT = 0.5 + Math.random() * 0.4; G.fx.smoke(new V3(w.x + (Math.random() - 0.5) * 2, w.y + 1.2, w.z + (Math.random() - 0.5) * 2), 1, 1, 1.5, 0x2c2a28, 1.4, 0.8); }
+  }
+}
+export function clearWrecks() { for (const w of [...G.wrecks]) removeWreck(w); G.wrecks.length = 0; }
+
+// Reviver: a slow hover barge. it keeps ~46 m from you behind its allies; when a wreck lies within 110 m it flies over it
+// and pours nanites down for 3 s (green beam), then the wreck stands up again as the same enemy at 60% HP. 170 damage
+// during the pour breaks it off; four rebuilds and it is spent. a pulse gun for self-defence
+export class Reviver extends Enemy {
+  constructor(pos) {
+    super('reviver', 'E_Reviver', pos, REVIVE.hp, REVIVE.r); this.boom = 1.1;
+    this.vel = new V3(); this.yaw = Math.random() * 6.28; this.st = 'idle'; this.wreck = null; this.chanT = 0; this.chanDmg = 0; this.cdT = 1.5 + Math.random() * 2;
+    this.left = REVIVE.max; this.gunT = 2 + Math.random(); this.side = Math.random() < 0.5 ? 1 : -1; this.orbA = Math.random() * 6.28; this.goalV = new V3(); this.zapT = 0; this.bank = 0; this.climbT = 0;
+    this.pos.y = groundAt(pos.x, pos.z, 40) + REVIVE.hover; this.c.copy(this.pos);
+  }
+  hit(dmg) {
+    if (this.st === 'chan') this.chanDmg += dmg;
+    super.hit(dmg);
+    if (this.alive && this.st === 'chan' && this.chanDmg >= REVIVE.interrupt * G.diff.hp) {
+      this.st = 'idle'; this.cdT = REVIVE.cd; if (this.wreck) this.wreck.claim = null; this.wreck = null;
+      G.fx.sparks(this.c, null, 16, 0x40ff80, 12, 1, 0.35, 0.2); G.reviveBreaks = (G.reviveBreaks || 0) + 1; G.onReviveBreak && G.onReviveBreak(this);
+    }
+  }
+  update(dt) {
+    const tg = this.tg(), pc = tg.center(playerC);
+    this.cdT -= dt;
+    if (this.n.RV_Ring) this.n.RV_Ring.rotation.y += dt * (this.st === 'chan' ? 5 : 1.4);
+    let goal = null, face = null;
+    const w = this.wreck;
+    if ((this.st === 'go' || this.st === 'chan') && (!w || !w.alive)) { this.st = 'idle'; this.wreck = null; this.cdT = 1; }
+    if (this.st === 'idle' && this.cdT <= 0 && this.left > 0) {
+      let best = null, bd = REVIVE.scan;
+      for (const k of G.wrecks) { if (!k.alive || k.claim || k.t < 4) continue; const d = Math.hypot(k.x - this.pos.x, k.z - this.pos.z); if (d < bd) { bd = d; best = k; } }
+      if (best) { this.st = 'go'; this.wreck = best; best.claim = this; G.onReviveGo && G.onReviveGo(this, best); }
+      else this.cdT = 0.8;
+    }
+    if (this.st === 'go') {
+      const k = this.wreck; goal = this.goalV.set(k.x, 0, k.z);
+      if (Math.hypot(k.x - this.pos.x, k.z - this.pos.z) < 3.5) { this.st = 'chan'; this.chanT = REVIVE.chan; this.chanDmg = 0; k.t = Math.max(k.t, REVIVE.chan + 1); G.onReviveStart && G.onReviveStart(this, k); }
+    }
+    if (this.st === 'chan') {
+      const k = this.wreck; goal = this.goalV.set(k.x, 0, k.z);
+      this.chanT -= dt; this.zapT -= dt;
+      if (this.zapT <= 0) {
+        this.zapT = 0.07; const em = this.n.RV_Emit ? this.n.RV_Emit.getWorldPosition(new V3()) : this.c.clone();
+        G.fx.lightning(em, new V3(k.x + (Math.random() - 0.5) * 2, k.y + 0.8, k.z + (Math.random() - 0.5) * 2), 0x40ff80, 0.25 + (1 - this.chanT / REVIVE.chan) * 0.35, 0.1, 1.2);
+      }
+      if (Math.random() < 0.6) G.fx.emit('add', { x: k.x + (Math.random() - 0.5) * 3, y: k.y + 0.4, z: k.z + (Math.random() - 0.5) * 3, vy: 3 + Math.random() * 3, life: 0.6, s0: 0.9, s1: 0.2, c0: 0x50ff90 });
+      k.obj.position.y = k.y + (1 - this.chanT / REVIVE.chan) * 0.8; k.obj.rotation.y += dt * 0.6;
+      if (this.chanT <= 0) {
+        const at = new V3(k.x, k.y, k.z), kind = k.kind; removeWreck(k); this.wreck = null; this.st = 'idle'; this.cdT = REVIVE.cd; this.left--;
+        const e = REV_MAKE[kind](at); e.revived = true; e.hp = e.maxHp * REVIVE.hpK;
+        G.fx.ring(new V3(at.x, at.y + 0.4, at.z), null, 1, 8, 0.45, 0x50ff90); G.fx.flash(new V3(at.x, at.y + 2, at.z), 0x60ff90, 40, 20, 0.35);
+        sfx('repair', G.player ? G.player.pos.distanceTo(at) * 0.6 : 0); G.revived = (G.revived || 0) + 1; G.onRevived && G.onRevived(e, this);
+      }
+    }
+    if (!goal) {   // hang back behind the nearest allies, ~46 m from the target
+      let mx = 0, mz = 0, n = 0;
+      for (const e of G.enemies) if (e !== this && e.alive && !e.dying && e.kind !== 'reviver' && e.c && e.c.distanceTo(this.pos) < 80) { mx += e.c.x; mz += e.c.z; n++; }
+      let ax, az; if (n) { ax = mx / n; az = mz / n; } else { ax = this.pos.x; az = this.pos.z; }
+      let dx = ax - pc.x, dz = az - pc.z; const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+      this.orbA += dt * 0.3 * this.side;
+      goal = this.goalV.set(pc.x + dx * REVIVE.keep + Math.cos(this.orbA) * 8, 0, pc.z + dz * REVIVE.keep + Math.sin(this.orbA) * 8);
+      face = pc;
+    }
+    const gx = goal.x - this.pos.x, gz = goal.z - this.pos.z, gl = Math.hypot(gx, gz) || 1;
+    const sp = REVIVE.speed * Math.min(1, gl / 8 + 0.2) * (this.st === 'chan' ? 0.3 : 1), kk = 1 - Math.exp(-2 * dt);
+    this.vel.x += (gx / gl * sp - this.vel.x) * kk; this.vel.z += (gz / gl * sp - this.vel.z) * kk;
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 2.2, 2.5)) { this.pos.x -= this.vel.x * dt; this.pos.z -= this.vel.z * dt; this.vel.multiplyScalar(-0.3); this.side *= -1; this.climbT = 2.5; }
+    if (this.climbT > 0) this.climbT -= dt;
+    const gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 1.5) + REVIVE.hover + (this.climbT > 0 ? 16 : 0) + Math.sin(G.time * 1.8 + this.side) * 0.35;
+    this.pos.y += (gy - this.pos.y) * (1 - Math.exp(-2.5 * dt));
+    const ny = face ? Math.atan2(-(face.x - this.pos.x), -(face.z - this.pos.z)) : Math.hypot(this.vel.x, this.vel.z) > 1 ? Math.atan2(-this.vel.x, -this.vel.z) : this.yaw;
+    const turn = angDiff(ny, this.yaw); this.yaw += turn * Math.min(1, dt * 3);
+    this.bank += (Math.max(-0.3, Math.min(0.3, -turn * 1.5)) - this.bank) * Math.min(1, dt * 3);
+    this.obj.rotation.set(0, this.yaw, this.bank, 'YXZ');
+    this.c.copy(this.pos);
+    this.gunT -= dt;
+    if (this.st !== 'chan' && this.gunT <= 0 && pc.distanceTo(this.pos) < REVIVE.gunR && this.checkLos(dt)) {
+      this.gunT = REVIVE.gunCd;
+      for (let i = 0; i < 3; i++) G.queue.push({ t: i * 0.15, label: 'reviver-gun', fn: () => {
+        if (!this.alive) return;
+        const mp = this.n.Muzzle_RvGun ? this.n.Muzzle_RvGun.getWorldPosition(new V3()) : this.c.clone();
+        const aim = lead(mp, 120, _b, tg); _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.y += (Math.random() - 0.5) * 0.04; _d.z += (Math.random() - 0.5) * 0.05; _d.normalize();
+        spawnShot({ p: mp, v: _d.clone().multiplyScalar(120), dmg: REVIVE.dmg, team: 'E', kind: 'ebullet', color: 0x70ff90, w: 0.22, len: 3, life: 0.6, label: 'reviver-gun' });
+      } });
+    }
+  }
+}
+
+// ---- the four pylons. stand within 7.5 m of one (below 7 m) for 2.5 s to plant a charge (22 s fuse); up to two ground enemies
+// are sent to each charge and defuse it in 4 s (3.2 s with two). a charge that goes off fells the pylon and blasts 15 m around it. destroy all four
+// before the enemy orbital gun finishes charging (330 s)
+export const SABOT = { sites: [[-66, -46], [70, -38], [60, 58], [-58, 54]], R: 5, plantR: 7.5, plantT: 2.5, fuse: 22, defR: 6, defT: 4, blast: 15, blastDmg: 110, limit: 260, defKinds: ['walker', 'bulwark', 'prism'] };
+const sabZoneGeo = new THREE.RingGeometry(SABOT.plantR - 0.4, SABOT.plantR, 64), sabProgGeo = new THREE.RingGeometry(SABOT.plantR - 1.4, SABOT.plantR - 0.6, 64, 1, 0, Math.PI * 2);
+export function startSabot() {
+  clearSabot();
+  const S = G.sabot = { gens: [], charges: [], t: SABOT.limit, done: 0, lost: false, defT: 0 };
+  for (const [sx, sz] of SABOT.sites) {
+    let x = sx, z = sz;
+    for (let i = 0; i < 500; i++) {
+      const a = i * 2.4, r = Math.sqrt(i) * 2.2; x = sx + Math.cos(a) * r; z = sz + Math.sin(a) * r;
+      if (groundAt(x, z, 60) < 0.6 && !collideCyl(new V3(x, 0.5, z), 11, 3)) break;
+    }
+    const obj = cloneKit('E_Pylon'); obj.position.set(x, 0, z); obj.rotation.y = Math.random() * 6.28; G.scene.add(obj);
+    obj.traverse((o) => { if (o.isMesh && o.material && o.material.name === 'PylonGlow' && !o.material._sab) { o.material._sab = true; o.material.color.setHex(0xff5a3a); if (o.material.emissive) o.material.emissive.setHex(0xff2a10); } });
+    const zone = new THREE.Mesh(sabZoneGeo, new THREE.MeshBasicMaterial({ color: 0xffa040, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+    zone.rotation.x = -Math.PI / 2; zone.position.set(x, 0.35, z); G.scene.add(zone);
+    const prog = new THREE.Mesh(sabProgGeo, new THREE.MeshBasicMaterial({ color: 0x60e8ff, transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+    prog.rotation.x = -Math.PI / 2; prog.position.set(x, 0.4, z); prog.visible = false; G.scene.add(prog);
+    S.gens.push({ obj, zone, prog, x, z, alive: true, k: 0, charge: null, n: nodes(obj), sol: addSolid(x, z, 6.4, 6.4, 10.5, 0, 'pylon') });
+  }
+}
+export function clearSabot() {
+  const S = G.sabot; if (!S) return;
+  for (const g of S.gens) { for (const o of [g.obj, g.zone, g.prog]) o.parent && o.parent.remove(o); g.zone.material.dispose(); g.prog.material.dispose(); removeSolid(g.sol); }
+  for (const c of S.charges) removeCharge(c);
+  for (const e of G.enemies) if (e.sabC) { e.goalP = null; e.sabC = null; }
+  G.sabot = null;
+}
+function sabPlant(g, from) {
+  const S = G.sabot;
+  let dx = from.x - g.x, dz = from.z - g.z; const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+  const x = g.x + dx * (SABOT.R + 0.3), z = g.z + dz * (SABOT.R + 0.3);
+  const obj = new THREE.Group(); obj.add(new THREE.Mesh(chGeo, chMat)); obj.children[0].position.y = 1.4;
+  const light = new THREE.Mesh(chLightGeo, new THREE.MeshBasicMaterial({ color: 0xff2010 })); light.position.y = 1.75; obj.add(light);
+  obj.position.set(x, 0, z); obj.rotation.y = Math.atan2(dx, dz); G.scene.add(obj);
+  const ring = new THREE.Mesh(chRingGeo, new THREE.MeshBasicMaterial({ color: 0x60e8ff, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+  ring.scale.setScalar(SABOT.defR / DEPOT.defR); ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.45, z); G.scene.add(ring);
+  const c = { obj, light, ring, x, z, p: new V3(x, 0, z), t: SABOT.fuse, gen: g, k: 0, beepT: 0, camo: !!(G.camo && G.camo.t > 0) };
+  S.charges.push(c); g.charge = c; G.sabPlanted = (G.sabPlanted || 0) + 1; if (c.camo) G.sabCamoPlant = (G.sabCamoPlant || 0) + 1;
+  sfx('repair', 0); G.onSabPlant && G.onSabPlant(g, c);
+}
+function sabDrop(c) {
+  removeCharge(c); const S = G.sabot; const i = S.charges.indexOf(c); if (i >= 0) S.charges.splice(i, 1);
+  if (c.gen.charge === c) c.gen.charge = null;
+  for (const e of G.enemies) if (e.sabC === c) { e.goalP = null; e.sabC = null; }
+}
+function sabGround(e) { return e.pos && e.alive && !e.dying && !e.hacked && SABOT.defKinds.includes(e.kind) && e.pos.y - groundAt(e.pos.x, e.pos.z, e.pos.y + 1) < 4; }
+function updateSabot(dt) {
+  const S = G.sabot, P = G.player; if (!S) return;
+  if (S.gens.some((g) => g.alive)) { S.t -= dt; if (S.t <= 0 && !S.lost) { S.t = 0; S.lost = true; } }
+  for (const g of S.gens) {
+    if (!g.alive) { if (Math.random() < 0.4) G.fx.smoke(new V3(g.x + (Math.random() - 0.5) * 4, 4, g.z + (Math.random() - 0.5) * 4), 1, 2.5, 3, 0x2a2624, 2.4, 1.2); continue; }
+    if (g.n.PY_Ring) g.n.PY_Ring.rotation.y += dt * 1.2;
+    const near = !g.charge && P && P.alive && Math.hypot(P.pos.x - g.x, P.pos.z - g.z) < SABOT.plantR + 0.5 && P.pos.y - groundAt(P.pos.x, P.pos.z, P.pos.y + 1) < 7;
+    g.k = near ? g.k + dt / SABOT.plantT : Math.max(0, g.k - dt);
+    g.prog.visible = g.k > 0; g.prog.scale.setScalar(0.25 + 0.75 * Math.min(1, g.k)); g.prog.material.opacity = 0.5 + 0.4 * Math.min(1, g.k);
+    g.zone.material.color.setHex(g.charge ? 0xff4030 : near ? 0x60e8ff : 0xffa040);
+    g.zone.material.opacity = g.charge ? 0.25 : 0.4 + 0.2 * Math.sin(G.time * 3);
+    if (g.k >= 1) { g.k = 0; g.prog.visible = false; sabPlant(g, P.pos); }
+  }
+  S.defT -= dt;
+  if (S.defT <= 0 && S.charges.length) {   // send up to three nearby ground enemies to each live charge
+    S.defT = 1.2;
+    for (const c of S.charges) {
+      let n = G.enemies.filter((e) => e.sabC === c && e.alive && !e.dying).length;
+      if (n >= 2) continue;
+      const cand = G.enemies.filter((e) => sabGround(e) && !e.sabC && Math.hypot(e.pos.x - c.x, e.pos.z - c.z) < 75).sort((a, b) => Math.hypot(a.pos.x - c.x, a.pos.z - c.z) - Math.hypot(b.pos.x - c.x, b.pos.z - c.z));
+      for (const e of cand) { if (n >= 2) break; e.sabC = c; e.goalP = c.p; e.goalR = 2.5; n++; }
+    }
+  }
+  for (let i = S.charges.length - 1; i >= 0; i--) {
+    const c = S.charges[i];
+    let nd = 0; for (const e of G.enemies) if (sabGround(e) && Math.hypot(e.pos.x - c.x, e.pos.z - c.z) < SABOT.defR) nd++;
+    c.k = nd ? c.k + dt / SABOT.defT * Math.min(1.25, 0.75 + 0.25 * nd) : Math.max(0, c.k - dt * 0.4);
+    c.ring.material.color.setHex(c.k > 0 ? 0xffd040 : 0x60e8ff); c.ring.scale.setScalar(SABOT.defR / DEPOT.defR * (1 - 0.55 * c.k));
+    if (c.k >= 1) {
+      sabDrop(c); G.sabDefused = (G.sabDefused || 0) + 1;
+      G.fx.sparks(new V3(c.x, 1.5, c.z), null, 18, 0xffd040, 10, 1, 0.4, 0.2); sfx('alarm', P ? P.pos.distanceTo(c.p) * 0.4 : 0); G.onSabDefuse && G.onSabDefuse(c);
+      continue;
+    }
+    c.t -= dt; c.beepT -= dt;
+    const urg = Math.max(0, c.t / SABOT.fuse);
+    if (c.beepT <= 0) { c.beepT = 0.12 + 0.9 * urg; c.light.material.color.setHex(0xff2010); sfx('minebeep', P ? P.pos.distanceTo(c.obj.position) : 0); }
+    else if (c.beepT < 0.06 + 0.5 * urg) c.light.material.color.setHex(0x301008);
+    c.ring.material.opacity = 0.45 + 0.35 * Math.abs(Math.sin(G.time * (4 + 14 * (1 - urg))));
+    if (c.t <= 0) {
+      const g = c.gen; sabDrop(c);
+      const at = new V3(c.x, 1.5, c.z); G.curLabel = 'sabot-charge'; explodeAt(at, SABOT.blast, SABOT.blastDmg, 'X', 2.6, 0xff6020);
+      g.alive = false; S.done++; removeSolid(g.sol); g.sol = addSolid(g.x, g.z, 6.4, 6.4, 3.4, 0, 'pylon');
+      g.obj.scale.set(1.08, 0.36, 1.08); g.obj.rotation.z = 0.1; g.zone.visible = false; g.prog.visible = false;
+      const hc = new V3(g.x, 6, g.z); G.fx.explosion(hc, 3.4, 0xff5020); G.fx.flash(hc, 0xff8040, 140, 70, 0.6); G.fx.trauma = Math.min(1, G.fx.trauma + 0.5);
+      sfx('bigboom', P ? P.pos.distanceTo(hc) * 0.5 : 0); G.onGenDown && G.onGenDown(g);
+    }
+  }
+}
+export function sabTarget(from) {   // the nearest pylon still standing that has no charge on it
+  const S = G.sabot; if (!S) return null; let best = null, bd = 1e9;
+  for (const g of S.gens) { if (!g.alive || g.charge) continue; const d = Math.hypot(g.x - from.x, g.z - from.z); if (d < bd) { bd = d; best = g; } }
+  return best;
+}
+
 export function updateCombat(dt) {
   RAYF.skipIce = false;
   for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; if (q.sh && q.sh.hacked) G.curShooter = q.sh; q.fn(); G.curShooter = null; } }
@@ -8398,7 +8666,7 @@ export function updateCombat(dt) {
   G.curLabel = null;
   LAVA.uT.value = G.time;
   if (G.blinkInv > 0) G.blinkInv -= dt;
-  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt); updateBurn(dt); updateBeacon(dt); updateLance(dt); updateGrav(dt); updatePursuit(dt); updateFires(dt); updateNets(dt); updateSky(dt); updateCiws(dt); updateWebs(dt); updateHacks(dt); updateEvac(dt);
+  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt); updateBurn(dt); updateBeacon(dt); updateLance(dt); updateGrav(dt); updatePursuit(dt); updateFires(dt); updateNets(dt); updateSky(dt); updateCiws(dt); updateWebs(dt); updateHacks(dt); updateEvac(dt); updateCamo(dt); updateWrecks(dt); updateSabot(dt);
   updateMarks(dt);
   updateBurning(dt);
   updateChill(dt);
