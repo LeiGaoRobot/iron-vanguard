@@ -267,7 +267,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   const free = (x, z, r) => {
     if (PR && Math.hypot(x, z) > PR - 16 - r) return false;
     if (Math.hypot(x, z - 120) < 28 || Math.hypot(x, z) < 26) return false;   // spawn + centre plaza
-    if (road && roadD(x, z) < 11 + r) return false;
+    if (road && roadD(x, z) < (road.wide ? 17 : 11) + r) return false;
     if (forge && lavaD(x, z) < 9 + r) return false;
     for (const q of relaySites) if (Math.hypot(x - q.x, z - q.z) < 18 + r) return false;
     for (const s of solids) {
@@ -385,6 +385,15 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
     const bm = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(bal), new THREE.MeshStandardMaterial({ color: 0x6a645c, roughness: 1 })); bm.receiveShadow = true; group.add(bm);
     const sm = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(slp), new THREE.MeshStandardMaterial({ color: 0x4a3a2c, roughness: 0.95 })); sm.receiveShadow = true; group.add(sm);
     const rm = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(rl), new THREE.MeshStandardMaterial({ color: 0x9a9ca0, roughness: 0.35, metalness: 0.85 })); rm.castShadow = true; group.add(rm);
+  } else if (road && road.wide) {   // four-lane highway: asphalt band, white lane dashes, double yellow median, kerbs
+    const W = road.wide, Lx = ARENA * 2 + 80, geos = [new THREE.PlaneGeometry(Lx, W).rotateX(-Math.PI / 2).translate(0, 0.03, 0)], dash = [], yel = [], kerb = [];
+    for (const z of [-6.75, 6.75]) for (let x = -Lx / 2; x < Lx / 2; x += 10) dash.push(new THREE.PlaneGeometry(4, 0.35).rotateX(-Math.PI / 2).translate(x, 0.06, z));
+    for (const z of [-0.35, 0.35]) yel.push(new THREE.PlaneGeometry(Lx, 0.22).rotateX(-Math.PI / 2).translate(0, 0.06, z));
+    for (const z of [-W / 2, W / 2]) kerb.push(new THREE.BoxGeometry(Lx, 0.25, 0.6).translate(0, 0.12, z));
+    const rm = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(geos), new THREE.MeshStandardMaterial({ color: 0x2e3034, roughness: 0.9 })); rm.receiveShadow = true; group.add(rm);
+    group.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(dash), new THREE.MeshStandardMaterial({ color: 0xe8e8e0, roughness: 0.8 })));
+    group.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(yel), new THREE.MeshStandardMaterial({ color: 0xe0b840, roughness: 0.8 })));
+    const km = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(kerb), new THREE.MeshStandardMaterial({ color: 0xb0b0a8, roughness: 0.8 })); km.receiveShadow = true; group.add(km);
   } else if (road) {   // asphalt strip + dashed centre line, laid just above the floor
     const geos = [], dash = [];
     for (let i = 0; i < road.length - 1; i++) {

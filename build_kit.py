@@ -124,6 +124,10 @@ M = dict(
     NeedleGlow=mat("NeedleGlow", "#ffd0f4", 0.2, emit="#ff50d8", strength=2.2),
     HeraldGlow=mat("HeraldGlow", "#ffd0c0", 0.3, emit="#ff3020", strength=2.2),
     RodGlow=mat("RodGlow", "#e0f6ff", 0.2, emit="#80d8ff", strength=2.4),
+    AcidGlow=mat("AcidGlow", "#e0ffc0", 0.25, emit="#90ff30", strength=2.2),
+    Headlight=mat("Headlight", "#fff8e0", 0.2, emit="#fff0c0", strength=3.0),
+    TruckRed=mat("TruckRed", "#a8322a", 0.5),
+    Trailer=mat("Trailer", "#9aa0a6", 0.55, metal=0.4),
     Rust2=mat("Rust2", "#5a3a26", 0.9, metal=0.2),
 )
 
@@ -2062,7 +2066,52 @@ def build_rod_pack():
         box((sx * 0.34, -0.1, 0.25), (0.05, 0.9, 0.12), M["Hazard"], K)
     muzzle("Muzzle_RodPack", (0, 0.8, 0.55), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack()
+
+def build_truck():
+    # armoured highway truck: cab at the front (+Y), long box trailer, six axles of black wheels, headlights and
+    # red tail lights. About 13 m long, 3.2 m wide, 4.2 m tall. Origin at the ground centre. front = +Y
+    K = kit("P_Truck")
+    box((0, 4.6, 1.75), (3.0, 3.0, 2.6), M["TruckRed"], K, bevel=0.2)
+    box((0, 5.95, 2.4), (2.6, 0.2, 1.0), M["Glass"], K)
+    box((0, 6.15, 1.0), (3.1, 0.3, 0.6), M["Black"], K, bevel=0.05)
+    for sx in (-1, 1):
+        box((sx * 1.15, 6.12, 1.3), (0.45, 0.12, 0.3), M["Headlight"], K)
+        box((sx * 1.3, -6.42, 1.4), (0.35, 0.1, 0.25), M["EEye"], K)
+        for y in (5.0, 1.8, 0.6, -3.0, -4.2, -5.4):
+            cyl((sx * 1.4, y, 0.55), 0.55, 0.45, M["Black"], K, rot=(0, math.pi / 2, 0), verts=14)
+    box((0, -1.3, 2.35), (3.2, 10.0, 3.6), M["Trailer"], K, bevel=0.08)
+    for y in (-5.5, -3.0, -0.5, 2.0):
+        box((0, y, 2.35), (3.26, 0.12, 3.4), M["Frame"], K)
+    box((0, -1.3, 0.45), (2.6, 10.0, 0.35), M["Frame"], K)
+    for sx in (-1, 1):
+        box((sx * 1.62, -1.3, 1.0), (0.06, 9.6, 0.16), M["Hazard"], K)
+
+def build_leech():
+    # Leech: a fist-sized parasite drone (about 1.4 m): a bulbous glowing green sac, a dark carapace, four hooked
+    # claws reaching forward (LC_Claw*) and a little rotor ring underneath. front = +Y
+    K = kit("E_Leech")
+    ball((0, -0.1, 0.0), 0.55, M["AcidGlow"], K, scale=(1, 1.25, 0.9), sub=2)
+    ball((0, 0.1, 0.2), 0.55, M["EArmor"], K, scale=(1.1, 1.0, 0.7), sub=1)
+    box((0, 0.6, 0.15), (0.5, 0.1, 0.12), M["EEye"], K)
+    for i, (sx, sz) in enumerate(((-1, 1), (1, 1), (-1, -1), (1, -1))):
+        c = empty("LC_Claw%d" % (i + 1), (sx * 0.35, 0.45, sz * 0.2), K)
+        box((sx * 0.1, 0.3, 0), (0.12, 0.6, 0.12), M["Frame"], c, rot=(0, 0, -sx * 0.4))
+        box((sx * 0.25, 0.65, -sz * 0.1), (0.1, 0.3, 0.1), M["Joint"], c, rot=(sz * 0.6, 0, 0))
+    torus((0, -0.1, -0.5), 0.45, 0.05, M["Joint"], K)
+
+def build_acid():
+    K = kit("W_Acid")
+    # acid sprayer: a squat receiver, a glass tank of glowing green fluid on top, a flared nozzle
+    box((0, 0.05, 0.05), (0.42, 0.9, 0.4), M["Frame"], K, bevel=0.05)
+    cyl((0, 0.05, 0.42), 0.17, 0.55, M["AcidGlow"], K, rot=ALONG_Y, verts=12)
+    for y in (-0.22, 0.32):
+        torus((0, y, 0.42), 0.19, 0.035, M["Joint"], K, rot=ALONG_Y)
+    cyl((0, 0.8, 0.05), 0.09, 0.6, M["Joint"], K, rot=ALONG_Y, verts=10)
+    cyl((0, 1.15, 0.05), 0.1, 0.22, M["Armor2"], K, rot=ALONG_Y, verts=12, r2=0.17)
+    box((0.23, 0.2, 0.05), (0.04, 0.5, 0.22), M["Hazard"], K)
+    muzzle("Muzzle_Acid", (0, 1.28, 0.05), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

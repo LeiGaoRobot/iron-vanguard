@@ -19,6 +19,7 @@ export const G = {
 };
 
 export const WEAPONS = {
+  acid: { slot: 'arm', name: 'AC-2 酸液喷枪', en: 'AC-2 Acid Sprayer', desc: '抛射酸液团（有下坠）· 溅射 3 m · 命中叠加腐蚀：每层受伤 +7%，最多 5 层，4 秒不补就消退', type: 'bullet', acid: true, rate: 0.15, dmg: 15, speed: 90, spread: 0.02, mag: 30, reload: 2.0, color: 0x90ff30, w: 0.45, len: 1.6, life: 1.1, sfx: 'rifle', recoil: 0.12 },
   needler: { slot: 'arm', name: 'NX-8 针刺枪', en: 'NX-8 Needler', desc: '追踪锁定目标的钢针 · 扎在敌机上 · 同一目标扎满 8 根一起引爆（100 / 4.5 m）· 3 秒没补针就脱落', type: 'bullet', needle: true, rate: 0.085, dmg: 5, speed: 150, spread: 0.02, mag: 48, reload: 2.2, color: 0xff70e0, w: 0.16, len: 3, life: 1.6, sfx: 'rifle', recoil: 0.08 },
   ricochet: { slot: 'arm', name: 'RB-4 跳弹枪', en: 'RB-4 Ricochet', desc: '撞墙反弹 3 次 · 反弹后转向附近敌机 · 每弹一次 +25%', type: 'bullet', rate: 0.11, dmg: 14, speed: 240, spread: 0.008, mag: 36, reload: 2.0, color: 0x80ffd0, w: 0.22, len: 6, life: 1.8, bounce: 3, sfx: 'rifle', recoil: 0.15 },
   rifle: { slot: 'arm', name: 'AR-77 突击步枪', en: 'AR-77 Rifle', desc: '全自动 · 精准 · 均衡', type: 'bullet', rate: 0.1, dmg: 17, speed: 320, spread: 0.005, mag: 40, reload: 1.7, color: 0xffd27a, w: 0.22, len: 7, sfx: 'rifle', recoil: 0.18 },
@@ -57,7 +58,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -118,7 +119,7 @@ export const OD = { fill: 2600, dur: 10, dmg: 1.4, armor: 0.65 };
 // ------------------------------------------------------------------ damage
 function dealDamage(ent, dmg, team, at, label) {
   if (!ent.alive) return;
-  if (team === 'P') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.stunT > 0) dmg *= STUN_VULN; if (h.markT > 0) dmg *= h.maxHp > 3000 ? WEAPONS.sonar.bossVuln : WEAPONS.sonar.vuln; if (h.hornT > 0) { G.hornBlocked = (G.hornBlocked || 0) + dmg * (1 - HERALD.hornK); dmg *= HERALD.hornK; } }   // EMP-stunned targets take extra damage
+  if (team === 'P') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.stunT > 0) dmg *= STUN_VULN; if (h.markT > 0) dmg *= h.maxHp > 3000 ? WEAPONS.sonar.bossVuln : WEAPONS.sonar.vuln; if (h.corr > 0) { G.corrBonus = (G.corrBonus || 0) + dmg * CORR.per * h.corr; dmg *= 1 + CORR.per * h.corr; } if (h.hornT > 0) { G.hornBlocked = (G.hornBlocked || 0) + dmg * (1 - HERALD.hornK); dmg *= HERALD.hornK; } }   // EMP-stunned targets take extra damage
   if ((team === 'P' || team === 'X') && !G.pierce && !ent.isBarrel && !ent.isMine && !ent.isPlayer && !ent.isAlly && G.player) {   // warden dome: hits from outside are absorbed
     const w = domeAt(ent.c);
     if (w && G.player.pos.distanceTo(w.pos) > w.R) { w.absorb(dmg, domeEntry(w, G.player.center(_c), ent.c, new V3())); if (team === 'P' && !isAlly(label || G.curLabel)) G.stats.hits++; return; }
@@ -198,6 +199,7 @@ function impact(s, at, ent) {
   else {
     if (ent) dealDamage(ent, s.dmg, s.team, at);
     if (s.needle && ent && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly) embedNeedle(ent, at);
+    if (s.acid) acidSplash(ent, at, s.dmg);
     if (s.chill && ent && ent.alive && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly) { chillAdd(ent.kind === 'cpart' ? ent.owner : ent, s.chill); fx.sparks(at, null, 3, 0xd8f6ff, 6, 0.8, 0.3, 0.2); }
     fx.sparks(at, _a.copy(s.v).normalize().multiplyScalar(-1), ent ? 6 : 4, s.team === 'P' ? 0xffd27a : 0xff7a50, 14, 0.8, 0.25, 0.22);
     fx.emit('add', { x: at.x, y: at.y, z: at.z, life: 0.08, s0: ent ? 1.4 : 0.9, c0: s.color });
@@ -224,6 +226,7 @@ function updateShots(DT) {
       const sp = s.v.length(); _a.subVectors(s.target.c, _c.set(s.x, s.y, s.z)).normalize(); _b.copy(s.v).divideScalar(sp || 1);
       if (_a.dot(_b) > 0.3) { _b.lerp(_a, Math.min(1, 3.2 * dt)).normalize(); s.v.copy(_b).multiplyScalar(sp); }
     }
+    if (s.acid) { s.v.y -= CORR.grav * dt; if (Math.random() < 0.5) fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.12, s0: 0.9, s1: 0.3, c0: 0xa0ff40, c1: 0x408010 }); }
     if (WIND.on && s.kind !== 'flame') { const wk = s.kind === 'bullet' || s.kind === 'ebullet' ? 0.25 : 0.9; s.v.x += WIND.x * wk * dt; s.v.z += WIND.z * wk * dt; }
     if (s.kind === 'missile') {
       const tgt = s.target && s.target.alive && !s.target.dying ? s.target.c : s.aim;
@@ -369,6 +372,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
           const sh = spawnShot({ p: mp, v: _d.clone().multiplyScalar(d.speed * (n > 1 ? 0.9 + Math.random() * 0.2 : 1)), dmg: d.dmg * dmgMul, team, kind: isP ? 'bullet' : 'ebullet', color: isP ? d.color : 0xff6a40, w: d.w, len: d.len, life: d.life || 1.6, chill: isP && team === 'P' ? d.chill : 0 });
           if (d.flak && team === 'P') { sh.flak = d.flak; sh.splash = d.splash; }
           if (d.bounce && team === 'P') sh.bounce = d.bounce;
+          if (d.acid && team === 'P') sh.acid = true;
           if (d.needle && team === 'P') { sh.needle = true; sh.target = target && target.alive ? target : null; }
         }
         if (n > 1 && me) fx.trauma = Math.min(1, fx.trauma + 0.12);
@@ -1821,7 +1825,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { needler: 'rifle', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -5390,6 +5394,152 @@ export class Herald extends Enemy {
   }
 }
 
+// ---- Highway traffic: armoured trucks run down four lanes (two each way) and despawn past the edge. They are moving
+// solids (they block shots and line of sight), and anything on the road in their way is run over and thrown.
+export const TRAFFIC = { lanes: [[-10, 1, 21], [-3.5, 1, 26], [3.5, -1, 26], [10, -1, 21]], gap: [2.2, 5.0], first: 3, L: 12.6, W: 3.3, H: 4.2, dmg: 44, edmg: 220, bossDmg: 120, fling: 0.75, up: 9, end: 30 };
+export function startTraffic() {
+  G.traffic = { trucks: [], lanes: TRAFFIC.lanes.map(([z, dir, v], i) => ({ z, dir, v, t: TRAFFIC.first + i * 0.9 + Math.random() * 2 })) };
+}
+export function clearTraffic() {
+  const T = G.traffic; if (!T) return;
+  for (const k of T.trucks) { k.obj.parent && k.obj.parent.remove(k.obj); removeSolid(k.solid); }
+  G.traffic = null;
+}
+export function laneOf(z) { for (const [lz] of TRAFFIC.lanes) if (Math.abs(z - lz) < 2.6) return lz; return null; }
+function updateTraffic(dt) {
+  const T = G.traffic, P = G.player; if (!T) return;
+  const X = ARENA + TRAFFIC.end;
+  for (const ln of T.lanes) {
+    ln.t -= dt; if (ln.t > 0) continue;
+    const x0 = -ln.dir * X;
+    if (T.trucks.some((k) => k.lane === ln && Math.abs(k.x - x0) < 24)) { ln.t = 0.5; continue; }
+    ln.t = TRAFFIC.gap[0] + Math.random() * (TRAFFIC.gap[1] - TRAFFIC.gap[0]);
+    const obj = cloneKit('P_Truck'); obj.rotation.y = ln.dir > 0 ? -Math.PI / 2 : Math.PI / 2; obj.position.set(x0, 0, ln.z); G.scene.add(obj);
+    const solid = addSolid(x0, ln.z, TRAFFIC.L, TRAFFIC.W, TRAFFIC.H, 0, 'truck');
+    T.trucks.push({ obj, solid, lane: ln, x: x0, v: ln.v * (0.92 + Math.random() * 0.16), hitP: 0, hits: new Set(), honk: false });
+    G.trucks = (G.trucks || 0) + 1;
+  }
+  for (let i = T.trucks.length - 1; i >= 0; i--) {
+    const k = T.trucks[i], ln = k.lane;
+    k.x += ln.dir * k.v * dt; k.obj.position.x = k.x;
+    const hl = TRAFFIC.L / 2, hw = TRAFFIC.W / 2;
+    k.solid.min.set(k.x - hl, 0, ln.z - hw); k.solid.max.set(k.x + hl, TRAFFIC.H, ln.z + hw);
+    if (Math.abs(k.x) > X + 2) { k.obj.parent && k.obj.parent.remove(k.obj); removeSolid(k.solid); T.trucks.splice(i, 1); continue; }
+    const front = k.x + ln.dir * hl;
+    if (P && P.alive) {
+      const ahead = (P.pos.x - front) * ln.dir;
+      if (!k.honk && ahead > 0 && ahead < 40 && Math.abs(P.pos.z - ln.z) < 3.5 && P.pos.y < TRAFFIC.H + 1) { k.honk = true; sfx('horn', ahead * 0.5); }
+      k.hitP -= dt;
+      const r = P.radius || 1.6;
+      if (k.hitP <= 0 && Math.abs(P.pos.x - k.x) < hl + r && Math.abs(P.pos.z - ln.z) < hw + r && P.pos.y < TRAFFIC.H + 0.3 && !(G.blinkInv > 0)) {
+        k.hitP = 1.2; G.curLabel = 'truck'; hurtPlayer(TRAFFIC.dmg, 'truck'); G.truckHits = (G.truckHits || 0) + 1;
+        const side = Math.sign(P.pos.z - ln.z) || 1;
+        P.pos.z = ln.z + side * (hw + r + 0.2); P.vel.x = ln.dir * k.v * TRAFFIC.fling; P.vel.z = side * 8; P.vel.y = TRAFFIC.up; P.grounded = false;
+        G.fx.sparks(P.center(new V3()), null, 20, 0xffd090, 18, 1, 0.35, 0.25); G.fx.trauma = Math.min(1, G.fx.trauma + 0.6); sfx('boom', 0);
+      }
+    }
+    for (const e of G.enemies) {
+      if (!e.alive || e.dying || !e.pos || e.holo || k.hits.has(e) || e.isTrain || e.isColossus || e.kind === 'leech') continue;
+      const r = e.r || 2;
+      if (Math.abs(e.pos.x - k.x) > hl + r || Math.abs(e.pos.z - ln.z) > hw + r) continue;
+      if (e.pos.y - groundAt(e.pos.x, e.pos.z, e.pos.y + 1) > 1.5) continue;   // flying or on a roof
+      k.hits.add(e);
+      const side = Math.sign(e.pos.z - ln.z) || 1; e.pos.z = ln.z + side * (hw + r + 0.3);
+      const boss = e.kind === 'boss';
+      e.hit(boss ? TRAFFIC.bossDmg : TRAFFIC.edmg, e.c, 'truck'); G.truckE = (G.truckE || 0) + 1;
+      if (!e.alive) { G.roadkill = (G.roadkill || 0) + 1; G.onTally && G.onTally('roadkill'); }
+      if (e.vel) { e.vel.x = ln.dir * 10; e.vel.z = side * 6; }
+      G.fx.sparks(e.c, null, 16, 0xffd090, 16, 1, 0.3, 0.25); sfx('boom', P ? P.pos.distanceTo(e.pos) : 40);
+    }
+  }
+}
+export function truckAhead(x, z, y, within) {   // the nearest truck about to reach (x, z) on its lane, as seconds to impact
+  const T = G.traffic; if (!T || y > TRAFFIC.H + 0.5) return null;
+  let best = null;
+  for (const k of T.trucks) {
+    if (Math.abs(z - k.lane.z) > TRAFFIC.W / 2 + 2.2) continue;
+    const ahead = (x - (k.x + k.lane.dir * TRAFFIC.L / 2)) * k.lane.dir; if (ahead < -TRAFFIC.L - 2) continue;
+    const t = Math.max(0, ahead) / k.v; if (t < within && (!best || t < best.t)) best = { k, t };
+  }
+  return best;
+}
+
+// ---- Leech: a fast parasite drone that latches onto your back (up to three at once), drains 22 energy per second and
+// nibbles 5 AP per second. A quick boost (needs 18 EN) shakes them all off and stuns them; then they come back.
+export const LEECH = { hp: 120, r: 1.1, speed: 26, latch: 3.0, drain: 22, bite: 5, max: 3, shake: 2.0, relatch: 3, knock: 60 };
+export class Leech extends Enemy {
+  constructor(pos) {
+    super('leech', 'E_Leech', pos, LEECH.hp, LEECH.r); this.boom = 0.5;
+    this.pos.y = groundAt(pos.x, pos.z, 40) + 8; this.vel = new V3(); this.st = 'fly'; this.stT = 0; this.ph = Math.random() * 6.28; this.slot = -1; this.noLatch = 1; this.latchDmg = 0;
+    this.c.copy(this.pos); this.yaw = 0;
+  }
+  explode() { G.fx.explosion(this.c, 0.35, 0x90ff30); sfx('boom', G.player ? G.player.pos.distanceTo(this.c) : 40); this.detach(false); this.remove(); }
+  hit(dmg, at, label) {
+    if (!this.alive || this.dying) return;
+    if (this.st === 'on') { this.latchDmg += dmg; if (this.latchDmg >= LEECH.knock) this.detach(true); }
+    super.hit(dmg);
+  }
+  detach(fling) {
+    if (this.st !== 'on') return;
+    G.leechOn = Math.max(0, (G.leechOn || 0) - 1); this.slot = -1; this.latchDmg = 0;
+    if (fling) {
+      const P = G.player, a = P.aimYaw; this.st = 'stun'; this.stT = LEECH.shake; this.noLatch = LEECH.relatch + LEECH.shake;
+      this.vel.set(Math.sin(a) * 9 + (Math.random() - 0.5) * 6, 6, Math.cos(a) * 9 + (Math.random() - 0.5) * 6);
+    } else this.st = 'fly';
+  }
+  update(dt) {
+    const P = G.player; this.ph += dt * 2.2; this.noLatch -= dt;
+    if (this.st === 'on') {
+      if (!P.alive) { this.detach(false); return; }
+      if (P.qbT > 0) { this.detach(true); G.leechShaken = (G.leechShaken || 0) + 1; G.fx.sparks(this.c, null, 10, 0x90ff30, 12, 1, 0.3, 0.22); return; }
+      const a = P.aimYaw, bx = Math.sin(a), bz = Math.cos(a), sx = Math.cos(a), sz = -Math.sin(a), off = (this.slot - 1) * 0.95;
+      this.pos.set(P.pos.x + bx * 1.3 + sx * off, P.pos.y + 4.3 + this.slot * 0.35, P.pos.z + bz * 1.3 + sz * off);
+      this.yaw = a + Math.PI; this.obj.rotation.set(0.9, this.yaw, 0);
+      P.en = Math.max(0, P.en - LEECH.drain * dt); P.drainT = 0;
+      G.curLabel = 'leech'; hurtPlayer(LEECH.bite * dt, 'leech'); G.leechT = (G.leechT || 0) + dt / Math.max(1, G.leechOn || 1);
+      if (Math.random() < 0.15) G.fx.sparks(this.c, null, 1, 0x90ff30, 4, 0.8, 0.3, 0.18);
+    } else if (this.st === 'stun') {
+      this.stT -= dt; this.vel.y -= 14 * dt; this.pos.addScaledVector(this.vel, dt); this.vel.multiplyScalar(Math.exp(-1.2 * dt));
+      const gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 1); if (this.pos.y < gy + 0.6) { this.pos.y = gy + 0.6; this.vel.set(0, 0, 0); }
+      this.obj.rotation.x += dt * 9; if (this.stT <= 0) { this.st = 'fly'; this.obj.rotation.set(0, this.yaw, 0); }
+    } else {
+      const tc = P.center(playerC);
+      const dd = this.pos.distanceTo(tc), wv = Math.min(1, dd / 30) * 9; if (this.noLatch <= 0 && dd < 12) _a.copy(tc); else _a.set(tc.x + Math.sin(this.ph) * (4 + wv), tc.y + 2 + Math.sin(this.ph * 1.7) * (1.5 + wv * 0.5), tc.z + Math.cos(this.ph) * (4 + wv));
+      _b.subVectors(_a, this.pos); const L = _b.length() || 1;
+      _b.multiplyScalar(LEECH.speed * Math.min(1, L / 6) / L);
+      this.vel.lerp(_b, 1 - Math.exp(-2.5 * dt)); this.pos.addScaledVector(this.vel, dt);
+      if (collideCyl(this.pos, 0.8, 1)) this.vel.y += 6 * dt;
+      const gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 1); if (this.pos.y < gy + 1.5) this.pos.y = gy + 1.5;
+      this.yaw += angDiff(Math.atan2(-this.vel.x, -this.vel.z), this.yaw) * Math.min(1, dt * 6); this.obj.rotation.set(0, this.yaw, 0);
+      if (P.alive && this.noLatch <= 0 && (G.leechOn || 0) < LEECH.max && this.pos.distanceTo(tc) < LEECH.latch && !(G.blinkInv > 0)) {
+        const used = new Set(G.enemies.filter((e) => e.kind === 'leech' && e.st === 'on').map((e) => e.slot));
+        for (let s = 0; s < LEECH.max; s++) if (!used.has(s)) { this.slot = s; break; }
+        this.st = 'on'; G.leechOn = (G.leechOn || 0) + 1; G.leechLatch = (G.leechLatch || 0) + 1; sfx('hook', 0);
+        G.onLeech && G.onLeech();
+      }
+    }
+    const cl = Math.sin(G.time * (this.st === 'on' ? 14 : 6) + this.ph) * 0.3;
+    for (let i = 1; i <= 4; i++) { const n = this.n['LC_Claw' + i]; if (n) n.rotation.y = (i % 2 ? 1 : -1) * cl; }
+    this.c.copy(this.pos);
+  }
+}
+
+// ---- AC-2 acid sprayer: arcing globs that splash 3 m and corrode what they hit (+7 % damage taken per stack, up to 5)
+export const CORR = { grav: 14, R: 3, splash: 0.5, per: 0.07, max: 5, T: 4 };
+function corrode(e) {
+  const h = e.kind === 'cpart' ? e.owner : e; if (!h || !h.alive || h.isBarrel || h.isPlayer || h.isMine || h.isAlly) return;
+  h.corr = Math.min(CORR.max, (h.corr || 0) + 1); h.corrT = CORR.T; G.corrStacks = (G.corrStacks || 0) + 1;
+}
+function acidSplash(ent, at, dmg) {
+  if (ent) corrode(ent);
+  for (const e of entsFor('P')) {
+    if (e === ent || !e.alive || e.isBarrel || e.isMine || !e.c || e.c.distanceTo(at) > CORR.R + (e.r || 1) * 0.5) continue;
+    dealDamage(e, dmg * CORR.splash, 'P', e.c, 'acid'); corrode(e);
+  }
+  G.fx.sparks(at, null, 10, 0x90ff30, 9, 0.9, 0.35, 0.24);
+  G.fx.emit('add', { x: at.x, y: at.y, z: at.z, vy: 0.6, life: 0.35, s0: 1.6, s1: 2.8, c0: 0xa0ff40, c1: 0x306010 });
+}
+
 // ---- NX-8 needler: homing needles stick in what they hit; eight in one target detonate together
 export const NEEDLE = { burst: 8, dmg: 100, R: 4.5, keep: 3 };
 const ndGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.8, 5);
@@ -5481,6 +5631,7 @@ export function updateCombat(dt) {
   for (const e of G.enemies) {
     G.curLabel = e.kind;
     e.rally = false; if (hers.length && e.kind !== 'herald' && e.pos && e.alive && !e.dying) for (const h of hers) if (Math.hypot(h.pos.x - e.pos.x, h.pos.z - e.pos.z) < HERALD.R) { e.rally = true; break; }
+    if (e.corrT > 0) { e.corrT -= dt; if (e.corrT <= 0) e.corr = 0; else if (e.c && Math.random() < 0.05 * e.corr) G.fx.emit('add', { x: e.c.x + (Math.random() - 0.5) * 2, y: e.c.y + (Math.random() - 0.5) * 2, z: e.c.z + (Math.random() - 0.5) * 2, vy: -2, life: 0.4, s0: 0.6, s1: 0.2, c0: 0xa0ff40, c1: 0x306010 }); }
     if (e.hornT > 0) { e.hornT -= dt; if (e.c && Math.random() < 0.15) G.fx.sparks(_a.copy(e.c).add(_b.set((Math.random() - 0.5) * 3, Math.random() * 2, (Math.random() - 0.5) * 3)), null, 1, 0xffb040, 5, 0.8, 0.3, 0.2); }
     else if (e.rally && e.c && Math.random() < 0.05) G.fx.sparks(_a.copy(e.c).setY(e.c.y + 1.5), null, 1, 0xff4030, 4, 0.8, 0.3, 0.2);
     if (e.stunT > 0 && e.alive && !e.dying) {
@@ -5525,7 +5676,7 @@ export function updateCombat(dt) {
   if (GRID.on) updateGrid(dt);
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
-  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt);
+  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
