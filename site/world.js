@@ -31,10 +31,18 @@ export function addSolid(cx, cz, w, d, h, y0 = 0, kind = 'block', ref = null) {
   return s;
 }
 
+// sand height field for the dune floor: wind ripples (steep lee face) at two scales plus slow dune swells, shaded via the normal
+const SAND_H = `float surfH(vec2 p, float fd){
+  float ph = p.x * 0.55 + p.y * 0.2 + sin(p.y * 0.08 + p.x * 0.03) * 4.0;
+  float r = fract(ph / 6.2832), rip = smoothstep(0.0, 0.75, r) * (1.0 - smoothstep(0.75, 1.0, r));
+  float ph2 = p.x * 1.9 - p.y * 0.7 + sin(p.y * 0.21 + p.x * 0.05) * 3.0;
+  float r2 = fract(ph2 / 6.2832), rip2 = smoothstep(0.0, 0.75, r2) * (1.0 - smoothstep(0.75, 1.0, r2));
+  float big = sin(p.x * 0.045 + sin(p.y * 0.03) * 2.0) * 1.6 + sin(p.y * 0.031 + p.x * 0.012) * 1.2;
+  return rip * 0.5 * (0.4 + 0.6 * fd) + rip2 * 0.09 * fd + big; }`;
 // world-space panel shader for buildings / floor
 function panelMaterial(color, opts) {
   const m = new THREE.MeshStandardMaterial({ color, roughness: opts.rough ?? 0.85, metalness: opts.metal ?? 0.1 });
-  m.customProgramCacheKey = () => 'panel|' + opts.frag + '|' + (opts.emit || '');   // day / night variants must not share a program
+  m.customProgramCacheKey = () => 'panel|' + opts.frag + '|' + (opts.emit || '') + '|' + (opts.nrm || '');   // day / night variants must not share a program
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uT = LAVA.uT; sh.uniforms.uZ = GRID.uZ;
     sh.vertexShader = sh.vertexShader
@@ -46,11 +54,17 @@ function panelMaterial(color, opts) {
           float fb = 40.0 * sin(p.y / 50.0 + 1.8) + 60.0; float db = abs(p.x - fb) / sqrt(1.0 + pow(40.0 / 50.0 * cos(p.y / 50.0 + 1.8), 2.0)); return min(da, db); }
         float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
         float vn2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
-        float gridLine(float x, float s, float w){ float f = abs(fract(x / s + 0.5) - 0.5) * s; return 1.0 - smoothstep(w * 0.5, w, f); }`)
+        float gridLine(float x, float s, float w){ float f = abs(fract(x / s + 0.5) - 0.5) * s; return 1.0 - smoothstep(w * 0.5, w, f); }
+        ${opts.nrm || ''}`)
       .replace('#include <color_fragment>', `#include <color_fragment>
         ${opts.frag}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
         ${opts.emit || ''}`);
+    // opts.nrm defines float surfH(vec2 xz, float fade): a world-space height field shaded through the normal
+    if (opts.nrm) sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
+        { float fd = 1.0 - smoothstep(35.0, 150.0, length(vViewPosition)); vec2 q = vWP.xz; const float e = 0.06;
+          vec2 gr = vec2(surfH(q + vec2(e, 0.0), fd) - surfH(q - vec2(e, 0.0), fd), surfH(q + vec2(0.0, e), fd) - surfH(q - vec2(0.0, e), fd)) / (2.0 * e);
+          normal = normalize(normal - (viewMatrix * vec4(gr.x, 0.0, gr.y, 0.0)).xyz * step(0.7, vWN.y)); }`);
   };
   return m;
 }
@@ -75,7 +89,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
 
   // ---- floor: 4 m concrete tiles with per-tile tone + seams, 16 m darker lane lines
   const floorMat = panelMaterial(0x80848a, {
-    rough: storm ? 0.5 : icelake ? 0.45 : 0.92, metal: storm || icelake ? 0.25 : 0.1, frag: `
+    rough: storm ? 0.5 : icelake ? 0.45 : 0.92, metal: storm || icelake ? 0.25 : 0.1, nrm: dune ? SAND_H : '', frag: `
       vec2 cell = floor(vWP.xz / 4.0);
       float tone = 0.9 + 0.12 * h21(cell) + 0.03 * h21(floor(vWP.xz / 1.0));
       diffuseColor.rgb *= tone;

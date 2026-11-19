@@ -8,6 +8,7 @@ import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
 import { loadKit, cloneKit } from './kit.js';
 import { buildArena, addSolid, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine, relaySites, mulberry32, STORM_RODS, LAVA, lavaAt, PLAT, WATER, GRID } from './world.js';
 import { FX, TEX } from './fx.js';
+import { AtmospherePass, makeRidge } from './post.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff, PHYS } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
@@ -439,14 +440,43 @@ scene.environmentIntensity = 0.42;
 // sky dome
 const sky = new THREE.Mesh(new THREE.SphereGeometry(1200, 32, 16), new THREE.ShaderMaterial({
   side: THREE.BackSide, depthWrite: false, fog: false,
-  uniforms: { top: { value: new THREE.Color(0x6f98bf) }, hor: { value: HORIZON }, sun: { value: new V3(0.45, 0.55, 0.7).normalize() }, disc: { value: 1 }, stars: { value: 0 }, earth: { value: new V3(-0.45, 0.32, -0.83).normalize() } },
-  vertexShader: 'varying vec3 vD; void main(){ vD = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position.z = gl_Position.w; }',
-  fragmentShader: `uniform vec3 top; uniform vec3 hor; uniform vec3 sun; uniform float disc; uniform float stars; uniform vec3 earth; varying vec3 vD;
+  uniforms: { top: { value: new THREE.Color(0x6f98bf) }, hor: { value: HORIZON }, sun: { value: new V3(0.45, 0.55, 0.7).normalize() }, disc: { value: 1 }, stars: { value: 0 }, earth: { value: new V3(-0.45, 0.32, -0.83).normalize() },
+    sunC: { value: new THREE.Color(1, 0.92, 0.8) }, cover: { value: 0.4 }, cT: { value: 0 }, cLit: { value: new THREE.Color(1, 1, 1) }, cDark: { value: new THREE.Color(0.4, 0.45, 0.5) } },
+  vertexShader: 'varying vec3 vDi; void main(){ vDi = normalize(position); gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.0); gl_Position.z = gl_Position.w; }',
+  // vDi is renormalised per pixel: the linearly interpolated direction made the sharp sun disc a cross along the sphere's triangle edges
+  // clouds: one fbm layer projected onto a flat ceiling, lit by sampling the density a step toward the sun (thin edges facing the
+  // sun glow, thick cores go dark underneath); they hide the sun disc so light shafts come out of the gaps
+  fragmentShader: `uniform vec3 top; uniform vec3 hor; uniform vec3 sun; uniform float disc; uniform float stars; uniform vec3 earth; varying vec3 vDi; vec3 vD;
+    uniform vec3 sunC; uniform float cover; uniform float cT; uniform vec3 cLit; uniform vec3 cDark;
     float hs(vec3 p){ return fract(sin(dot(p, vec3(127.1, 311.7, 74.7))) * 43758.5453); }
-    void main(){ float h = clamp(vD.y, 0.0, 1.0); vec3 c = mix(hor, top, pow(h, 0.55));
-      float s = max(dot(vD, sun), 0.0); c += vec3(1.0, 0.92, 0.8) * (pow(s, 600.0) * 4.0 + pow(s, 8.0) * 0.15 * disc);
+    float h2(vec2 p){ vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+    float vn(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(h2(i), h2(i + vec2(1.0, 0.0)), f.x), mix(h2(i + vec2(0.0, 1.0)), h2(i + vec2(1.0, 1.0)), f.x), f.y); }
+    float fbm(vec2 p, float hi){ float v = 0.0, a = 0.5; mat2 R = mat2(1.6, 1.2, -1.2, 1.6);
+      for (int i = 0; i < 5; i++) { v += a * vn(p) * (i > 2 ? hi : 1.0); p = R * p; a *= 0.5; } return v; }
+    void main(){ vD = normalize(vDi); float h = clamp(vD.y, 0.0, 1.0); vec3 c = mix(hor, top, pow(h, 0.55));
+      float s = max(dot(vD, sun), 0.0);
+      c += sunC * (pow(s, 8.0) * 0.15 + pow(s, 3.0) * 0.1 * (1.0 - h) * (1.0 - h)) * disc;
+      float sd = pow(s, 600.0) * 4.0, ca = 0.0;
+      if (cover > 0.001 && vD.y > 0.0) {
+        float t = 1.0 / (vD.y + 0.06), hi = smoothstep(0.03, 0.22, vD.y);
+        vec2 p = vD.xz * t * 2.1 + vec2(0.9, 0.35) * cT;
+        p += 0.75 * vec2(vn(p * 0.4 + 3.1), vn(p * 0.4 + 9.7));
+        float d = fbm(p, hi), th = mix(0.74, 0.3, cover);
+        float a = smoothstep(th, th + 0.12, d);
+        if (a > 0.001) {
+          float d2 = fbm(p + normalize(sun.xz + 1e-4) * 0.2, hi);
+          float core = smoothstep(th + 0.02, th + 0.24, d);   // thick middles go dark underneath, thin edges stay bright
+          float lit = clamp(0.5 + (d - d2) * 8.0, 0.0, 1.0) * (1.0 - 0.62 * core);
+          vec3 cc = mix(cDark, cLit, lit) + sunC * pow(s, 5.0) * (1.0 - core * 0.85) * 1.6 * disc;
+          cc = mix(cc, hor, smoothstep(0.3, 0.0, vD.y) * 0.65);
+          ca = a * smoothstep(0.0, 0.07, vD.y) * 0.97;
+          c = mix(c, cc, ca); sd *= 1.0 - ca;
+        }
+      }
+      c += sunC * sd;
       if (stars > 0.01) {
-        vec3 q = floor(vD * 220.0); float st = hs(q); c += vec3(0.85, 0.9, 1.0) * step(0.9965, st) * (0.4 + 2.2 * fract(st * 97.0)) * smoothstep(0.0, 0.12, vD.y) * min(stars, 1.0);
+        vec3 q = floor(vD * 220.0); float st = hs(q); c += vec3(0.85, 0.9, 1.0) * step(0.9965, st) * (0.4 + 2.2 * fract(st * 97.0)) * smoothstep(0.0, 0.12, vD.y) * min(stars, 1.0) * (1.0 - ca);
         float e = dot(vD, earth);
         if (e > 0.9975) {   // earth: blue disc with cloud bands, lit from the sun side
           vec3 n = normalize(vD - earth * e); float r = sqrt(max(0.0, 1.0 - e * e)) / 0.0707;
@@ -467,6 +497,13 @@ sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6;
 scene.add(sun, sun.target);
 const envBase = { exp: 1, sun: 1, top: new THREE.Color() }, FLARE_TOP = new THREE.Color(0xfff0d0);
 const SUN_DIR = new V3(0.45, 0.55, 0.7).normalize(); G.sunDir = SUN_DIR; const _glv = new V3(), _glp = new V3();
+// cloud cover per lighting preset (0 = clear sky); anything not listed gets 0.4
+const CLOUD = { day: 0.42, dusk: 0.52, snow: 0.85, desert: 0.28, ash: 0.7, storm: 0.95, dawn: 0.48, haze: 0.55, forge: 0.6, ion: 0.5, cyber: 0, autumn: 0.48, lunar: 0,
+  overcast: 0.95, eclipse: 0.3, abyss: 0, sky1: 0.35, sky2: 0.32, sky3: 0.08, sky4: 0, dune: 0.4, evac: 0.52, shield: 0.46, chase: 0.5, noon: 0.3, sprint: 0.42,
+  front: 0.55, fort: 0.5, wreck: 0.7, refinery: 0.46, fog: 0.9, supply: 0.4, rift: 0.2, highway: 0.46, thunder: 0.95, flare: 0.25, quake: 0.6, scrap: 0.6,
+  salt: 0.22, gale: 0.66, icelake: 0.6, lockdown: 0.4, twister: 0.85, grid: 0.4, toxic: 0.6, jungle: 0.55, surge: 0.9, meteor: 0.15, night: 0.35 };
+const clOf = (E) => E.cl ?? CLOUD[Object.keys(ENVS).find((k) => ENVS[k] === E)] ?? 0.4;
+const lumOf = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 function applyEnv(key) {
   const E = typeof key === 'object' ? key : ENVS[key] || ENVS.day, U = sky.material.uniforms;
   U.top.value.set(E.top); HORIZON.set(E.hor); scene.fog.color.copy(HORIZON); scene.fog.near = E.fog[0]; scene.fog.far = E.fog[1];
@@ -478,13 +515,24 @@ function applyEnv(key) {
   snowFx.visible = !!(E.snow || E.ash || E.leaves || E.dust || E.bubbles || E.sand || E.pollen || E.spores); rainFx.visible = !!E.rain;
   snowFx.material.color.set(E.spores ? 0xc8e060 : E.pollen ? 0xe8f0a0 : E.sand ? 0xd8b080 : E.bubbles ? 0x8fdcec : E.dust ? 0xa890d8 : E.leaves ? 0xd0782a : E.ember ? 0xff8a40 : E.ash ? 0x6a605a : 0xffffff); snowFx.userData.k = E.spores ? -0.12 : E.pollen ? -0.06 : E.sand ? 0.18 : E.bubbles ? -0.45 : E.dust ? -0.15 : E.leaves ? 0.22 : E.ash ? 0.35 : 1;
   storm.on = !!(E.rain || E.bolts); storm.hemi = E.hemi[2]; storm.top.set(E.top); storm.k = 0; storm.t = 4 + Math.random() * 6;
+  applyAtmo(E);
+}
+// clouds, light shafts / aerial perspective / grade and the distant ridge follow the preset's sky and sun colours
+function applyAtmo(E) {
+  const U = sky.material.uniforms, hl = lumOf(HORIZON);
+  U.cover.value = clOf(E); U.sunC.value.copy(sun.color);
+  U.cLit.value.copy(sun.color).multiplyScalar(THREE.MathUtils.clamp(hl * 1.5 + 0.2, 0.18, 1.25)).lerp(HORIZON, 0.2);
+  U.cDark.value.copy(U.top.value).lerp(HORIZON, 0.45).multiplyScalar(0.52);
+  atmo.setEnv(E, sun.color, U.top.value, HORIZON);
+  const R = ridge.userData.U; R.hor.value.copy(HORIZON); R.top.value.copy(U.top.value); R.sunC.value.copy(sun.color); R.sunDir.value.copy(SUN_DIR);
+  R.vis.value = THREE.MathUtils.clamp((E.fog[1] - 180) / 380, 0, 0.92); R.lit.value = THREE.MathUtils.clamp(hl * 1.6 + 0.15, 0.1, 1.2);
 }
 let arenaKey = '';
 function ensureArena() {
   const M = MISSIONS[cfg.mission], key = M.seed + M.env;
   if (key === arenaKey && arenaGroup) return;
   if (arenaGroup) scene.remove(arenaGroup);
-  PLAT.R = M.platform || 0; asc = null; tide = null; WATER.on = false; WATER.y = -50;
+  PLAT.R = M.platform || 0; asc = null; tide = null; WATER.on = false; WATER.y = -50; ridge.visible = !PLAT.R;
   arenaGroup = buildArena(scene, M.seed, M.env, M.path || M.track || (M.highway || M.lane ? Object.assign([[-ARENA - 40, 0], [ARENA + 40, 0]], { wide: M.lane ? 22 : 28 }) : null), M.zones ? (M.evac ? [...M.zones, M.evac] : M.zones) : M.cranes ? M.cranes.map((c) => [c[0], c[1]]) : M.sites || null); arenaKey = key;
   applyEnv(M.env);
   if (M.platform) buildAscent(arenaGroup);
@@ -582,8 +630,11 @@ function updateSnow(dt) {
   }
   snowFx.geometry.attributes.position.needsUpdate = true;
 }
-const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: 4 }));
+// the composer's buffers carry a depth texture so the atmosphere pass can tell sky from geometry and measure distance
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: 4, depthTexture: new THREE.DepthTexture(innerWidth, innerHeight) }));
 composer.addPass(new RenderPass(scene, camera));
+const atmo = new AtmospherePass(innerWidth, innerHeight); composer.addPass(atmo); G.atmo = atmo;
+const ridge = makeRidge(7); scene.add(ridge); G.ridge = ridge;
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.7, 0.45, 2.6);
 composer.addPass(bloom);
 composer.addPass(new OutputPass());
@@ -1383,7 +1434,7 @@ function mixEnv(A, B, k) {
   return { top: lcol(A.top, B.top, k), hor: lcol(A.hor, B.hor, k), fog: [lnum(A.fog[0], B.fog[0], k), lnum(A.fog[1], B.fog[1], k)],
     hemi: [lcol(A.hemi[0], B.hemi[0], k), lcol(A.hemi[1], B.hemi[1], k), lnum(A.hemi[2], B.hemi[2], k)], sun: [lcol(A.sun[0], B.sun[0], k), lnum(A.sun[1], B.sun[1], k)],
     env: lnum(A.env, B.env, k), exp: lnum(A.exp, B.exp, k), dir: [0, 1, 2].map((i) => lnum(A.dir[i], B.dir[i], k)), disc: lnum(A.disc, B.disc, k),
-    stars: lnum(+A.stars || 0, +B.stars || 0, k), earth: B.earth };
+    stars: lnum(+A.stars || 0, +B.stars || 0, k), earth: B.earth, cl: lnum(clOf(A), clOf(B), k) };
 }
 function buildAscent(group) {
   const metal = new THREE.MeshStandardMaterial({ color: 0x2c3038, roughness: 0.4, metalness: 0.8 });
@@ -2873,6 +2924,7 @@ function frame(now) {
 }
 function render(dt) {
   if (state === 'play' || state === 'pause') drawHUD(dt);
+  sky.material.uniforms.cT.value += dt * 0.012; atmo.update(camera, SUN_DIR);
   composer.render();
   if (G.afterRender) G.afterRender(dt);   // WeChat build draws its canvas HUD here
 }
@@ -2886,7 +2938,7 @@ window.__iv = {
   sim: (sec) => { auto.on = true; const n = Math.round(sec * 60); for (let i = 0; i < n && !run.over; i++) step(1 / 60); render(1 / 60); return { t: run.t.toFixed(1), wave: run.wave, hp: Math.round(G.player.hp), kills: G.stats.kills, alive: G.enemies.filter((e) => e.alive).length, over: run.over, state }; },
   capture: (name = 'shot.jpg', w = 1280, h = 720) => {
     renderer.setSize(w, h, false); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
-    composer.render();
+    atmo.update(camera, SUN_DIR); composer.render();
     const data = canvas.toDataURL('image/jpeg', 0.88);
     resize();
     return fetch('http://127.0.0.1:8212/', { method: 'POST', body: JSON.stringify({ name, data }) }).then((r) => r.text()).catch((e) => 'ERR ' + e);

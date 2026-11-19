@@ -34,6 +34,7 @@ export function applyTier(t) {
     G.composer.setSize(innerWidth, innerHeight);
   }
   if (G.bloom) G.bloom.enabled = T.bloom;
+  if (G.atmo) G.atmo.enabled = T.bloom;   // light shafts + aerial perspective + grade: off on the low tier
   const sc = sceneOf(G);
   if (sc) sc.traverse((o) => {
     if (o.isDirectionalLight && (o.castShadow || o.userData.wxShadow)) {

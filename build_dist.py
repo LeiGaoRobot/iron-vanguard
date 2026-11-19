@@ -11,7 +11,7 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 SITE = os.path.join(ROOT, 'site'); DIST = os.path.join(ROOT, 'dist'); VENDOR = os.path.join(ROOT, 'vendor')
 os.makedirs(DIST, exist_ok=True); os.makedirs(VENDOR, exist_ok=True)
 THREE = 'https://cdn.jsdelivr.net/npm/three@0.184.0'
-MODULES = ['kit.js', 'fx.js', 'audio.js', 'world.js', 'mech.js', 'combat.js', 'ally.js']   # dependency order; main.js last
+MODULES = ['kit.js', 'fx.js', 'audio.js', 'world.js', 'mech.js', 'combat.js', 'ally.js', 'post.js']   # dependency order; main.js last
 
 def read(p):
     with open(p, encoding='utf-8') as f: return f.read()
