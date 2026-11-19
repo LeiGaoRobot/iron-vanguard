@@ -65,13 +65,14 @@ export const WEAPONS = {
   rod: { slot: 'shoulder', name: 'LR-1 避雷针', en: 'LR-1 Lightning Rod', desc: '在前方 6 m 插下避雷针 14 秒 · 每 0.9 秒放电打 22 m 内最近的敌机（36，再连锁 1 个）· 雷暴里 14 m 内不会被雷劈 · 同时只能有 1 根', type: 'rod', dur: 14, zap: 0.9, dmg: 36, R: 22, chains: 2, cover: 14, cd: 18, sfx: 'sentry' },
   sentry: { slot: 'shoulder', name: 'TR-3 哨戒炮塔', en: 'TR-3 Sentry Turret', desc: '在前方架设自动炮塔 15 秒 · 双管速射 75 m 内敌机 · 吸引部分火力 · 耐久 400 · 同时只能有 1 座', type: 'sentry', hp: 400, dur: 15, dmg: 10, rate: 0.11, range: 75, cd: 22, sfx: 'sentry' },
   stasis: { slot: 'shoulder', name: 'TS-1 时滞场', en: 'TS-1 Stasis Field', desc: '在准星处展开 14 m 时滞球 5 秒 · 球内敌机动作放慢到三成、敌弹几乎停在空中 · 头目只放慢一半', type: 'stasis', range: 60, R: 14, dur: 5, k: 0.3, bossK: 0.6, shotK: 0.12, cd: 17, sfx: 'stasis' },
+  ciws: { slot: 'shoulder', name: 'PD-3 近防炮', en: 'PD-3 CIWS', desc: '按下后肩部近防炮自动开火 8 秒 · 优先击落 45 m 内来袭的导弹 / 炮弹 / 巡航导弹（每发约一半几率打爆），其次扫射 35 m 内的无人机等小型飞行敌机 · 冷却 15 秒', type: 'ciws', dur: 8, cd: 15, R: 45, airR: 35, rate: 0.085, dmg: 16, kill: 0.55, sfx: 'gatling' },
   net: { slot: 'shoulder', name: 'NT-4 捕获网', en: 'NT-4 Net Launcher', desc: '发射追踪捕获网 · 地面敌机被缠住 2.5 秒无法移动（仍能开火）· 小型飞行敌机直接被网落（140 伤害）· 头目与大型目标减速 40% · 信使被缠住 3 秒：车速 −65%、受到伤害 +30% · 冷却 7 秒', type: 'net', dmg: 30, air: 140, root: 2.5, speed: 70, cd: 7, sfx: 'cannon' },
   smoke: { slot: 'shoulder', name: 'SM-2 烟幕弹', en: 'SM-2 Smoke Screen', desc: '在身前炸开 12 m 烟幕 8 秒 · 烟幕外的敌人看不穿它，无法瞄准烟里的你 · 已发射的导弹照样追踪', type: 'smoke', R: 12, dur: 8, cd: 16, sfx: 'smoke' },
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -650,6 +651,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireCluster(owner, slot, d, aim, dmgMul, team); if (me) G.stats.shots++; }
   } else if (d.type === 'stasis') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; castStasis(owner, slot, d, aim); if (me) G.stats.shots++; }
+  } else if (d.type === 'ciws') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; G.ciwsL = G.ciwsL.filter((c) => c.owner !== owner); G.ciwsL.push({ owner, slot, d, mul: dmgMul, t: d.dur, fT: 0, me }); sfx('repair', 0); if (me) G.stats.shots++; }
   } else if (d.type === 'net') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireNet(owner, slot, d, dmgMul, aim, target); if (me) G.stats.shots++; }
   } else if (d.type === 'smoke') {
@@ -1903,7 +1906,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -7611,6 +7614,170 @@ export function updateGrav(dt) {
   if (lock) { G.gravT = (G.gravT || 0) + dt; G.gravOn = 0.3; } else G.gravOn = Math.max(0, (G.gravOn || 0) - dt);
 }
 
+// ------------------------------------------------------------------ v48 Skyshield: missile trucks drive between hide sites,
+// raise their racks and fire slow cruise missiles at three civilian shelters; the missiles can be shot down
+export const SKY = { shelters: [[-72, 52], [74, 46], [0, -80]], hits: 5,
+  sites: [[-118, -40], [-96, -112], [-20, -128], [70, -116], [124, -52], [126, 40], [92, 112], [10, 128], [-80, 116], [-128, 54]],
+  lnHp: 1600, lnR: 3.2, speed: 9, setup: 2.8, salvo: 2, gap: 1.4, pack: 1.8, hold: [3, 6],
+  crHp: 45, crR: 1.5, crSpeed: 17, crAlt: 28, crDmg: 60, crSplash: 6, crTurn: 1.3 };
+const SKY_LIFT = 0.95;
+export class Launcher extends Enemy {
+  constructor(pos) {
+    super('launcher', 'E_Launcher', pos, SKY.lnHp, SKY.lnR); this.boom = 2.0;
+    this.pos.y = groundAt(pos.x, pos.z, 40); this.yaw = Math.random() * 6; this.vel = new V3(); this.st = 'drive'; this.t = 0; this.lift = 0; this.ph = Math.random() * 6;
+    this.stuckT = 0; this.sideT = 0; this.side = 1; this.last = this.pos.clone(); this.goal = this.pickSite(); this.fired = 0; this.salvos = 0;
+    this.c.set(this.pos.x, this.pos.y + 1.6, this.pos.z);
+  }
+  drive(tx, tz, spd, dt) { return Engineer.prototype.drive.call(this, tx, tz, spd, dt); }
+  pickSite() {
+    const P = G.player, cur = this.goal;
+    if (G.sky) {   // a hide site at least 45 m from here, preferably away from you
+      const opts = SKY.sites.filter((q) => Math.hypot(q[0] - this.pos.x, q[1] - this.pos.z) > 45 && q !== cur);
+      opts.sort((a, b) => (Math.hypot(b[0] - P.pos.x, b[1] - P.pos.z) - Math.hypot(a[0] - P.pos.x, a[1] - P.pos.z)) + (Math.random() - 0.5) * 80);
+      return opts[0] || SKY.sites[0];
+    }
+    for (let k = 0; k < 30; k++) {
+      const a = Math.random() * 6.283, r = 65 + Math.random() * 40, x = P.pos.x + Math.cos(a) * r, z = P.pos.z + Math.sin(a) * r;
+      if (Math.abs(x) > ARENA - 12 || Math.abs(z) > ARENA - 12 || pointInSolid(new V3(x, 1, z), 4)) continue;
+      return [x, z];
+    }
+    return [this.pos.x, this.pos.z];
+  }
+  pickTarget() {
+    if (G.sky) { const live = G.sky.shelters.filter((q) => q.alive); if (live.length) return live[Math.floor(Math.random() * live.length)]; }
+    return null;   // null = the player (or a friend)
+  }
+  update(dt) {
+    const n = this.n; this.ph += dt; this.t -= dt;
+    if (this.st === 'drive') {
+      const dl = this.drive(this.goal[0], this.goal[1], SKY.speed, dt);
+      if (dl < 4) { this.st = 'setup'; this.t = SKY.setup; this.vel.set(0, 0, 0); G.fx.warn(this.pos.clone(), 7, SKY.setup); G.onLaunchWarn && G.onLaunchWarn(this); sfx('alarm', G.player ? G.player.pos.distanceTo(this.pos) * 0.5 : 0); }
+    } else {
+      this.vel.multiplyScalar(Math.exp(-6 * dt));
+      if (this.st === 'setup' && this.t <= 0) { this.st = 'fire'; this.t = 0; this.fired = 0; }
+      else if (this.st === 'fire' && this.t <= 0) {
+        if (this.fired < SKY.salvo) { this.launch(); this.fired++; this.t = SKY.gap; }
+        else { this.st = 'pack'; this.t = SKY.pack; this.salvos++; }
+      } else if (this.st === 'pack' && this.t <= 0) { this.st = 'hold'; this.t = SKY.hold[0] + Math.random() * (SKY.hold[1] - SKY.hold[0]); }
+      else if (this.st === 'hold' && this.t <= 0) { this.st = 'drive'; this.goal = this.pickSite(); }
+    }
+    const want = this.st === 'setup' || this.st === 'fire' ? SKY_LIFT : 0;
+    this.lift += Math.max(-dt * 0.6, Math.min(dt * 0.45, want - this.lift));
+    if (n.LN_Rack) n.LN_Rack.rotation.x = this.lift;
+    this.pos.y += (groundAt(this.pos.x, this.pos.z, this.pos.y + 2) - this.pos.y) * Math.min(1, dt * 8);
+    this.obj.rotation.set(0, this.yaw, 0);
+    this.c.set(this.pos.x, this.pos.y + 1.6, this.pos.z);
+  }
+  launch() {
+    const mp = this.n.Muzzle_Launch ? this.n.Muzzle_Launch.getWorldPosition(new V3()) : new V3(this.pos.x, this.pos.y + 5, this.pos.z);
+    const side = this.fired % 2 ? 1 : -1; mp.x += Math.cos(this.yaw) * side * 0.5; mp.z -= Math.sin(this.yaw) * side * 0.5;
+    const dir = new V3(-Math.sin(this.yaw) * Math.cos(this.lift), Math.sin(this.lift), -Math.cos(this.yaw) * Math.cos(this.lift));
+    new Cruise(mp, dir, this.pickTarget(), this);
+    G.fx.muzzle(mp, dir, 0xffb060, 3); G.fx.smoke(mp.clone().addScaledVector(dir, -4), 6, 3, 2.2, 0x8a8478, 1.5, 0.6); G.fx.flash(mp, 0xffa050, 40, 30, 0.25);
+    sfx('missile', G.player ? G.player.pos.distanceTo(mp) : 0);
+    G.onCruise && G.onCruise(this);
+  }
+}
+export class Cruise extends Enemy {
+  constructor(pos, dir, shelter, from) {
+    super('cruise', 'E_Cruise', pos, SKY.crHp, SKY.crR); this.boom = 0.8; this.noLos = true;
+    this.vel = dir.clone().multiplyScalar(SKY.crSpeed * 0.7); this.shelter = shelter; this.from = from; this.age = 0; this.puffT = 0; this.ph = Math.random() * 6;
+    this.c.copy(pos); G.cruiseN = (G.cruiseN || 0) + 1;
+  }
+  aimPt(out) {
+    if (this.shelter) return out.set(this.shelter.pos.x, this.shelter.pos.y + 3, this.shelter.pos.z);
+    const f = this.tg(); return f.center ? f.center(out) : out.copy(f.pos);
+  }
+  explode() { G.cruiseDown = (G.cruiseDown || 0) + 1; G.curLabel = 'p-cruise'; explodeAt(this.c, 5, 30, 'P', 1.3, 0xffa040); G.fx.flash(this.c, 0xffa040, 30, 24, 0.2); this.remove(); }
+  impact() {
+    if (!this.alive) return;
+    this.alive = false; this.dying = true;
+    const c = this.c.clone();
+    G.curLabel = 'cruise'; G.curSrc = c; explodeAt(c, SKY.crSplash, SKY.crDmg, 'E', 2.2, 0xff8030); G.fx.flash(c, 0xff9040, 70, 40, 0.4);
+    G.fx.smoke(c, 10, 6, 3, 0x4a4440, 2, 0.6);
+    if (this.shelter && this.shelter.alive && c.distanceTo(this.shelter.pos) < 14) this.shelter.hit();
+    if (G.player) { const dd = G.player.pos.distanceTo(c); G.fx.trauma = Math.min(1, G.fx.trauma + Math.max(0, 0.6 - dd / 120)); sfx('bigboom', dd); }
+    this.remove();
+  }
+  update(dt) {
+    this.age += dt; this.ph += dt;
+    const tp = this.aimPt(_c), dx = tp.x - this.c.x, dz = tp.z - this.c.z, dh = Math.hypot(dx, dz) || 1;
+    // climb to cruise altitude, fly level, then dive onto the target from about 1.1 x altitude out
+    const alt = this.shelter ? SKY.crAlt : Math.min(SKY.crAlt, tp.y + 12);
+    const want = _d.set(dx / dh, 0, dz / dh);
+    if (this.age < 0.9) want.copy(this.vel).normalize();
+    else if (dh > alt * 1.1) want.y = Math.max(-0.5, Math.min(0.6, (alt - this.c.y) / 18));
+    else { want.set(dx, tp.y - this.c.y, dz).normalize(); }
+    want.normalize();
+    const sp = Math.min(SKY.crSpeed, this.vel.length() + dt * 14), cur = _b.copy(this.vel).normalize();
+    cur.lerp(want, Math.min(1, SKY.crTurn * dt * (this.age < 0.9 ? 0.3 : dh < alt * 1.1 ? 2.2 : 1))).normalize();
+    this.vel.copy(cur).multiplyScalar(sp);
+    const L = sp * dt, hit = raySolids(this.c, cur, L + 0.5);
+    this.c.addScaledVector(this.vel, dt); this.pos.copy(this.c);
+    const gy = groundAt(this.c.x, this.c.z, this.c.y + 2);
+    if (hit.solid || this.c.y < gy + 0.6 || this.c.distanceTo(tp) < 2.5 || this.age > 16) { this.impact(); return; }
+    this.obj.lookAt(_a.copy(this.c).sub(this.vel));
+    this.obj.rotateZ(Math.sin(this.ph * 3) * 0.15);
+    this.puffT -= dt;
+    if (this.puffT <= 0) { this.puffT = 0.05; const tail = _a.copy(this.c).addScaledVector(cur, -1.8); G.fx.smoke(tail, 1, 1.4, 1.6, 0xb8b0a4, 0.4, 0.5); G.fx.emit('add', { x: tail.x, y: tail.y, z: tail.z, life: 0.12, s0: 1.4, s1: 0.4, c0: 0xffd090, c1: 0xff6020 }); }
+  }
+}
+class Shelter {
+  constructor(x, z) {
+    this.obj = cloneKit('P_Shelter'); const y = groundAt(x, z, 20); this.obj.position.set(x, y, z); G.scene.add(this.obj); this.pos = this.obj.position;
+    this.n = nodes(this.obj); this.solid = addSolid(x, z, 7.2, 7.2, 4.5, y, 'shelter'); this.hits = SKY.hits; this.alive = true; this.hitT = 0; this.ph = Math.random() * 6; this.k = 1;
+    this.lights = []; if (this.n.SH_Light) this.n.SH_Light.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); this.lights.push(o); } });
+  }
+  hit() {
+    if (!this.alive) return;
+    this.hits--; this.hitT = 1; G.sky.impacts++;
+    G.fx.sparks(_a.set(this.pos.x, this.pos.y + 6, this.pos.z), null, 30, 0xffb060, 20, 1, 0.6, 0.4);
+    if (this.hits <= 0) { this.alive = false; removeSolid(this.solid); this.solid = addSolid(this.pos.x, this.pos.z, 7.2, 7.2, 2.4, this.pos.y, 'shelter'); G.fx.flash(_a, 0xff6020, 90, 60, 0.6); G.onShelterLost && G.onShelterLost(this); }
+    else G.onShelterHit && G.onShelterHit(this);
+  }
+  remove() { this.obj.parent && this.obj.parent.remove(this.obj); removeSolid(this.solid); for (const m of this.lights) m.material.dispose(); }
+  update(dt) {
+    this.ph += dt; this.hitT = Math.max(0, this.hitT - dt);
+    const d = this.n.SH_Dome; if (d) { this.k += ((this.alive ? 1 : 0.35) - this.k) * Math.min(1, dt * 1.5); const w = this.alive ? 1 : 1.08; d.scale.set(w, this.k, w); }   // the dome sinks when it collapses (kit z-up = glTF y)
+    for (const m of this.lights) m.material.emissiveIntensity = this.alive ? (this.hits <= 1 ? 0.6 + 0.6 * Math.abs(Math.sin(this.ph * 6)) : 1) * (this.hitT > 0 ? 0.3 : 1) : 0;
+    if ((!this.alive || this.hits < SKY.hits) && Math.random() < (this.alive ? 0.08 * (SKY.hits - this.hits) : 0.4)) G.fx.smoke(_a.set(this.pos.x + (Math.random() - 0.5) * 8, this.pos.y + (this.alive ? 5 : 2), this.pos.z + (Math.random() - 0.5) * 8), 1, 4, 3, 0x3a3634, 2.5, 0.5);
+  }
+}
+export function startSky() { clearSky(); G.sky = { shelters: SKY.shelters.map(([x, z]) => new Shelter(x, z)), lost: false, impacts: 0 }; }
+export function clearSky() { if (G.sky) for (const q of G.sky.shelters) q.remove(); G.sky = null; }
+function updateSky(dt) {
+  const S = G.sky; if (!S) return;
+  for (const q of S.shelters) q.update(dt);
+  if (!S.lost && S.shelters.every((q) => !q.alive)) S.lost = true;
+}
+
+// ---- PD-3 CIWS: an automatic point-defence gun on the shoulder for 8 s
+G.ciwsL = [];
+function updateCiws(dt) {
+  for (let i = G.ciwsL.length - 1; i >= 0; i--) {
+    const C = G.ciwsL[i], o = C.owner, d = C.d; C.t -= dt; C.fT -= dt;
+    if (C.t <= 0 || !o.alive) { G.ciwsL.splice(i, 1); continue; }
+    while (C.fT <= 0) {
+      C.fT += d.rate;
+      const mp = o.muzzlePos(C.slot, new V3(), 0);
+      let best = null, bd = d.R, shot = -1;
+      for (let k = 0; k < G.shots.length; k++) {   // incoming slow ordnance first (bullets are too fast to catch)
+        const q = G.shots[k]; if (q.team !== 'E' || q.speed > 90 || q.kind === 'ebullet' || q.kind === 'bullet') continue;
+        const dd = Math.hypot(q.x - mp.x, q.y - mp.y, q.z - mp.z); if (dd < bd) { bd = dd; shot = k; }
+      }
+      if (shot < 0) { bd = d.R; for (const e of G.enemies) if (e.kind === 'cruise' && e.alive && !e.dying) { const dd = e.c.distanceTo(mp); if (dd < bd && clearLine(mp, e.c)) { bd = dd; best = e; } } }
+      if (shot < 0 && !best) { bd = d.airR; for (const e of G.enemies) if (e.alive && !e.dying && !e.cloaked && ['drone', 'swarm', 'jammer', 'mender', 'scav', 'disarmer', 'hijack', 'sapper', 'leech'].includes(e.kind)) { const dd = e.c.distanceTo(mp); if (dd < bd && clearLine(mp, e.c)) { bd = dd; best = e; } } }
+      if (shot < 0 && !best) break;
+      const tp = shot >= 0 ? new V3(G.shots[shot].x, G.shots[shot].y, G.shots[shot].z) : best.c.clone();
+      tp.x += (Math.random() - 0.5) * 0.8; tp.y += (Math.random() - 0.5) * 0.8; tp.z += (Math.random() - 0.5) * 0.8;
+      G.fx.streak(mp, tp, 0.12, 0xffe0a0, 0.05); G.fx.muzzle(mp, _d.subVectors(tp, mp).normalize(), 0xffd080, 0.8);
+      if (shot >= 0) { if (Math.random() < d.kill) { G.fx.emit('add', { x: tp.x, y: tp.y, z: tp.z, life: 0.25, s0: 2.4, s1: 0.6, c0: 0xffe0a0, c1: 0xff6020 }); G.fx.sparks(tp, null, 8, 0xffc070, 10, 1, 0.3, 0.2); G.shots.splice(shot, 1); if (C.me) G.ciwsEat = (G.ciwsEat || 0) + 1; } }
+      else { dealDamage(best, d.dmg * C.mul, 'P', tp, 'ciws'); G.fx.sparks(tp, null, 2, 0xffc070, 8, 1, 0.2, 0.15); if (C.me) G.ciwsHit = (G.ciwsHit || 0) + 1; }
+      if (C.me && Math.random() < 0.4) sfx('gatling', 0);
+    }
+  }
+}
+
 // ------------------------------------------------------------------ v47 Pursuit: a data courier drives a loop of the city
 // and stops at four upload stations; at 100% upload the mission is lost. Stay within 24 m while it uploads to jam it.
 export const COURIER = { path: [[-120, -60], [-70, -125], [50, -120], [125, -75], [125, 40], [75, 115], [-35, 125], [-125, 75]], stations: [1, 3, 5, 7],
@@ -7832,7 +7999,7 @@ function fireNet(owner, slot, d, dmgMul, aim, target) {
 function netHit(e, n) {
   const h = e.kind === 'cpart' ? e.owner : e, d = n.d;
   G.netHits = (G.netHits || 0) + 1;
-  const small = ['drone', 'swarm', 'jammer', 'mender', 'scav', 'disarmer', 'hijack', 'sapper'].includes(h.kind);
+  const small = ['cruise', 'drone', 'swarm', 'jammer', 'mender', 'scav', 'disarmer', 'hijack', 'sapper'].includes(h.kind);
   dealDamage(e, (small ? d.air : d.dmg) * n.mul, 'P', n.p, 'net');
   if (!h.alive) return;
   h.netT = h.isCourier ? 3 : d.root; G.fx.ring(h.c.clone(), null, 0.5, (h.r || 2) * 1.6, 0.3, 0x60ffb8);
@@ -7895,7 +8062,7 @@ export function updateCombat(dt) {
   G.curLabel = null;
   LAVA.uT.value = G.time;
   if (G.blinkInv > 0) G.blinkInv -= dt;
-  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt); updateBurn(dt); updateBeacon(dt); updateLance(dt); updateGrav(dt); updatePursuit(dt); updateFires(dt); updateNets(dt);
+  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt); updateBurn(dt); updateBeacon(dt); updateLance(dt); updateGrav(dt); updatePursuit(dt); updateFires(dt); updateNets(dt); updateSky(dt); updateCiws(dt);
   updateMarks(dt);
   updateBurning(dt);
   updateChill(dt);

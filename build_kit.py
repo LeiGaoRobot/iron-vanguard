@@ -149,6 +149,9 @@ M = dict(
     CourierPaint=mat("CourierPaint", "#2a3036", 0.35, metal=0.7),
     TorchGlow=mat("TorchGlow", "#fff0d0", 0.2, emit="#ff6a10", strength=2.4),
     NetGlow=mat("NetGlow", "#e8fff0", 0.2, emit="#50ffb0", strength=2.0),
+    LaunchPaint=mat("LaunchPaint", "#4a5236", 0.6, metal=0.3),
+    CruiseGlow=mat("CruiseGlow", "#fff2d8", 0.2, emit="#ff9a40", strength=2.6),
+    ShelterGlow=mat("ShelterGlow", "#fff4d8", 0.3, emit="#ffc870", strength=1.6),
     FogLampGlow=mat("FogLampGlow", "#fff6e0", 0.2, emit="#ffe0a0", strength=2.6),
     LurkEye=mat("LurkEye", "#ff7060", 0.2, emit="#ff3020", strength=2.5),
     LurkCore=mat("LurkCore", "#2a2c30", 0.5, metal=0.5),
@@ -2805,7 +2808,79 @@ def build_net():
     torus((0, 0.65, 0.2), 0.3, 0.04, M["Hazard"], K, rot=ALONG_Y)
     muzzle("Muzzle_Net", (0, 0.75, 0.2), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net()
+
+def build_launcher():
+    # missile truck (TEL): a 7 m six-wheeled truck. a cab at the front (+Y) with a red eye strip, a flat bed with
+    # four stabiliser legs, and a missile rack (LN_Rack, pivot at its rear end) that tilts up to fire. two cruise
+    # missile tubes on the rack, launch point Muzzle_Launch at the front end of the tubes (rack-local)
+    K = kit("E_Launcher")
+    for sx in (-1, 1):
+        for y in (-2.2, -0.9, 2.0):
+            cyl((sx * 1.25, y, 0.55), 0.55, 0.45, M["Black"], K, rot=(0, 1.5708, 0), verts=12)
+    box((0, -0.3, 0.95), (2.3, 6.2, 0.4), M["Frame"], K, bevel=0.08)
+    box((0, 2.35, 1.75), (2.2, 1.5, 1.3), M["LaunchPaint"], K, bevel=0.15)
+    box((0, 3.1, 2.05), (1.8, 0.05, 0.35), M["EEye"], K)
+    for sx in (-1, 1):
+        for y in (-2.9, 0.4):
+            box((sx * 1.3, y, 0.55), (0.18, 0.18, 0.9), M["Hazard"], K)
+    r = empty("LN_Rack", (0, -3.0, 1.35), K)
+    box((0, 2.4, 0.15), (2.0, 5.0, 0.2), M["LaunchPaint"], r, bevel=0.05)
+    for sx in (-1, 1):
+        cyl((sx * 0.5, 2.5, 0.6), 0.42, 4.8, M["EArmor2"], r, rot=ALONG_Y, verts=12)
+        cyl((sx * 0.5, 4.95, 0.6), 0.36, 0.1, M["CruiseGlow"], r, rot=ALONG_Y, verts=12)
+        torus((sx * 0.5, 0.2, 0.6), 0.44, 0.05, M["Hazard"], r, rot=ALONG_Y)
+    muzzle("Muzzle_Launch", (0, 5.1, 0.6), r)
+
+def build_cruise():
+    # cruise missile: a 3.4 m dart with a pointed nose, short swept wings, four tail fins and an engine glow at the
+    # tail (CR_Eng). front = +Y
+    K = kit("E_Cruise")
+    cyl((0, 0, 0), 0.26, 2.6, M["EArmor"], K, rot=ALONG_Y, verts=12)
+    cyl((0, 1.55, 0), 0.26, 0.6, M["EArmor2"], K, rot=ALONG_Y, verts=12, r2=0.02)
+    box((0, 1.05, 0), (0.54, 0.25, 0.54), M["Hazard"], K)
+    for sx in (-1, 1):
+        wedge((sx * 0.6, -0.1, 0), (1.0, 0.7, 0.05), M["EArmor2"], K, taper=0.4)
+    for k in range(4):
+        a = k * math.pi / 2
+        box((math.cos(a) * 0.36, -1.15, math.sin(a) * 0.36), (0.05 + abs(math.sin(a)) * 0.4, 0.4, 0.05 + abs(math.cos(a)) * 0.4), M["Frame"], K)
+    e = empty("CR_Eng", (0, -1.35, 0), K)
+    ball((0, 0, 0), 0.24, M["CruiseGlow"], e, sub=1)
+
+def build_shelter():
+    # civilian shelter: a 14 m wide armoured dome on a ring wall, lit windows (SH_Light) around the base, a blast
+    # door and an antenna on top. SH_Dome is the dome shell (scaled down when it collapses)
+    K = kit("P_Shelter")
+    cyl((0, 0, 1.2), 7.2, 2.4, M["EArmor2"], K, verts=24)
+    cyl((0, 0, 2.45), 7.4, 0.15, M["Hazard"], K, verts=24)
+    l = empty("SH_Light", (0, 0, 1.4), K)
+    for k in range(12):
+        a = k * math.pi / 6
+        box((math.cos(a) * 7.22, math.sin(a) * 7.22, 0), (0.5, 0.5, 0.5), M["ShelterGlow"], l, rot=(0, 0, a))
+    d = empty("SH_Dome", (0, 0, 2.5), K)
+    ball((0, 0, 0), 6.8, M["Frame"], d, sub=3, scale=(1, 1, 0.55))
+    for k in range(6):
+        a = k * math.pi / 3
+        box((math.cos(a) * 3.6, math.sin(a) * 3.6, 2.9), (0.3, 4.2, 0.2), M["EArmor"], d, rot=(0, -0.62, a + math.pi / 2))
+    cyl((0, 0, 3.9), 0.12, 2.2, M["Joint"], d, verts=6)
+    ball((0, 0, 5.05), 0.25, M["ShelterGlow"], d, sub=1)
+    box((0, -7.1, 1.0), (2.6, 0.5, 2.0), M["Black"], K, bevel=0.05)
+
+def build_ciws():
+    K = kit("S_CIWS")
+    # point-defence turret: a squat drum base, a turret head (CW_Head) with a rotary six-barrel gun (CW_Barrel,
+    # spins about its own Y axis) and a small radar dome on top
+    cyl((0, 0, 0.1), 0.34, 0.25, M["Frame"], K, verts=12)
+    h = empty("CW_Head", (0, 0, 0.32), K)
+    box((0, -0.05, 0.08), (0.5, 0.5, 0.32), M["Armor2"], h, bevel=0.05)
+    ball((0, -0.12, 0.42), 0.2, M["EArmor"], h, sub=1)
+    b = empty("CW_Barrel", (0, 0.25, 0.05), h)
+    for k in range(6):
+        a = k * math.pi / 3
+        cyl((math.cos(a) * 0.07, 0.35, math.sin(a) * 0.07), 0.025, 0.7, M["Black"], b, rot=ALONG_Y, verts=6)
+    torus((0, 0.62, 0), 0.11, 0.025, M["Joint"], b, rot=ALONG_Y)
+    muzzle("Muzzle_CIWS", (0, 0.75, 0.05), h)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
