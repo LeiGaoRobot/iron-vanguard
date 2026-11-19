@@ -26,12 +26,52 @@ const BLUR_FS = `uniform sampler2D tMask; uniform vec2 sunUV; uniform float dens
     for (int i = 0; i < N; i++) { uv -= dl; acc += texture2D(tMask, clamp(uv, 0.0, 1.0)).rgb * w; w *= decay; }
     gl_FragColor = vec4(acc / float(N), 1.0);
   }`;
-// pass 3 (full res): aerial perspective + rays + grade
-const COMP_FS = `uniform sampler2D tColor; uniform sampler2D tDepth; uniform sampler2D tRays;
+// ambient occlusion (half res, depth only): scalable-ambient-obscurance style hemisphere test around the view-space
+// position rebuilt from depth; normals come from the depth neighbours (the side with the smaller step, so silhouettes
+// stay clean). Grounds mechs, props and building bases. Output: r = AO (1 = open), g = view depth for the blur.
+const AO_FS = `uniform sampler2D tDepth; uniform mat4 projInv; uniform vec2 res; uniform float projY; uniform float radius; uniform float aoInt; varying vec2 vUv;
+  vec3 vpos(vec2 uv){ float d = texture2D(tDepth, uv).x; vec4 p = projInv * vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); return p.xyz / p.w; }
+  float hs(vec2 p){ vec3 q = fract(vec3(p.xyx) * 0.1031); q += dot(q, q.yzx + 33.33); return fract((q.x + q.y) * q.z); }
+  void main(){
+    float d0 = texture2D(tDepth, vUv).x;
+    if (d0 > 0.99999) { gl_FragColor = vec4(1.0, 1e4, 0.0, 1.0); return; }
+    vec3 P = vpos(vUv); vec2 px = 1.0 / res;
+    vec3 pr = vpos(vUv + vec2(px.x, 0.0)) - P, pl = P - vpos(vUv - vec2(px.x, 0.0));
+    vec3 pu = vpos(vUv + vec2(0.0, px.y)) - P, pd = P - vpos(vUv - vec2(0.0, px.y));
+    vec3 n = normalize(cross(abs(pr.z) < abs(pl.z) ? pr : pl, abs(pu.z) < abs(pd.z) ? pu : pd));
+    float z = -P.z, R = radius * (1.0 + z * 0.012);                     // grow the radius a little with distance so far buildings still read
+    float rpx = clamp(R * projY * 0.5 * res.y / z, 3.0, 48.0);
+    const int N = 14; float a = 0.0, R2 = R * R, ang = hs(gl_FragCoord.xy) * 6.2832, jit = hs(gl_FragCoord.yx + 7.0);
+    for (int i = 0; i < N; i++) {
+      float t = (float(i) + jit) / float(N); float th = ang + t * 6.2832 * 3.0 + float(i) * 2.4;
+      vec2 o = vec2(cos(th), sin(th)) * rpx * (0.12 + 0.88 * t) * px;
+      vec3 v = vpos(vUv + o) - P; float vv = dot(v, v), vn = dot(v, n);
+      float f = max(R2 - vv, 0.0); a += f * f * f * max((vn - 0.06 - 0.003 * z) / (0.01 + vv), 0.0);
+    }
+    float ao = max(0.0, 1.0 - a * aoInt * 5.0 / (R2 * R2 * R2 * float(N)));
+    ao = mix(ao, 1.0, smoothstep(140.0, 260.0, z));
+    gl_FragColor = vec4(ao, z, 0.0, 1.0);
+  }`;
+// depth-aware 4x4 blur of the AO (hides the per-pixel rotation noise without bleeding across silhouettes)
+const AOBLUR_FS = `uniform sampler2D tAO; uniform vec2 res; varying vec2 vUv;
+  void main(){
+    vec2 c = texture2D(tAO, vUv).rg; float s = 0.0, w = 0.0;
+    for (int y = -2; y < 2; y++) for (int x = -2; x < 2; x++) {
+      vec2 q = texture2D(tAO, vUv + (vec2(x, y) + 0.5) / res).rg;
+      float k = 1.0 / (0.002 + abs(q.y - c.y) / max(c.y, 1.0) * 40.0); s += q.x * k; w += k;
+    }
+    gl_FragColor = vec4(s / w, c.y, 0.0, 1.0);
+  }`;
+// pass 3 (full res): ambient occlusion + aerial perspective + rays + grade
+const COMP_FS = `uniform sampler2D tColor; uniform sampler2D tDepth; uniform sampler2D tRays; uniform sampler2D tAO; uniform float aoStr;
   uniform mat4 projInv; uniform mat4 camWorld; uniform vec3 sunDir; uniform vec3 sunCol; uniform vec3 hiTint; uniform vec3 loTint;
   uniform float aDen; uniform float aStr; uniform float rayStr; uniform float grade; uniform float vig; varying vec2 vUv;
   void main(){
     vec3 c = texture2D(tColor, vUv).rgb; float d = texture2D(tDepth, vUv).x;
+    if (aoStr > 0.0 && d < 0.99999) {   // bright emitters (glow strips, muzzle flashes) are not occluded
+      float ao = texture2D(tAO, vUv).r, lc = dot(c, vec3(0.2126, 0.7152, 0.0722));
+      c *= mix(1.0, ao, aoStr * (1.0 - smoothstep(1.2, 3.0, lc)));
+    }
     vec4 vp = projInv * vec4(vUv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); vp.xyz /= vp.w;
     vec3 wd = normalize((camWorld * vec4(vp.xyz, 0.0)).xyz);
     float mu = max(dot(wd, sunDir), 0.0);
@@ -60,15 +100,22 @@ export class AtmospherePass extends Pass {
     this.bU = { tMask: { value: this.rtA.texture }, sunUV: this.mU.sunUV, density: { value: 0.92 }, decay: { value: 0.965 } };
     this.cU = { tColor: { value: null }, tDepth: { value: null }, tRays: { value: this.rtB.texture }, projInv: { value: new THREE.Matrix4() }, camWorld: { value: new THREE.Matrix4() },
       sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color() }, hiTint: { value: new THREE.Color(1, 1, 1) }, loTint: { value: new THREE.Color(1, 1, 1) },
-      aDen: { value: 0.004 }, aStr: { value: 0.5 }, rayStr: { value: 0 }, grade: { value: 0.5 }, vig: { value: 0.22 } };
+      aDen: { value: 0.004 }, aStr: { value: 0.5 }, rayStr: { value: 0 }, grade: { value: 0.5 }, vig: { value: 0.22 }, tAO: { value: null }, aoStr: { value: 0 } };
+    this.rtO = new THREE.WebGLRenderTarget(1, 1, opt); this.rtO2 = new THREE.WebGLRenderTarget(1, 1, opt);
+    this.oU = { tDepth: { value: null }, projInv: this.cU.projInv, res: { value: new THREE.Vector2(1, 1) }, projY: { value: 1 }, radius: { value: 2.2 }, aoInt: { value: 4.0 } };
+    this.obU = { tAO: { value: this.rtO.texture }, res: this.oU.res };
+    this.cU.tAO.value = this.rtO2.texture;
     const mk = (u, fs) => new FullScreenQuad(new THREE.ShaderMaterial({ uniforms: u, vertexShader: VS, fragmentShader: fs, depthTest: false, depthWrite: false }));
     this.qMask = mk(this.mU, MASK_FS); this.qBlur = mk(this.bU, BLUR_FS); this.qComp = mk(this.cU, COMP_FS);
-    this.env = { rays: 0.5, air: 0.5 }; this.rayK = 0; this.raysOn = true;
+    this.qAO = mk(this.oU, AO_FS); this.qAOB = mk(this.obU, AOBLUR_FS);
+    this.env = { rays: 0.5, air: 0.5, ao: 0.7 }; this.rayK = 0; this.raysOn = true; this.aoOn = true;
     this.setSize(w, h);
   }
   setSize(w, h) {
     const qw = Math.max(1, Math.floor(w / 4)), qh = Math.max(1, Math.floor(h / 4));
     this.rtA.setSize(qw, qh); this.rtB.setSize(qw, qh); this.mU.aspect.value = w / Math.max(1, h);
+    const hw = Math.max(1, Math.floor(w / 2)), hh = Math.max(1, Math.floor(h / 2));
+    this.rtO.setSize(hw, hh); this.rtO2.setSize(hw, hh); this.oU.res.value.set(hw, hh);
   }
   // per-environment look: E is an ENVS entry, sunColor/top/hor are linear THREE.Colors
   setEnv(E, sunColor, top, hor) {
@@ -80,6 +127,7 @@ export class AtmospherePass extends Pass {
     const norm = (c, k) => { const l = Math.max(1e-3, lumOf(c)); return new THREE.Color(Math.pow(c.r / l, k), Math.pow(c.g / l, k), Math.pow(c.b / l, k)); };
     this.cU.hiTint.value.copy(norm(sunColor, 0.32)); this.cU.loTint.value.copy(norm(top, 0.28));
     this.cU.grade.value = E.grade ?? 0.55;
+    this.env.ao = E.ao ?? 0.7;
   }
   // per frame: sun screen position + how visible it is
   update(camera, sunDir) {
@@ -93,6 +141,8 @@ export class AtmospherePass extends Pass {
     const vis = facing * (1 - THREE.MathUtils.smoothstep(off, 0, 0.7)) * THREE.MathUtils.smoothstep(sunDir.y, -0.03, 0.08);
     this.rayK = this.raysOn ? vis * this.env.rays : 0;
     this.cU.rayStr.value = this.rayK * 3.4; this.cU.aStr.value = this.env.air;
+    this.oU.projY.value = camera.projectionMatrix.elements[5];
+    this.cU.aoStr.value = this.aoOn ? this.env.ao : 0;
   }
   render(renderer, writeBuffer, readBuffer) {
     const dt = readBuffer.depthTexture;
@@ -102,9 +152,14 @@ export class AtmospherePass extends Pass {
       renderer.setRenderTarget(this.rtA); this.qMask.render(renderer);
       renderer.setRenderTarget(this.rtB); this.qBlur.render(renderer);
     }
+    if (this.cU.aoStr.value > 0) {
+      this.oU.tDepth.value = dt;
+      renderer.setRenderTarget(this.rtO); this.qAO.render(renderer);
+      renderer.setRenderTarget(this.rtO2); this.qAOB.render(renderer);
+    }
     renderer.setRenderTarget(this.renderToScreen ? null : writeBuffer); this.qComp.render(renderer);
   }
-  dispose() { this.rtA.dispose(); this.rtB.dispose(); this.qMask.dispose(); this.qBlur.dispose(); this.qComp.dispose(); }
+  dispose() { this.rtA.dispose(); this.rtB.dispose(); this.qMask.dispose(); this.qBlur.dispose(); this.qComp.dispose(); this.rtO.dispose(); this.rtO2.dispose(); this.qAO.dispose(); this.qAOB.dispose(); }
 }
 
 // distant ridge ring: two layers of mesa-like silhouettes far outside the arena, hazed into the horizon colour.

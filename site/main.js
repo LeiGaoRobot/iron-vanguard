@@ -508,12 +508,13 @@ const sky = new THREE.Mesh(new THREE.SphereGeometry(1200, 32, 16), new THREE.Sha
 sky.renderOrder = -10; sky.frustumCulled = false; scene.add(sky);
 const hemi = new THREE.HemisphereLight(0xdfe9f2, 0x6a6660, 0.6); scene.add(hemi);
 const sun = new THREE.DirectionalLight(0xfff1de, 2.2);
-sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
+const GFX_HI = !window.__MA_KIT_LOAD && !/Mobi|Android|iPhone|iPad/i.test(navigator.userAgent);   // desktop: 4K shadows + SSAO
+sun.castShadow = true; sun.shadow.mapSize.setScalar(GFX_HI ? 4096 : 2048);   // WeChat quality tiers override this
 const SC = sun.shadow.camera; SC.left = -70; SC.right = 70; SC.top = 70; SC.bottom = -70; SC.near = 10; SC.far = 400; SC.updateProjectionMatrix();
 sun.shadow.bias = -0.0004; sun.shadow.normalBias = 0.6;
 scene.add(sun, sun.target);
 const envBase = { exp: 1, sun: 1, top: new THREE.Color() }, FLARE_TOP = new THREE.Color(0xfff0d0);
-const SUN_DIR = new V3(0.45, 0.55, 0.7).normalize(); G.sunDir = SUN_DIR; const _glv = new V3(), _glp = new V3();
+const SUN_DIR = new V3(0.45, 0.55, 0.7).normalize(); G.sunDir = SUN_DIR; const _shX = new V3(), _shY = new V3(), _shP = new V3(), _shUp = new V3(0, 1, 0); const _glv = new V3(), _glp = new V3();
 // cloud cover per lighting preset (0 = clear sky); anything not listed gets 0.4
 const CLOUD = { day: 0.42, dusk: 0.52, snow: 0.85, desert: 0.28, ash: 0.7, storm: 0.95, dawn: 0.48, haze: 0.55, forge: 0.6, ion: 0.5, cyber: 0, autumn: 0.48, lunar: 0,
   overcast: 0.95, eclipse: 0.3, abyss: 0, sky1: 0.35, sky2: 0.32, sky3: 0.08, sky4: 0, dune: 0.4, evac: 0.52, shield: 0.46, chase: 0.5, noon: 0.3, sprint: 0.42,
@@ -651,6 +652,7 @@ function updateSnow(dt) {
 const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(innerWidth, innerHeight, { type: THREE.HalfFloatType, samples: 4, depthTexture: new THREE.DepthTexture(innerWidth, innerHeight) }));
 composer.addPass(new RenderPass(scene, camera));
 const atmo = new AtmospherePass(innerWidth, innerHeight); composer.addPass(atmo); G.atmo = atmo;
+atmo.aoOn = GFX_HI;   // SSAO is a desktop extra (a WeChat quality tier may turn it on)
 const ridge = makeRidge(7); scene.add(ridge); G.ridge = ridge;
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.7, 0.45, 2.6);
 composer.addPass(bloom);
@@ -3071,7 +3073,11 @@ function step(dt) {
   const inten = run.wave < 0 ? 0 : (G.bosses && G.bosses.some((b) => b.alive)) ? 1 : Math.min(0.9, 0.45 + run.wave * 0.15);
   musicTick(run.over ? 0 : inten);
   // shadow camera follows the player
-  sun.position.copy(p.pos).addScaledVector(SUN_DIR, 200); sun.target.position.copy(p.pos); sun.target.updateMatrixWorld();
+  // snapped to whole shadow texels in light space, so static shadows don't crawl as the player moves
+  _shX.crossVectors(_shUp, SUN_DIR); if (_shX.lengthSq() < 1e-6) _shX.set(1, 0, 0); _shX.normalize(); _shY.crossVectors(SUN_DIR, _shX);
+  const tx = (SC.right - SC.left) / sun.shadow.mapSize.x, sa = Math.round(p.pos.dot(_shX) / tx) * tx, sb = Math.round(p.pos.dot(_shY) / tx) * tx;
+  _shP.copy(_shX).multiplyScalar(sa).addScaledVector(_shY, sb).addScaledVector(SUN_DIR, p.pos.dot(SUN_DIR));
+  sun.position.copy(_shP).addScaledVector(SUN_DIR, 200); sun.target.position.copy(_shP); sun.target.updateMatrixWorld();
 }
 
 // ------------------------------------------------------------------ loop

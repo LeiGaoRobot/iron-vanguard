@@ -42,7 +42,7 @@ const SAND_H = `float surfH(vec2 p, float fd){
 // world-space panel shader for buildings / floor
 function panelMaterial(color, opts) {
   const m = new THREE.MeshStandardMaterial({ color, roughness: opts.rough ?? 0.85, metalness: opts.metal ?? 0.1 });
-  m.customProgramCacheKey = () => 'panel|' + opts.frag + '|' + (opts.emit || '') + '|' + (opts.nrm || '');   // day / night variants must not share a program
+  m.customProgramCacheKey = () => 'panel|' + opts.frag + '|' + (opts.emit || '') + '|' + (opts.nrm || '') + '|' + (opts.rgh || '');   // day / night variants must not share a program
   m.onBeforeCompile = (sh) => {
     sh.uniforms.uT = LAVA.uT; sh.uniforms.uZ = GRID.uZ;
     sh.vertexShader = sh.vertexShader
@@ -59,7 +59,9 @@ function panelMaterial(color, opts) {
       .replace('#include <color_fragment>', `#include <color_fragment>
         ${opts.frag}`)
       .replace('#include <emissivemap_fragment>', `#include <emissivemap_fragment>
-        ${opts.emit || ''}`);
+        ${opts.emit || ''}`)
+      .replace('#include <metalnessmap_fragment>', `#include <metalnessmap_fragment>
+        ${opts.rgh || ''}`);   // opts.rgh may read variables declared in opts.frag (same scope)
     // opts.nrm defines float surfH(vec2 xz, float fade): a world-space height field shaded through the normal
     if (opts.nrm) sh.fragmentShader = sh.fragmentShader.replace('#include <normal_fragment_maps>', `#include <normal_fragment_maps>
         { float fd = 1.0 - smoothstep(35.0, 150.0, length(vViewPosition)); vec2 q = vWP.xz; const float e = 0.06;
@@ -89,12 +91,20 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
 
   // ---- floor: 4 m concrete tiles with per-tile tone + seams, 16 m darker lane lines
   const floorMat = panelMaterial(0x80848a, {
-    rough: storm ? 0.5 : icelake ? 0.45 : 0.92, metal: storm || icelake ? 0.25 : 0.1, nrm: dune ? SAND_H : '', frag: `
+    rough: storm ? 0.5 : icelake ? 0.45 : 0.92, metal: storm || icelake ? 0.25 : 0.1, nrm: dune ? SAND_H : '',
+    rgh: `roughnessFactor = clamp(roughnessFactor * (1.06 - 0.12 * fwm) - 0.35 * fst * roughnessFactor, 0.05, 1.0);`, frag: `
       vec2 cell = floor(vWP.xz / 4.0);
       float tone = 0.9 + 0.12 * h21(cell) + 0.03 * h21(floor(vWP.xz / 1.0));
       diffuseColor.rgb *= tone;
+      float fwm = vn2(vWP.xz / 13.0) * 0.6 + vn2(vWP.xz / 3.1 + 7.0) * 0.3 + vn2(vWP.xz / 0.7) * 0.1;   // wear / grime
+      diffuseColor.rgb *= 0.84 + 0.28 * fwm;
+      float fst = smoothstep(0.7, 0.8, vn2(vWP.xz / 4.2 + 31.0)) * (0.6 + 0.4 * vn2(vWP.xz / 0.9));     // oil / water stains
+      diffuseColor.rgb *= 1.0 - 0.22 * fst;
+      float fsc = smoothstep(0.86, 0.93, vn2(vec2(vWP.x * 0.25 + vWP.z * 0.06, vWP.z * 3.0 - vWP.x * 0.4)));   // tread scuffs
+      diffuseColor.rgb *= 1.0 - 0.06 * fsc * fwm;
       float seam = max(gridLine(vWP.x, 4.0, 0.08), gridLine(vWP.z, 4.0, 0.08));
       diffuseColor.rgb *= 1.0 - 0.28 * seam;
+      diffuseColor.rgb *= 1.0 - 0.08 * smoothstep(0.5, 0.0, abs(fract(vWP.x / 4.0) - 0.5) * 8.0 * abs(fract(vWP.z / 4.0) - 0.5) * 8.0);   // dirt pooled at tile corners
       float lane = max(gridLine(vWP.x, 32.0, 0.35), gridLine(vWP.z, 32.0, 0.35));
       diffuseColor.rgb *= 1.0 - 0.12 * lane;
       float ed = max(abs(vWP.x), abs(vWP.z));
@@ -241,14 +251,32 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
 
   // ---- buildings (merged box geometry)
   const bldMat = panelMaterial(0x4a5260, {
-    rough: 0.7, metal: 0.25, frag: `
+    rough: 0.7, metal: 0.25,
+    rgh: `roughnessFactor = mix(roughnessFactor, 0.14, bwin) - 0.12 * bwet; metalnessFactor = mix(metalnessFactor, 0.55, bwin);`, frag: `
       vec3 n = abs(vWN);
       float hl = gridLine(vWP.y, 3.5, 0.12);
       float vl = n.x > 0.5 ? gridLine(vWP.z, 4.0, 0.1) : (n.z > 0.5 ? gridLine(vWP.x, 4.0, 0.1) : max(gridLine(vWP.x, 4.0, 0.1), gridLine(vWP.z, 4.0, 0.1)));
       float tone = 0.85 + 0.2 * h21(floor(vWP.xz / 6.0) + floor(vWP.y / 3.5));
       diffuseColor.rgb *= tone * (1.0 - 0.35 * max(hl, vl));
+      float bwin = 0.0, bwet = 0.0;
       if (n.y < 0.5) { float win = step(0.62, fract(vWP.y / 3.5)) * step(fract(vWP.y / 3.5), 0.82);
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.16, 0.2, 0.26), win * 0.8); }${abyss ? `
+        float wu = n.x > 0.5 ? vWP.z : vWP.x;
+        float mull = gridLine(wu, 2.0, 0.07);                                                // mullions between panes
+        bwin = win * (1.0 - mull);
+        vec3 gl = vec3(0.13, 0.16, 0.21) * (0.8 + 0.4 * h21(vec2(floor(wu / 2.0), floor(vWP.y / 3.5))));
+        #ifdef USE_FOG
+        vec3 rv = reflect(normalize(vWP - cameraPosition), normalize(vWN));
+        float fr = pow(1.0 - abs(dot(normalize(cameraPosition - vWP), normalize(vWN))), 3.0);
+        gl = mix(gl, fogColor * (0.55 + 0.45 * clamp(rv.y + 0.3, 0.0, 1.0)), 0.18 + 0.5 * fr);   // windows pick up the sky
+        #endif
+        diffuseColor.rgb = mix(diffuseColor.rgb, mix(gl, vec3(0.07, 0.08, 0.1), mull), win * 0.85);
+        float gr = smoothstep(4.5, 0.0, vWP.y) * (0.7 + 0.3 * vn2(vec2(wu * 0.6, vWP.y)));      // splash grime at the base
+        float rs = smoothstep(0.55, 0.9, vn2(vec2(wu * 1.7, vWP.y * 0.06))) * smoothstep(0.9, 0.62, fract(vWP.y / 3.5));   // streaks under sills
+        bwet = rs;
+        diffuseColor.rgb *= 1.0 - 0.32 * gr - 0.14 * rs * (1.0 - win);
+      } else {
+        diffuseColor.rgb *= 0.9 + 0.15 * vn2(vWP.xz / 3.0);                                // roof patches
+      }${abyss ? `
       diffuseColor.rgb *= vec3(0.5, 0.68, 0.7);
       if (vWN.y > 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.14, 0.3, 0.22), 0.55 + 0.3 * h21(floor(vWP.xz / 1.5)));
       else diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.2, 0.3, 0.24), smoothstep(2.5, 0.0, vWP.y) * 0.7);` : ''}${cyber ? `
