@@ -158,6 +158,8 @@ M = dict(
     ReviverPaint=mat("ReviverPaint", "#d4d8cc", 0.4, metal=0.35), Nanite=mat("Nanite", "#c8ffd0", 0.2, emit="#30ff78", strength=2.4),
     PylonPaint=mat("PylonPaint", "#3a3440", 0.5, metal=0.4), PylonGlow=mat("PylonGlow", "#ffd0c0", 0.2, emit="#ff4a2a", strength=2.6),
     CamoLens=mat("CamoLens", "#c8f4ff", 0.1, emit="#60d8ff", strength=1.6),
+    PressGlow=mat("PressGlow", "#ffd0c0", 0.3, emit="#ff3a20", strength=2.0), FabGlow=mat("FabGlow", "#fff0c8", 0.2, emit="#ffb040", strength=2.2),
+    TractorGlow=mat("TractorGlow", "#d8fff0", 0.15, emit="#40ffc0", strength=2.0), ForkPaint=mat("ForkPaint", "#d89a20", 0.45, metal=0.2),
     LiftGlow=mat("LiftGlow", "#ffd8a0", 0.3, emit="#ff9a30", strength=2.2), PulseCore=mat("PulseCore", "#fff0e0", 0.2, emit="#ffe0c0", strength=2.0),
     BarrierGlow=mat("BarrierGlow", "#c8f0ff", 0.15, emit="#4cc8ff", strength=2.0), PulsePaint=mat("PulsePaint", "#5a6470", 0.5, metal=0.4),
     CommandGold=mat("CommandGold", "#c89a3a", 0.35, metal=0.8), DazzleLens=mat("DazzleLens", "#fffbe8", 0.05, emit="#fff4d0", strength=1.0),
@@ -3192,7 +3194,109 @@ def build_barrier_pod():
         ball((sx * 0.3, -0.22, 0.42), 0.06, M["BarrierGlow"], K, sub=1)
     muzzle("Muzzle_Barrier", (0, 0.45, 0.42), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod()
+
+def build_press():
+    # hydraulic press gantry for the Assembly Line belts: two posts 13.2 m apart across the belt (Blender Y = game Z),
+    # a top beam with the cylinder housing and PZ_Head (origin at the bottom of the press plate, rests 8 m up)
+    K = kit("P_Press")
+    for sy in (-1, 1):
+        box((0, sy * 6.6, 5.6), (1.0, 0.9, 11.2), M["Frame"], K, bevel=0.04)
+        box((0, sy * 6.6, 0.25), (1.8, 1.6, 0.5), M["Concrete"], K)
+        for z in (2.0, 4.0, 6.0, 8.0):
+            box((0, sy * 6.6, z), (1.04, 0.94, 0.18), M["Hazard"], K)
+    box((0, 0, 11.6), (1.6, 14.4, 1.2), M["Armor2"], K, bevel=0.05)
+    cyl((0, 0, 10.4), 1.1, 1.6, M["Frame"], K, verts=14)
+    for sy in (-1, 1):
+        cyl((0, sy * 1.8, 10.6), 0.35, 1.2, M["Joint"], K, verts=10)
+    head = empty("PZ_Head", (0, 0, 8.0), K)
+    box((0, 0, 0.55), (6.0, 6.0, 1.1), M["Armor2"], head, bevel=0.06)
+    box((0, 0, 0.08), (5.8, 5.8, 0.16), M["Black"], head)
+    for sx in (-1, 1):
+        box((sx * 2.95, 0, 0.55), (0.12, 6.04, 0.5), M["PressGlow"], head)
+        box((0, sx * 2.95, 0.55), (6.04, 0.12, 0.5), M["PressGlow"], head)
+    cyl((0, 0, 1.1 + 2.0), 0.55, 4.0, M["Joint"], head, verts=12)
+    cyl((0, 0, 1.3), 1.2, 0.4, M["Frame"], head, verts=14)
+
+def build_fab():
+    # fabricator: the factory block that builds enemies and feeds them onto a belt. front (+Y, game -Z) is the output
+    # door FB_Door (slides up while a unit rolls out); FB_Core is the glowing reactor on the roof (hit point sits above
+    # the 6 m collision box); FB_Arm1/2 are assembler arms that swing over the roof
+    K = kit("E_Fab")
+    box((0, 0, 3.0), (10.0, 9.0, 6.0), M["EArmor"], K, bevel=0.08)
+    box((0, 0, 6.15), (9.4, 8.4, 0.3), M["EArmor2"], K)
+    for sx in (-1, 1):
+        box((sx * 5.05, 0, 3.0), (0.2, 9.2, 6.0), M["Frame"], K)
+        for z in (1.2, 2.6, 4.0):
+            box((sx * 5.1, -1.5, z), (0.1, 4.0, 0.5), M["Black"], K)
+    box((0, 4.55, 2.6), (6.4, 0.2, 5.2), M["Frame"], K)
+    box((0, 4.62, 5.4), (6.4, 0.12, 0.5), M["Hazard"], K)
+    door = empty("FB_Door", (0, 4.66, 0.0), K)
+    box((0, 0, 2.3), (5.6, 0.14, 4.6), M["EArmor2"], door)
+    for z in (0.8, 1.9, 3.0, 4.1):
+        box((0, 0.08, z), (5.4, 0.06, 0.16), M["Black"], door)
+    box((0, 4.8, 0.08), (6.0, 1.2, 0.16), M["Hazard"], K)
+    for sx in (-1, 1):
+        cyl((sx * 3.4, -3.0, 7.6), 0.55, 3.0, M["Frame"], K, verts=10)
+        cyl((sx * 3.4, -3.0, 9.2), 0.62, 0.2, M["Hazard"], K, verts=10)
+    core = empty("FB_Core", (0, 0.5, 8.0), K)
+    ball((0, 0, 0), 1.25, M["FabGlow"], core, sub=2)
+    torus((0, 0, 0), 1.6, 0.14, M["EArmor2"], core)
+    torus((0, 0, 0), 1.6, 0.14, M["EArmor2"], core, rot=(1.5708, 0, 0))
+    cyl((0, 0.5, 6.8), 1.6, 0.9, M["Frame"], K, verts=14)
+    for i, sx in enumerate((-1, 1)):
+        arm = empty(f"FB_Arm{i + 1}", (sx * 3.2, 2.2, 6.4), K)
+        cyl((0, 0, 0.5), 0.4, 1.0, M["Joint"], arm, verts=10)
+        box((0, 1.2, 1.1), (0.4, 2.6, 0.4), M["ForkPaint"], arm, bevel=0.03)
+        box((0, 2.5, 0.6), (0.3, 0.3, 1.2), M["Frame"], arm)
+        box((0, 2.5, 0.0), (0.7, 0.2, 0.2), M["EEye"], arm)
+
+def build_fork():
+    # forklift: a stubby armoured loader. front (+Y) carries the mast; FK_Fork slides up the mast and holds FK_Barrel
+    # (a red explosive barrel, shown only while loaded); wheels FK_W1-4 spin while driving
+    K = kit("E_Fork")
+    box((0, -0.2, 1.05), (2.6, 3.2, 1.1), M["ForkPaint"], K, bevel=0.08)
+    box((0, -1.6, 1.3), (2.5, 0.8, 1.5), M["EArmor2"], K, bevel=0.06)
+    box((0, -0.5, 2.55), (2.1, 1.7, 0.14), M["EArmor2"], K)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            box((sx * 0.98, -0.5 + sy * 0.76, 2.0), (0.12, 0.12, 1.1), M["Frame"], K)
+    box((0, -0.5, 1.9), (0.9, 0.9, 0.7), M["Black"], K)
+    box((0, 0.35, 1.85), (0.8, 0.06, 0.25), M["EEye"], K)
+    cyl((0, -1.1, 2.75), 0.18, 0.3, M["EEye"], K, verts=10)
+    for i, (sx, sy) in enumerate(((-1, 1), (1, 1), (-1, -1), (1, -1))):
+        w = empty(f"FK_W{i + 1}", (sx * 1.25, sy * 1.05, 0.55), K)
+        cyl((0, 0, 0), 0.55, 0.5, M["Black"], w, rot=(0, 1.5708, 0), verts=14)
+        cyl((0, 0, 0), 0.3, 0.54, M["Joint"], w, rot=(0, 1.5708, 0), verts=10)
+    for sx in (-1, 1):
+        box((sx * 0.75, 1.55, 2.3), (0.22, 0.3, 4.2), M["Frame"], K, bevel=0.02)
+    box((0, 1.55, 4.35), (1.7, 0.3, 0.2), M["Frame"], K)
+    cyl((0, 1.3, 2.0), 0.14, 3.0, M["Joint"], K, verts=8)
+    fork = empty("FK_Fork", (0, 1.8, 0.45), K)
+    box((0, 0, 0.6), (1.7, 0.16, 1.2), M["EArmor2"], fork)
+    for sx in (-1, 1):
+        box((sx * 0.5, 0.9, 0.06), (0.24, 1.8, 0.12), M["Frame"], fork)
+    bar = empty("FK_Barrel", (0, 1.0, 0.85), fork)
+    cyl((0, 0, 0), 0.62, 1.5, M["Barrel"], bar, verts=14)
+    cyl((0, 0, 0.35), 0.64, 0.12, M["Hazard"], bar, verts=14)
+    cyl((0, 0, -0.35), 0.64, 0.12, M["Hazard"], bar, verts=14)
+    cyl((0, 0, 0.78), 0.2, 0.08, M["EEye"], bar, verts=8)
+
+def build_tractor():
+    # TB-3 tractor beam: a boxy emitter with three prongs around a glowing lens ring at the front
+    K = kit("W_Tractor")
+    box((0, 0, 0.05), (0.44, 0.86, 0.42), M["Frame"], K, bevel=0.06)
+    box((0, -0.1, 0.3), (0.48, 0.5, 0.1), M["Armor2"], K)
+    cyl((0, 0.6, 0.05), 0.17, 0.5, M["Joint"], K, rot=ALONG_Y, verts=12)
+    torus((0, 0.88, 0.05), 0.2, 0.045, M["TractorGlow"], K, rot=ALONG_Y)
+    cyl((0, 0.9, 0.05), 0.1, 0.06, M["TractorGlow"], K, rot=ALONG_Y, verts=12)
+    for k in range(3):
+        a = k * 2 * math.pi / 3 + math.pi / 2
+        x, z = math.cos(a) * 0.3, 0.05 + math.sin(a) * 0.3
+        box((x, 0.85, z), (0.07, 0.5, 0.07), M["Armor2"], K, rot=(0, -a, 0))
+        ball((x * 0.9, 1.12, 0.05 + (z - 0.05) * 0.9), 0.05, M["TractorGlow"], K, sub=1)
+    muzzle("Muzzle_Tractor", (0, 1.15, 0.05), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
