@@ -126,6 +126,12 @@ M = dict(
     RodGlow=mat("RodGlow", "#e0f6ff", 0.2, emit="#80d8ff", strength=2.4),
     AcidGlow=mat("AcidGlow", "#e0ffc0", 0.25, emit="#90ff30", strength=2.2),
     RiftGlow=mat("RiftGlow", "#f0e0ff", 0.2, emit="#b070ff", strength=2.4),
+    CrateGlow=mat("CrateGlow", "#fff4d0", 0.2, emit="#ffc040", strength=2.4),
+    Chute=mat("Chute", "#e8e0d0", 0.9),
+    ChuteRed=mat("ChuteRed", "#c8402c", 0.9),
+    CrateWood=mat("CrateWood", "#6e7a4a", 0.8),
+    SnatchGlow=mat("SnatchGlow", "#fff0d8", 0.2, emit="#ff9a30", strength=2.2),
+    PoundGlow=mat("PoundGlow", "#e0f0ff", 0.2, emit="#60c0ff", strength=2.2),
     DisarmGlow=mat("DisarmGlow", "#f4e0ff", 0.2, emit="#c050ff", strength=2.2),
     SiphonGlow=mat("SiphonGlow", "#ffe0e4", 0.2, emit="#ff3050", strength=2.2),
     RiftStone=mat("RiftStone", "#3a3446", 0.8),
@@ -2164,7 +2170,57 @@ def build_siphon():
     box((0, -0.1, -0.24), (0.16, 0.4, 0.22), M["SiphonGlow"], K)
     muzzle("Muzzle_Siphon", (0, 1.36, 0.05), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon()
+
+def build_crate():
+    # supply crate: an olive armoured box (1.8 m) with metal straps and a glowing amber beacon on top, and a
+    # striped parachute (CR_Chute) 6 m above held by four lines. origin = bottom centre, front = +Y
+    K = kit("P_Supply")
+    box((0, 0, 0.8), (1.8, 1.8, 1.6), M["CrateWood"], K, bevel=0.08)
+    for y in (-0.6, 0.6):
+        box((0, y, 0.8), (1.86, 0.14, 1.66), M["Frame"], K)
+    box((0, 0, 1.62), (0.5, 0.5, 0.06), M["Frame"], K)
+    cyl((0, 0, 1.75), 0.16, 0.25, M["CrateGlow"], K)
+    for sx in (-1, 1):
+        box((sx * 0.92, 0, 0.8), (0.04, 0.9, 0.5), M["Hazard"], K)
+    ch = empty("SP_Chute", (0, 0, 1.6), K)
+    for i in range(8):
+        a = i * math.pi / 4
+        box((math.cos(a) * 1.7, math.sin(a) * 1.7, 5.6), (1.5, 0.3, 0.12), M["ChuteRed" if i % 2 else "Chute"], ch, rot=(0, 0.42, a))
+    ball((0, 0, 6.1), 2.1, M["Chute"], ch, scale=(1, 1, 0.35), sub=2)
+    for sx, sy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+        box((sx * 1.0, sy * 1.0, 2.9), (0.04, 0.04, 5.2), M["Joint"], ch, rot=(-sy * 0.3, sx * 0.3, 0))
+
+def build_snatcher():
+    # Snatcher: a fast two-thruster hover bike (about 4 m long): a narrow armoured hull, a low windshield, a grabbing
+    # claw slung underneath (SN_Claw, it holds the stolen crate), two short guns on the nose (Muzzle_SN) and
+    # glowing orange thrusters at the back. front = +Y
+    K = kit("E_Snatcher")
+    box((0, 0.2, 0.0), (1.1, 3.4, 0.55), M["EArmor"], K, bevel=0.15)
+    box((0, 1.4, 0.3), (0.8, 1.1, 0.35), M["EArmor2"], K, bevel=0.1, rot=(0.25, 0, 0))
+    box((0, 0.7, 0.55), (0.6, 0.12, 0.35), M["Glass"], K, rot=(-0.6, 0, 0))
+    box((0, 1.95, 0.05), (0.5, 0.1, 0.12), M["EEye"], K)
+    for sx in (-1, 1):
+        box((sx * 0.85, -0.6, -0.05), (0.55, 1.8, 0.45), M["EArmor2"], K, bevel=0.1)
+        cyl((sx * 0.85, -1.55, -0.05), 0.24, 0.3, M["SnatchGlow"], K, rot=ALONG_Y, verts=12)
+        cyl((sx * 0.35, 1.8, -0.12), 0.07, 0.6, M["Joint"], K, rot=ALONG_Y, verts=8)
+    muzzle("Muzzle_SN", (0, 2.2, -0.12), K)
+    c = empty("SN_Claw", (0, 0.1, -0.35), K)
+    for sx in (-1, 1):
+        box((sx * 0.45, 0, -0.35), (0.1, 0.6, 0.7), M["Frame"], c, rot=(0, sx * 0.3, 0))
+    box((0, 0, -0.1), (0.9, 0.3, 0.12), M["Joint"], c)
+
+def build_pound_pack():
+    K = kit("S_Pound")
+    # ground-pound pack: a heavy downward piston block with a blue glowing impact ring and two vents
+    box((0, 0, 0.05), (0.75, 0.75, 0.6), M["Frame"], K, bevel=0.06)
+    cyl((0, 0, -0.4), 0.28, 0.45, M["Joint"], K, verts=12)
+    torus((0, 0, -0.62), 0.32, 0.06, M["PoundGlow"], K)
+    for sx in (-1, 1):
+        box((sx * 0.42, 0, 0.15), (0.08, 0.5, 0.3), M["PoundGlow"], K)
+    box((0, 0.3, 0.38), (0.4, 0.12, 0.12), M["Hazard"], K)
+    muzzle("Muzzle_Pound", (0, 0, -0.7), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

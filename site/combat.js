@@ -15,7 +15,8 @@ export const G = {
   aimPoint: new V3(), lockTarget: null, locks: [], onKill: null, onPlayerHit: null,
   pw: {},      // player weapon states by slot
   rods: [],
-  jam: { R: 0, L: 0, S: 0 },   // seconds each of your weapon slots stays locked by a Disarmer orb     // planted LR-1 lightning rods
+  jam: { R: 0, L: 0, S: 0 },
+  pound: null,   // GP-2 ground pound in progress   // seconds each of your weapon slots stays locked by a Disarmer orb     // planted LR-1 lightning rods
   friends: [],  // other things enemies may shoot: wingman, reactor core ({pos, vel, center(), alive, _ent, foeW})
 };
 
@@ -53,6 +54,7 @@ export const WEAPONS = {
   decoy: { slot: 'shoulder', name: 'HD-1 全息诱饵', en: 'HD-1 Holo Decoy', desc: '投射机体全息影像 6 秒 · 吸引敌方火力（头目不易上当）· 被打碎时放出电磁冲击', type: 'decoy', hp: 380, dur: 6, cd: 20, burst: 70, burstR: 11, sfx: 'decoy' },
   orbital: { slot: 'shoulder', name: 'OS-1 轨道打击', en: 'OS-1 Orbital Strike', desc: '标记落点 · 1.4 秒后卫星光柱从天而降 · 半径 9 m 重击 · 落点灼烧 2 秒 · 锁定时卫星跟踪目标直到落下前 0.4 秒', type: 'orbital', dmg: 360, R: 9, delay: 1.4, dps: 40, burnT: 2, range: 170, cd: 13, sfx: 'orbital' },
   pmines: { slot: 'shoulder', name: 'LM-3 跳雷', en: 'LM-3 Bounding Mines', desc: '在身边撒下 4 枚跳雷 · 0.6 秒后布防 · 敌机进入 9 m 水平范围（20 m 高度内）即弹起追击引爆 · 90 伤害 / 6 m · 存在 25 秒', type: 'pmines', n: 4, arm: 0.6, trig: 9, hmax: 20, dmg: 90, R: 6, life: 25, cd: 9, max: 12, sfx: 'minedrop' },
+  pound: { slot: 'shoulder', name: 'GP-2 俯冲重击', en: 'GP-2 Ground Pound', desc: '空中按下：以 70 m/s 垂直砸向地面 · 落地冲击波的伤害和半径随下落高度增长（20 m 高约 190 伤害 / 11 m），震慑 0.6 秒并击退 · 下砸中受伤减半 · 在地面按下先跃起再砸', type: 'pound', cd: 6, base: 70, per: 6, r0: 6, rPer: 0.25, hMax: 40, hop: 30, hopT: 0.5, dive: 70, stun: 0.6, knock: 18 },
   rod: { slot: 'shoulder', name: 'LR-1 避雷针', en: 'LR-1 Lightning Rod', desc: '在前方 6 m 插下避雷针 14 秒 · 每 0.9 秒放电打 22 m 内最近的敌机（36，再连锁 1 个）· 雷暴里 14 m 内不会被雷劈 · 同时只能有 1 根', type: 'rod', dur: 14, zap: 0.9, dmg: 36, R: 22, chains: 2, cover: 14, cd: 18, sfx: 'sentry' },
   sentry: { slot: 'shoulder', name: 'TR-3 哨戒炮塔', en: 'TR-3 Sentry Turret', desc: '在前方架设自动炮塔 15 秒 · 双管速射 75 m 内敌机 · 吸引部分火力 · 耐久 400 · 同时只能有 1 座', type: 'sentry', hp: 400, dur: 15, dmg: 10, rate: 0.11, range: 75, cd: 22, sfx: 'sentry' },
   stasis: { slot: 'shoulder', name: 'TS-1 时滞场', en: 'TS-1 Stasis Field', desc: '在准星处展开 14 m 时滞球 5 秒 · 球内敌机动作放慢到三成、敌弹几乎停在空中 · 头目只放慢一半', type: 'stasis', range: 60, R: 14, dur: 5, k: 0.3, bossK: 0.6, shotK: 0.12, cd: 17, sfx: 'stasis' },
@@ -61,7 +63,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -121,6 +123,7 @@ export const OD = { fill: 2600, dur: 10, dmg: 1.4, armor: 0.65 };
 // ------------------------------------------------------------------ damage
 function dealDamage(ent, dmg, team, at, label) {
   if (!ent.alive) return;
+  if (team === 'P' && G.pBoostT > 0) dmg *= SUPPLY.dmg;
   if (team === 'P') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.stunT > 0) dmg *= STUN_VULN; if (h.markT > 0) dmg *= h.maxHp > 3000 ? WEAPONS.sonar.bossVuln : WEAPONS.sonar.vuln; if (h.corr > 0) { G.corrBonus = (G.corrBonus || 0) + dmg * CORR.per * h.corr; dmg *= 1 + CORR.per * h.corr; } if (h.hornT > 0) { G.hornBlocked = (G.hornBlocked || 0) + dmg * (1 - HERALD.hornK); dmg *= HERALD.hornK; } }   // EMP-stunned targets take extra damage
   if ((team === 'P' || team === 'X') && !G.pierce && !ent.isBarrel && !ent.isMine && !ent.isPlayer && !ent.isAlly && G.player) {   // warden dome: hits from outside are absorbed
     const w = domeAt(ent.c);
@@ -138,6 +141,8 @@ function damagePlayer(dmg, src, label) {
   const blk = shieldBlock(p, src || G.curSrc);
   if (blk) { G.stats.blocked = (G.stats.blocked || 0) + dmg * blk; if (Math.random() < 0.3) sfx('shield', 0); }
   if (G.curShooter && G.curShooter.rally) { dmg *= HERALD.dmg; G.rallyHits = (G.rallyHits || 0) + 1; }   // rallied by a herald
+  if (G.curShooter && G.curShooter.emp) dmg *= SUPPLY.empDmg;   // empowered by a supply crate
+  if (G.pound && G.pound.st === 'dive') dmg *= 0.5;
   if (G.curShooter && G.curShooter.burnT > 0) dmg *= BURN_WEAK;   // direct hits (melee, beams) from a burning enemy
   const d = dmg * G.diff.dmg * p.frame.armor * (1 - blk) * (G.od && G.od.t > 0 ? OD.armor : 1);
   G.dmgLog = G.dmgLog || {}; G.dmgLog[label || '?'] = (G.dmgLog[label || '?'] || 0) + d;
@@ -175,6 +180,7 @@ export function spawnShot(o) {
     burn: o.burn || 0, burnT: o.burnT || 0, chill: o.chill || 0, label: o.label || G.curLabel || o.kind, color: o.color ?? 0xffd27a, w: o.w ?? 0.2, len: o.len ?? 6, target: o.target || null, aim: o.aim ? o.aim.clone() : null, age: 0, speed: o.v.length(), maxSpeed: o.maxSpeed || 0, size: o.size || 1, turn: o.turn || 5.5, grav: o.grav ?? 6 };
   if (o.flak) s.flak = o.flak; if (o.sticky) s.sticky = true;
   if (s.team === 'E' && G.curShooter && G.curShooter.rally) s.dmg *= HERALD.dmg;
+  if (s.team === 'E' && G.curShooter && G.curShooter.emp) s.dmg *= SUPPLY.empDmg;
   if (s.team === 'E' && G.curShooter && G.curShooter.burnT > 0) s.dmg *= BURN_WEAK;   // burning enemies fire weakened shots
   G.shots.push(s);
   return s;
@@ -615,6 +621,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
   } else if (d.type === 'disc') {
     if (held && ws.cd <= 0 && ws.ammo > 0 && isP) { ws.cd = d.rate; ws.ammo--; throwDisc(owner, slot, ws, d, dmgMul, aim); if (me) G.stats.shots++; mslot.recoil = 1; }
     for (const m of mslot.models) { const dk = m._disc || (m._disc = find(m, 'DS_Disc')); if (dk) { dk.visible = ws.ammo > 0; dk.rotation.y += dt * 8; } }
+  } else if (d.type === 'pound') {
+    if (pressed && ws.cd <= 0 && me && owner.alive && !G.pound) { ws.cd = d.cd; startPound(owner, d, dmgMul); G.stats.shots++; }
   } else if (d.type === 'blink') {
     if (ws.ammo < d.mag) { ws.rechT = (ws.rechT ?? d.rech) - dt; if (ws.rechT <= 0) { ws.ammo++; ws.rechT = d.rech; } } else ws.rechT = d.rech;
     if (pressed && ws.cd <= 0 && ws.ammo > 0 && isP && owner.alive) { ws.cd = 0.4; ws.ammo--; blinkJump(owner, d, dmgMul); if (me) G.stats.shots++; }
@@ -1836,7 +1844,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -5552,6 +5560,203 @@ function acidSplash(ent, at, dmg) {
 }
 
 
+
+// ---- Supply drops: every 16-20 s a crate parachutes down 30-75 m from you (gold ring where it will land, 6 s fall).
+// You grab it by touching it: a repair, overdrive charge or a 15 s damage boost. An enemy that reaches it first is
+// EMPOWERED: x1.5 max HP (fully healed), x1.4 damage, bigger, with a gold ring. Crates vanish 25 s after landing.
+export const SUPPLY = { first: 12, every: [16, 20], fall: 6, h: 70, R: 4.2, life: 25, near: [30, 75], repair: 0.35, od: 0.5, dmg: 1.3, dmgT: 15, empHp: 1.5, empDmg: 1.4, claim: 3 };
+const supRingGeo = new THREE.RingGeometry(SUPPLY.R - 0.5, SUPPLY.R, 40).rotateX(-Math.PI / 2);
+const empRingGeo = new THREE.RingGeometry(2.4, 2.9, 32).rotateX(-Math.PI / 2);
+export function startSupply() { clearSupply(); G.supply = { t: SUPPLY.first, crates: [] }; }
+export function clearSupply() { const S = G.supply; if (!S) return; for (const c of S.crates.slice()) removeCrate(c); G.supply = null; }
+function removeCrate(c) {
+  c.obj.parent && c.obj.parent.remove(c.obj); c.ring.parent && c.ring.parent.remove(c.ring); c.ring.material.dispose();
+  const S = G.supply; if (S) { const i = S.crates.indexOf(c); if (i >= 0) S.crates.splice(i, 1); }
+  for (const e of G.enemies) if (e.goalCrate === c) { e.goalP = null; e.goalCrate = null; }
+  c.gone = true;
+}
+function supplySpot() {
+  const P = G.player;
+  for (let i = 0; i < 300; i++) {
+    const a = Math.random() * Math.PI * 2, r = SUPPLY.near[0] + Math.random() * (SUPPLY.near[1] - SUPPLY.near[0]);
+    const x = P.pos.x + Math.cos(a) * r, z = P.pos.z + Math.sin(a) * r;
+    if (Math.abs(x) > ARENA - 12 || Math.abs(z) > ARENA - 12) continue;
+    if (PLAT.R && Math.hypot(x, z) > PLAT.R - 14) continue;
+    if (groundAt(x, z, 60) > 0.6 || collideCyl(new V3(x, 0.5, z), 3.5, 3)) continue;
+    return { x, z };
+  }
+  return null;
+}
+export function empower(e) {
+  if (!e || !e.alive || e.emp) return;
+  e.emp = true; e.maxHp *= SUPPLY.empHp; e.hp = e.maxHp;
+  const root = e.obj || (e.mech && e.mech.root) || (e.mech && e.mech.group);
+  if (root) { root.scale.multiplyScalar(1.2); const ring = new THREE.Mesh(empRingGeo, ringMat(0xffc040, 0.7)); ring.position.y = 0.25 / root.scale.y; root.add(ring); e.empRing = ring; }
+  G.fx.ring(e.c.clone(), null, 2, 9, 0.5, 0xffc040); G.fx.sparks(e.c, null, 24, 0xffd060, 14, 1, 0.4, 0.3);
+  G.empowered = (G.empowered || 0) + 1; G.onEmpower && G.onEmpower(e);
+}
+function grabCrate(c) {
+  const P = G.player, kinds = ['repair', 'od', 'dmg'];
+  let k = kinds[Math.floor(Math.random() * 3)];
+  if (k === 'repair' && P.hp > P.maxHp * 0.85) k = Math.random() < 0.5 ? 'od' : 'dmg';
+  if (k === 'od' && G.od && G.od.t > 0) k = 'dmg';
+  if (k === 'repair') P.hp = Math.min(P.maxHp, P.hp + P.maxHp * SUPPLY.repair);
+  else if (k === 'od') { if (G.od) G.od.k = Math.min(1, G.od.k + SUPPLY.od); }
+  else G.pBoostT = SUPPLY.dmgT;
+  G.cratesP = (G.cratesP || 0) + 1; G.onTally && G.onTally('crate'); G.onCrate && G.onCrate(k);
+  G.fx.ring(c.obj.position.clone(), null, 1, 7, 0.4, 0xffc040); sfx('repair', 0);
+  removeCrate(c);
+}
+const groundKinds = (e) => e.alive && !e.dying && e.pos && !e.emp && !e.holo && e.kind !== 'boss' && e.kind !== 'raider' && e.kind !== 'snatcher' && e.kind !== 'cpart' && !e.isTrain && !e.isColossus && e.pos.y - groundAt(e.pos.x, e.pos.z, e.pos.y + 1) < 2.5;
+function updateSupply(dt) {
+  const S = G.supply; if (G.pBoostT > 0) G.pBoostT -= dt; if (!S) return;
+  const P = G.player;
+  S.t -= dt;
+  if (S.t <= 0 && P && P.alive) {
+    S.t = SUPPLY.every[0] + Math.random() * (SUPPLY.every[1] - SUPPLY.every[0]);
+    const sp = supplySpot();
+    if (sp) {
+      const obj = cloneKit('P_Supply'); obj.position.set(sp.x, SUPPLY.h, sp.z); obj.rotation.y = Math.random() * 6.28; G.scene.add(obj);
+      const ring = new THREE.Mesh(supRingGeo, ringMat(0xffc040, 0.55)); ring.position.set(sp.x, 0.15, sp.z); G.scene.add(ring);
+      const n = nodes(obj);
+      S.crates.push({ obj, ring, chute: n.SP_Chute, st: 'fall', life: SUPPLY.life, x: sp.x, z: sp.z, carrier: null, ph: Math.random() * 6 });
+      G.crates = (G.crates || 0) + 1; G.onSupply && G.onSupply(sp);
+    }
+  }
+  for (const c of S.crates.slice()) {
+    c.ph += dt;
+    if (c.st === 'fall') {
+      c.obj.position.y -= SUPPLY.h / SUPPLY.fall * dt;
+      if (c.chute) { c.chute.rotation.x = Math.sin(c.ph * 1.3) * 0.08; c.chute.rotation.y = Math.sin(c.ph * 0.9) * 0.08; }
+      c.ring.material.opacity = 0.35 + 0.25 * Math.sin(c.ph * 6);
+      if (c.obj.position.y <= 0) {
+        c.obj.position.y = 0; c.st = 'ground'; if (c.chute) c.chute.visible = false;
+        G.fx.sparks(c.obj.position.clone().setY(0.5), null, 14, 0xd8c8a0, 10, 1, 0.4, 0.3);
+        const cand = G.enemies.filter(groundKinds).filter((e) => !e.goalCrate && Math.hypot(e.pos.x - c.x, e.pos.z - c.z) < 90).sort((a, b) => Math.hypot(a.pos.x - c.x, a.pos.z - c.z) - Math.hypot(b.pos.x - c.x, b.pos.z - c.z));
+        for (const e of cand.slice(0, SUPPLY.claim)) { e.goalP = new V3(c.x, 0, c.z); e.goalR = 1.5; e.goalCrate = c; }
+      }
+    } else if (c.st === 'ground') {
+      c.life -= dt; c.ring.material.opacity = 0.55;
+      c.obj.rotation.y += dt * 0.3;
+      if (c.life <= 0) { G.fx.ring(c.obj.position.clone(), null, 1, 5, 0.3, 0x888888); removeCrate(c); continue; }
+      if (P && P.alive && Math.hypot(P.pos.x - c.x, P.pos.z - c.z) < SUPPLY.R && P.pos.y - c.obj.position.y < 6) { grabCrate(c); continue; }
+      for (const e of G.enemies) { if (!groundKinds(e) || Math.hypot(e.pos.x - c.x, e.pos.z - c.z) > SUPPLY.R) continue; empower(e); G.cratesE = (G.cratesE || 0) + 1; removeCrate(c); break; }
+    } else if (c.st === 'carried') {
+      const k = c.carrier;
+      if (!k || !k.alive) { c.st = 'ground'; c.carrier = null; c.obj.position.y = 0; c.life = 15; c.x = c.obj.position.x; c.z = c.obj.position.z; c.ring.position.set(c.x, 0.15, c.z); c.ring.visible = true; continue; }
+      c.obj.position.set(k.pos.x, k.pos.y - 2.0, k.pos.z); c.obj.rotation.y = k.yaw;
+    }
+  }
+}
+export function nearestCrate(x, z, maxD) {
+  const S = G.supply; if (!S) return null; let best = null, bd = maxD;
+  for (const c of S.crates) { if (c.st === 'carried') continue; if (c.st === 'fall' && c.obj.position.y > 30) continue; const d = Math.hypot(c.x - x, c.z - z); if (d < bd) { bd = d; best = c; } }
+  return best;
+}
+
+// ---- Snatcher: a fast hover bike that races to supply crates, grabs them with its claw and carries them to an ally,
+// which it empowers (or itself, with nobody around). Without a crate it makes 30 m/s drive-by runs past you, firing a
+// five-pellet burst when you are ahead of it. Kill it to drop the crate.
+export const SNATCH = { hp: 380, r: 1.6, speed: 30, hover: 1.8, carryH: 3.6, gunR: 26, pellets: 5, pDmg: 4.5, gunCd: 0.9, hand: 5 };
+export class Snatcher extends Enemy {
+  constructor(pos) {
+    super('snatcher', 'E_Snatcher', pos, SNATCH.hp, SNATCH.r); this.boom = 0.9;
+    this.vel = new V3(); this.yaw = Math.random() * 6.28; this.carry = null; this.runP = null; this.runT = 0; this.gunT = 1.5; this.side = Math.random() < 0.5 ? 1 : -1; this.bank = 0;
+    this.pos.y = groundAt(pos.x, pos.z, 40) + SNATCH.hover; this.c.copy(this.pos);
+  }
+  explode() {
+    if (this.carry) { const c = this.carry; c.carrier = null; this.carry = null; }
+    super.explode();
+  }
+  update(dt) {
+    const tg = this.tg(), pc = tg.center(playerC);
+    let goal = null;
+    if (this.carry) {
+      let ally = null, bd = 150;
+      for (const e of G.enemies) { if (e === this || !groundKinds(e)) continue; const d = e.pos.distanceTo(this.pos); if (d < bd) { bd = d; ally = e; } }
+      if (ally) goal = ally.pos;
+      if (!ally || bd < SNATCH.hand) { const c = this.carry; this.carry = null; empower(ally || this); G.snatchDeliver = (G.snatchDeliver || 0) + 1; removeCrate(c); }
+    } else {
+      const c = nearestCrate(this.pos.x, this.pos.z, 160);
+      if (c && !c.carrier) {
+        goal = this.cg || (this.cg = new V3()); goal.set(c.x, 0, c.z);
+        if (c.st === 'ground' && Math.hypot(c.x - this.pos.x, c.z - this.pos.z) < 3.2) { c.st = 'carried'; c.carrier = this; c.ring.visible = false; this.carry = c; G.snatched = (G.snatched || 0) + 1; G.onSnatch && G.onSnatch(this); sfx('hook', G.player ? G.player.pos.distanceTo(this.pos) : 40); }
+      }
+    }
+    if (!goal) {
+      this.runT -= dt;
+      if (!this.runP || this.runT <= 0 || Math.hypot(this.runP.x - this.pos.x, this.runP.z - this.pos.z) < 6) {
+        const ax = pc.x - this.pos.x, az = pc.z - this.pos.z, al = Math.hypot(ax, az) || 1; this.side *= -1;
+        const x = pc.x + ax / al * 34 - az / al * 9 * this.side, z = pc.z + az / al * 34 + ax / al * 9 * this.side;
+        this.runP = new V3(Math.max(-ARENA + 10, Math.min(ARENA - 10, x)), 0, Math.max(-ARENA + 10, Math.min(ARENA - 10, z))); this.runT = 6;
+      }
+      goal = this.runP;
+    }
+    const gx = goal.x - this.pos.x, gz = goal.z - this.pos.z, gl = Math.hypot(gx, gz) || 1;
+    const sp = SNATCH.speed * (this.carry ? 0.8 : 1) * Math.min(1, gl / 8 + 0.35);
+    const k = 1 - Math.exp(-2.2 * dt), ovx = this.vel.x, ovz = this.vel.z;
+    this.vel.x += (gx / gl * sp - this.vel.x) * k; this.vel.z += (gz / gl * sp - this.vel.z) * k;
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 1.6, 2)) { this.pos.x -= this.vel.x * dt; this.pos.z -= this.vel.z * dt; this.vel.multiplyScalar(-0.4); this.runP = null; }
+    const gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 1.5) + (this.carry ? SNATCH.carryH : SNATCH.hover) + Math.sin(G.time * 3 + this.side) * 0.15;
+    this.pos.y += (gy - this.pos.y) * (1 - Math.exp(-6 * dt));
+    const hv = Math.hypot(this.vel.x, this.vel.z);
+    if (hv > 1) { const ny = Math.atan2(-this.vel.x, -this.vel.z), turn = angDiff(ny, this.yaw); this.yaw += turn * Math.min(1, dt * 6); this.bank += (Math.max(-0.6, Math.min(0.6, -turn * 2)) - this.bank) * Math.min(1, dt * 4); }
+    this.obj.rotation.set(0, this.yaw, this.bank, 'YXZ');
+    if (this.n.SN_Claw) this.n.SN_Claw.rotation.x = this.carry ? 0 : Math.sin(G.time * 5) * 0.15;
+    this.c.copy(this.pos);
+    this.gunT -= dt;
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1, fwx = -Math.sin(this.yaw), fwz = -Math.cos(this.yaw);
+    if (this.gunT <= 0 && dist < SNATCH.gunR && (dx * fwx + dz * fwz) / dist > 0.55 && this.checkLos(dt)) {
+      this.gunT = SNATCH.gunCd;
+      const m = this.n.Muzzle_SN, mp = m ? m.getWorldPosition(new V3()) : this.c.clone(), aim = lead(mp, 160, _b, tg);
+      for (let i = 0; i < SNATCH.pellets; i++) {
+        _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.12; _d.y += (Math.random() - 0.5) * 0.08; _d.z += (Math.random() - 0.5) * 0.12; _d.normalize();
+        spawnShot({ p: mp, v: _d.clone().multiplyScalar(160), dmg: SNATCH.pDmg, team: 'E', kind: 'ebullet', color: 0xffa040, w: 0.18, len: 3, life: 0.4, label: 'snatcher-gun' });
+      }
+      sfx('eshot', dist);
+    }
+  }
+}
+
+// ---- GP-2 ground pound: in the air, slam straight down at 70 m/s; on the ground, hop first. The landing shockwave
+// grows with the fall (20 m: about 190 damage over 11 m) and stuns; you take half damage during the dive.
+function startPound(o, d, mul) {
+  const h = o.pos.y - groundAt(o.pos.x, o.pos.z, o.pos.y + 1);
+  if (h < 3) { o.vel.y = d.hop; o.grounded = false; G.pound = { st: 'hop', t: d.hopT, d, mul }; }
+  else poundDive(o, d, mul);
+  sfx('qboost', 0);
+}
+function poundDive(o, d, mul) { G.pound = { st: 'dive', d, mul, y0: o.pos.y, t: 0 }; o.vel.x *= 0.25; o.vel.z *= 0.25; o.vel.y = -d.dive; sfx('jetdive', 0); }
+function updatePound(dt) {
+  const Pd = G.pound, P = G.player; if (!Pd) return;
+  if (!P || !P.alive) { G.pound = null; return; }
+  if (Pd.st === 'hop') { Pd.t -= dt; if (Pd.t <= 0) poundDive(P, Pd.d, Pd.mul); return; }
+  Pd.t += dt; P.vel.y = Math.min(P.vel.y, -Pd.d.dive); P.vel.x *= Math.exp(-3 * dt); P.vel.z *= Math.exp(-3 * dt);
+  if (Math.random() < 0.8) G.fx.emit('add', { x: P.pos.x, y: P.pos.y + 3, z: P.pos.z, vy: 4, life: 0.25, s0: 2.2, s1: 0.4, c0: 0x80c8ff, c1: 0x204060 });
+  const gy = groundAt(P.pos.x, P.pos.z, P.pos.y + 1);
+  if (P.grounded || P.pos.y - gy < 0.4 || Pd.t > 3) {
+    const d = Pd.d, h = Math.min(d.hMax, Math.max(0, Pd.y0 - P.pos.y)), R = d.r0 + h * d.rPer, dmg = (d.base + h * d.per) * Pd.mul;
+    const at = new V3(P.pos.x, gy + 0.3, P.pos.z); let n = 0;
+    for (const e of entsFor('P')) {
+      if (!e.alive || !e.c || e.isPlayer || e.isAlly) continue;
+      const dx = e.c.x - at.x, dz = e.c.z - at.z, dl = Math.hypot(dx, dz);
+      if (dl > R + (e.r || 1) * 0.5 || e.c.y - at.y > R * 0.7 + 2) continue;
+      dealDamage(e, dmg * (1 - 0.4 * Math.min(1, dl / R)), 'P', e.c, 'p-pound'); n++;
+      const host = e.kind === 'cpart' ? e.owner : e;
+      if (host && host.alive && !host.isBarrel && !host.isMine) {
+        host.stunT = Math.max(host.stunT || 0, host.maxHp > 3000 ? d.stun * 0.3 : d.stun); host.stunMax = host.stunT;
+        if (host.vel && host.maxHp < 3000 && dl > 0.1) { host.vel.x += dx / dl * d.knock; host.vel.z += dz / dl * d.knock; }
+      }
+    }
+    G.fx.ring(at, null, 1, R, 0.45, 0x80c8ff); G.fx.ring(at, null, 1, R * 0.6, 0.3, 0xe0f4ff); G.fx.sparks(at, null, 30, 0xc8e0ff, 18, 1, 0.45, 0.3);
+    G.fx.emit('add', { x: at.x, y: at.y + 0.5, z: at.z, vy: 1, life: 0.5, s0: R * 0.6, s1: R * 1.4, c0: 0xc0d8f0, c1: 0x404858 });
+    G.fx.trauma = Math.min(1, G.fx.trauma + 0.3 + h * 0.012); sfx('boom', 0);
+    G.pounds = (G.pounds || 0) + 1; G.poundHits = (G.poundHits || 0) + n; G.poundMaxH = Math.max(G.poundMaxH || 0, h);
+    G.pound = null;
+  }
+}
+
 // ---- Rift gates: three linked pairs of portals. Any mech (you or an enemy) or any shot that flies into a gate comes
 // out of its twin, still moving, turned by the difference in the two gates' facing. Every 32 s the gates flicker for
 // 3 s and jump to new spots; every 20 s one of them spits out reinforcements (G.onRiftSpawn).
@@ -5862,7 +6067,7 @@ export function updateCombat(dt) {
   if (GRID.on) updateGrid(dt);
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
-  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
+  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
