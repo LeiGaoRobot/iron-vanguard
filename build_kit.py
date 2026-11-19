@@ -126,6 +126,9 @@ M = dict(
     RodGlow=mat("RodGlow", "#e0f6ff", 0.2, emit="#80d8ff", strength=2.4),
     AcidGlow=mat("AcidGlow", "#e0ffc0", 0.25, emit="#90ff30", strength=2.2),
     RiftGlow=mat("RiftGlow", "#f0e0ff", 0.2, emit="#b070ff", strength=2.4),
+    MeltGlow=mat("MeltGlow", "#fff0d8", 0.2, emit="#ff8a20", strength=2.4),
+    FuelPaint=mat("FuelPaint", "#d8d4c8", 0.6, metal=0.3),
+    PlantGlow=mat("PlantGlow", "#ff8070", 0.2, emit="#ff2a10", strength=2.6),
     FogLampGlow=mat("FogLampGlow", "#fff6e0", 0.2, emit="#ffe0a0", strength=2.6),
     LurkEye=mat("LurkEye", "#ff7060", 0.2, emit="#ff3020", strength=2.5),
     LurkCore=mat("LurkCore", "#2a2c30", 0.5, metal=0.5),
@@ -2276,7 +2279,53 @@ def build_rewind_pack():
         box((sx * 0.38, 0, 0.1), (0.06, 0.45, 0.3), M["Hazard"], K)
     muzzle("Muzzle_RW", (0, 0.4, 0.55), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack()
+
+def build_fuel_tank():
+    # refinery fuel tank: an 8.4 m wide, 8 m tall cream storage tank with a shallow domed roof, a red hazard band,
+    # ring stiffeners, a spiral-ish ladder strip and a pipe stub at the foot. origin = bottom centre
+    K = kit("P_FuelTank")
+    cyl((0, 0, 0.2), 4.6, 0.4, M["Concrete"], K, verts=24)
+    cyl((0, 0, 4.4), 4.2, 8.0, M["FuelPaint"], K, verts=24)
+    ball((0, 0, 8.4), 4.2, M["FuelPaint"], K, scale=(1, 1, 0.22), sub=2)
+    for z in (2.2, 6.2):
+        cyl((0, 0, z), 4.26, 0.18, M["Frame"], K, verts=24)
+    cyl((0, 0, 4.2), 4.24, 0.7, M["Accent"], K, verts=24)
+    for i in range(9):
+        a = 0.3 + i * 0.17
+        box((math.cos(a) * 4.3, math.sin(a) * 4.3, 0.6 + i * 0.85), (0.9, 0.5, 0.08), M["Frame"], K, rot=(0, 0, a + 1.5708))
+    cyl((0, -4.6, 0.9), 0.35, 1.6, M["Frame"], K, rot=ALONG_Y, verts=10)
+    box((0, -5.5, 0.9), (1.0, 0.4, 1.0), M["Hazard"], K)
+
+def build_planter():
+    # Planter: a low, fast tracked demolition bot (about 2.6 m long): two tracks, a flat chassis, a small sensor head
+    # with a red eye, and a demolition charge strapped on its back (PL_Charge, hidden by JS after it plants).
+    # front = +Y
+    K = kit("E_Planter")
+    for sx in (-1, 1):
+        box((sx * 0.75, 0, 0.35), (0.45, 2.6, 0.6), M["Frame"], K, bevel=0.12)
+        for y in (-0.9, 0, 0.9):
+            cyl((sx * 0.75, y, 0.35), 0.28, 0.5, M["Joint"], K, rot=(0, 1.5708, 0), verts=10)
+    box((0, 0, 0.75), (1.2, 2.2, 0.45), M["EArmor"], K, bevel=0.08)
+    box((0, 0.95, 1.05), (0.5, 0.4, 0.3), M["EArmor2"], K, bevel=0.05)
+    box((0, 1.16, 1.07), (0.3, 0.04, 0.1), M["EEye"], K)
+    c = empty("PL_Charge", (0, -0.35, 1.0), K)
+    box((0, 0, 0.25), (0.9, 0.9, 0.5), M["Barrel"], c, bevel=0.05)
+    for sx in (-1, 1):
+        box((sx * 0.46, 0, 0.25), (0.04, 0.95, 0.12), M["Hazard"], c)
+    box((0, 0, 0.55), (0.18, 0.18, 0.1), M["PlantGlow"], c)
+
+def build_melter():
+    K = kit("W_Melter")
+    # melter: a squat heat-beam projector, a thick body with cooling fins, a wide lens barrel ringed in orange glow
+    box((0, 0, 0.05), (0.46, 0.9, 0.44), M["Frame"], K, bevel=0.06)
+    for y in (-0.25, 0.0, 0.25):
+        box((0, y, 0.32), (0.5, 0.06, 0.12), M["Armor2"], K)
+    cyl((0, 0.7, 0.05), 0.2, 0.6, M["Joint"], K, rot=ALONG_Y, verts=14)
+    torus((0, 1.0, 0.05), 0.2, 0.05, M["MeltGlow"], K, rot=ALONG_Y)
+    cyl((0, 1.05, 0.05), 0.13, 0.08, M["MeltGlow"], K, rot=ALONG_Y, verts=14)
+    muzzle("Muzzle_Melter", (0, 1.12, 0.05), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

@@ -33,6 +33,7 @@ export const WEAPONS = {
   flak: { slot: 'arm', name: 'FL-8 高射炮', en: 'FL-8 Flak Cannon', desc: '近炸引信炮弹 · 飞近敌机 4 m 内自动空爆 · 6 m 破片 · 射程尽头也会空爆 · 专克蜂群和无人机', type: 'bullet', flak: 4, rate: 0.3, dmg: 44, splash: 6, speed: 150, spread: 0.01, life: 0.7, mag: 12, reload: 2.6, color: 0xffc070, w: 0.32, len: 3, sfx: 'cannon', recoil: 0.45 },
   shotgun: { slot: 'arm', name: 'SG-12 霰弹炮', en: 'SG-12 Scattergun', desc: '近距离 · 一发 9 颗弹丸 · 射程短', type: 'bullet', pellets: 9, rate: 0.72, dmg: 13, speed: 250, spread: 0.075, life: 0.42, mag: 6, reload: 2.3, color: 0xffc890, w: 0.2, len: 4, sfx: 'cannon', recoil: 0.7 },
   grenade: { slot: 'arm', name: 'GL-4 榴弹发射器', en: 'GL-4 Grenade Launcher', desc: '抛物线弹道 · 范围爆炸 · 可越过掩体', type: 'bullet', grenade: true, rate: 0.55, dmg: 78, splash: 6.5, speed: 88, grav: 30, spread: 0.004, mag: 8, reload: 2.5, color: 0xffa050, sfx: 'grenade', recoil: 0.55 },
+  melter: { slot: 'arm', name: 'HL-5 热熔光束', en: 'HL-5 Melter', desc: '按住持续照射 42 m 内的目标 · 盯住同一个目标越久伤害越高：每秒 40，2.5 秒后升到 220 · 换目标重新计算 · 满槽可照 5 秒', type: 'melter', rate: 0.05, dps0: 40, dps1: 220, ramp: 2.5, range: 42, mag: 100, reload: 2.4, sfx: 'laser' },
   flamer: { slot: 'arm', name: 'FT-2 火焰喷射器', en: 'FT-2 Flamethrower', desc: '近距离持续喷射 · 点燃敌人持续灼烧 · 燃烧中的敌人伤害 −25%', type: 'flame', rate: 0.04, dmg: 8, speed: 60, spread: 0.08, life: 0.42, mag: 120, reload: 2, burn: 22, burnT: 2.5, sfx: 'flame' },
   cryo: { slot: 'arm', name: 'CR-3 冷冻枪', en: 'CR-3 Cryo Lance', desc: '冰晶连射 · 射程 70 m · 命中累积寒冷让敌人变慢 · 冻满后冰封 1.5 秒（瘫痪、受伤 +30%）', type: 'bullet', rate: 0.085, dmg: 8.5, speed: 230, spread: 0.007, life: 0.3, mag: 60, reload: 2.2, color: 0x9fe8ff, w: 0.26, len: 5, sfx: 'cryo', recoil: 0.1, chill: 5.5 },
   disc: { slot: 'arm', name: 'DS-7 回旋刃', en: 'DS-7 Ripper Disc', desc: '掷出贯穿锯刃 · 飞到 48 m 或撞墙后飞回手中 · 去程回程各命中一次 · 同时最多 2 片', type: 'disc', rate: 0.32, dmg: 56, speed: 72, range: 48, mag: 2, reload: 0, sfx: 'disc', recoil: 0.25 },
@@ -63,7 +64,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -531,6 +532,25 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
         fx.ring(owner.pos, null, 6, 1.5, 0.45, 0xff4020);
       }
     }
+  } else if (d.type === 'melter') {
+    if (held && ws.reloadT <= 0 && ws.ammo > 0) {
+      const mp = owner.muzzlePos(slot, _a).clone(); _d.subVectors(aim, mp).normalize();
+      const w = raySolids(mp, _d, d.range), h = rayEnts(mp, _d, w.t, entsFor(enemyTeam)), L = h ? h.t : w.t, end = mp.clone().addScaledVector(_d, L);
+      const te = h ? (h.ent.kind === 'cpart' ? h.ent.owner : h.ent) : null;
+      if (te && te === ws.mTgt) ws.mT = Math.min(d.ramp, (ws.mT || 0) + dt); else { ws.mTgt = te; ws.mT = 0; }
+      const k = ws.mT / d.ramp, dps = d.dps0 + (d.dps1 - d.dps0) * k, fl = 0.85 + Math.random() * 0.3;
+      fx.streak(mp, end, (0.5 + 0.9 * k) * fl, k > 0.7 ? 0xffe0a0 : 0xff7a20); fx.streak(mp, end, (0.18 + 0.3 * k) * fl, 0xfff4e0);
+      fx.emit('add', { x: end.x, y: end.y, z: end.z, life: 0.06, s0: (1.4 + 2 * k) * fl, c0: 0xffa040 });
+      if (Math.random() < 0.3 + 0.5 * k) fx.sparks(end, _d.clone().multiplyScalar(-1), 2, 0xffc060, 12, 0.9, 0.3, 0.25);
+      if (h) { dealDamage(h.ent, dps * dmgMul * dt, team, end); if (me) G.meltPeak = Math.max(G.meltPeak || 0, k); }
+      else if (w.solid && w.solid !== 'floor' && w.solid.kind === 'barrel') hitBarrel(w.solid.ref, dps * dt);
+      while (ws.cd <= 0 && ws.ammo > 0) { ws.cd += d.rate; ws.ammo--; }
+      if (me) G.stats.shots++;
+      ws.sndT -= dt; if (ws.sndT <= 0) { ws.sndT = 0.11; sfx('laser', dist); }
+      mslot.recoil = Math.min(0.06, (mslot.recoil || 0) + dt * 0.3);
+      if (ws.ammo <= 0) { startReload(); ws.mT = 0; ws.mTgt = null; }
+    } else { if (pressed && ws.ammo <= 0) startReload(); ws.mT = 0; ws.mTgt = null; }
+    if (!held && ws.cd < 0) ws.cd = 0;
   } else if (d.type === 'flame') {
     if (held && ws.reloadT <= 0 && ws.ammo > 0) {
       while (ws.cd <= 0 && ws.ammo > 0) {
@@ -1848,7 +1868,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -5878,6 +5898,144 @@ export function nearestRift(x, z) {
   return best && { g: best, d: bd };
 }
 
+// ---- Refinery: three fuel tanks. Planters drive up to a tank and strap a demolition charge to it (14 s fuse).
+// Stand within 5 m of a charge for 2 s to defuse it. A charge that goes off blasts everything within 12 m and takes
+// half a tank's integrity; when all three tanks are gone the mission is lost.
+export const DEPOT = { spots: [[-42, 34], [46, 28], [0, -52]], hp: 1000, R: 4.4, fuse: 16, max: 3, defuse: 2, defR: 5, blast: 12, blastDmg: 80, tankDmg: 0.5 };
+const chGeo = new THREE.BoxGeometry(0.9, 0.5, 0.9), chLightGeo = new THREE.SphereGeometry(0.16, 8, 6);
+const chMat = new THREE.MeshStandardMaterial({ color: 0xb8402e, roughness: 0.5, metalness: 0.3 });
+const chRingGeo = new THREE.RingGeometry(DEPOT.defR - 0.35, DEPOT.defR, 48);
+export function startDepots() {
+  clearDepots();
+  const D = G.depot = { tanks: [], charges: [], lost: false };
+  for (const [sx, sz] of DEPOT.spots) {
+    let x = sx, z = sz;
+    for (let i = 0; i < 500; i++) {
+      const a = i * 2.4, r = Math.sqrt(i) * 2.2; x = sx + Math.cos(a) * r; z = sz + Math.sin(a) * r;
+      if (groundAt(x, z, 60) < 0.6 && !collideCyl(new V3(x, 0.5, z), 9, 3)) break;
+    }
+    const obj = cloneKit('P_FuelTank'); obj.position.set(x, 0, z); obj.rotation.y = Math.random() * 6.28; G.scene.add(obj);
+    D.tanks.push({ obj, x, z, hp: DEPOT.hp, maxHp: DEPOT.hp, alive: true, sol: addSolid(x, z, 7.6, 7.6, 9, 0, 'tank'), fireT: 0 });
+  }
+}
+export function clearDepots() {
+  const D = G.depot; if (!D) return;
+  for (const t of D.tanks) { t.obj.parent && t.obj.parent.remove(t.obj); removeSolid(t.sol); }
+  for (const c of D.charges) removeCharge(c);
+  G.depot = null;
+}
+function removeCharge(c) { c.obj.parent && c.obj.parent.remove(c.obj); c.ring.parent && c.ring.parent.remove(c.ring); c.ring.material.dispose(); c.light.material.dispose(); c.gone = true; }
+export function depotTarget(from) {   // nearest live tank, preferring one without a charge already on it
+  const D = G.depot; if (!D) return null; let best = null, bd = 1e9;
+  for (const t of D.tanks) { if (!t.alive) continue; const d = Math.hypot(t.x - from.x, t.z - from.z) + (D.charges.some((c) => c.tank === t) ? 60 : 0); if (d < bd) { bd = d; best = t; } }
+  return best;
+}
+export function plantCharge(t, from) {
+  const D = G.depot; if (!D || !t.alive) return;
+  let dx = from.x - t.x, dz = from.z - t.z; const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+  const x = t.x + dx * (DEPOT.R + 0.5), z = t.z + dz * (DEPOT.R + 0.5);
+  const obj = new THREE.Group(); obj.add(new THREE.Mesh(chGeo, chMat)); obj.children[0].position.y = 1.4;
+  const light = new THREE.Mesh(chLightGeo, new THREE.MeshBasicMaterial({ color: 0xff2010 })); light.position.y = 1.75; obj.add(light);
+  obj.position.set(x, 0, z); obj.rotation.y = Math.atan2(dx, dz); G.scene.add(obj);
+  const ring = new THREE.Mesh(chRingGeo, new THREE.MeshBasicMaterial({ color: 0xff4030, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.45, z); G.scene.add(ring);
+  D.charges.push({ obj, light, ring, x, z, t: DEPOT.fuse, tank: t, k: 0, beepT: 0 });
+  G.planted = (G.planted || 0) + 1; G.onPlant && G.onPlant(t);
+}
+function hurtTank(t, frac) {
+  t.hp -= t.maxHp * frac; G.onTankHit && G.onTankHit(t);
+  if (t.hp > 0 || !t.alive) return;
+  t.alive = false; t.hp = 0; G.tanksLost = (G.tanksLost || 0) + 1;
+  const c = new V3(t.x, 5, t.z); G.fx.explosion(c, 3.2, 0xff7020); G.fx.flash(c, 0xffa040, 120, 60, 0.5); G.fx.trauma = Math.min(1, G.fx.trauma + 0.6);
+  sfx('bigboom', G.player ? G.player.pos.distanceTo(c) * 0.5 : 0);
+  G.curLabel = 'depot-blast'; explodeAt(c, 16, 90, 'X', 2.4, 0xff8030);
+  t.obj.scale.set(1.05, 0.42, 1.05); t.obj.rotation.z = 0.08; t.sol.max.y = 3.6;
+  const D = G.depot; if (D && !D.tanks.some((k) => k.alive)) D.lost = true;
+  G.onTankLost && G.onTankLost(t);
+}
+function updateDepots(dt) {
+  const D = G.depot, P = G.player; if (!D) return;
+  for (const t of D.tanks) {   // burning wrecks and damaged tanks smoke
+    if (!t.alive) { if (Math.random() < 0.5) G.fx.emit('add', { x: t.x + (Math.random() - 0.5) * 6, y: 3.5, z: t.z + (Math.random() - 0.5) * 6, vy: 5, life: 0.7, s0: 3, s1: 1, c0: 0xff7020, c1: 0x401808 }); if (Math.random() < 0.3) G.fx.smoke(new V3(t.x, 4, t.z), 1, 3, 3, 0x2a2624, 2.5, 1.2); }
+    else if (t.hp < t.maxHp * 0.6 && Math.random() < 0.15) G.fx.smoke(new V3(t.x + (Math.random() - 0.5) * 4, 8, t.z + (Math.random() - 0.5) * 4), 1, 1.5, 2, 0x3a3634, 1.6, 1);
+  }
+  for (let i = D.charges.length - 1; i >= 0; i--) {
+    const c = D.charges[i];
+    const near = P && P.alive && Math.hypot(P.pos.x - c.x, P.pos.z - c.z) < DEPOT.defR && P.pos.y - groundAt(P.pos.x, P.pos.z, P.pos.y + 1) < 6;
+    c.k = near ? c.k + dt / DEPOT.defuse : Math.max(0, c.k - dt * 0.5);
+    c.ring.scale.setScalar(1 - 0.55 * c.k); c.ring.material.color.setHex(c.k > 0 ? 0x60e0ff : 0xff4030);
+    if (c.k >= 1) {
+      removeCharge(c); D.charges.splice(i, 1); G.defused = (G.defused || 0) + 1; G.onTally && G.onTally('defuse');
+      G.fx.sparks(new V3(c.x, 1.5, c.z), null, 18, 0x80e8ff, 10, 1, 0.4, 0.2); sfx('repair', 0); G.onDefuse && G.onDefuse(c);
+      continue;
+    }
+    c.t -= dt; c.beepT -= dt;
+    const urg = Math.max(0, c.t / DEPOT.fuse);
+    if (c.beepT <= 0) { c.beepT = 0.12 + 0.9 * urg; c.light.material.color.setHex(0xff2010); sfx('minebeep', P ? P.pos.distanceTo(c.obj.position) : 0); }
+    else if (c.beepT < 0.06 + 0.5 * urg) c.light.material.color.setHex(0x301008);
+    c.ring.material.opacity = 0.45 + 0.35 * Math.abs(Math.sin(G.time * (4 + 14 * (1 - urg))));
+    if (c.t <= 0) {
+      removeCharge(c); D.charges.splice(i, 1); G.detonated = (G.detonated || 0) + 1;
+      const at = new V3(c.x, 1.5, c.z); G.curLabel = 'depot-charge'; explodeAt(at, DEPOT.blast, DEPOT.blastDmg, 'X', 2, 0xff6020);
+      if (c.tank.alive) hurtTank(c.tank, DEPOT.tankDmg);
+    }
+  }
+}
+export function nearestCharge(x, z) {
+  const D = G.depot; if (!D) return null; let best = null, bd = 1e9;
+  for (const c of D.charges) { const d = Math.hypot(c.x - x, c.z - z) + c.t * 3; if (d < bd) { bd = d; best = c; } }   // the one about to blow counts as nearer
+  return best;
+}
+
+// ---- Planter: a fast tracked demolition bot with no gun. It drives to a fuel tank, spends 2.2 s strapping a charge
+// to it (kill it then and the charge is never planted), runs from you for 6 s, rests, fetches a new charge and goes again.
+export const PLANT = { hp: 340, r: 1.6, speed: 15, plantT: 2.2, flee: 6, rest: [8, 12] };
+export class Planter extends Enemy {
+  constructor(pos) {
+    super('planter', 'E_Planter', pos, PLANT.hp, PLANT.r); this.boom = 0.8;
+    this.pos.y = groundAt(pos.x, pos.z, 40); this.yaw = 0; this.vel = new V3(); this.st = 'go'; this.t = 0; this.tank = null; this.ph = Math.random() * 6;
+    this.stuckT = 0; this.sideT = 0; this.side = 1; this.last = this.pos.clone(); this.c.set(this.pos.x, this.pos.y + 1, this.pos.z);
+  }
+  drive(tx, tz, spd, dt) {
+    let dx = tx - this.pos.x, dz = tz - this.pos.z; const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+    if (this.sideT > 0) { this.sideT -= dt; const sx = -dz * this.side, sz = dx * this.side; dx = dx * 0.3 + sx; dz = dz * 0.3 + sz; }
+    this.vel.x += (dx * spd - this.vel.x) * (1 - Math.exp(-5 * dt)); this.vel.z += (dz * spd - this.vel.z) * (1 - Math.exp(-5 * dt));
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    this.pos.x = Math.max(-ARENA + 5, Math.min(ARENA - 5, this.pos.x)); this.pos.z = Math.max(-ARENA + 5, Math.min(ARENA - 5, this.pos.z));
+    collideCyl(this.pos, 1.5, 1.6);
+    this.stuckT += dt; if (this.stuckT > 1.5) { if (this.pos.distanceTo(this.last) < 3 && dl > 3) { this.sideT = 1.4; this.side *= -1; } this.stuckT = 0; this.last.copy(this.pos); }
+    if (Math.hypot(this.vel.x, this.vel.z) > 1) this.yaw += angDiff(Math.atan2(this.vel.x, this.vel.z), this.yaw) * Math.min(1, dt * 8);
+    return dl;
+  }
+  update(dt) {
+    const P = G.player; this.ph += dt; const ch = this.n.PL_Charge;
+    if (this.st === 'go') {
+      if (!this.tank || !this.tank.alive) this.tank = depotTarget(this.pos);
+      if (!this.tank) { this.st = 'flee'; this.t = PLANT.flee; }
+      else {
+        let dx = this.pos.x - this.tank.x, dz = this.pos.z - this.tank.z; const dl = Math.hypot(dx, dz) || 1;
+        const gx = this.tank.x + dx / dl * (DEPOT.R + 1.8), gz = this.tank.z + dz / dl * (DEPOT.R + 1.8);
+        if (G.depot.charges.length >= DEPOT.max) { this.st = 'rest'; this.t = 2; }
+        else if (this.drive(gx, gz, PLANT.speed, dt) < 1.6) { this.st = 'plant'; this.t = PLANT.plantT; this.vel.set(0, 0, 0); G.onPlanting && G.onPlanting(this); }
+      }
+    } else if (this.st === 'plant') {
+      this.t -= dt; if (Math.random() < 0.4) G.fx.sparks(_a.set(this.pos.x, this.pos.y + 1.2, this.pos.z), null, 1, 0xffb040, 6, 0.8, 0.3, 0.2);
+      if (this.tank && this.tank.alive) this.yaw += angDiff(Math.atan2(this.tank.x - this.pos.x, this.tank.z - this.pos.z), this.yaw) * Math.min(1, dt * 6);
+      if (this.t <= 0) { if (this.tank && this.tank.alive) plantCharge(this.tank, this.pos); if (ch) ch.visible = false; this.st = 'flee'; this.t = PLANT.flee; }
+    } else if (this.st === 'flee') {
+      this.t -= dt; const ax = P ? this.pos.x - P.pos.x : 1, az = P ? this.pos.z - P.pos.z : 0, al = Math.hypot(ax, az) || 1;
+      this.drive(this.pos.x + ax / al * 30, this.pos.z + az / al * 30, PLANT.speed * 0.9, dt);
+      if (this.t <= 0) { this.st = 'rest'; this.t = PLANT.rest[0] + Math.random() * (PLANT.rest[1] - PLANT.rest[0]); }
+    } else {   // rest: idle wander, then fetch a new charge
+      this.t -= dt; this.vel.multiplyScalar(Math.exp(-3 * dt)); this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+      if (this.t <= 0 && !(G.depot && G.depot.charges.length >= DEPOT.max)) { this.st = 'go'; this.tank = null; if (ch) ch.visible = true; }   // at most three live charges at once
+    }
+    this.pos.y += (groundAt(this.pos.x, this.pos.z, this.pos.y + 1.5) - this.pos.y) * Math.min(1, dt * 10);
+    this.obj.rotation.set(0, this.yaw, 0);
+    this.c.set(this.pos.x, this.pos.y + 1, this.pos.z);
+  }
+}
+
 // ---- Fog harbour: thick fog; the radar only shows enemies within 40 m, enemies that fired in the last 2.5 s, and
 // anything near a lit fog lamp. Stand by a lamp for 3 s to light it; every lit lamp also pushes the fog back 30 m.
 export const FOG = { R: 7, light: 3, radar: 40, lampSee: 60, ping: 2.5, near: 6, far0: 70, perLamp: 30, spots: [[-68, -58], [66, -62], [-62, 66], [70, 60]] };
@@ -6210,7 +6368,7 @@ export function updateCombat(dt) {
   G.curLabel = null;
   LAVA.uT.value = G.time;
   if (G.blinkInv > 0) G.blinkInv -= dt;
-  recordRewind(dt); updateFog(dt);
+  recordRewind(dt); updateFog(dt); updateDepots(dt);
   updateMarks(dt);
   updateBurning(dt);
   updateChill(dt);
