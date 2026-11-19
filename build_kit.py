@@ -129,6 +129,8 @@ M = dict(
     MeltGlow=mat("MeltGlow", "#fff0d8", 0.2, emit="#ff8a20", strength=2.4),
     FuelPaint=mat("FuelPaint", "#d8d4c8", 0.6, metal=0.3),
     PlantGlow=mat("PlantGlow", "#ff8070", 0.2, emit="#ff2a10", strength=2.6),
+    SalvGlow=mat("SalvGlow", "#d8fff0", 0.2, emit="#30ffb0", strength=2.6),
+    ScavPaint=mat("ScavPaint", "#b08a3a", 0.55, metal=0.35),
     FogLampGlow=mat("FogLampGlow", "#fff6e0", 0.2, emit="#ffe0a0", strength=2.6),
     LurkEye=mat("LurkEye", "#ff7060", 0.2, emit="#ff3020", strength=2.5),
     LurkCore=mat("LurkCore", "#2a2c30", 0.5, metal=0.5),
@@ -2325,7 +2327,93 @@ def build_melter():
     cyl((0, 1.05, 0.05), 0.13, 0.08, M["MeltGlow"], K, rot=ALONG_Y, verts=14)
     muzzle("Muzzle_Melter", (0, 1.12, 0.05), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter()
+
+def build_salvage():
+    # salvage core: a 1.1 m glowing cell held in a hexagonal frame with two cross rings. origin = centre
+    K = kit("P_Salvage")
+    ball((0, 0, 0), 0.38, M["SalvGlow"], K, sub=2)
+    cyl((0, 0, 0.42), 0.46, 0.1, M["Frame"], K, verts=6, smooth=False)
+    cyl((0, 0, -0.42), 0.46, 0.1, M["Frame"], K, verts=6, smooth=False)
+    for i in range(6):
+        a = i * math.pi / 3
+        box((math.cos(a) * 0.44, math.sin(a) * 0.44, 0), (0.08, 0.08, 0.8), M["Joint"], K)
+    torus((0, 0, 0), 0.5, 0.04, M["Hazard"], K, rot=(1.5708, 0, 0))
+
+def build_salv_pad():
+    # salvage extraction pad: a 14 m octagonal landing pad, hazard edge, four glowing corner posts and a beacon mast
+    # (SVP_Beacon). origin = ground centre
+    K = kit("P_SalvPad")
+    cyl((0, 0, 0.12), 7.4, 0.24, M["Concrete"], K, verts=8, smooth=False)
+    cyl((0, 0, 0.26), 6.4, 0.06, M["Frame"], K, verts=8, smooth=False)
+    for i in range(16):
+        a = i * math.pi / 8
+        box((math.cos(a) * 6.9, math.sin(a) * 6.9, 0.27), (1.4, 0.4, 0.04), M["Hazard" if i % 2 else "Black"], K, rot=(0, 0, a + 1.5708))
+    for i in range(4):
+        a = i * math.pi / 2 + math.pi / 4
+        x, y = math.cos(a) * 6.6, math.sin(a) * 6.6
+        cyl((x, y, 0.9), 0.14, 1.4, M["Joint"], K, verts=8)
+        ball((x, y, 1.7), 0.22, M["SalvGlow"], K)
+    cyl((0, 0, 0.6), 0.9, 0.8, M["Frame"], K, verts=12)
+    cyl((0, 0, 3.4), 0.16, 5.0, M["Joint"], K, verts=8)
+    b = empty("SVP_Beacon", (0, 0, 6.1), K)
+    ball((0, 0, 0), 0.42, M["SalvGlow"], b)
+    torus((0, 0, 0), 0.7, 0.06, M["Frame"], b)
+
+def build_scav():
+    # Scavenger: a 3 m hover salvage drone: a flat rust-yellow disc, three thruster pods, a red eye at the front, and a
+    # magnet claw underneath (SC_Claw) holding up to three cores (SC_Load1-3, shown by JS). front = +Y
+    K = kit("E_Scav")
+    cyl((0, 0, 0), 1.35, 0.45, M["ScavPaint"], K, verts=10, smooth=False)
+    cyl((0, 0, 0.32), 0.85, 0.3, M["EArmor2"], K, verts=10, smooth=False)
+    box((0, 1.25, 0.05), (0.6, 0.4, 0.3), M["EArmor2"], K, bevel=0.05)
+    box((0, 1.46, 0.07), (0.36, 0.04, 0.12), M["EEye"], K)
+    for i in range(3):
+        a = i * 2 * math.pi / 3 + math.pi / 2 + math.pi / 3
+        x, y = math.cos(a) * 1.55, math.sin(a) * 1.55
+        cyl((x, y, 0), 0.32, 0.55, M["Frame"], K, verts=10)
+        cyl((x, y, -0.32), 0.22, 0.1, M["PlantGlow"], K, verts=10)
+        box((math.cos(a) * 1.1, math.sin(a) * 1.1, 0), (0.5, 0.18, 0.16), M["Joint"], K, rot=(0, 0, a))
+    cl = empty("SC_Claw", (0, 0, -0.35), K)
+    cyl((0, 0, -0.35), 0.1, 0.7, M["Joint"], cl, verts=8)
+    cyl((0, 0, -0.75), 0.42, 0.14, M["Frame"], cl, verts=12)
+    for i in range(3):
+        a = i * 2 * math.pi / 3
+        box((math.cos(a) * 0.4, math.sin(a) * 0.4, -1.0), (0.1, 0.1, 0.5), M["Joint"], cl, rot=(math.sin(a) * 0.35, -math.cos(a) * 0.35, 0))
+    for i, (x, y) in enumerate(((0, 0), (0.34, -0.22), (-0.34, -0.22))):
+        ld = empty("SC_Load%d" % (i + 1), (x, y, -1.2), cl)
+        ball((0, 0, 0), 0.24, M["SalvGlow"], ld)
+
+def build_frag():
+    K = kit("W_Frag")
+    # frag cannon: a boxy breech, a side drum of shards, a short wide barrel with a slotted muzzle brake
+    box((0, 0, 0.05), (0.42, 0.85, 0.42), M["Frame"], K, bevel=0.06)
+    cyl((0.3, -0.1, 0.05), 0.24, 0.36, M["Armor2"], K, rot=ALONG_Y, verts=12)
+    torus((0.3, -0.1, 0.05), 0.24, 0.035, M["SalvGlow"], K, rot=ALONG_Y)
+    cyl((0, 0.7, 0.05), 0.15, 0.6, M["Joint"], K, rot=ALONG_Y, verts=12)
+    box((0, 1.02, 0.05), (0.36, 0.16, 0.24), M["Frame"], K, bevel=0.03)
+    for sx in (-1, 1):
+        box((sx * 0.19, 1.02, 0.05), (0.02, 0.1, 0.16), M["SalvGlow"], K)
+    muzzle("Muzzle_Frag", (0, 1.12, 0.05), K)
+
+
+def build_hulk():
+    # derelict mech hulk: a toppled, rusted 7 m mech lying on its side: torso, a cracked head, one arm flung out,
+    # a bent leg and a dark scorch plate under it. origin = ground centre
+    K = kit("P_Hulk")
+    box((0, 0, 0.04), (6.5, 4.2, 0.06), M["Black"], K)
+    box((0, 0, 1.3), (2.8, 2.2, 2.3), M["Rust2"], K, rot=(0.15, 1.35, 0.2), bevel=0.15)
+    box((0.3, 0.2, 1.2), (2.0, 2.4, 1.8), M["Frame"], K, rot=(0.1, 1.3, 0.25), bevel=0.1)
+    box((-2.1, 0.4, 0.8), (1.2, 1.1, 1.0), M["Rust"], K, rot=(0.3, 0.9, 0.5), bevel=0.12)
+    box((-2.55, 0.55, 0.8), (0.08, 0.6, 0.18), M["Black"], K, rot=(0.3, 0.9, 0.5))
+    box((0.6, 2.4, 0.5), (0.8, 2.6, 0.8), M["Rust2"], K, rot=(0, 0, 0.5), bevel=0.08)
+    cyl((0.95, 3.6, 0.5), 0.5, 1.0, M["Joint"], K, rot=(0, 1.5708, 0.5), verts=10)
+    box((2.3, -0.6, 0.7), (2.4, 0.9, 0.9), M["Rust"], K, rot=(0, 0.2, -0.3), bevel=0.08)
+    box((3.4, -1.5, 0.55), (0.9, 1.8, 0.8), M["Rust2"], K, rot=(0, 0, 0.6), bevel=0.08)
+    box((3.6, -2.4, 0.3), (1.4, 0.6, 0.5), M["Frame"], K, rot=(0, 0, 0.6))
+    for x, y in ((-0.4, -1.4), (1.2, 1.6), (-1.6, -1.2)):
+        box((x, y, 0.15), (0.6, 0.4, 0.3), M["Rust"], K, rot=(0.4, 0.3, x))
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

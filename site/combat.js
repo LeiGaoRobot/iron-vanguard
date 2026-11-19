@@ -33,6 +33,7 @@ export const WEAPONS = {
   flak: { slot: 'arm', name: 'FL-8 高射炮', en: 'FL-8 Flak Cannon', desc: '近炸引信炮弹 · 飞近敌机 4 m 内自动空爆 · 6 m 破片 · 射程尽头也会空爆 · 专克蜂群和无人机', type: 'bullet', flak: 4, rate: 0.3, dmg: 44, splash: 6, speed: 150, spread: 0.01, life: 0.7, mag: 12, reload: 2.6, color: 0xffc070, w: 0.32, len: 3, sfx: 'cannon', recoil: 0.45 },
   shotgun: { slot: 'arm', name: 'SG-12 霰弹炮', en: 'SG-12 Scattergun', desc: '近距离 · 一发 9 颗弹丸 · 射程短', type: 'bullet', pellets: 9, rate: 0.72, dmg: 13, speed: 250, spread: 0.075, life: 0.42, mag: 6, reload: 2.3, color: 0xffc890, w: 0.2, len: 4, sfx: 'cannon', recoil: 0.7 },
   grenade: { slot: 'arm', name: 'GL-4 榴弹发射器', en: 'GL-4 Grenade Launcher', desc: '抛物线弹道 · 范围爆炸 · 可越过掩体', type: 'bullet', grenade: true, rate: 0.55, dmg: 78, splash: 6.5, speed: 88, grav: 30, spread: 0.004, mag: 8, reload: 2.5, color: 0xffa050, sfx: 'grenade', recoil: 0.55 },
+  frag: { slot: 'arm', name: 'SC-6 散裂炮', en: 'SC-6 Frag Cannon', desc: '炮弹飞近敌机 9 m 内（或飞出 50 m）自动炸成 6 枚破片 · 破片朝最近的敌机散射 · 中远距离威力最大', type: 'bullet', split: 0.45, fragN: 6, fragDmg: 10, rate: 0.4, dmg: 24, speed: 110, spread: 0.006, life: 1.2, mag: 10, reload: 2.6, color: 0x60ffc0, w: 0.34, len: 3, sfx: 'cannon', recoil: 0.35 },
   melter: { slot: 'arm', name: 'HL-5 热熔光束', en: 'HL-5 Melter', desc: '按住持续照射 42 m 内的目标 · 盯住同一个目标越久伤害越高：每秒 40，2.5 秒后升到 220 · 换目标重新计算 · 满槽可照 5 秒', type: 'melter', rate: 0.05, dps0: 40, dps1: 220, ramp: 2.5, range: 42, mag: 100, reload: 2.4, sfx: 'laser' },
   flamer: { slot: 'arm', name: 'FT-2 火焰喷射器', en: 'FT-2 Flamethrower', desc: '近距离持续喷射 · 点燃敌人持续灼烧 · 燃烧中的敌人伤害 −25%', type: 'flame', rate: 0.04, dmg: 8, speed: 60, spread: 0.08, life: 0.42, mag: 120, reload: 2, burn: 22, burnT: 2.5, sfx: 'flame' },
   cryo: { slot: 'arm', name: 'CR-3 冷冻枪', en: 'CR-3 Cryo Lance', desc: '冰晶连射 · 射程 70 m · 命中累积寒冷让敌人变慢 · 冻满后冰封 1.5 秒（瘫痪、受伤 +30%）', type: 'bullet', rate: 0.085, dmg: 8.5, speed: 230, spread: 0.007, life: 0.3, mag: 60, reload: 2.2, color: 0x9fe8ff, w: 0.26, len: 5, sfx: 'cryo', recoil: 0.1, chill: 5.5 },
@@ -64,7 +65,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -148,7 +149,7 @@ function damagePlayer(dmg, src, label) {
   if (G.curShooter && G.curShooter.burnT > 0) dmg *= BURN_WEAK;   // direct hits (melee, beams) from a burning enemy
   const d = dmg * G.diff.dmg * p.frame.armor * (1 - blk) * (G.od && G.od.t > 0 ? OD.armor : 1);
   G.dmgLog = G.dmgLog || {}; G.dmgLog[label || '?'] = (G.dmgLog[label || '?'] || 0) + d;
-  p.hit(d); G.stats.dmgTaken += d; G.hud.hurt = Math.min(1, G.hud.hurt + d / 120); G.hurtAt = G.time;
+  p.hit(d); G.stats.dmgTaken += d; if (G.salv) salvHit(d); G.hud.hurt = Math.min(1, G.hud.hurt + d / 120); G.hurtAt = G.time;
   if (src) G.hud.hurtDir = Math.atan2(src.x - p.pos.x, src.z - p.pos.z);
   G.onPlayerHit && G.onPlayerHit(d);
 }
@@ -289,6 +290,11 @@ function updateShots(DT) {
         G.shots.splice(i, 1); continue;
       }
     }
+    if (s.split) {   // frag cannon: burst near an enemy or at the end of its arm
+      let near = null;
+      for (const e of entsP) if (!e.isBarrel && !e.isMine && e.alive && e.c.distanceTo(_b) < 9 + (e.r || 1) * 0.5) { near = e; break; }
+      if (near || s.age >= s.split) { splitFrag(s, _b.clone(), near, entsP); G.shots.splice(i, 1); continue; }
+    }
     if (s.flak) {   // proximity fuse (player flak; airship bombs)
       let near = null;
       for (const e of (s.team === 'P' ? entsP : entsE)) if (!e.isBarrel && !e.isMine && e.alive && e.c.distanceTo(_b) < s.flak + (e.r || 1) * 0.5) { near = e; break; }
@@ -390,6 +396,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
           _d.normalize();
           const sh = spawnShot({ p: mp, v: _d.clone().multiplyScalar(d.speed * (n > 1 ? 0.9 + Math.random() * 0.2 : 1)), dmg: d.dmg * dmgMul, team, kind: isP ? 'bullet' : 'ebullet', color: isP ? d.color : 0xff6a40, w: d.w, len: d.len, life: d.life || 1.6, chill: isP && team === 'P' ? d.chill : 0 });
           if (d.flak && team === 'P') { sh.flak = d.flak; sh.splash = d.splash; }
+          if (d.split && team === 'P') { sh.split = d.split; sh.fragN = d.fragN; sh.fragDmg = d.fragDmg * dmgMul; }
           if (d.bounce && team === 'P') sh.bounce = d.bounce;
           if (d.acid && team === 'P') sh.acid = true;
           if (d.siphon && me) sh.siphon = d.siphon;
@@ -1868,7 +1875,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -6036,6 +6043,197 @@ export class Planter extends Enemy {
   }
 }
 
+// ---- Salvage run: every enemy you kill drops glowing salvage cores (walkers 2, heavies 3, most others 1). Fly over a
+// core to pick it up (carry 4, each one slows you 5%). A hit of 30+ knocks one loose. Stand on the extraction pad
+// (below 12 m) to hand them in, 0.4 s each. Loose cores fade after 30 s; scavengers grab them and fly off the map.
+export const SALV = { carry: 4, pickR: 3.4, life: 30, padR: 7.5, padH: 12, padT: 0.4, slow: 0.05, dropHit: 30, dropCd: 1.2, spot: [0, 0],
+  drops: { walker: 2, bulwark: 3, gunship: 3, raider: 3, lancer: 3, boss: 0, crawler: 0, swarm: 0, scav: 1, mender: 1, turret: 1, drone: 1, howitzer: 2 } };
+const salvRingGeo = new THREE.RingGeometry(SALV.padR - 0.4, SALV.padR, 48);
+export function startSalvage() {
+  clearSalvage();
+  const [sx, sz] = SALV.spot; let x = sx, z = sz;
+  for (let i = 0; i < 600; i++) {
+    const a = i * 2.4, r = Math.sqrt(i) * 2.2; x = sx + Math.cos(a) * r; z = sz + Math.sin(a) * r;
+    if (groundAt(x, z, 60) < 0.6 && !collideCyl(new V3(x, 0.5, z), 8, 3)) break;
+  }
+  const obj = cloneKit('P_SalvPad'); obj.position.set(x, 0, z); G.scene.add(obj);
+  const ring = new THREE.Mesh(salvRingGeo, new THREE.MeshBasicMaterial({ color: 0x40ffb0, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.4, z); G.scene.add(ring);
+  const orbs = [];
+  for (let i = 0; i < SALV.carry; i++) { const o = cloneKit('P_Salvage'); o.scale.setScalar(0.5); o.visible = false; G.scene.add(o); orbs.push(o); }
+  G.salv = { pad: { obj, n: nodes(obj), x, z, ring }, cores: [], orbs, carried: 0, delivered: 0, faded: 0, lost: 0, stolen: 0, knocked: 0, grabbed: 0, dropT: 0, padK: 0, flash: 0 };
+}
+export function clearSalvage() {
+  const S = G.salv; if (!S) return;
+  const rm = (o) => o && o.parent && o.parent.remove(o);
+  rm(S.pad.obj); rm(S.pad.ring); S.pad.ring.material.dispose();
+  for (const c of S.cores) rm(c.obj);
+  for (const o of S.orbs) rm(o);
+  if (G.player) G.player.slowMul = 1;
+  G.salv = null;
+}
+export function dropCores(pos, n, kick = 1) {
+  const S = G.salv; if (!S || n <= 0) return;
+  for (let k = 0; k < n; k++) {
+    const obj = cloneKit('P_Salvage'); G.scene.add(obj);
+    const a = Math.random() * 6.28, sp = (3 + Math.random() * 4) * kick;
+    const c = { obj, x: pos.x, y: Math.max(pos.y, groundAt(pos.x, pos.z, pos.y + 2) + 1), z: pos.z, v: new V3(Math.cos(a) * sp, 6 + Math.random() * 4, Math.sin(a) * sp), t: 0, air: true, ph: Math.random() * 6 };
+    obj.position.set(c.x, c.y, c.z); S.cores.push(c);
+  }
+}
+export function nearestCore(x, z, maxD = 1e9) {
+  const S = G.salv; if (!S) return null;
+  let best = null, bd = maxD;
+  for (const c of S.cores) { const d = Math.hypot(c.x - x, c.z - z); if (d < bd) { bd = d; best = c; } }
+  return best;
+}
+export function takeCore(c) {
+  const S = G.salv; const i = S.cores.indexOf(c); if (i < 0) return false;
+  S.cores.splice(i, 1); c.obj.parent && c.obj.parent.remove(c.obj); return true;
+}
+function salvHit(d) {
+  const S = G.salv, P = G.player; if (!S || S.carried <= 0 || d < SALV.dropHit || S.dropT > 0) return;
+  S.dropT = SALV.dropCd; S.carried--; S.knocked++;
+  dropCores(P.center(new V3()), 1, 2);
+  G.onSalvKnock && G.onSalvKnock();
+}
+function updateSalvage(dt) {
+  const S = G.salv; if (!S) return;
+  const P = G.player; S.dropT -= dt; if (S.flash > 0) S.flash -= dt;
+  for (let i = S.cores.length - 1; i >= 0; i--) {
+    const c = S.cores[i]; c.t += dt;
+    if (c.air) {
+      c.v.y -= 22 * dt; c.x += c.v.x * dt; c.y += c.v.y * dt; c.z += c.v.z * dt;
+      c.x = Math.max(-ARENA + 4, Math.min(ARENA - 4, c.x)); c.z = Math.max(-ARENA + 4, Math.min(ARENA - 4, c.z));
+      const g = groundAt(c.x, c.z, c.y + 1) + 1;
+      if (c.y <= g && c.v.y < 0) { c.y = g; c.air = false; }
+    }
+    const bob = c.air ? 0 : Math.sin(c.t * 3 + c.ph) * 0.25;
+    c.obj.position.set(c.x, c.y + bob, c.z); c.obj.rotation.y += dt * 2.2;
+    c.obj.visible = c.t < SALV.life - 6 || Math.sin(c.t * (8 + (c.t - SALV.life + 6) * 4)) > -0.2;
+    if (c.t > SALV.life) { c.obj.parent && c.obj.parent.remove(c.obj); S.cores.splice(i, 1); S.faded++; continue; }
+    if (P && P.alive && S.carried < SALV.carry && c.t > 0.35 && Math.hypot(c.x - P.pos.x, c.z - P.pos.z) < SALV.pickR && Math.abs(c.y - P.pos.y - 2) < 5) {
+      c.obj.parent && c.obj.parent.remove(c.obj); S.cores.splice(i, 1); S.carried++; S.grabbed++;
+      sfx('coin', 0); G.fx.ring(new V3(c.x, c.y, c.z), null, 0.5, 3, 0.25, 0x40ffb0);
+      G.onSalvPick && G.onSalvPick(S.carried);
+    }
+  }
+  if (P) P.slowMul = 1 - SALV.slow * S.carried;
+  for (let i = 0; i < S.orbs.length; i++) {
+    const o = S.orbs[i]; o.visible = !!(P && P.alive && i < S.carried);
+    if (!o.visible) continue;
+    const a = G.time * 2.2 + i * Math.PI / 2;
+    o.position.set(P.pos.x + Math.cos(a) * 2.3, P.pos.y + 4.4 + Math.sin(G.time * 3 + i) * 0.2, P.pos.z + Math.sin(a) * 2.3); o.rotation.y += dt * 3;
+  }
+  const pd = S.pad, onPad = P && P.alive && Math.hypot(P.pos.x - pd.x, P.pos.z - pd.z) < SALV.padR && P.pos.y - groundAt(P.pos.x, P.pos.z, P.pos.y + 1) < SALV.padH;
+  if (onPad && S.carried > 0) {
+    S.padK += dt;
+    while (S.padK >= SALV.padT && S.carried > 0) {
+      S.padK -= SALV.padT; S.carried--; S.delivered++; S.flash = 0.4;
+      G.fx.ring(new V3(pd.x, 0.6, pd.z), null, 1, SALV.padR + 2, 0.45, 0x40ffb0); sfx('repair', 0);
+      G.onSalvDeliver && G.onSalvDeliver(S.delivered);
+    }
+  } else S.padK = 0;
+  const b = pd.n.SVP_Beacon; if (b) { const k = 1 + 0.15 * Math.sin(G.time * 4) + S.flash * 1.2; b.scale.setScalar(k); }
+  pd.ring.material.opacity = 0.4 + 0.25 * Math.sin(G.time * 3) + (onPad ? 0.3 : 0) + S.flash;
+}
+
+// Scavenger: a fast 3 m hover salvage drone. It flies to the nearest loose core and grabs it (holds 3); when it is
+// full, or holds some and none are left nearby, it flies straight for the edge of the map and warps out, and the
+// cores it holds are lost. If you carry 2+ cores it dives at you and steals one with its magnet (7 m). It shoots a
+// weak two-round burst. Kill it and everything it holds falls out, plus one core of its own.
+export const SCAV = { hp: 300, r: 1.6, speed: 20, hover: 5, low: 2.4, load: 3, grabR: 3, stealR: 7, stealCd: 3, gunR: 34, gunCd: 1.6, dmg: 7 };
+export class Scav extends Enemy {
+  constructor(pos) {
+    super('scav', 'E_Scav', pos, SCAV.hp, SCAV.r); this.boom = 0.8;
+    this.vel = new V3(); this.yaw = Math.random() * 6.28; this.load = 0; this.st = 'hunt'; this.gunT = 2; this.side = Math.random() < 0.5 ? 1 : -1; this.bank = 0;
+    this.stealT = 2; this.exitP = null; this.orbA = Math.random() * 6.28; this.goalV = new V3();
+    this.pos.y = groundAt(pos.x, pos.z, 40) + SCAV.hover; this.c.copy(this.pos);
+  }
+  explode() { if (this.load > 0) dropCores(this.c, this.load); this.load = 0; super.explode(); }
+  update(dt) {
+    const S = G.salv, P = G.player, tg = this.tg(), pc = tg.center(playerC);
+    this.stealT -= dt;
+    let goal = null, low = false, dive = false, spd = SCAV.speed;
+    if (this.st === 'hunt' && (this.load >= SCAV.load || (this.load > 0 && !nearestCore(this.pos.x, this.pos.z, 90)))) {
+      this.st = 'exit';
+      const ax = Math.abs(this.pos.x), az = Math.abs(this.pos.z), E = ARENA - 6;
+      this.exitP = ax > az ? new V3(Math.sign(this.pos.x || 1) * E, 0, this.pos.z) : new V3(this.pos.x, 0, Math.sign(this.pos.z || 1) * E);
+      G.onScavExit && G.onScavExit(this);
+    }
+    if (this.st === 'exit') {
+      goal = this.exitP; spd *= 0.85;
+      if (Math.hypot(goal.x - this.pos.x, goal.z - this.pos.z) < 5) {
+        if (S) S.lost += this.load; G.onScavEscape && G.onScavEscape(this, this.load);
+        G.fx.flash(this.c.clone(), 0x40ffb0, 30, 20, 0.35); G.fx.ring(this.pos, null, 1, 8, 0.4, 0x40ffb0);
+        this.load = 0; this.alive = false; this.remove(); return;
+      }
+    } else if (S) {
+      if (P && P.alive && S.carried >= 2 && this.stealT <= 0 && P.pos.distanceTo(this.pos) < 70) {
+        goal = P.pos; low = true; dive = true; spd *= 1.25;
+        if (Math.hypot(P.pos.x - this.pos.x, P.pos.z - this.pos.z) < SCAV.stealR && Math.abs(P.pos.y + 2 - this.pos.y) < 6) {
+          S.carried--; S.stolen++; this.load++; this.stealT = SCAV.stealCd;
+          G.fx.sparks(P.center(_a), null, 10, 0x40ffb0, 12, 0.8, 0.3, 0.2); sfx('hook', 0);
+          G.onScavSteal && G.onScavSteal(this);
+        }
+      } else {
+        const c = nearestCore(this.pos.x, this.pos.z, 160);
+        if (c) {
+          goal = this.goalV.set(c.x, 0, c.z); const d = Math.hypot(c.x - this.pos.x, c.z - this.pos.z); low = d < 14;
+          if (d < SCAV.grabR && !c.air && takeCore(c)) { this.load++; sfx('hook', P ? P.pos.distanceTo(this.pos) : 40); G.onScavGrab && G.onScavGrab(this); }
+        }
+      }
+    }
+    if (!goal) {   // nothing to collect: circle the target at 30-40 m
+      this.orbA += dt * 0.35 * this.side;
+      goal = this.goalV.set(pc.x + Math.cos(this.orbA) * 34, 0, pc.z + Math.sin(this.orbA) * 34);
+    }
+    const gx = goal.x - this.pos.x, gz = goal.z - this.pos.z, gl = Math.hypot(gx, gz) || 1;
+    const sp = spd * Math.min(1, gl / 8 + 0.3), k = 1 - Math.exp(-2.4 * dt);
+    this.vel.x += (gx / gl * sp - this.vel.x) * k; this.vel.z += (gz / gl * sp - this.vel.z) * k;
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 1.6, 2)) { this.pos.x -= this.vel.x * dt; this.pos.z -= this.vel.z * dt; this.vel.multiplyScalar(-0.3); this.side *= -1; }
+    let gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 1.5) + (low ? SCAV.low : SCAV.hover) + Math.sin(G.time * 3 + this.side) * 0.2;
+    if (dive) gy = Math.max(gy, P.pos.y + 2.5);
+    this.pos.y += (gy - this.pos.y) * (1 - Math.exp(-4 * dt));
+    const hv = Math.hypot(this.vel.x, this.vel.z);
+    if (hv > 1) { const ny = Math.atan2(this.vel.x, this.vel.z), turn = angDiff(ny, this.yaw); this.yaw += turn * Math.min(1, dt * 6); this.bank += (Math.max(-0.5, Math.min(0.5, -turn * 2)) - this.bank) * Math.min(1, dt * 4); }
+    this.obj.rotation.set(0, this.yaw, this.bank, 'YXZ');
+    for (let i = 1; i <= 3; i++) { const n = this.n['SC_Load' + i]; if (n) n.visible = this.load >= i; }
+    if (this.n.SC_Claw) this.n.SC_Claw.rotation.x = Math.sin(G.time * 4) * 0.12;
+    this.c.copy(this.pos);
+    if (this.load > 0 && Math.random() < 0.2) G.fx.emit('add', { x: this.pos.x, y: this.pos.y - 1.3, z: this.pos.z, life: 0.3, s0: 0.8, s1: 0.2, c0: 0x40ffb0 });
+    this.gunT -= dt;
+    const dist = pc.distanceTo(this.pos);
+    if (this.gunT <= 0 && dist < SCAV.gunR && this.checkLos(dt)) {
+      this.gunT = SCAV.gunCd;
+      for (let i = 0; i < 2; i++) G.queue.push({ t: i * 0.12, label: 'scav-gun', fn: () => {
+        if (!this.alive) return;
+        const aim = lead(this.c, 150, _b, tg); _d.subVectors(aim, this.c).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.y += (Math.random() - 0.5) * 0.04; _d.z += (Math.random() - 0.5) * 0.05; _d.normalize();
+        spawnShot({ p: this.c, v: _d.clone().multiplyScalar(150), dmg: SCAV.dmg, team: 'E', kind: 'ebullet', color: 0x80ffc0, w: 0.18, len: 3, life: 0.5, label: 'scav-gun' });
+      } });
+      sfx('eshot', dist);
+    }
+  }
+}
+
+// SC-6 frag cannon: the shell bursts into fragments near an enemy (or at the end of its arm), each fragment aimed at
+// the nearest enemy ahead of the burst
+function splitFrag(s, at, near, entsP) {
+  const fx = G.fx; G.curLabel = s.label;
+  const dir = s.v.clone().normalize();
+  let tgt = near;
+  if (!tgt) { let bd = 30; for (const e of entsP) { if (e.isBarrel || e.isMine || !e.alive) continue; _c.subVectors(e.c, at); const d = _c.length(); if (d < bd && _c.dot(dir) / (d || 1) > 0.5) { bd = d; tgt = e; } } }
+  const base = tgt ? new V3().subVectors(tgt.c, at).normalize() : dir;
+  for (let k = 0; k < s.fragN; k++) {
+    _d.copy(base); _d.x += (Math.random() - 0.5) * 0.22; _d.y += (Math.random() - 0.5) * 0.16; _d.z += (Math.random() - 0.5) * 0.22; _d.normalize();
+    spawnShot({ p: at, v: _d.clone().multiplyScalar(150), dmg: s.fragDmg, team: 'P', kind: 'bullet', color: 0x90ffd8, w: 0.16, len: 2.4, life: 0.35, label: s.label });
+  }
+  fx.sparks(at, base, 10, 0x80ffd0, 14, 0.5, 0.25, 0.18); fx.emit('add', { x: at.x, y: at.y, z: at.z, life: 0.12, s0: 2.6, s1: 0.4, c0: 0x80ffd0 });
+  G.fragBursts = (G.fragBursts || 0) + 1; if (!isAlly(s.label)) G.stats.shots += s.fragN - 1;
+  if (Math.random() < 0.5) sfx('ric', G.player ? G.player.pos.distanceTo(at) : 0);
+}
+
 // ---- Fog harbour: thick fog; the radar only shows enemies within 40 m, enemies that fired in the last 2.5 s, and
 // anything near a lit fog lamp. Stand by a lamp for 3 s to light it; every lit lamp also pushes the fog back 30 m.
 export const FOG = { R: 7, light: 3, radar: 40, lampSee: 60, ping: 2.5, near: 6, far0: 70, perLamp: 30, spots: [[-68, -58], [66, -62], [-62, 66], [70, 60]] };
@@ -6368,7 +6566,7 @@ export function updateCombat(dt) {
   G.curLabel = null;
   LAVA.uT.value = G.time;
   if (G.blinkInv > 0) G.blinkInv -= dt;
-  recordRewind(dt); updateFog(dt); updateDepots(dt);
+  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt);
   updateMarks(dt);
   updateBurning(dt);
   updateChill(dt);

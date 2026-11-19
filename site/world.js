@@ -56,7 +56,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', gale = env === 'gale', salt = env === 'salt', scrap = env === 'scrap', quake = env === 'quake', snow = env === 'snow', storm = env === 'storm' || env === 'thunder', thunder = env === 'thunder', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister';
+  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', gale = env === 'gale', salt = env === 'salt', scrap = env === 'scrap' || env === 'wreck', wreck = env === 'wreck', quake = env === 'quake', snow = env === 'snow', storm = env === 'storm' || env === 'thunder', thunder = env === 'thunder', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister';
   LAVA.on = forge; GRID.on = grid; const PR = PLAT.R;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
@@ -345,6 +345,9 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
     scatter(18, 3, (x, z) => { place.push({ kit: 'P_Pillar', matrix: M4(x, 0, z, rnd() * 6.28, 0.6 + rnd() * 0.5) }); addSolid(x, z, 1.8, 1.8, 5, 0, 'pillar'); });
     scatter(26, 2.5, (x, z) => { place.push({ kit: 'P_Barrier', matrix: M4(x, 0, z, rnd() * 6.28, 1) }); addSolid(x, z, 2.2, 2.2, 1.2, 0, 'barrier'); });
     scatter(10, 4, (x, z) => { const rot = rnd() * 0.6; place.push({ kit: 'P_Crate', matrix: M4(x, 0, z, rot) }); addSolid(x, z, 4.2, 4.2, 2.5, 0, 'crate'); });
+  }
+  if (wreck) {   // salvage field: toppled mech hulks
+    scatter(20, 7, (x, z) => { const k = 1.45 + rnd() * 0.5; place.push({ kit: 'P_Hulk', matrix: M4(x, 0, z, rnd() * 6.28, k) }); addSolid(x, z, 4.6 * k, 4.6 * k, 2.6 * k, 0, 'hulk'); });
   }
   if (scrap) {   // scrapyard: drum stacks and container piles
     scatter(34, 2.5, (x, z) => { place.push({ kit: 'P_Drums', matrix: M4(x, 0, z, rnd() * 6.28, 1) }); addSolid(x, z, 2.2, 2.2, 1.2, 0, 'drums'); });
