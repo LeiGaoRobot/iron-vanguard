@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import { explodeAt, WIND } from '../../site/combat.js';
 import { GAME_NAME, AGE, AGE_TEXT, HEALTH, GAME_CLUB } from './config.js';
 import { initAds, adMode, adBusy, showRewarded, initShare, shareMission, takeJump } from './ads.js';
-import { S, PAL, FONT, unit, inRect, el, zh, wName, stripTags, money, clock, text, flat, bar, box, circle, panel, button } from './ui.js';
+import { S, PAL, FONT, unit, inRect, el, zh, wName, cnOnly, stripTags, money, clock, text, flat, bar, box, circle, panel, button } from './ui.js';
 import { initGarage, drawGarage, garageStart, garageMove, garageEnd, garageEnter } from './garage.js';
 import { initQuality, monitor, resetMonitor, thinParticles } from './quality.js';
 import { WX, saveWX } from './store.js';
@@ -264,11 +264,15 @@ function drawTutor() {
   const I = iv(); if (!TU.on || I.run.over) return;
   const s = TU.odT > 0 ? OD_STEP : STEPS[TU.i]; if (!s) return;
   const W = innerWidth, H = innerHeight, u = unit(), pulse = 0.5 + 0.5 * Math.sin(frameN * 0.15);
-  const bx = W * 0.2, bw = W * 0.6, by = u * 2.05;   // under the vitals / wave counter, clear of the touch controls
+  const bx = W * 0.16, bw = W * 0.68, by = u * 2.05;   // under the vitals / wave counter, clear of the touch controls
   g.fillStyle = 'rgba(6,14,22,0.72)'; g.fillRect(bx, by - u * 0.42, bw, u * 0.84);
   g.strokeStyle = PAL.cyan; g.lineWidth = 1.5; g.strokeRect(bx, by - u * 0.42, bw, u * 0.84);
   flat(`训练 ${Math.min(TU.i + 1, STEPS.length)}/${STEPS.length}`, bx + u * 0.3, by, u * 0.28, PAL.amber, 'left', 700);
-  flat(s.t, bx + u * 2.0, by, u * 0.32, PAL.ink, 'left', 600, bw - u * 2.3);
+  // shrink long hints to fit (16:9 screens are narrower in units than 19.5:9 phones)
+  const room = bw - u * 2.3; let fs = u * 0.32;
+  g.font = `600 ${Math.round(fs)}px ${FONT}`; const tw = g.measureText(s.t).width;
+  if (tw > room) fs = Math.max(u * 0.22, fs * room / tw);
+  flat(s.t, bx + u * 2.0, by, fs, PAL.ink, 'left', 600, room);
   // ring the control this step is about
   let q = null;
   if (s.btn === 'stick') { const h0 = stickHome(); q = { x: h0.x, y: h0.y, r: STICK_R }; }
@@ -302,26 +306,43 @@ function drawPlay() {
   // boss
   if (!el('bossBox').classList.contains('hidden') && G.boss && G.boss.alive) {
     const w = Math.min(520, W * 0.46), x = (W - w) / 2, y = u * 1.35;
-    text(el('bossName').textContent, W / 2, y - u * 0.32, u * 0.34, PAL.amber);
+    text(cnOnly(el('bossName').textContent), W / 2, y - u * 0.32, u * 0.34, PAL.amber);
     bar(x, y, w, u * 0.26, G.boss.hp / G.boss.maxHp, PAL.red, '');
+  }
+  // objective bar: reactor / convoy integrity, uplink or data-download progress (main.js's #coreBox)
+  const cbx = el('coreBox');
+  if (!cbx.classList.contains('hidden')) {
+    const bossOn = !el('bossBox').classList.contains('hidden') && G.boss && G.boss.alive;
+    const nm = cnOnly(el('coreName').textContent);
+    const k = (parseFloat((el('coreBar').firstElementChild.style.width || '0')) || 0) / 100;
+    const low = el('coreBar').classList.contains('low'), w = Math.min(420, W * 0.34), x = (W - w) / 2, y = bossOn ? u * 2.15 : u * 1.4;
+    bar(x, y, w, u * 0.24, k, low ? PAL.red : cbx.classList.contains('hit') && frameN % 6 < 3 ? '#fff' : PAL.amber, '');
+    text(`${nm}  ${el('corePct').textContent || ''}`, W / 2, y - u * 0.3, u * 0.3, low ? PAL.red : PAL.amber);
   }
   // banner / hint (mirrors main.js's DOM text)
   const bn = el('banner');
-  if (bn.classList.contains('show') && I.state() !== 'revive') {   // the revive panel has its own title
+  const busy = I.state() === 'revive' || I.state() === 'pause';   // those panels have their own title
+  if (bn.classList.contains('show') && !busy) {
     let [t1, t2] = stripTags(bn.innerHTML).split('\n').map(zh);
     if (!t1) { t1 = t2; t2 = ''; }
     const by = TU.on ? H * 0.36 : H * 0.3;
-    if (t1) text(t1, W / 2, by, u * 0.8, bn.classList.contains('warn') ? PAL.red : PAL.ink, 'center', 700);
-    if (t2) text(t2, W / 2, by + u * 0.75, u * 0.36, PAL.dim);
+    // fit both lines to 90% of the width (a dropped English title promotes a long subtitle to the headline)
+    const fit = (t, sz, wt) => { g.font = `${wt} ${Math.round(sz)}px ${FONT}`; const w = g.measureText(t).width; return w > W * 0.9 ? sz * W * 0.9 / w : sz; };
+    if (t1) text(t1, W / 2, by, fit(t1, u * 0.8, 700), bn.classList.contains('warn') ? PAL.red : PAL.ink, 'center', 700);
+    if (t2) text(t2, W / 2, by + u * 0.75, fit(t2, u * 0.36, 600), PAL.dim);
   }
   const hn = el('hint'), ht = zh(hn.textContent);
-  if (!hn.classList.contains('hidden') && ht && !TU.on) text(ht, W / 2, H * 0.78, u * 0.32, PAL.amber);
+  if (!hn.classList.contains('hidden') && ht && !TU.on && !busy) text(ht, W / 2, H * 0.78, u * 0.32, PAL.amber);
   // weapons
   const wl = ['R', 'L', 'S'].map((k) => { const w = G.pw[k]; if (!w) return ''; const am = w.reloadT > 0 ? '装填中' : w.d.mag ? `${w.ammo}/${w.d.mag}` : w.cd > 0 ? `${w.cd.toFixed(1)} 秒` : '就绪'; return `${wName(w.d.name)} ${am}`; });
-  text(wl.join('   ·   '), W / 2, H - u * 0.4, u * 0.3, PAL.dim);
+  // between the move stick and the leftmost button (推进 at W - 7.7u), shrunk to fit
+  const wt = wl.filter(Boolean).join('  ·  '), wL = u * 3.3, wR = W - u * 7.9;
+  g.font = `600 ${Math.round(u * 0.3)}px ${FONT}`; const ww = g.measureText(wt).width;
+  text(wt, (wL + wR) / 2, H - u * 0.4, ww > wR - wL ? Math.max(u * 0.2, u * 0.3 * (wR - wL) / ww) : u * 0.3, PAL.dim);
   // reticle
   circle(W / 2, H / 2, u * 0.22, null, 'rgba(255,255,255,0.75)', 1.5);
   g.fillStyle = '#fff'; g.fillRect(W / 2 - 1, H / 2 - 1, 2, 2);
+  if (I.state() === 'revive') return;   // the revive panel's buttons sit where the battle controls are
   // stick
   const sh = stickHome();
   if (T.stick !== null) { circle(T.ox, T.oy, STICK_R, 'rgba(255,255,255,0.08)', 'rgba(255,255,255,0.35)'); circle(T.ox + T.mx * STICK_R, T.oy + T.my * STICK_R, STICK_R * 0.42, 'rgba(95,227,255,0.45)', '#fff', 1.5); }
@@ -356,7 +377,7 @@ function drawTitle() {
   const mc = (el('btnMedals').textContent || '').replace(/^\S+\s*/, '');
   if (mc) text(`勋章 ${mc}`, W - 0.5 * u, H - 0.5 * u, u * 0.28, PAL.dim, 'right');
   drawAgeBadge(R.age);
-  if (club) { const c = clubPos(); text('游戏圈', c.x, c.y + 26, u * 0.24, PAL.dim); }
+  if (club) { const c = clubPos(); circle(c.x, c.y, 19, 'rgba(10,20,28,0.6)', PAL.line); text('游戏圈', c.x, c.y + 30, u * 0.24, PAL.dim); }   // the native icon sits on the ring
   if (UI.age) drawAgePanel();
 }
 // 适龄提示: a badge on the title and boot screens; tapping it opens the full text

@@ -58,12 +58,34 @@ Test notes: `__iv.step(n)` renders only once after n frames, so anything driven 
 - **Touch aim assist**: on top of main.js's drift toward the primary lock, holding 右臂 / 左臂 pulls the view toward the lock 2.4x as hard while the other thumb is off the view (1x while dragging). Measured: a lock 60 px right of the reticle moves yaw −0.0135 rad per frame while firing, 0 without firing.
 - **每日挑战** entry on the title (opens after 演习场 is cleared; shows today's environment and ✓ when done). Its share card reads "每日挑战：今天这套地图和头目，你能打赢吗？" with `m=daily`, which always opens *today's* daily.
 - **添加到我的小程序 card**: after the first win of a non-tutorial mission (once, `WX.addTip`), the result screen shows a card whose arrow points at the capsule from `wx.getMenuButtonBoundingClientRect()`; the first tap dismisses it.
-- **勋章 tab** in the hangar: main.js only rebuilds `#mList` on `setState('medals')`, so opening the tab calls `setState('medals')` then `regarage()` (setState('garage') + this build's view offset; the supply reward uses the same helper now, it used to reset the preview camera). The title shows 勋章 n/42 bottom-right.
+- **勋章 tab** in the hangar: main.js only rebuilds `#mList` on `setState('medals')`, so opening the tab calls `setState('medals')` then `regarage()` (setState('garage') + this build's view offset; the supply reward uses the same helper now, it used to reset the preview camera). The title shows 勋章 n/43 bottom-right (`MEDALS.length`, so it follows site/).
 - **游戏圈**: a native `wx.createGameClubButton` bottom-left, shown on the title only (`GAME_CLUB` in config.js).
 - The title used to redraw at 2 Hz when idle, so taps on the arrows showed up to 0.5 s late; any touch now forces a redraw.
-- Review copy rewritten for the current build (`review/申报文案.md`) plus `review/隐私与合规清单.md` (which `wx.*` APIs need the 用户隐私保护指引: only `setClipboardData` from diag.js). **The screenshots in `review/1_场景` … are still the old English HUD and must be reshot.**
+- Review copy rewritten for the current build (`review/申报文案.md`) plus `review/隐私与合规清单.md` (which `wx.*` APIs need the 用户隐私保护指引: only `setClipboardData` from diag.js). The screenshots were reshot on 2026-11-19, see below.
 
-Sim additions: `loadSubpackage` reports 25 / 60 / 100 % progress, `getMenuButtonBoundingClientRect` returns an 87×32 capsule, `createGameClubButton` stores the button in `self.club` (`.visible`). `__ivwx.SPL.t0 = Date.now()` re-shows the splash, `SPL.min = 0` skips it. Verified in the sim: boot screen, title with badge / daily / club, age panel, locked mission toast, medals tab (42 rows), first non-tutorial win card, `?m=daily` deep link on a fresh launch (lands in the daily on 新兵).
+Sim additions: `loadSubpackage` reports 25 / 60 / 100 % progress, `getMenuButtonBoundingClientRect` returns an 87×32 capsule, `createGameClubButton` stores the button in `self.club` (`.visible`). `__ivwx.SPL.t0 = Date.now()` re-shows the splash, `SPL.min = 0` skips it. Verified in the sim: boot screen, title with badge / daily / club, age panel, locked mission toast, medals tab (43 rows), first non-tutorial win card, `?m=daily` deep link on a fresh launch (lands in the daily on 新兵).
+
+### Review screenshots (2026-11-19 reshoot)
+
+29 shots in `D:/AI/mech_arena/shots/rv_*.jpg`, 1280x720 sim frames of the current build. `review/collect.py` copies them into `review/1_场景` … `5_系统功能` under the names the 配图 lists in `review/申报文案.md` use, deletes files that are not on the list, and rebuilds `review/截图总览.jpg`. The 60 KB lower size bound catches blank frames. The near-black splash came out at 55 KB, so it was re-saved at JPEG quality 97 (same pixels).
+
+HUD fixes the reshoot turned up:
+- **Objective bar**: reactor / convoy / uplink progress (`#coreBox`) had no canvas counterpart, so the WeChat HUD never showed it. It is now drawn top-centre, and moves below the boss bar when a boss is up.
+- **English names**: boss bar and objective names carried English tags (`巨像 COLOSSUS`, `暴君 TYRANT · 重装指挥机`). `cnOnly()` in ui.js strips all-caps words.
+- **Banner translations**: `ZH` had no `CAPTURE`, `OBJECTIVE`, `INFILTRATE`, `FINAL ROUND` or `EXTRACT`, and `zh()` drops untranslated English, so the 占领据点 banner vanished. Every wave title in main.js is now covered. Both banner lines shrink to fit 90% of the width.
+- **Pause and revive**: banners and hints no longer show through the 已暂停 / 机体损毁 panels. The battle controls are hidden under the revive buttons.
+- **Weapon line**: it now fits between the stick and 推进 (shrinking if needed); it used to run under the button.
+- **Tutorial bar**: the text shrinks instead of being cut off.
+
+How the frames were set up, so they can be retaken:
+- **Base save**: intro, drill, harbor and snow cleared; 3260 credits; 3 medals. Seed it in the worker before shooting.
+- **Start missions from the title** (`setState('title')` then `start()`). Otherwise the HUD keeps the old run and skips its per-run setup.
+- **Banner shots**: run the autopilot (`sim(1)` steps) until `#banner` shows the wanted text. Then turn the autopilot off, try six camera headings for 18 frames each, keep the one with the longest camera-to-mech distance, and shoot. main.js clears the banner after 2.8 s of `step()`, so the heading search must fit inside that window; re-adding `show` afterwards does not work.
+- **Hints**: hide `#hint` before shooting. The autopilot dashes until it overheats, and the 能量过热 hint otherwise ends up in every frame.
+- **Hangar shots**: reload the page first, so the hangar does not show the last mission's world (the boss hovering behind the mech). Tabs sit at x = 0.42W + (i + 0.5)·(W − 0.35u − 0.42W)/7, y = 0.775u. The paint swatches are on the 机体 tab.
+- **Boss close-ups**: move the mech to 15 m in front of the boss along the camera's forward direction.
+- **Revive**: clamp hp to 1 every frame until the state becomes `revive`.
+- **Splash**: shot about 1 s after reload, while `SPL.min` (3 s) still holds it on screen.
 
 ## Testing without WeChat DevTools
 
@@ -83,4 +105,4 @@ Verified there (844 x 390 landscape): boots to the title from the subpackage GLB
 
 ## Publishing (only the account owner can do these)
 
-Register a mini-game AppID and put it in `project.config.json`; upload from DevTools and pass review. For an ads-only game, see the experience notes above: no 版号 / 软著 were needed there, but in-app purchase does need a 版号. The `review/` screenshots were taken before the Chinese-only HUD and still show English banner text (`CAPTURE`, `FINAL WAVE`). Retake them, inside WeChat, before submitting.
+Register a mini-game AppID and put it in `project.config.json`; upload from DevTools and pass review. For an ads-only game, see the experience notes above: no 版号 / 软著 were needed there, but in-app purchase does need a 版号. The `review/` screenshots (2026-11-19) come from the sim, so they have no WeChat capsule; if review asks for it, retake the same list in DevTools or on a phone.

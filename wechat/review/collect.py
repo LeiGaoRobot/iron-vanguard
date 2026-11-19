@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
-"""把 shots/ 里选中的截图按微信审核表单的五大项分目录归档。
+"""把 shots/ 里的审核截图（rv_*.jpg）按微信审核表单的五大项分目录归档，并拼一张截图总览。
+截图清单以「申报文案.md」各节的「配图」为准；重拍方法见 wechat/README.md。
 用法: D:\\AI\\comfyui-venv\\Scripts\\python.exe collect.py
 """
 import os
@@ -11,48 +12,73 @@ DST = os.path.dirname(os.path.abspath(__file__))
 # 每项按表单顺序,文件名前缀即上传顺序
 GROUPS = {
     '1_场景': [
-        ('wx_01_title.jpg', '01_主界面_任务选择.jpg'),
-        ('wx_02_scene_day.jpg', '02_白天城区演习场.jpg'),
-        ('wx_03_scene_night.jpg', '03_夜间港湾区.jpg'),
-        ('wx_06_scene_abyss.jpg', '04_海底基地.jpg'),
-        ('wx_05_scene_forge.jpg', '05_熔岩地带.jpg'),
-        ('wx_07_play_storm.jpg', '06_雷暴雨夜城区.jpg'),
+        ('rv_splash.jpg', '01_启动页_健康游戏忠告与适龄提示.jpg'),
+        ('rv_title.jpg', '02_主界面_任务选择.jpg'),
+        ('rv_scene_day.jpg', '03_白天城区演习场.jpg'),
+        ('rv_scene_night.jpg', '04_夜间港湾区.jpg'),
+        ('rv_scene_abyss.jpg', '05_海底基地.jpg'),
+        ('rv_scene_forge.jpg', '06_熔岩地带.jpg'),
     ],
-    # 玩法组 = 五种不同的任务目标，每张横幅文字都不同
     '2_玩法': [
-        ('wx_play2_uplink.jpg', '01_占领据点_CAPTURE.jpg'),
-        ('wx_play2_defense.jpg', '02_守卫反应堆.jpg'),
-        ('wx_play2_convoy.jpg', '03_护送运输车_遭遇伏击.jpg'),
-        ('wx_09_play_extract.jpg', '04_下载数据终端.jpg'),
-        ('wx_08_boss_a.jpg', '05_终波头目战_巨像.jpg'),
+        ('rv_play_tutorial.jpg', '01_新兵训练_按钮提示.jpg'),
+        ('rv_play_capture.jpg', '02_占领据点.jpg'),
+        ('rv_play_defense.jpg', '03_守卫反应堆.jpg'),
+        ('rv_play_convoy.jpg', '04_护送运输车_遭遇伏击.jpg'),
+        ('rv_play_boss.jpg', '05_终波头目战_巨像.jpg'),
     ],
     '3_游戏背景': [
-        ('wx_11_bg_lunar.jpg', '01_月面基地.jpg'),
-        ('wx_12_bg_sky.jpg', '02_轨道电梯.jpg'),
-        ('wx_13_bg_dune.jpg', '03_沙海.jpg'),
-        ('wx_04_scene_snow.jpg', '04_暴雪中继站.jpg'),
+        ('rv_bg_lunar.jpg', '01_月面基地.jpg'),
+        ('rv_bg_sky.jpg', '02_轨道电梯.jpg'),
+        ('rv_bg_dune.jpg', '03_沙海.jpg'),
+        ('rv_bg_snow.jpg', '04_暴雪中继站.jpg'),
     ],
     '4_扮演角色': [
-        ('wx_14_char_mech_abyss.jpg', '01_玩家机甲_海底.jpg'),
-        ('wx_16_char_mech_lunar.jpg', '02_玩家机甲_月面.jpg'),
-        ('wx_20_char_mech_forge.jpg', '03_玩家机甲_熔岩.jpg'),
-        ('wx_boss_tyrant_a.jpg', '04_玩家机甲与头目暴君.jpg'),
+        ('rv_role_paint1.jpg', '01_机库中的玩家机甲_白色涂装.jpg'),
+        ('rv_role_paint2.jpg', '02_机库中的玩家机甲_蓝色涂装.jpg'),
+        ('rv_role_abyss.jpg', '03_海底环境下的玩家机甲.jpg'),
+        ('rv_role_boss.jpg', '04_敌方头目_暴君.jpg'),
     ],
-    # 系统2 = 四种界面状态，与玩法组不共用任何一张
     '5_系统功能': [
-        ('wx_17_sys_mission.jpg', '系统1_任务选择.jpg'),
-        ('wx_sys2_overdrive.jpg', '系统2_超载启动.jpg'),
-        ('wx_sys2_reload.jpg', '系统2_武器装填中.jpg'),
-        ('wx_18_sys_pause.jpg', '系统2_暂停菜单.jpg'),
-        ('wx_19_sys_result.jpg', '系统3_结算与进度.jpg'),
+        ('rv_title.jpg', '系统1_任务选择.jpg'),
+        ('rv_title_locked_toast.jpg', '系统1_未解锁任务.jpg'),
+        ('rv_sys_overdrive.jpg', '系统2_超载启动.jpg'),
+        ('rv_sys_reload.jpg', '系统2_武器装填中.jpg'),
+        ('rv_sys_pause.jpg', '系统2_暂停菜单.jpg'),
+        ('rv_sys_up.jpg', '系统3_机库强化.jpg'),
+        ('rv_sys_arm.jpg', '系统3_机库武器.jpg'),
+        ('rv_sys_result.jpg', '系统4_结算与进度.jpg'),
+        ('rv_sys_revive.jpg', '系统4_复活.jpg'),
+        ('rv_sys_medals.jpg', '系统4_勋章.jpg'),
     ],
 }
 
+
+def overview(paths, out, cols=6, w=320):
+    """所有截图缩略图拼成一张,方便一眼核对。没装 Pillow 就跳过。"""
+    try:
+        from PIL import Image
+    except ImportError:
+        print('（没有 Pillow,跳过截图总览）')
+        return
+    h = w * 9 // 16
+    rows = (len(paths) + cols - 1) // cols
+    sheet = Image.new('RGB', (cols * w, rows * h), (12, 16, 22))
+    for i, p in enumerate(paths):
+        sheet.paste(Image.open(p).convert('RGB').resize((w, h)), ((i % cols) * w, (i // cols) * h))
+    sheet.save(out, quality=85)
+    print('截图总览 ->', out)
+
+
 if __name__ == '__main__':
-    total = 0
+    total, done = 0, []
     for g, items in GROUPS.items():
         d = os.path.join(DST, g)
         os.makedirs(d, exist_ok=True)
+        # 清掉旧截图,目录里只留本清单的文件
+        for f in os.listdir(d):
+            if f.lower().endswith('.jpg') and f not in {n for _, n in items}:
+                os.remove(os.path.join(d, f))
+                print('删除旧图', g, f)
         for src, name in items:
             s = os.path.join(SRC, src)
             if not os.path.exists(s):
@@ -62,6 +88,8 @@ if __name__ == '__main__':
             shutil.copyfile(s, p)
             kb = os.path.getsize(p) / 1024
             flag = 'OK ' if 60 <= kb <= 5120 else '!! '
-            print('%s%-14s %-28s %6.0f KB' % (flag, g, name, kb))
+            print('%s%-10s %-34s %6.0f KB' % (flag, g, name, kb))
             total += 1
+            done.append(p)
+    overview(done, os.path.join(DST, '截图总览.jpg'))
     print('\n共 %d 张,全部 1280x720 JPEG' % total)

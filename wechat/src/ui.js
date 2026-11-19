@@ -13,6 +13,7 @@ const ZH = [
   [/\bFINAL WAVE\b/g, '最终波'], [/\bWAVE CLEAR\b/g, '本波肃清'], [/\bROUND CLEAR\b/g, '本轮肃清'], [/\bAREA CLEAR\b/g, '区域肃清'],
   [/\bOBJECTIVE CLEAR\b/g, '目标达成'], [/\bMISSION COMPLETE\b/g, '任务完成'], [/\bMISSION FAILED\b/g, '任务失败'],
   [/\bWAVE (\d+)\b/g, '第 $1 波'], [/\bROUND (\d+)\b/g, '第 $1 轮'], [/\bAMBUSH\b/g, '遭遇伏击'], [/\bCOUNTERATTACK\b/g, '敌方反攻'],
+  [/\bFINAL ROUND\b/g, '最终轮'], [/\bCAPTURE\b/g, '占领据点'], [/\bOBJECTIVE\b/g, '作战目标'], [/\bINFILTRATE\b/g, '潜入'], [/\bEXTRACT\b/g, '撤离'],
   [/\bOVERDRIVE\b/g, '超载'], [/\bECM\b/g, '电子干扰'], [/\bAP\b/g, '装甲'], [/\bEN\b/g, '能量'],
 ];
 export const CJK = /[㐀-鿿＀-￯　-〿]/;
@@ -23,6 +24,8 @@ export function zh(s) {
   // keep only ' · ' segments that have Chinese in them ('CONVOY LOST', 'SYSTEM DOWN' go)
   return t.split(' · ').map((x) => x.trim()).filter((x) => CJK.test(x)).join(' · ');
 }
+// '巨像 COLOSSUS' -> '巨像' (boss / objective names carry an English tag; keep the original if nothing Chinese is left)
+export const cnOnly = (s) => { const t = String(s || '').replace(/\b[A-Z][A-Z0-9-]+\b/g, '').replace(/\s+/g, ' ').trim(); return CJK.test(t) ? t : String(s || ''); };
 // 'LZ-1 光束炮' -> '光束炮' (model codes read as English to reviewers)
 export const wName = (n) => { const p = String(n).split(' '); return p.length > 1 && !CJK.test(p[0]) ? p.slice(1).join('') : String(n); };
 export const stripTags = (s) => String(s).replace(/<small>/g, '\n').replace(/<[^>]*>/g, '');
