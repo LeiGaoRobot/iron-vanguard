@@ -125,6 +125,10 @@ M = dict(
     HeraldGlow=mat("HeraldGlow", "#ffd0c0", 0.3, emit="#ff3020", strength=2.2),
     RodGlow=mat("RodGlow", "#e0f6ff", 0.2, emit="#80d8ff", strength=2.4),
     AcidGlow=mat("AcidGlow", "#e0ffc0", 0.25, emit="#90ff30", strength=2.2),
+    RiftGlow=mat("RiftGlow", "#f0e0ff", 0.2, emit="#b070ff", strength=2.4),
+    DisarmGlow=mat("DisarmGlow", "#f4e0ff", 0.2, emit="#c050ff", strength=2.2),
+    SiphonGlow=mat("SiphonGlow", "#ffe0e4", 0.2, emit="#ff3050", strength=2.2),
+    RiftStone=mat("RiftStone", "#3a3446", 0.8),
     Headlight=mat("Headlight", "#fff8e0", 0.2, emit="#fff0c0", strength=3.0),
     TruckRed=mat("TruckRed", "#a8322a", 0.5),
     Trailer=mat("Trailer", "#9aa0a6", 0.55, metal=0.4),
@@ -2111,7 +2115,56 @@ def build_acid():
     box((0.23, 0.2, 0.05), (0.04, 0.5, 0.22), M["Hazard"], K)
     muzzle("Muzzle_Acid", (0, 1.28, 0.05), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid()
+
+def build_rift():
+    # rift gate: a tall dark ring (inner radius ~3.2 m, centre 4 m up) held by two angled pylons on a base slab,
+    # glowing violet rune strips on the ring and pylons. The swirling disc is added in JS. Ring faces +Y. origin = ground
+    K = kit("P_Rift")
+    torus((0, 0, 4.0), 3.55, 0.38, M["RiftStone"], K, rot=ALONG_Y)
+    torus((0, 0, 4.0), 3.2, 0.09, M["RiftGlow"], K, rot=ALONG_Y)
+    for i in range(8):
+        a = i * math.pi / 4
+        box((math.cos(a) * 3.55, 0, 4.0 + math.sin(a) * 3.55), (0.5, 0.9, 0.5), M["Frame"], K, rot=(0, -a, 0), bevel=0.05)
+    for sx in (-1, 1):
+        box((sx * 3.7, 0, 1.0), (0.9, 1.3, 2.4), M["RiftStone"], K, bevel=0.1)
+        box((sx * 3.7, 0.66, 1.2), (0.12, 0.04, 1.6), M["RiftGlow"], K)
+        box((sx * 3.7, -0.66, 1.2), (0.12, 0.04, 1.6), M["RiftGlow"], K)
+    box((0, 0, 0.12), (9.0, 2.2, 0.24), M["RiftStone"], K, bevel=0.06)
+    box((0, 0, 0.26), (6.0, 0.18, 0.04), M["RiftGlow"], K)
+
+def build_disarmer():
+    # Disarmer: a hovering violet-eyed drone (about 3 m wide): a squat armoured hull, a big glowing orb emitter in
+    # front (Muzzle_DA), two folded claw arms (DA_ArmL/R) and a ring of thrusters underneath. front = +Y
+    K = kit("E_Disarmer")
+    ball((0, 0, 0), 1.1, M["EArmor"], K, scale=(1.2, 1.1, 0.75), sub=2)
+    box((0, 0.2, 0.55), (1.4, 1.2, 0.35), M["EArmor2"], K, bevel=0.12)
+    ball((0, 1.05, 0.05), 0.42, M["DisarmGlow"], K, sub=2)
+    torus((0, 1.05, 0.05), 0.5, 0.08, M["Joint"], K, rot=ALONG_Y)
+    muzzle("Muzzle_DA", (0, 1.5, 0.05), K)
+    box((0, 0.75, 0.42), (0.7, 0.1, 0.12), M["EEye"], K)
+    for sx, nm in ((-1, "DA_ArmL"), (1, "DA_ArmR")):
+        e = empty(nm, (sx * 1.25, 0.2, -0.1), K)
+        box((sx * 0.25, 0.4, 0), (0.22, 1.0, 0.22), M["Frame"], e, rot=(0, 0, sx * 0.3))
+        box((sx * 0.45, 0.95, -0.05), (0.14, 0.5, 0.14), M["Joint"], e, rot=(0.5, 0, 0))
+        box((sx * 0.3, 0.95, -0.05), (0.14, 0.5, 0.14), M["Joint"], e, rot=(-0.5, 0, 0))
+    torus((0, 0, -0.75), 0.8, 0.12, M["Joint"], K)
+    for i in range(4):
+        a = i * math.pi / 2 + math.pi / 4
+        cyl((math.cos(a) * 0.8, math.sin(a) * 0.8, -0.85), 0.18, 0.25, M["DisarmGlow"], K)
+
+def build_siphon():
+    K = kit("W_Siphon")
+    # siphon gun: a slim receiver, a barrel wrapped in three glowing red coils and a forked emitter at the tip
+    box((0, 0, 0.05), (0.38, 0.9, 0.36), M["Frame"], K, bevel=0.05)
+    cyl((0, 0.75, 0.05), 0.1, 0.9, M["Joint"], K, rot=ALONG_Y, verts=10)
+    for y in (0.45, 0.72, 0.99):
+        torus((0, y, 0.05), 0.15, 0.04, M["SiphonGlow"], K, rot=ALONG_Y)
+    for sx in (-1, 1):
+        box((sx * 0.12, 1.28, 0.05), (0.06, 0.28, 0.1), M["Armor2"], K)
+    box((0, -0.1, -0.24), (0.16, 0.4, 0.22), M["SiphonGlow"], K)
+    muzzle("Muzzle_Siphon", (0, 1.36, 0.05), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

@@ -11,7 +11,7 @@ import { FX, TEX } from './fx.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff, PHYS } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, Leaper, LEAP, FLARE, Herald, HERALD, Leech, LEECH, TRAFFIC, startTraffic, clearTraffic, truckAhead, THUNDER, startThunder, clearThunder, rodCover, clearRods, startFlares, clearFlares, inShade, resetNeedles, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, Leaper, LEAP, FLARE, Herald, HERALD, Disarmer, DISARM, RIFT, startRifts, clearRifts, Leech, LEECH, TRAFFIC, startTraffic, clearTraffic, truckAhead, THUNDER, startThunder, clearThunder, rodCover, clearRods, startFlares, clearFlares, inShade, resetNeedles, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 // rail loop for the train mission: a 118 x 82 m oval, closed (last point == first)
@@ -119,6 +119,12 @@ const MISSIONS = {
     { title: 'WAVE 2', sub: '储罐区 · 栅栏与炮火', spawn: { fencer: 2, bulwark: 1, gunship: 1, walker: 1, drone: 2 } },
     { title: 'WAVE 3', sub: '反应釜 · 敌方机甲小队', spawn: { fencer: 2, raider: 1, lancer: 1, mender: 1, drone: 2 } },
     { title: 'FINAL WAVE', sub: '「暴君」与栅栏网 · 把它引进酸雾里', spawn: { boss: 'tyrant', bossHp: 0.9, fencer: 2, drone: 2 } },
+  ] },
+  rift: { name: '裂隙 · 传送门', en: 'RIFT GATES', desc: '紫夜废城里开着三对相连的传送门（同色一对）· 机甲和子弹飞进一扇门就从另一扇出来 · 隔着门开枪能打到远处的敌人 · 每 32 秒门会闪烁后换位置，每 20 秒有一扇门吐出增援 · 缴械机的紫色光球会锁死你一个武器槽 4 秒 · 头目「暴君」', seed: 331, env: 'rift', reward: 7200, rift: true, waves: [
+    { title: 'WAVE 1', sub: '裂隙初开 · 缴械机', spawn: { disarmer: 1, walker: 3, drone: 3, crawler: 4 } },
+    { title: 'WAVE 2', sub: '门后来客', spawn: { disarmer: 1, gunship: 1, bulwark: 1, walker: 3, leech: 3 } },
+    { title: 'WAVE 3', sub: '双缴械机 · 闪影', spawn: { disarmer: 2, raider: 1, walker: 2, drone: 3, blinker: 1 } },
+    { title: 'FINAL WAVE', sub: '「暴君」穿门而来', spawn: { boss: 'tyrant', bossHp: 1.35, disarmer: 1 } },
   ] },
   highway: { name: '高速 · 车流', en: 'HIGHWAY RUSH', desc: '黄昏的四车道高速穿城而过 · 装甲卡车不停地呼啸而过，挡子弹也挡视线，路面上的机甲（敌我都算）会被撞飞 · 跳起或悬空就能让它从脚下开过 · 寄生体会扑到你背上吸能量，急闪（Shift）甩掉 · 头目「暴君」', seed: 317, env: 'highway', reward: 7100, highway: true, waves: [
     { title: 'WAVE 1', sub: '匝道口 · 寄生体', spawn: { leech: 4, walker: 3, drone: 2 } },
@@ -262,6 +268,7 @@ const ENVS = {
   sky3: { top: 0x060c26, hor: 0x3a6ab8, fog: [300, 2400], hemi: [0xb8ccff, 0x202838, 0.42], sun: [0xfff6ec, 2.5], env: 0.24, exp: 0.95, dir: [-0.4, 0.42, 0.55], disc: 0.6, stars: 0.5, earth: [0, -1, 0] },
   sky4: { top: 0x000002, hor: 0x0c1c40, fog: [500, 3200], hemi: [0xa8b4cc, 0x101420, 0.3], sun: [0xffffff, 2.6], env: 0.2, exp: 0.95, dir: [0.5, 0.42, -0.5], disc: 0.2, stars: 1, earth: [0, -1, 0] },
   dune: { top: 0x8a6e58, hor: 0xe0b890, fog: [50, 340], hemi: [0xffe4c4, 0x6a5038, 0.6], sun: [0xffd4a4, 2.0], env: 0.32, exp: 0.9, dir: [-0.4, 0.45, 0.45], disc: 0.7, sand: true },
+  rift: { top: 0x140c2a, hor: 0x6a4a9a, fog: [60, 300], hemi: [0xc0a8ff, 0x241a34, 0.5], sun: [0xd0b0ff, 1.25], env: 0.22, exp: 0.95, dir: [0.4, 0.5, -0.6], disc: 0.4, stars: 0.5, earth: [0, -1, 0] },
   highway: { top: 0x3a3c64, hor: 0xe0946a, fog: [70, 360], hemi: [0xffd8c0, 0x3a3038, 0.5], sun: [0xffb078, 1.6], env: 0.24, exp: 0.95, dir: [-0.7, 0.32, 0.45], disc: 0.6 },
   thunder: { top: 0x1a2228, hor: 0x44525a, fog: [40, 260], hemi: [0xa0b8c4, 0x262a2c, 0.5], sun: [0xb8c8d8, 0.85], env: 0.22, exp: 1.0, dir: [0.3, 0.7, 0.35], disc: 0.05, rain: true },
   flare: { top: 0x7c86a8, hor: 0xf2d6aa, fog: [60, 340], hemi: [0xfff0d8, 0x584838, 0.45], sun: [0xfff0cc, 2.4], env: 0.2, exp: 0.82, dir: [0.55, 0.42, -0.72], disc: 0.9 },
@@ -279,7 +286,7 @@ const ENVS = {
   meteor: { top: 0x050414, hor: 0x3c2050, fog: [110, 680], hemi: [0xd0b0ff, 0x2a1a2c, 0.5], sun: [0xffc0a0, 1.7], env: 0.26, exp: 0.98, dir: [-0.45, 0.4, 0.55], disc: 0.4, stars: 0.8, earth: [0, -1, 0] },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { leech: 45, herald: 260, leaper: 220, rammer: 240, deflector: 200, mirage: 260, blimp: 420, frost: 180, watch: 250, blinker: 160, hive: 300, swarm: 5, fencer: 110, prism: 220, skimmer: 200, splitter: 60, jet: 220, eel: 200, grappler: 240, train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
+const KILL_CR = { disarmer: 200, leech: 45, herald: 260, leaper: 220, rammer: 240, deflector: 200, mirage: 260, blimp: 420, frost: 180, watch: 250, blinker: 160, hive: 300, swarm: 5, fencer: 110, prism: 220, skimmer: 200, splitter: 60, jet: 220, eel: 200, grappler: 240, train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -679,6 +686,7 @@ let gYaw = 0.6, gDrag = false;
 const _p = new V3(), _q = new V3(), _r = new V3();
 function updateCamera(dt) {
   const p = G.player; if (!p) return;
+  if (G.camYawKick) { cam.yaw += G.camYawKick; G.camYawKick = 0; }
   const s = p.scale;
   const right = _r.set(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw));
   const pivot = _p.set(p.pos.x, p.pos.y + 4.6 * s, p.pos.z).addScaledVector(right, 3.1 * s);
@@ -796,6 +804,7 @@ function mixWave(n, rnd) {
   if (n >= 2) pool.push(['leaper', 2, 2]);
   if (n >= 2) pool.push(['herald', 1, 1]);
   if (n >= 1) pool.push(['leech', 3, 1]);
+  if (n >= 2) pool.push(['disarmer', 1, 1]);
   const sp = {}; let budget = 5 + n * 2.6, total = 0;
   while (budget > 0.9 && total < 24) {
     const [k, c, max] = pool[Math.floor(rnd() * pool.length)];
@@ -817,7 +826,7 @@ function makePlayer() {
 const wingOn = () => !!(save.wing && cfg.wing);
 function clearWorld() {
   if (G.wing) G.wing.dispose(); if (G.core) G.core.dispose();
-  clearDecoys(); clearWells(); clearChill(); clearStrikes(); clearDiscs(); clearMeteors(); clearHooks(); clearSmokes(); clearStasis(); clearAcid(); clearGrid(); clearTwisters(); clearBarrage(); clearIce(); clearWind(); clearStickies(); clearCranes(); clearPMines(); clearQuakes(); clearFlares(); resetNeedles(); clearThunder(); clearRods(); clearTraffic(); G.leechOn = 0; G.leechLatch = 0; G.leechShaken = 0; G.leechT = 0; G.leechSaid = false; G.trucks = 0; G.truckHits = 0; G.truckE = 0; G.roadkill = 0; G.corrStacks = 0; G.corrBonus = 0; G.boltSaid = false; G.hornHintSaid = false; G.heraldSaid = false; G.bolts = 0; G.boltLocks = 0; G.boltHits = 0; G.boltDodged = 0; G.boltE = 0; G.boltRod = 0; G.rodZaps = 0; G.rodsUsed = 0; G.horns = 0; G.hornBlocked = 0; G.rallyHits = 0; G.leapSaid = false; G.leapDownSaid = false; G.flareSaid = false; G.leaps = 0; G.leapDowned = 0; G.leapHits = 0; G.flares = 0; G.flareT = 0; G.flareE = 0; G.needleBursts = 0; G.ramSaid = false; G.ramStunSaid = false; G.quakeSaid = false; G.ramCharges = 0; G.ramHits = 0; G.ramStuns = 0; G.ramBlocked = 0; G.quakes = 0; G.fisT = 0; G.ricochets = 0; G.ricoSeek = 0; G.defl = []; G.deflected = 0; G.magnetOn = 0; G.scrapDrops = 0; G.pmBlown = 0; G.deflDown = 0; G.magSaid = false; G.deflSaid = false; G.holoSpawned = 0; G.holoPopped = 0; G.stuckN = 0; G.holoSaid = false; G.bombsDropped = 0; G.windSaid = false; G.bombSaid = false; G.frozeSaid = false; G.holeSaid = false; G.spotSaid = false; G.twistSaid = false; G.blinkSaid = false; G.gridSaid = false; G.hiveSaid = false; G.levSaid = false; G.levSwimSaid = false; G.smokeN = 0; G.levBreaches = 0; G.meteorSaid = false; G.wadeSaid = false; G.tether = null; G.blinkInv = 0; G.eelSaid = false; G.jetSaid = false; G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
+  clearDecoys(); clearWells(); clearChill(); clearStrikes(); clearDiscs(); clearMeteors(); clearHooks(); clearSmokes(); clearStasis(); clearAcid(); clearGrid(); clearTwisters(); clearBarrage(); clearIce(); clearWind(); clearStickies(); clearCranes(); clearPMines(); clearQuakes(); clearFlares(); resetNeedles(); clearThunder(); clearRods(); clearTraffic(); clearRifts(); G.jam.R = G.jam.L = G.jam.S = 0; G.jamHits = 0; G.jamOrbs = 0; G.jamSaid2 = false; G.riftP = 0; G.riftE = 0; G.riftShots = 0; G.riftSaid = false; G.siphonHeal = 0; G.leechOn = 0; G.leechLatch = 0; G.leechShaken = 0; G.leechT = 0; G.leechSaid = false; G.trucks = 0; G.truckHits = 0; G.truckE = 0; G.roadkill = 0; G.corrStacks = 0; G.corrBonus = 0; G.boltSaid = false; G.hornHintSaid = false; G.heraldSaid = false; G.bolts = 0; G.boltLocks = 0; G.boltHits = 0; G.boltDodged = 0; G.boltE = 0; G.boltRod = 0; G.rodZaps = 0; G.rodsUsed = 0; G.horns = 0; G.hornBlocked = 0; G.rallyHits = 0; G.leapSaid = false; G.leapDownSaid = false; G.flareSaid = false; G.leaps = 0; G.leapDowned = 0; G.leapHits = 0; G.flares = 0; G.flareT = 0; G.flareE = 0; G.needleBursts = 0; G.ramSaid = false; G.ramStunSaid = false; G.quakeSaid = false; G.ramCharges = 0; G.ramHits = 0; G.ramStuns = 0; G.ramBlocked = 0; G.quakes = 0; G.fisT = 0; G.ricochets = 0; G.ricoSeek = 0; G.defl = []; G.deflected = 0; G.magnetOn = 0; G.scrapDrops = 0; G.pmBlown = 0; G.deflDown = 0; G.magSaid = false; G.deflSaid = false; G.holoSpawned = 0; G.holoPopped = 0; G.stuckN = 0; G.holoSaid = false; G.bombsDropped = 0; G.windSaid = false; G.bombSaid = false; G.frozeSaid = false; G.holeSaid = false; G.spotSaid = false; G.twistSaid = false; G.blinkSaid = false; G.gridSaid = false; G.hiveSaid = false; G.levSaid = false; G.levSwimSaid = false; G.smokeN = 0; G.levBreaches = 0; G.meteorSaid = false; G.wadeSaid = false; G.tether = null; G.blinkInv = 0; G.eelSaid = false; G.jetSaid = false; G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
   for (const e of G.enemies) e.remove ? e.remove() : null;
   G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0; clearMinis(); clearMines(); snipeSaid = false; G.mendSaid = false; G.mineSaid = false; G.jamSaid = false; G.jammed = null; clearZones();
   for (const k of G.pickups) scene.remove(k.o);
@@ -836,7 +845,7 @@ function newGame() {
   Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
   const M = MISSIONS[cfg.mission];
   G.echoLo = setEcho({ R: cfg.R, L: cfg.L, S: cfg.S, frame: cfg.frame });
-  PHYS.g = M.grav || 1; PHYS.grip = M.grip || 1; if (M.ice) startIce(); if (M.wind) startWind(); G.glare = !!M.glare; if (M.cranes) startCranes(M.cranes); if (M.quake) startQuakes(); if (M.flare) startFlares(); if (M.thunder) startThunder(STORM_RODS); if (M.highway) startTraffic(); G.meteorOn = !!M.meteors; if (M.acid) startAcid(M.acid); if (M.twisters) startTwisters(M.twisters); G.acidSaid = false; G.fenceSaid = false; G.linkSaid = false; if (tide) { tide.y = tide.yT = M.tide[0]; WATER.y = tide.y; } if (M.ascend) setStage(0, true); clearWells(); G.eruptT = 8; G.freezes = 0; G.lavaT = 0; G.eruptions = 0; G.burrowUps = 0;
+  PHYS.g = M.grav || 1; PHYS.grip = M.grip || 1; if (M.ice) startIce(); if (M.wind) startWind(); G.glare = !!M.glare; if (M.cranes) startCranes(M.cranes); if (M.quake) startQuakes(); if (M.flare) startFlares(); if (M.thunder) startThunder(STORM_RODS); if (M.highway) startTraffic(); if (M.rift) startRifts(); G.meteorOn = !!M.meteors; if (M.acid) startAcid(M.acid); if (M.twisters) startTwisters(M.twisters); G.acidSaid = false; G.fenceSaid = false; G.linkSaid = false; if (tide) { tide.y = tide.yT = M.tide[0]; WATER.y = tide.y; } if (M.ascend) setStage(0, true); clearWells(); G.eruptT = 8; G.freezes = 0; G.lavaT = 0; G.eruptions = 0; G.burrowUps = 0;
   if (M.defense) {
     G.core = new Reactor(scene, new V3(0, 0, 0), M.coreHp); G.friends.push(G.core);
     G.player.pos.set(0, 0, 22);
@@ -957,6 +966,11 @@ G.onDrop = (at, cg, ds, crashed) => {
 G.onSpot = (e) => { if (!G.spotSaid) { G.spotSaid = true; showHint('被探照灯照到了 · 炮弹会落在你脚下的红圈 · 躲到掩体后挡住灯光、用干扰弹，或打掉灯塔头部的探照灯', 4.5); } };
 G.onDeflDown = (f) => { if (!G.deflSaid) { G.deflSaid = true; showHint('偏导场过载 · 3 秒内实弹能打进去 · 持续射击会让磁场过载，贴进磁场里开火也不会被推偏', 4.5); } };
 G.onTally = (k) => { save.tally[k] = (save.tally[k] || 0) + 1; };
+G.onJam = (k) => { if (!G.jamSaid2) { G.jamSaid2 = true; showHint('武器槽被缴械机锁死 4 秒 · 紫色光球会慢慢追你，侧向急闪就能甩开', 4); } };
+G.onJamOrb = (sh) => { sh.react = Math.random() < 0.5; };
+G.onRift = () => { if (!G.riftSaid) { G.riftSaid = true; showHint('穿过了传送门 · 同色的两扇门相连 · 子弹也能穿门，隔门开火打远处的敌人', 4); } };
+G.onRiftMove = () => { if (state === 'play') showHint('传送门换位置了', 2); };
+G.onRiftSpawn = (p) => { if (state !== 'play' || !run || run.over) return; if (Math.random() < 0.6) { for (let j = 0; j < 3; j++) new Crawler(new V3(p.x + (Math.random() - 0.5) * 4, 0, p.z + (Math.random() - 0.5) * 4)); } else new Walker(new V3(p.x, 0, p.z)); };
 G.onLeech = () => { if (!G.leechSaid) { G.leechSaid = true; showHint('寄生体扑到背上了 · 它在吸你的能量 · 急闪（Shift）把它们全甩下去', 4); } };
 G.onBolt = (k) => { if (k === 'strike') storm.k = 1; else if (k === 'lock' && !G.boltSaid) { G.boltSaid = true; showHint('雷击锁定 · 1.4 秒后闪电劈下 · 立刻落地，或躲进避雷塔的蓝色圈里', 4); } };
 G.onFlare = () => { if (!G.flareSaid) { G.flareSaid = true; showHint('耀斑警报 · 3 秒后烈日灼烧一切不在阴影里的机甲 · 看地上的影子，躲到建筑背光的一侧（悬空太高也会暴露）', 5); } };
@@ -988,6 +1002,7 @@ function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.burrower || 0); k++) new Burrower(spot(60 * R, 100 * R, false, b));
   for (let k = 0; k < (S.grappler || 0); k++) new Grappler(spot(70 * R, 115 * R, true, b));
   for (let k = 0; k < (S.eel || 0); k++) new Eel(spot(60 * R, 100 * R, true, b));
+  for (let k = 0; k < (S.disarmer || 0); k++) new Disarmer(spot(70 * R, 115 * R, true, b));
   for (let k = 0; k < (S.leech || 0); k++) new Leech(spot(70 * R, 120 * R, true, b));
   for (let k = 0; k < (S.herald || 0); k++) new Herald(spot(80 * R, 120 * R, false, b));
   for (let k = 0; k < (S.leaper || 0); k++) new Leaper(spot(70 * R, 115 * R, false, b));
@@ -1592,6 +1607,7 @@ const MEDALS = [
   { id: 'sandking', name: '驯沙', desc: '击败沙海巨虫', cr: 1500, tally: 'leviathan', need: 1 },
   { id: 'mirrorbreak', name: '裂镜', desc: '累计击毁 20 台棱镜', cr: 1200, tally: 'prism', need: 20 },
   { id: 'unfence', name: '断网', desc: '累计击毁 20 台栅栏机', cr: 1200, tally: 'fencer', need: 20 },
+  { id: 'rift', name: '穿越者', desc: '穿过传送门 30 次', cr: 1000, tally: 'rift', need: 30 },
   { id: 'roadkill', name: '车祸现场', desc: '让卡车撞毁 20 架敌机', cr: 1300, tally: 'roadkill', need: 20 },
   { id: 'bolt', name: '引雷', desc: '让闪电劈中 20 架敌机', cr: 1300, tally: 'boltE', need: 20 },
   { id: 'unleap', name: '截跃', desc: '在空中把跃击者打下来 15 次', cr: 1200, tally: 'leapDown', need: 15 },
@@ -1756,6 +1772,7 @@ function drawHUD(dt) {
       if (w.d.type === 'sentry') { const m = G.friends.find((x) => x.isSentry); if (m) { txt = 'SENTRY ' + Math.ceil(m.t); k = m.hp / m.maxHp; cls = ''; } }
       if (w.d.type === 'decoy') { const m = G.friends.find((x) => x.isDecoyObj); if (m) { txt = 'DECOY ' + Math.ceil(m.t); k = m.hp / m.maxHp; cls = ''; } }
     }
+    if (G.jam[slot] > 0) { txt = 'LOCKED ' + G.jam[slot].toFixed(1); k = G.jam[slot] / DISARM.jam; cls = 'reloading'; }
     r.am.textContent = txt; r.bar.style.width = (k * 100).toFixed(0) + '%';
     r.d.className = 'wrow ' + cls;
   }
@@ -2015,6 +2032,7 @@ function autoIntent(dt) {
   const mirror = !!tgt && tgt.kind === 'prism' && !(tgt.stunT > 0) && !(tgt.vent > 0) && tgt.fwd.x * (p.pos.x - tgt.pos.x) + tgt.fwd.z * (p.pos.z - tgt.pos.z) > PRISM.arc * Math.hypot(p.pos.x - tgt.pos.x, p.pos.z - tgt.pos.z);
   const refl = (w) => w.d.type === 'missile' || (w.d.type === 'bullet' && !w.d.grenade);
   if (!goal && mirror) { const rx = -tgt.fwd.z, rz = tgt.fwd.x, sg = rx * (p.pos.x - tgt.pos.x) + rz * (p.pos.z - tgt.pos.z) >= 0 ? 1 : -1; goal = new V3(tgt.pos.x + rx * sg * 24 - tgt.fwd.x * 8, 0, tgt.pos.z + rz * sg * 24 - tgt.fwd.z * 8); }
+  if (!goal && G.rift && tgt && !(p.riftCd > 0)) { const dT = Math.hypot(tgt.pos.x - p.pos.x, tgt.pos.z - p.pos.z); if (dT > 60) for (const g of G.rift.gates) { const dg = Math.hypot(g.x - p.pos.x, g.z - p.pos.z), dt2 = Math.hypot(g.twin.x - tgt.pos.x, g.twin.z - tgt.pos.z); if (dg < 45 && dg + dt2 < dT - 30) { goal = new V3(g.x, 0, g.z); auto.riftGo = (auto.riftGo || 0) + dt; break; } } }   // take a rift gate as a shortcut
   if (!goal && tgt) { const wd = domeAt(tgt.c); if (wd && p.pos.distanceTo(wd.pos) > wd.R * 0.55 && wd.dp > wd.maxDp * 0.35) goal = wd.pos; }
   if (G.train && G.train.alive) {
     const T = G.train;
@@ -2087,7 +2105,7 @@ function autoIntent(dt) {
   const odNow = G.od.k >= 1 && (G.bosses.some((b) => b.alive && b.c.distanceTo(p.pos) < 80) || G.enemies.filter((e) => e.alive && e.c.distanceTo(p.pos) < 60).length >= 3);
   const blinkK = G.pw.S.d.type === 'blink';
   const blinkP = blinkK && G.pw.S.ammo > 0 && (G.tether ? Math.random() < 0.08 : (leapNear || sniped) ? Math.random() < 0.2 : incoming ? Math.random() < 0.1 : G.hud.hurt > 0.35 ? Math.random() < 0.05 : run.ring && run.ring.out > -3 ? Math.random() < 0.05 : false);
-  return { od: odNow, f, s, boost: d > 70 || !!goal || (flamer && bigT && d > 18), qboost: (auto.leechT > 0.7 && p.en >= 18 && Math.random() < 0.08) || (!!G.tether && !blinkK && Math.random() < 0.06) || (G.hud.hurt > 0.35 && Math.random() < 0.05) || (incoming && Math.random() < 0.25) || (sniped && Math.random() < 0.035) || (leapNear && Math.random() < 0.3) || (blinkAt && Math.random() < 0.35) || (shellAt && Math.random() < 0.3) || (holeAt && Math.random() < 0.3), jump: jump || holeAt, hover: auto.hover > 0, b0: fire('R'), b2: fire('L'), e: blinkK ? blinkP : sPress };
+  return { od: odNow, f, s, boost: d > 70 || !!goal || (flamer && bigT && d > 18), qboost: (G.shots.some((sh) => sh.jamOrb && sh.react && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 14) && p.en >= 18 && Math.random() < 0.4) || (auto.leechT > 0.7 && p.en >= 18 && Math.random() < 0.08) || (!!G.tether && !blinkK && Math.random() < 0.06) || (G.hud.hurt > 0.35 && Math.random() < 0.05) || (incoming && Math.random() < 0.25) || (sniped && Math.random() < 0.035) || (leapNear && Math.random() < 0.3) || (blinkAt && Math.random() < 0.35) || (shellAt && Math.random() < 0.3) || (holeAt && Math.random() < 0.3), jump: jump || holeAt, hover: auto.hover > 0, b0: fire('R'), b2: fire('L'), e: blinkK ? blinkP : sPress };
 }
 
 // ------------------------------------------------------------------ simulation step
@@ -2156,9 +2174,9 @@ function step(dt) {
   if (chipOn('nano') && G.player.alive && state === 'play' && G.time - G.hurtAt > 5) G.player.hp = Math.min(G.player.maxHp, G.player.hp + G.player.maxHp * 0.006 * dt);
   if (p.alive && !run.won && !frz) {
     const dm = dmgMul() * (G.od.t > 0 ? OD.dmg : 1);
-    G.curLabel = 'p-' + G.pw.R.key; weaponTick(dt, p, 'R', G.pw.R, A.b0, G.aimPoint, G.lockTarget, 'P', G.locks, dm);
-    G.curLabel = 'p-' + G.pw.L.key; weaponTick(dt, p, 'L', G.pw.L, A.b2, G.aimPoint, G.lockTarget, 'P', G.locks, dm);
-    G.curLabel = 'p-' + G.pw.S.key; weaponTick(dt, p, 'S', G.pw.S, A.e, G.aimPoint, G.lockTarget, 'P', G.locks, dm);
+    G.curLabel = 'p-' + G.pw.R.key; weaponTick(dt, p, 'R', G.pw.R, A.b0 && !(G.jam.R > 0), G.aimPoint, G.lockTarget, 'P', G.locks, dm);
+    G.curLabel = 'p-' + G.pw.L.key; weaponTick(dt, p, 'L', G.pw.L, A.b2 && !(G.jam.L > 0), G.aimPoint, G.lockTarget, 'P', G.locks, dm);
+    G.curLabel = 'p-' + G.pw.S.key; weaponTick(dt, p, 'S', G.pw.S, A.e && !(G.jam.S > 0), G.aimPoint, G.lockTarget, 'P', G.locks, dm);
     G.curLabel = null;
     if (G.pw.S.d.type !== 'beam' && G.pw.S.cd > 0 && A.e && G.pw.S.cd < G.pw.S.d.cd - 0.3 && !auto.on && Math.random() < 0.02) sfx('empty');
   }
@@ -2221,7 +2239,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=42');
+    await loadKit('./assets/kit.glb?v=43');
     ensureArena();
     makePlayer();
     setState('title');

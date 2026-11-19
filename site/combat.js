@@ -14,11 +14,13 @@ export const G = {
   hud: { hit: 0, hurt: 0, kill: 0 },
   aimPoint: new V3(), lockTarget: null, locks: [], onKill: null, onPlayerHit: null,
   pw: {},      // player weapon states by slot
-  rods: [],     // planted LR-1 lightning rods
+  rods: [],
+  jam: { R: 0, L: 0, S: 0 },   // seconds each of your weapon slots stays locked by a Disarmer orb     // planted LR-1 lightning rods
   friends: [],  // other things enemies may shoot: wingman, reactor core ({pos, vel, center(), alive, _ent, foeW})
 };
 
 export const WEAPONS = {
+  siphon: { slot: 'arm', name: 'VB-1 汲能枪', en: 'VB-1 Siphon Gun', desc: '高速红色能量弹 · 每发命中敌机为你回复 12% 伤害量的装甲 · 持续输出也是持续回血', type: 'bullet', siphon: 0.12, rate: 0.12, dmg: 13, speed: 210, spread: 0.014, mag: 36, reload: 2.2, color: 0xff3050, w: 0.28, len: 4, life: 0.6, sfx: 'rifle', recoil: 0.1 },
   acid: { slot: 'arm', name: 'AC-2 酸液喷枪', en: 'AC-2 Acid Sprayer', desc: '抛射酸液团（有下坠）· 溅射 3 m · 命中叠加腐蚀：每层受伤 +7%，最多 5 层，4 秒不补就消退', type: 'bullet', acid: true, rate: 0.15, dmg: 15, speed: 90, spread: 0.02, mag: 30, reload: 2.0, color: 0x90ff30, w: 0.45, len: 1.6, life: 1.1, sfx: 'rifle', recoil: 0.12 },
   needler: { slot: 'arm', name: 'NX-8 针刺枪', en: 'NX-8 Needler', desc: '追踪锁定目标的钢针 · 扎在敌机上 · 同一目标扎满 8 根一起引爆（100 / 4.5 m）· 3 秒没补针就脱落', type: 'bullet', needle: true, rate: 0.085, dmg: 5, speed: 150, spread: 0.02, mag: 48, reload: 2.2, color: 0xff70e0, w: 0.16, len: 3, life: 1.6, sfx: 'rifle', recoil: 0.08 },
   ricochet: { slot: 'arm', name: 'RB-4 跳弹枪', en: 'RB-4 Ricochet', desc: '撞墙反弹 3 次 · 反弹后转向附近敌机 · 每弹一次 +25%', type: 'bullet', rate: 0.11, dmg: 14, speed: 240, spread: 0.008, mag: 36, reload: 2.0, color: 0x80ffd0, w: 0.22, len: 6, life: 1.8, bounce: 3, sfx: 'rifle', recoil: 0.15 },
@@ -58,7 +60,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -200,6 +202,8 @@ function impact(s, at, ent) {
     if (ent) dealDamage(ent, s.dmg, s.team, at);
     if (s.needle && ent && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly) embedNeedle(ent, at);
     if (s.acid) acidSplash(ent, at, s.dmg);
+    if (s.siphon && ent && ent.alive !== false && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly && !ent.holo && G.player && G.player.alive) { const P = G.player, h = Math.min(P.maxHp - P.hp, s.dmg * s.siphon); if (h > 0) { P.hp += h; G.siphonHeal = (G.siphonHeal || 0) + h; } }
+    if (s.jamOrb && ent && ent.isPlayer) jamPlayer();
     if (s.chill && ent && ent.alive && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly) { chillAdd(ent.kind === 'cpart' ? ent.owner : ent, s.chill); fx.sparks(at, null, 3, 0xd8f6ff, 6, 0.8, 0.3, 0.2); }
     fx.sparks(at, _a.copy(s.v).normalize().multiplyScalar(-1), ent ? 6 : 4, s.team === 'P' ? 0xffd27a : 0xff7a50, 14, 0.8, 0.25, 0.22);
     fx.emit('add', { x: at.x, y: at.y, z: at.z, life: 0.08, s0: ent ? 1.4 : 0.9, c0: s.color });
@@ -225,6 +229,12 @@ function updateShots(DT) {
     if (s.needle && s.target && s.target.alive && !s.target.dying && s.target.c && s.age > 0.04) {   // needles curve toward the locked target
       const sp = s.v.length(); _a.subVectors(s.target.c, _c.set(s.x, s.y, s.z)).normalize(); _b.copy(s.v).divideScalar(sp || 1);
       if (_a.dot(_b) > 0.3) { _b.lerp(_a, Math.min(1, 3.2 * dt)).normalize(); s.v.copy(_b).multiplyScalar(sp); }
+    }
+    if (G.rift) riftShot(s);
+    if (s.jamOrb && s.age > 0.1 && G.player && G.player.alive) {   // violet orbs bend slowly toward you: a sideways boost beats them
+      const sp = s.v.length(), pc = G.player.center(_c); _a.set(pc.x - s.x, pc.y - s.y, pc.z - s.z).normalize(); _b.copy(s.v).divideScalar(sp || 1);
+      if (_a.dot(_b) > 0.3) { _b.lerp(_a, Math.min(1, DISARM.turn * dt)).normalize(); s.v.copy(_b).multiplyScalar(sp); }
+      if (Math.random() < 0.6) fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.25, s0: 1.2, s1: 0.2, c0: 0xd080ff });
     }
     if (s.acid) { s.v.y -= CORR.grav * dt; if (Math.random() < 0.5) fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.12, s0: 0.9, s1: 0.3, c0: 0xa0ff40, c1: 0x408010 }); }
     if (WIND.on && s.kind !== 'flame') { const wk = s.kind === 'bullet' || s.kind === 'ebullet' ? 0.25 : 0.9; s.v.x += WIND.x * wk * dt; s.v.z += WIND.z * wk * dt; }
@@ -373,6 +383,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
           if (d.flak && team === 'P') { sh.flak = d.flak; sh.splash = d.splash; }
           if (d.bounce && team === 'P') sh.bounce = d.bounce;
           if (d.acid && team === 'P') sh.acid = true;
+          if (d.siphon && me) sh.siphon = d.siphon;
           if (d.needle && team === 'P') { sh.needle = true; sh.target = target && target.alive ? target : null; }
         }
         if (n > 1 && me) fx.trauma = Math.min(1, fx.trauma + 0.12);
@@ -1825,7 +1836,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -5540,6 +5551,181 @@ function acidSplash(ent, at, dmg) {
   G.fx.emit('add', { x: at.x, y: at.y, z: at.z, vy: 0.6, life: 0.35, s0: 1.6, s1: 2.8, c0: 0xa0ff40, c1: 0x306010 });
 }
 
+
+// ---- Rift gates: three linked pairs of portals. Any mech (you or an enemy) or any shot that flies into a gate comes
+// out of its twin, still moving, turned by the difference in the two gates' facing. Every 32 s the gates flicker for
+// 3 s and jump to new spots; every 20 s one of them spits out reinforcements (G.onRiftSpawn).
+export const RIFT = { pairs: 3, R: 3.0, cd: 1.4, move: 32, warn: 3, spawn: 20, out: 4.6, cols: [0x60e0ff, 0xff60d0, 0xffb040] };
+const riftTex = (() => {
+  if (typeof document === 'undefined') return null;
+  const c = document.createElement('canvas'); c.width = c.height = 128; const x = c.getContext('2d');
+  const g = x.createRadialGradient(64, 64, 4, 64, 64, 64); g.addColorStop(0, 'rgba(255,255,255,0.95)'); g.addColorStop(0.55, 'rgba(255,255,255,0.35)'); g.addColorStop(1, 'rgba(255,255,255,0.05)');
+  x.fillStyle = g; x.fillRect(0, 0, 128, 128);
+  x.strokeStyle = 'rgba(255,255,255,0.55)'; x.lineWidth = 3;
+  for (let k = 0; k < 4; k++) { x.beginPath(); for (let t = 0; t < 1; t += 0.02) { const a = t * 7 + k * Math.PI / 2, r = t * 60; x.lineTo(64 + Math.cos(a) * r, 64 + Math.sin(a) * r); } x.stroke(); }
+  return new THREE.CanvasTexture(c);
+})();
+const riftGeo = new THREE.CircleGeometry(RIFT.R + 0.15, 40);
+function riftSpot(taken) {
+  for (let i = 0; i < 400; i++) {
+    const x = (Math.random() * 2 - 1) * (ARENA - 22), z = (Math.random() * 2 - 1) * (ARENA - 22);
+    if (PLAT.R && Math.hypot(x, z) > PLAT.R - 20) continue;
+    if (groundAt(x, z, 40) > 0.6) continue;
+    if (collideCyl(new V3(x, 0.5, z), 5, 7)) continue;
+    if (taken.some((t) => Math.hypot(t.x - x, t.z - z) < 38)) continue;
+    if (G.player && Math.hypot(G.player.pos.x - x, G.player.pos.z - z) < 10) continue;
+    return { x, z };
+  }
+  return { x: (Math.random() - 0.5) * 60, z: (Math.random() - 0.5) * 60 };
+}
+function placeRifts() {
+  const R = G.rift, taken = [];
+  for (const g of R.gates) { const p = riftSpot(taken); taken.push(p); g.x = p.x; g.z = p.z; g.yaw = Math.random() * Math.PI * 2; g.obj.position.set(p.x, 0, p.z); g.obj.rotation.y = g.yaw; g.c.set(p.x, 4, p.z); g.n.set(Math.sin(g.yaw), 0, Math.cos(g.yaw)); }
+}
+export function startRifts() {
+  clearRifts();
+  const R = G.rift = { gates: [], t: RIFT.move, warn: 0, spawnT: 12 };
+  for (let i = 0; i < RIFT.pairs * 2; i++) {
+    const obj = cloneKit('P_Rift'); G.scene.add(obj);
+    const col = RIFT.cols[i >> 1];
+    const disc = new THREE.Mesh(riftGeo, new THREE.MeshBasicMaterial({ map: riftTex, color: col, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+    disc.position.set(0, 4, 0); obj.add(disc);
+    R.gates.push({ obj, disc, col, pair: i >> 1, x: 0, z: 0, yaw: 0, c: new V3(), n: new V3() });
+  }
+  for (let i = 0; i < R.gates.length; i++) R.gates[i].twin = R.gates[i ^ 1];
+  placeRifts();
+}
+export function clearRifts() {
+  const R = G.rift; if (!R) return;
+  for (const g of R.gates) { g.obj.parent && g.obj.parent.remove(g.obj); g.disc.material.dispose(); }
+  G.rift = null;
+}
+const _ry = new V3(0, 1, 0);
+function riftGo(g, v) {   // rotation that maps motion into gate g onto motion out of its twin
+  return g.twin.yaw - g.yaw + Math.PI;
+}
+function riftMech(m, isP) {
+  const R = G.rift, c = isP ? m.center(_c) : m.c; if (!c) return;
+  for (const g of R.gates) {
+    if (c.distanceTo(g.c) > RIFT.R) continue;
+    const t = g.twin, dy = riftGo(g), v = isP ? m.vel : m.vel;
+    let dx = 0, dz = 0;
+    if (v) { _a.set(v.x, 0, v.z).applyAxisAngle(_ry, dy); const l = Math.hypot(_a.x, _a.z); if (l > 0.5) { dx = _a.x / l; dz = _a.z / l; } if (isP || m.vel) v.applyAxisAngle(_ry, dy); }
+    if (!dx && !dz) { const side = Math.sign(_a.subVectors(c, g.c).dot(g.n)) || 1; dx = -t.n.x * side; dz = -t.n.z * side; }
+    const off = c.y - m.pos.y;
+    m.pos.set(t.c.x + dx * RIFT.out, Math.max(groundAt(t.c.x + dx * RIFT.out, t.c.z + dz * RIFT.out, t.c.y + 2), t.c.y - off), t.c.z + dz * RIFT.out);
+    if (isP) { m.aimYaw += dy; G.camYawKick = (G.camYawKick || 0) + dy; } else if (m.yaw !== undefined) m.yaw += dy;
+    if (!isP) m.c.set(m.pos.x, m.pos.y + off, m.pos.z);
+    m.riftCd = RIFT.cd;
+    G.fx.ring(new V3(g.c.x, g.c.y, g.c.z), g.n, 1, 5, 0.4, g.col); G.fx.ring(new V3(t.c.x, t.c.y, t.c.z), t.n, 1, 5, 0.4, t.col);
+    sfx('blink', isP ? 0 : (G.player ? G.player.pos.distanceTo(t.c) : 40));
+    if (isP) { G.riftP = (G.riftP || 0) + 1; G.onTally && G.onTally('rift'); G.onRift && G.onRift(); } else G.riftE = (G.riftE || 0) + 1;
+    return;
+  }
+}
+function riftShot(s) {
+  const R = G.rift; if (!R || s.riftCd > s.age) return;
+  for (const g of R.gates) {
+    _c.set(s.x, s.y, s.z); if (_c.distanceTo(g.c) > RIFT.R) continue;
+    const t = g.twin, dy = riftGo(g);
+    _a.subVectors(_c, g.c).applyAxisAngle(_ry, dy); s.v.applyAxisAngle(_ry, dy);
+    _b.copy(s.v).normalize();
+    s.x = t.c.x + _a.x * 0.6 + _b.x * (RIFT.R + 0.6); s.y = t.c.y + _a.y * 0.6 + _b.y * (RIFT.R + 0.6); s.z = t.c.z + _a.z * 0.6 + _b.z * (RIFT.R + 0.6);
+    if (s.aim) s.aim.copy(_c.set(s.x, s.y, s.z).addScaledVector(_b, 60));
+    s.riftCd = s.age + 0.25; s.life += 0.15;
+    if (s.team === 'P') G.riftShots = (G.riftShots || 0) + 1;
+    return;
+  }
+}
+function updateRifts(dt) {
+  const R = G.rift; if (!R) return;
+  R.t -= dt;
+  const warn = R.t < RIFT.warn;
+  if (R.t <= 0) { R.t = RIFT.move; placeRifts(); G.onRiftMove && G.onRiftMove(); }
+  for (const g of R.gates) {
+    g.disc.rotation.z -= dt * 2.4;
+    g.disc.material.opacity = warn ? (Math.sin(G.time * 22) > 0 ? 0.85 : 0.15) : 0.7 + 0.15 * Math.sin(G.time * 3 + g.pair);
+    const k = 1 + 0.04 * Math.sin(G.time * 5 + g.pair * 2); g.disc.scale.set(k, k, 1);
+  }
+  const P = G.player;
+  if (P && P.alive) { P.riftCd = (P.riftCd || 0) - dt; if (P.riftCd <= 0) riftMech(P, true); }
+  for (const e of G.enemies) {
+    if (!e.alive || e.dying || !e.pos || !e.c || e.holo || e.isTrain || e.isColossus || e.kind === 'boss' || e.kind === 'cpart' || e.kind === 'leviathan' || (e.kind === 'leech' && e.st === 'on')) continue;
+    e.riftCd = (e.riftCd || 0) - dt; if (e.riftCd <= 0) riftMech(e, false);
+  }
+  R.spawnT -= dt;
+  if (R.spawnT <= 0) {
+    R.spawnT = RIFT.spawn;
+    if (G.onRiftSpawn && G.enemies.filter((e) => e.alive).length < 14) {
+      const g = R.gates[Math.floor(Math.random() * R.gates.length)];
+      G.fx.ring(g.c.clone(), g.n, 1.5, 9, 0.7, g.col); sfx('blink', P ? P.pos.distanceTo(g.c) : 40);
+      G.onRiftSpawn(new V3(g.c.x + g.n.x * 6, 0, g.c.z + g.n.z * 6));
+    }
+  }
+}
+export function nearestRift(x, z) {
+  const R = G.rift; if (!R) return null;
+  let best = null, bd = 1e9; for (const g of R.gates) { const d = Math.hypot(g.x - x, g.z - z); if (d < bd) { bd = d; best = g; } }
+  return best && { g: best, d: bd };
+}
+
+// ---- Disarmer: a hovering drone that keeps 30-46 m away and fires a slow, gently homing violet orb every 5-7 s
+// (0.7 s charge first). The orb does 26 and LOCKS one of your weapon slots for 4 s. A sideways boost beats the orb.
+export const DISARM = { hp: 650, r: 1.8, hover: 9, near: 30, far: 46, speed: 11, every: [5, 7], charge: 0.7, orbV: 40, turn: 2.4, dmg: 26, jam: 4, gunCd: [1.2, 1.8], gunDmg: 8 };
+export function jamPlayer() {
+  const J = G.jam, free = ['R', 'L', 'S'].filter((k) => !(J[k] > 0));
+  const k = (free.length ? free : ['R', 'L', 'S'])[Math.floor(Math.random() * (free.length || 3))];
+  J[k] = DISARM.jam; G.jamHits = (G.jamHits || 0) + 1; G.onJam && G.onJam(k);
+}
+export class Disarmer extends Enemy {
+  constructor(pos) {
+    super('disarmer', 'E_Disarmer', pos, DISARM.hp, DISARM.r); this.boom = 1.1;
+    this.pos.y = groundAt(pos.x, pos.z, 40) + DISARM.hover; this.vel = new V3(); this.yaw = 0; this.orbT = 2 + Math.random() * 2; this.chT = 0; this.gunT = 1.5; this.ph = Math.random() * 6.28; this.dir = Math.random() < 0.5 ? 1 : -1;
+    this.c.copy(this.pos);
+  }
+  update(dt) {
+    const tg = this.tg(), pc = tg.center(playerC); this.ph += dt;
+    const dx = this.pos.x - pc.x, dz = this.pos.z - pc.z, dist = Math.hypot(dx, dz) || 1;
+    let want = dist < DISARM.near ? 1 : dist > DISARM.far ? -1 : 0;
+    const ox = dx / dist, oz = dz / dist, tx = -oz * this.dir, tz = ox * this.dir;
+    let vx = (ox * want * 1.2 + tx) * DISARM.speed, vz = (oz * want * 1.2 + tz) * DISARM.speed;
+    if (Math.random() < dt * 0.2) this.dir *= -1;
+    this.vel.x += (vx - this.vel.x) * (1 - Math.exp(-2 * dt)); this.vel.z += (vz - this.vel.z) * (1 - Math.exp(-2 * dt));
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    this.pos.x = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.x)); this.pos.z = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.z));
+    if (collideCyl(this.pos, 1.8, 2)) { this.dir *= -1; blockedSlide(this); }
+    const gy = Math.max(groundAt(this.pos.x, this.pos.z, this.pos.y + 1), pc.y - 3) + DISARM.hover + Math.sin(this.ph * 1.3) * 0.8;
+    this.pos.y += (gy - this.pos.y) * (1 - Math.exp(-1.5 * dt));
+    this.yaw += angDiff(Math.atan2(dx, dz), this.yaw) * Math.min(1, dt * 4);
+    const los = dist < 80 && this.checkLos(dt);
+    if (los) {
+      this.gunT -= dt;
+      if (this.gunT <= 0 && this.chT <= 0) {
+        this.gunT = DISARM.gunCd[0] + Math.random() * (DISARM.gunCd[1] - DISARM.gunCd[0]);
+        const m = this.n.Muzzle_DA, mp = m ? m.getWorldPosition(new V3()) : this.c.clone(), aim = lead(mp, 190, _b, tg);
+        _d.subVectors(aim, mp).normalize(); spawnShot({ p: mp, v: _d.multiplyScalar(190), dmg: DISARM.gunDmg, team: 'E', kind: 'ebullet', color: 0xc070ff, w: 0.22, len: 4, life: 0.8, label: 'disarmer-gun' });
+        sfx('eshot', dist);
+      }
+    }
+    this.orbT -= dt;
+    if (this.chT > 0) {
+      this.chT -= dt;
+      if (Math.random() < 0.5) G.fx.sparks(this.n.Muzzle_DA ? this.n.Muzzle_DA.getWorldPosition(_c) : this.c, null, 1, 0xc050ff, 5, 0.8, 0.3, 0.2);
+      if (this.chT <= 0) {
+        const m = this.n.Muzzle_DA, mp = m ? m.getWorldPosition(new V3()) : this.c.clone(), aim = lead(mp, DISARM.orbV, _b, tg, 0.6);
+        _d.subVectors(aim, mp).normalize();
+        const sh = spawnShot({ p: mp, v: _d.multiplyScalar(DISARM.orbV), dmg: DISARM.dmg, team: 'E', kind: 'ebullet', color: 0xc050ff, w: 0.9, len: 1.4, life: 3.2, label: 'disarmer-orb' });
+        sh.jamOrb = true; G.jamOrbs = (G.jamOrbs || 0) + 1; sfx('laser', dist);
+        G.onJamOrb && G.onJamOrb(sh);
+      }
+    } else if (this.orbT <= 0 && los && dist < 70) { this.orbT = DISARM.every[0] + Math.random() * (DISARM.every[1] - DISARM.every[0]); this.chT = DISARM.charge; }
+    const sw = Math.sin(this.ph * 2) * 0.2 + (this.chT > 0 ? 0.6 : 0);
+    if (this.n.DA_ArmL) this.n.DA_ArmL.rotation.z = sw; if (this.n.DA_ArmR) this.n.DA_ArmR.rotation.z = -sw;
+    this.obj.rotation.set(Math.sin(this.ph * 1.7) * 0.06, this.yaw, Math.sin(this.ph) * 0.08);
+    this.c.copy(this.pos);
+  }
+}
+
 // ---- NX-8 needler: homing needles stick in what they hit; eight in one target detonate together
 export const NEEDLE = { burst: 8, dmg: 100, R: 4.5, keep: 3 };
 const ndGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.8, 5);
@@ -5676,7 +5862,7 @@ export function updateCombat(dt) {
   if (GRID.on) updateGrid(dt);
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
-  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt);
+  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
