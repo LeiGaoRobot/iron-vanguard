@@ -33,6 +33,7 @@ export const WEAPONS = {
   flak: { slot: 'arm', name: 'FL-8 高射炮', en: 'FL-8 Flak Cannon', desc: '近炸引信炮弹 · 飞近敌机 4 m 内自动空爆 · 6 m 破片 · 射程尽头也会空爆 · 专克蜂群和无人机', type: 'bullet', flak: 4, rate: 0.3, dmg: 44, splash: 6, speed: 150, spread: 0.01, life: 0.7, mag: 12, reload: 2.6, color: 0xffc070, w: 0.32, len: 3, sfx: 'cannon', recoil: 0.45 },
   shotgun: { slot: 'arm', name: 'SG-12 霰弹炮', en: 'SG-12 Scattergun', desc: '近距离 · 一发 9 颗弹丸 · 射程短', type: 'bullet', pellets: 9, rate: 0.72, dmg: 13, speed: 250, spread: 0.075, life: 0.42, mag: 6, reload: 2.3, color: 0xffc890, w: 0.2, len: 4, sfx: 'cannon', recoil: 0.7 },
   grenade: { slot: 'arm', name: 'GL-4 榴弹发射器', en: 'GL-4 Grenade Launcher', desc: '抛物线弹道 · 范围爆炸 · 可越过掩体', type: 'bullet', grenade: true, rate: 0.55, dmg: 78, splash: 6.5, speed: 88, grav: 30, spread: 0.004, mag: 8, reload: 2.5, color: 0xffa050, sfx: 'grenade', recoil: 0.55 },
+  repair: { slot: 'shoulder', name: 'RB-3 维修光束', en: 'RB-3 Repair Beam', desc: '4 秒维修光束 · 自动接上 45 m 内受损最重的友军，每秒修复 110（反应堆 / 基地 20%，炮台 60%）· 没有受损友军时改为汲取准星前方的敌机：每秒 50 伤害并回复你 30% · 冷却 12 秒', type: 'repair', dur: 4, R: 45, heal: 110, drain: 50, back: 0.3, coreK: 0.2, turK: 0.6, cd: 12, sfx: 'repair' },
   reflect: { slot: 'shoulder', name: 'RF-2 偏转力场', en: 'RF-2 Reflector', desc: '展开 2.5 秒的球形力场 · 6 m 内飞来的敌方子弹、导弹、炮弹全部反弹回最近的敌机（伤害 ×1.2）· 期间其余伤害 −40% · 冷却 13 秒', type: 'reflect', dur: 2.5, R: 6, mul: 1.2, cut: 0.4, cd: 13, sfx: 'shield' },
   frag: { slot: 'arm', name: 'SC-6 散裂炮', en: 'SC-6 Frag Cannon', desc: '炮弹飞近敌机 9 m 内（或飞出 50 m）自动炸成 6 枚破片 · 破片朝最近的敌机散射 · 中远距离威力最大', type: 'bullet', split: 0.45, fragN: 6, fragDmg: 10, rate: 0.4, dmg: 24, speed: 110, spread: 0.006, life: 1.2, mag: 10, reload: 2.6, color: 0x60ffc0, w: 0.34, len: 3, sfx: 'cannon', recoil: 0.35 },
   melter: { slot: 'arm', name: 'HL-5 热熔光束', en: 'HL-5 Melter', desc: '按住持续照射 42 m 内的目标 · 盯住同一个目标越久伤害越高：每秒 40，2.5 秒后升到 220 · 换目标重新计算 · 满槽可照 5 秒', type: 'melter', rate: 0.05, dps0: 40, dps1: 220, ramp: 2.5, range: 42, mag: 100, reload: 2.4, sfx: 'laser' },
@@ -67,7 +68,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -669,6 +670,9 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; empPulse(owner, d, dmgMul); if (me) G.stats.shots++; }
   } else if (d.type === 'sonar') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; sonarPulse(owner, slot, d, dmgMul); if (me) G.stats.shots++; }
+  } else if (d.type === 'repair') {
+    if (pressed && ws.cd <= 0 && me && owner.alive) { ws.cd = d.cd; G.rbeam = { t: d.dur, d, mul: dmgMul, slot, tgt: null, sw: 0, aim: aim.clone() }; sfx('repair', 0); G.stats.shots++; }
+    if (me && G.rbeam && G.rbeam.t > 0) G.rbeam.aim.copy(aim);
   } else if (d.type === 'reflect') {
     if (pressed && ws.cd <= 0 && me && owner.alive) { ws.cd = d.cd; G.refl = { t: d.dur, d, hitT: 0 }; sfx('shield', 0); G.stats.shots++; fx.ring(owner.center(new V3()), null, 1, d.R, 0.3, 0x80f0ff); }
   } else if (d.type === 'shield') {
@@ -1883,7 +1887,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -6373,6 +6377,371 @@ function updateReflect(dt) {
 }
 export function clearRefl() { G.refl = null; G.reflN = 0; if (reflMesh) reflMesh.visible = false; }
 
+// ------------------------------------------------------------------ v44 push the line: a lane from your base (east) to the enemy
+// citadel (west). Two towers guard the lane; while either stands the citadel is shielded. Allied tank squads roll out of your
+// base every 18 s and push to the next objective. Shades hide nearby enemies until they open fire.
+export const LANE = { home: [125, 0], cit: [-130, 0], towers: [[-60, 16], [-60, -16]], towerHp: 4500, citHp: 7000, citS: 1.25, escort: 36, armK: 0.3,
+  trHp: 240, trSpeed: 6.5, trRange: 42, trDmg: 5, trRate: 1.7, squad: 4, squadT: 18, maxTroop: 12, park: 28,
+  twRange: 110, twDmg: 9, twRate: 2.8, citRange: 130, citDmg: 18, citRate: 6 };
+export const SHADE = { hp: 450, r: 1.7, R: 24, near: 16, hover: 7, speed: 11, keep: 40, reveal: 1.2,
+  kinds: new Set(['walker', 'drone', 'bulwark', 'gunship', 'mender', 'sapper', 'crawler', 'leech']) };
+export function startLane() {
+  clearLane();
+  const towers = LANE.towers.map(([x, z]) => new Tower(new V3(x, groundAt(x, z, 20), z)));
+  const [cx, cz] = LANE.cit;
+  const cit = new Citadel(new V3(cx, groundAt(cx, cz, 20), cz));
+  G.lane = { towers, cit, troops: [], squadT: 3, sent: 0, lost: 0, abs: 0 };
+  G.veilN = 0; G.veilT = 0;
+}
+export function clearLane() {
+  const L = G.lane; if (!L) return;
+  for (const t of L.troops.slice()) t.end(true);
+  G.lane = null;
+}
+export function laneEscorted(o) {   // towers and the citadel only take full damage with an allied tank close by
+  const L = G.lane; if (!L) return true;
+  const R = LANE.escort + (o.kind === 'citadel' ? 8 : 0);
+  return L.troops.some((t) => t.alive && Math.hypot(t.pos.x - o.pos.x, t.pos.z - o.pos.z) < R);
+}
+function armorHit(o, dmg) {
+  if (laneEscorted(o)) return dmg;
+  o.armT = (o.armT || 0) - 1; if (o.armT <= 0) { o.armT = 6; G.fx.sparks(_a.copy(o.c).add(_b.set((Math.random() - 0.5) * 3, (Math.random() - 0.5) * 2, (Math.random() - 0.5) * 3)), null, 3, 0xffd080, 10, 0.8, 0.2, 0.2); }
+  if (G.lane) G.lane.armored = (G.lane.armored || 0) + dmg * (1 - LANE.armK);
+  G.onArmor && G.onArmor(o);
+  return dmg * LANE.armK;
+}
+export function laneObjective() {   // the next thing the squads (and the autopilot) push at
+  const L = G.lane; if (!L) return null;
+  let best = null, bd = 1e9;
+  for (const t of L.towers) if (t.alive) { const d = t.pos.x; if (best === null || d > bd) { bd = d; best = t; } }
+  return best || (L.cit.alive ? L.cit : null);
+}
+function updateLane(dt) {
+  const L = G.lane; if (!L) return;
+  for (let i = L.troops.length - 1; i >= 0; i--) { const t = L.troops[i]; if (t.alive) t.update(dt); else L.troops.splice(i, 1); }
+  if (!L.cit.alive) return;
+  L.squadT -= dt;
+  if (L.squadT <= 0) {
+    L.squadT = LANE.squadT;
+    const n = Math.min(LANE.squad, LANE.maxTroop - L.troops.length);
+    for (let k = 0; k < n; k++) {
+      const z = (k - (n - 1) / 2) * 4.2, x = LANE.home[0] - 14 - (k % 2) * 3;
+      L.troops.push(new Trooper(new V3(x, groundAt(x, z, 20), z), z * 1.6));
+      L.sent++;
+    }
+    if (n > 0) G.onSquad && G.onSquad(n);
+  }
+}
+
+// Shade: a hovering cloak projector. Enemies of the listed kinds within 24 m of a Shade are veiled (no lock-on, no radar, the
+// autopilot and your drones ignore them) unless they are within 16 m of you, fired in the last 1.2 s, or are sonar-marked.
+function veilMats(e, on) {   // veiled enemies swap to transparent copies of their materials
+  if (on && !e._vm) { e._vm = []; e.obj.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material)) { const m = o.material.clone(); m.transparent = true; m.depthWrite = false; if (m.emissive) { m.emissive.setHex(0x7040e0); m.emissiveIntensity = 0.7; } e._vm.push([o, o.material, m, o.castShadow]); } }); }
+  if (!e._vm) return;
+  for (const [o, m0, m1, cs] of e._vm) { o.material = on ? m1 : m0; o.castShadow = on ? false : cs; }
+}
+function updateVeil(dt) {
+  const shades = [];
+  for (const e of G.enemies) if (e.kind === 'shade' && e.alive && !e.dying && !(e.stunT > 0)) shades.push(e);
+  if (!shades.length && !G.veilN) return;
+  const P = G.player; let n = 0;
+  for (const e of G.enemies) {
+    if (!SHADE.kinds.has(e.kind) || !e.obj) continue;
+    let want = false;
+    if (shades.length && e.alive && !e.dying && !(e.markT > 0) && !((e.pingT || 0) > FOG.ping - SHADE.reveal) && !(P && P.alive && e.c.distanceTo(P.pos) < SHADE.near))
+      for (const s of shades) if (s.pos.distanceTo(e.c) < SHADE.R) { want = true; break; }
+    if (want) {
+      if (!e.veil) { e.veil = true; e.cloaked = true; e.veilPh = Math.random() * 6; veilMats(e, true); G.fx.sparks(e.c, null, 6, 0xb080ff, 8, 0.8, 0.3, 0.2); }
+      const a = 0.2 + 0.08 * Math.sin(G.time * 7 + e.veilPh) + (Math.sin(G.time * 19 + e.veilPh) > 0.9 ? 0.2 : 0);
+      for (const v of e._vm) v[2].opacity = a;
+      if (Math.random() < 0.12) G.fx.emit('add', { x: e.c.x + (Math.random() - 0.5) * 3, y: e.c.y + (Math.random() - 0.5) * 3, z: e.c.z + (Math.random() - 0.5) * 3, vy: 0.8, life: 0.4, s0: 0.9, s1: 0.2, c0: 0x9a60ff });
+      n++;
+    } else if (e.veil) {
+      e.veil = false; e.cloaked = false; veilMats(e, false);
+      if (e.alive) G.fx.sparks(e.c, null, 5, 0xc0a0ff, 8, 0.8, 0.25, 0.2);
+    }
+  }
+  G.veilN = n; if (n) G.veilT = (G.veilT || 0) + dt;
+}
+const shadeRingGeo = new THREE.RingGeometry(SHADE.R - 0.5, SHADE.R, 56);
+export class Shade extends Enemy {
+  constructor(pos) {
+    super('shade', 'E_Shade', pos, SHADE.hp, SHADE.r); this.boom = 0.9; this.obj.scale.setScalar(1.35);
+    this.vel = new V3(); this.side = Math.random() < 0.5 ? 1 : -1; this.orbA = Math.random() * 6.28; this.goalV = new V3(); this.ph = Math.random() * 6;
+    this.pos.y = groundAt(pos.x, pos.z, 40) + SHADE.hover; this.c.set(this.pos.x, this.pos.y + 3, this.pos.z);
+    this.ring = new THREE.Mesh(shadeRingGeo, new THREE.MeshBasicMaterial({ color: 0x9a60ff, transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    this.ring.rotation.x = -Math.PI / 2; G.scene.add(this.ring);
+  }
+  remove() { super.remove(); this.ring.parent && this.ring.parent.remove(this.ring); this.ring.material.dispose(); }
+  update(dt) {
+    this.ph += dt;
+    if (this.n.SH_Ring1) this.n.SH_Ring1.rotation.z += dt * 1.6;
+    if (this.n.SH_Ring2) this.n.SH_Ring2.rotation.z -= dt * 2.3;
+    const tg = this.tg(), pc = tg.center(playerC);
+    // follow the middle of the nearby pack, but never come within 40 m of the target
+    let cx = 0, cz = 0, k = 0;
+    for (const e of G.enemies) if (SHADE.kinds.has(e.kind) && e.alive && !e.dying && e.pos.distanceTo(this.pos) < 70) { cx += e.pos.x; cz += e.pos.z; k++; }
+    let gx, gz;
+    if (k) { gx = cx / k; gz = cz / k; }
+    else { this.orbA += dt * 0.3 * this.side; gx = pc.x + Math.cos(this.orbA) * 55; gz = pc.z + Math.sin(this.orbA) * 55; }
+    const ax = gx - pc.x, az = gz - pc.z, ad = Math.hypot(ax, az) || 1;
+    if (ad < SHADE.keep) { gx = pc.x + ax / ad * SHADE.keep; gz = pc.z + az / ad * SHADE.keep; }
+    const dx = gx - this.pos.x, dz = gz - this.pos.z, dl = Math.hypot(dx, dz) || 1;
+    const sp = SHADE.speed * Math.min(1, dl / 10 + 0.15), kk = 1 - Math.exp(-2 * dt);
+    this.vel.x += (dx / dl * sp - this.vel.x) * kk; this.vel.z += (dz / dl * sp - this.vel.z) * kk;
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 1.4, 4)) { this.pos.x -= this.vel.x * dt; this.pos.z -= this.vel.z * dt; this.vel.multiplyScalar(-0.3); this.climbT = 2.5; }
+    if (this.climbT > 0) this.climbT -= dt;
+    this.pos.x = Math.max(-ARENA + 4, Math.min(ARENA - 4, this.pos.x)); this.pos.z = Math.max(-ARENA + 4, Math.min(ARENA - 4, this.pos.z));
+    const g = groundAt(this.pos.x, this.pos.z, this.pos.y + 1);
+    const gy = g + SHADE.hover + (this.climbT > 0 ? 14 : 0) + Math.sin(this.ph * 1.7) * 0.6;
+    this.pos.y += (gy - this.pos.y) * (1 - Math.exp(-2.5 * dt));
+    this.obj.rotation.set(Math.sin(this.ph) * 0.06, this.ph * 0.4, Math.cos(this.ph * 0.8) * 0.06);
+    this.c.set(this.pos.x, this.pos.y + 3, this.pos.z);
+    this.ring.position.set(this.pos.x, groundAt(this.pos.x, this.pos.z, this.pos.y) + 0.35, this.pos.z);
+    this.ring.material.opacity = 0.22 + 0.14 * Math.sin(this.ph * 3);
+    this.ring.rotation.z += dt * 0.4;
+    if (Math.random() < 0.25) G.fx.emit('add', { x: this.c.x, y: this.c.y, z: this.c.z, vy: -1.5, life: 0.5, s0: 1.4, s1: 0.2, c0: 0x9a60ff });
+  }
+}
+
+// Lane tower: armoured pylon with a twin cannon head; shields the citadel while it stands
+export class Tower extends Enemy {
+  constructor(pos) {
+    super('tower', 'E_Tower', pos, LANE.towerHp, 2.3); this.boom = 2.4; this.isObjective = true;
+    this.c.set(pos.x, pos.y + 8.8, pos.z);
+    this.solids = [addSolid(pos.x, pos.z, 5, 5, 1, 0, 'tower'), addSolid(pos.x, pos.z, 2.6, 2.6, 6.7, 1, 'tower')];   // the gun head (hit sphere) stays clear of the boxes
+    this.burst = 0; this.burstT = 0; this.fireT = 2 + Math.random();
+  }
+  hit(dmg, at, label) { if (!isAlly(label || G.curLabel)) this.aggroT = 3; super.hit(armorHit(this, dmg)); }
+  pickT(dt) {   // towers shoot the tank column first; the player only when close or after hitting the tower
+    const P = G.player;
+    if (P && P.alive && (this.aggroT > 0 || Math.hypot(P.pos.x - this.pos.x, P.pos.z - this.pos.z) < 45)) return P;
+    this.scanT = (this.scanT || 0) - dt;
+    if (this.scanT <= 0) { this.scanT = 0.5; this.tr = null; let bd = LANE.twRange; if (G.lane) for (const t of G.lane.troops) { if (!t.alive) continue; const c = t.center(new V3()), d = c.distanceTo(this.c); if (d < bd && clearLine(this.c, c)) { bd = d; this.tr = t; } } }
+    return this.tr && this.tr.alive ? this.tr : this.tg();
+  }
+  remove() { super.remove(); for (const s of this.solids) removeSolid(s); this.solids = []; }
+  die() {
+    this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this);
+    explodeAt(this.c, 9, 40, 'P', 2.4, 0xff7040); G.fx.flash(this.c, 0xff8040, 50, 30, 0.4);
+    for (let k = 0; k < 3; k++) G.queue.push({ label: 'tower', t: 0.25 + k * 0.3, fn: () => explodeAt(new V3(this.pos.x + (Math.random() - 0.5) * 3, 2 + k * 2.5, this.pos.z + (Math.random() - 0.5) * 3), 0, 0, 'P', 1.2) });
+    this.remove();
+  }
+  update(dt) {
+    if (this.aggroT > 0) this.aggroT -= dt;
+    const p = this.pickT(dt), pc = p.center(playerC);
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz);
+    const Y = this.n.TW_Yaw; Y.rotation.y += angDiff(Math.atan2(-dx, -dz), Y.rotation.y) * Math.min(1, dt * 2.2);
+    if (dist < LANE.twRange && (p !== G.player || this.checkLos(dt))) {
+      this.fireT -= dt;
+      if (this.fireT <= 0) { this.burst = 6; this.bt = p; this.burstT = 0; this.fireT = LANE.twRate * (0.9 + Math.random() * 0.25); }
+    }
+    if (this.burst > 0) {
+      this.burstT -= dt;
+      if (this.burstT <= 0) {
+        this.burst--; this.burstT = 0.11;
+        const mp = this.n.Muzzle_Tower.getWorldPosition(new V3());
+        const bt = this.bt && this.bt.alive ? this.bt : this.tg(), aim = lead(mp, 170, _b, bt);
+        _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.035; _d.y += (Math.random() - 0.5) * 0.025; _d.z += (Math.random() - 0.5) * 0.035;
+        spawnShot({ p: mp, v: _d.normalize().multiplyScalar(170), dmg: LANE.twDmg, team: 'E', kind: 'ebullet', color: 0xff5030, w: 0.36, len: 7, label: 'tower' });
+        G.fx.muzzle(mp, _d, 0xff8a50, 1.5); sfx('eshot', dist);
+      }
+    }
+  }
+}
+
+// Citadel: the enemy base. Shielded while any tower stands; lobs plasma at whatever is closest
+export class Citadel extends Enemy {
+  constructor(pos) {
+    const S = LANE.citS;
+    super('citadel', 'E_Citadel', pos, LANE.citHp, 3.2); this.boom = 4; this.isObjective = true; this.obj.scale.setScalar(S);
+    this.c.set(pos.x, pos.y + 9.2 * S, pos.z);
+    this.solids = [addSolid(pos.x, pos.z, 16 * S, 16 * S, 1.6 * S, 0, 'citadel'), addSolid(pos.x, pos.z, 11 * S, 11 * S, 2.2 * S, 1.6 * S, 'citadel'), addSolid(pos.x, pos.z, 6.5 * S, 6.5 * S, 4.8 * S, 3.6 * S, 'citadel')];
+    this.dome = new THREE.Group();
+    this.dome.add(new THREE.Mesh(new THREE.IcosahedronGeometry(1, 3), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff5030).multiplyScalar(1.3), transparent: true, opacity: 0.3, wireframe: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false })));
+    this.dome.add(new THREE.Mesh(new THREE.IcosahedronGeometry(0.99, 4), new THREE.MeshBasicMaterial({ color: 0x902010, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })));
+    this.dome.position.set(pos.x, pos.y + 6 * S, pos.z); this.dome.scale.setScalar(13.5 * S); G.scene.add(this.dome);
+    this.fireT = 4; this.zapT = 0; this.shT = 0; this.ph = 0; this.wasSh = true;
+  }
+  get shielded() { return !!(G.lane && G.lane.towers.some((t) => t.alive)); }
+  hit(dmg) {
+    if (!this.alive || this.dying) return;
+    if (this.shielded) {
+      if (G.lane) G.lane.abs += dmg;
+      this.shT = 0.15;
+      if (Math.random() < 0.3) { const a = Math.random() * 6.28; G.fx.sparks(_a.set(this.pos.x + Math.cos(a) * 12, this.pos.y + 6 + Math.random() * 8, this.pos.z + Math.sin(a) * 12), null, 3, 0xff7050, 9, 0.8, 0.25, 0.2); }
+      return;
+    }
+    super.hit(dmg);
+  }
+  remove() { super.remove(); for (const s of this.solids) removeSolid(s); this.solids = []; if (this.dome) { this.dome.parent && this.dome.parent.remove(this.dome); for (const m of this.dome.children) { m.geometry.dispose(); m.material.dispose(); } this.dome = null; } }
+  die() {
+    this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this);
+    explodeAt(this.c, 14, 60, 'P', 4, 0xff7040); G.fx.flash(this.c, 0xff9050, 90, 40, 0.7);
+    for (let k = 0; k < 6; k++) G.queue.push({ label: 'citadel', t: 0.2 + k * 0.25, fn: () => explodeAt(new V3(this.pos.x + (Math.random() - 0.5) * 14, 2 + Math.random() * 8, this.pos.z + (Math.random() - 0.5) * 14), 0, 0, 'P', 2) });
+    this.remove();
+  }
+  update(dt) {
+    this.ph += dt;
+    const sh = this.shielded;
+    if (this.wasSh && !sh) { this.wasSh = false; G.fx.ring(new V3(this.pos.x, this.pos.y + 1, this.pos.z), null, 2, 22, 0.6, 0xff7050); G.fx.flash(this.c, 0xff6040, 60, 30, 0.4); sfx('shieldbreak', G.player ? G.player.pos.distanceTo(this.pos) : 0); G.onCitadelOpen && G.onCitadelOpen(this); }
+    if (this.dome) {
+      this.dome.visible = sh;
+      if (sh) {
+        this.dome.rotation.y += dt * 0.15; if (this.shT > 0) this.shT -= dt;
+        this.dome.children[0].material.opacity = 0.22 + 0.08 * Math.sin(this.ph * 2) + (this.shT > 0 ? 0.25 : 0);
+        this.zapT -= dt;
+        if (this.zapT <= 0) {   // the towers feed the dome: arcs from each living tower to a mast
+          this.zapT = 0.5 + Math.random() * 0.4;
+          for (const t of G.lane.towers) if (t.alive && Math.random() < 0.7) { const m = this.n['CT_Mast' + (1 + ((Math.random() * 4) | 0))]; G.fx.lightning(t.c.clone(), m ? m.getWorldPosition(new V3()).setY(this.pos.y + 7 * LANE.citS) : this.c.clone(), 0xff6040, 0.35, 0.14, 2.2); }
+        }
+      }
+    }
+    const p = this.tg(), pc = p.center(playerC), dist = pc.distanceTo(this.c);
+    this.fireT -= dt;
+    if (this.fireT <= 0 && dist < LANE.citRange && this.checkLos(dt)) {
+      this.fireT = LANE.citRate * (0.85 + Math.random() * 0.3);
+      for (let k = 0; k < 4; k++) G.queue.push({ label: 'citadel', t: k * 0.22, fn: () => {
+        if (!this.alive) return;
+        const mp = this.c.clone(); mp.y += 2;
+        const aim = lead(mp, 75, _b, this.tg()); _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.06; _d.y += 0.03 + (Math.random() - 0.5) * 0.04; _d.z += (Math.random() - 0.5) * 0.06; _d.normalize();
+        spawnShot({ p: mp, v: _d.clone().multiplyScalar(75), dmg: LANE.citDmg, team: 'E', kind: 'plasma', splash: 5, life: 3, size: 1.2, label: 'citadel' });
+      } });
+      sfx('cannon', dist);
+    }
+  }
+}
+
+// Trooper: allied squad tank. Rolls down the lane toward the next objective, stops to fight anything within range
+export class Trooper {
+  constructor(pos, lz) {
+    this.alive = true; this.isTrooper = true; this.maxHp = LANE.trHp; this.hp = this.maxHp; this.lz = lz;
+    this.foeW = 1.2; this.foeWAir = 1.15; this.foeWBoss = 1.5;
+    this.pos = pos.clone(); this.vel = new V3(); this.yaw = Math.PI / 2;   // facing west, down the lane
+    this.obj = cloneKit('A_Trooper'); this.obj.scale.setScalar(1.2); this.obj.position.copy(this.pos); G.scene.add(this.obj);
+    this.n = nodes(this.obj); this.tur = this.n.TR_Turret;
+    this.fireT = 1 + Math.random(); this.burst = 0; this.burstT = 0; this.tgt = null; this.tgtT = 0; this.flash = 0; this.stuck = 0;
+    this._ent = { isAlly: true, c: new V3(), r: 2.2, get alive() { return this.w.alive; }, w: this, hit: (d) => this.damage(d) };
+    G.friends.push(this);
+  }
+  center(out) { return out.set(this.pos.x, this.pos.y + 1.7, this.pos.z); }
+  damage(d) { if (!this.alive) return; this.hp -= d * G.diff.dmg; this.flash = 0.1; if (this.hp <= 0) this.end(false); }
+  end(quiet) {
+    if (!this.alive) return;
+    this.alive = false;
+    if (!quiet) { const c = this.center(new V3()); G.fx.explosion(c, 0.8, 0xffb060); sfx('boom', G.player ? G.player.pos.distanceTo(c) : 0); if (G.lane) G.lane.lost++; }
+    this.obj.parent && this.obj.parent.remove(this.obj);
+    const i = G.friends.indexOf(this); if (i >= 0) G.friends.splice(i, 1);
+    for (const e of G.enemies) if (e.foe === this) e.tgT = 0;
+  }
+  update(dt) {
+    const P = this.center(new V3());
+    this.tgtT -= dt;
+    if (this.tgtT <= 0) {
+      this.tgtT = 0.4; this.tgt = null; let bd = LANE.trRange;
+      for (const e of entsFor('P')) {
+        if (e.isBarrel || e.isMine || e.cloaked || e.holo) continue;
+        if (e.kind === 'citadel' && e.shielded) continue;
+        const dd = e.c.distanceTo(P); if (dd < bd && clearLine(P, e.c)) { bd = dd; this.tgt = e; }
+      }
+    }
+    const t = this.tgt && this.tgt.alive ? this.tgt : null;
+    // drive: to a parking spot short of the next objective, stop while there is something to shoot
+    const o = laneObjective();
+    let sp = 0, gx = this.pos.x, gz = this.lz;
+    if (o) { gx = o.pos.x + LANE.park; if (o === G.lane.cit) gx += 4; }
+    const dx = gx - this.pos.x, dz = gz - this.pos.z, dl = Math.hypot(dx, dz);
+    if (!t && dl > 2) sp = LANE.trSpeed;
+    let vx = dl > 0.01 ? dx / dl * sp : 0, vz = dl > 0.01 ? dz / dl * sp : 0;
+    for (const q of G.lane.troops) {   // keep a little spacing
+      if (q === this || !q.alive) continue;
+      const ox = this.pos.x - q.pos.x, oz = this.pos.z - q.pos.z, od = Math.hypot(ox, oz);
+      if (od < 4 && od > 0.01) { vx += ox / od * (4 - od) * 1.5; vz += oz / od * (4 - od) * 1.5; }
+    }
+    const k = 1 - Math.exp(-3 * dt);
+    this.vel.x += (vx - this.vel.x) * k; this.vel.z += (vz - this.vel.z) * k;
+    const ox = this.pos.x, oz = this.pos.z;
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 1.9, 2)) { this.pos.x = ox; this.pos.z = oz; this.stuck += dt; if (this.stuck > 0.3) this.lz *= 0.5; this.pos.z += Math.sign(-this.pos.z || 1) * dt * 4; if (collideCyl(this.pos, 1.9, 2)) this.pos.z = oz; }
+    else this.stuck = 0;
+    this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 2);
+    const v = Math.hypot(this.vel.x, this.vel.z);
+    if (v > 0.6) this.yaw += angDiff(Math.atan2(-this.vel.x, -this.vel.z), this.yaw) * Math.min(1, dt * 4);
+    this.obj.position.copy(this.pos); this.obj.rotation.set(0, this.yaw, 0);
+    const tc = t ? t.c : null;
+    const want = tc ? Math.atan2(-(tc.x - P.x), -(tc.z - P.z)) - this.yaw : 0;
+    this.tur.rotation.y += angDiff(want, this.tur.rotation.y) * Math.min(1, dt * 5);
+    if (this.flash > 0) this.flash -= dt;
+    this.fireT -= dt;
+    if (t && this.fireT <= 0 && Math.abs(angDiff(want, this.tur.rotation.y)) < 0.25) { this.fireT = LANE.trRate * (0.85 + Math.random() * 0.3); this.burst = 3; this.burstT = 0; }
+    if (this.burst > 0 && t) {
+      this.burstT -= dt;
+      if (this.burstT <= 0) {
+        this.burst--; this.burstT = 0.13;
+        const mp = this.n.Muzzle_Trooper.getWorldPosition(new V3()), dir = new V3().subVectors(tc, mp).normalize();
+        dir.x += (Math.random() - 0.5) * 0.04; dir.y += (Math.random() - 0.5) * 0.03; dir.z += (Math.random() - 0.5) * 0.04; dir.normalize();
+        G.curShooter = null;
+        spawnShot({ p: mp, v: dir.multiplyScalar(200), dmg: LANE.trDmg, team: 'P', kind: 'bullet', color: 0x80c8ff, w: 0.22, len: 5, life: 0.5, label: 'ally-trooper' });
+        G.fx.muzzle(mp, dir, 0x9fd8ff, 0.8);
+        if (Math.random() < 0.25) sfx('dronefire', G.player ? G.player.pos.distanceTo(mp) : 0);
+      }
+    }
+  }
+}
+
+// RB-3 repair beam: heals the most damaged ally in range; with nobody hurt it drains the enemy under the crosshair instead
+let rbMesh = null;
+function rbHolder(f) { return f.hp !== undefined && f.maxHp ? f : f.mech && f.mech.hp !== undefined ? f.mech : null; }
+function updateRBeam(dt) {
+  const R = G.rbeam, P = G.player;
+  const on = R && R.t > 0 && P && P.alive;
+  if (on) R.t -= dt;
+  if (!rbMesh && on) {
+    rbMesh = new THREE.Group();
+    const g = new THREE.CylinderGeometry(1, 1, 1, 8, 1, true).rotateX(Math.PI / 2).translate(0, 0, 0.5);
+    rbMesh.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: new THREE.Color(0x40ff70).multiplyScalar(1.6), transparent: true, opacity: 0.55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false })));
+    rbMesh.add(new THREE.Mesh(g, new THREE.MeshBasicMaterial({ color: 0xe8ffe8, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false, fog: false })));
+    G.scene.add(rbMesh);
+  }
+  if (!rbMesh) return;
+  rbMesh.visible = false;
+  if (!on) return;
+  const d = R.d, from = P.muzzlePos(R.slot, new V3(), 0);
+  R.sw -= dt;
+  const ok = (x) => x && (x.isEnt ? x.e.alive : x.f.alive && rbHolder(x.f) && rbHolder(x.f).hp < rbHolder(x.f).maxHp);
+  if (R.sw <= 0 || !ok(R.tgt)) {
+    R.sw = 0.35; R.tgt = null; let bk = 0.999;
+    for (const f of G.friends) {
+      const h = rbHolder(f); if (!f.alive || !h || f.hackT > 0) continue;
+      const k = h.hp / h.maxHp, c = f.center(new V3());
+      if (k < bk && c.distanceTo(from) < d.R && clearLine(from, c)) { bk = k; R.tgt = { f }; }
+    }
+    if (!R.tgt && R.aim) {
+      const ad = new V3().subVectors(R.aim, from).normalize(); let ba = 0.3;
+      for (const e of entsFor('P')) {
+        if (e.isBarrel || e.isMine || e.holo || (e.kind === 'citadel' && e.shielded)) continue;
+        const v = new V3().subVectors(e.c, from), L = v.length(); if (L > d.R) continue;
+        const a = v.normalize().angleTo(ad); if (a < ba && clearLine(from, e.c)) { ba = a; R.tgt = { isEnt: true, e }; }
+      }
+    }
+  }
+  const T = R.tgt; if (!T) return;
+  const end = T.isEnt ? T.e.c.clone() : T.f.center(new V3());
+  const heal = !T.isEnt;
+  if (heal) { const h = rbHolder(T.f), x = Math.min(h.maxHp - h.hp, d.heal * dt * (T.f._ent && T.f._ent.isCore ? d.coreK : T.f.isBastion ? d.turK : 1)); h.hp += x; G.rbHeal = (G.rbHeal || 0) + x; }
+  else { const x = d.drain * R.mul * dt; const h0 = G.stats.hits; dealDamage(T.e, x, 'P', end, 'repair'); G.stats.hits = h0 + (R.hitE !== T.e ? 1 : 0); R.hitE = T.e; P.hp = Math.min(P.maxHp, P.hp + x * d.back); G.rbDrain = (G.rbDrain || 0) + x; }
+  const col = heal ? 0x40ff70 : 0xb0ff30;
+  rbMesh.children[0].material.color.setHex(col).multiplyScalar(1.6);
+  const L = from.distanceTo(end), fl = 0.85 + Math.random() * 0.3;
+  rbMesh.visible = true; rbMesh.position.copy(from); rbMesh.lookAt(end);
+  rbMesh.children[0].scale.set(0.32 * fl, 0.32 * fl, L); rbMesh.children[1].scale.set(0.1, 0.1, L);
+  if (Math.random() < 0.5) G.fx.sparks(end, null, 2, col, 8, 0.8, 0.3, 0.2);
+  if (Math.random() < 0.3) G.fx.emit('add', { x: end.x, y: end.y, z: end.z, vy: heal ? 2 : -1, life: 0.3, s0: 1.4, s1: 0.2, c0: col });
+  R.sndT = (R.sndT || 0) - dt; if (R.sndT <= 0) { R.sndT = 0.5; sfx('zap', 0); }
+}
+export function clearRBeam() { G.rbeam = null; G.rbHeal = 0; G.rbDrain = 0; if (rbMesh) rbMesh.visible = false; }
+
 const salvRingGeo = new THREE.RingGeometry(SALV.padR - 0.4, SALV.padR, 48);
 export function startSalvage() {
   clearSalvage();
@@ -6891,7 +7260,7 @@ export function updateCombat(dt) {
   G.curLabel = null;
   LAVA.uT.value = G.time;
   if (G.blinkInv > 0) G.blinkInv -= dt;
-  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt);
+  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt);
   updateMarks(dt);
   updateBurning(dt);
   updateChill(dt);
