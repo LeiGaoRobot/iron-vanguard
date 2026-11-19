@@ -33,6 +33,7 @@ export const WEAPONS = {
   flak: { slot: 'arm', name: 'FL-8 高射炮', en: 'FL-8 Flak Cannon', desc: '近炸引信炮弹 · 飞近敌机 4 m 内自动空爆 · 6 m 破片 · 射程尽头也会空爆 · 专克蜂群和无人机', type: 'bullet', flak: 4, rate: 0.3, dmg: 44, splash: 6, speed: 150, spread: 0.01, life: 0.7, mag: 12, reload: 2.6, color: 0xffc070, w: 0.32, len: 3, sfx: 'cannon', recoil: 0.45 },
   shotgun: { slot: 'arm', name: 'SG-12 霰弹炮', en: 'SG-12 Scattergun', desc: '近距离 · 一发 9 颗弹丸 · 射程短', type: 'bullet', pellets: 9, rate: 0.72, dmg: 13, speed: 250, spread: 0.075, life: 0.42, mag: 6, reload: 2.3, color: 0xffc890, w: 0.2, len: 4, sfx: 'cannon', recoil: 0.7 },
   grenade: { slot: 'arm', name: 'GL-4 榴弹发射器', en: 'GL-4 Grenade Launcher', desc: '抛物线弹道 · 范围爆炸 · 可越过掩体', type: 'bullet', grenade: true, rate: 0.55, dmg: 78, splash: 6.5, speed: 88, grav: 30, spread: 0.004, mag: 8, reload: 2.5, color: 0xffa050, sfx: 'grenade', recoil: 0.55 },
+  burner: { slot: 'shoulder', name: 'AB-1 加力推进', en: 'AB-1 Afterburner', desc: '5 秒加力 · 移速 ×1.6、能量无限 · 以 14 m/s 以上撞上敌机造成 90 伤害并撞开（每台每秒一次，头目 50%）· 期间受伤 −20% · 冷却 14 秒', type: 'burner', dur: 5, speed: 1.6, ram: 90, ramR: 3.0, ramV: 14, push: 5, stun: 0.6, cut: 0.2, cd: 14, sfx: 'qboost' },
   repair: { slot: 'shoulder', name: 'RB-3 维修光束', en: 'RB-3 Repair Beam', desc: '4 秒维修光束 · 自动接上 45 m 内受损最重的友军，每秒修复 110（反应堆 / 基地 20%，炮台 60%）· 没有受损友军时改为汲取准星前方的敌机：每秒 50 伤害并回复你 30% · 冷却 12 秒', type: 'repair', dur: 4, R: 45, heal: 110, drain: 50, back: 0.3, coreK: 0.2, turK: 0.6, cd: 12, sfx: 'repair' },
   reflect: { slot: 'shoulder', name: 'RF-2 偏转力场', en: 'RF-2 Reflector', desc: '展开 2.5 秒的球形力场 · 6 m 内飞来的敌方子弹、导弹、炮弹全部反弹回最近的敌机（伤害 ×1.2）· 期间其余伤害 −40% · 冷却 13 秒', type: 'reflect', dur: 2.5, R: 6, mul: 1.2, cut: 0.4, cd: 13, sfx: 'shield' },
   frag: { slot: 'arm', name: 'SC-6 散裂炮', en: 'SC-6 Frag Cannon', desc: '炮弹飞近敌机 9 m 内（或飞出 50 m）自动炸成 6 枚破片 · 破片朝最近的敌机散射 · 中远距离威力最大', type: 'bullet', split: 0.45, fragN: 6, fragDmg: 10, rate: 0.4, dmg: 24, speed: 110, spread: 0.006, life: 1.2, mag: 10, reload: 2.6, color: 0x60ffc0, w: 0.34, len: 3, sfx: 'cannon', recoil: 0.35 },
@@ -68,7 +69,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -148,7 +149,8 @@ function damagePlayer(dmg, src, label) {
   if (G.curShooter && G.curShooter.rally) { dmg *= HERALD.dmg; G.rallyHits = (G.rallyHits || 0) + 1; }   // rallied by a herald
   if (G.curShooter && G.curShooter.emp) dmg *= SUPPLY.empDmg;   // empowered by a supply crate
   if (G.pound && G.pound.st === 'dive') dmg *= 0.5;
-  if (G.refl && G.refl.t > 0) dmg *= 1 - G.refl.d.cut;   // reflector: what it can't bounce, it softens
+  if (G.refl && G.refl.t > 0) dmg *= 1 - G.refl.d.cut;
+  if (G.burn && G.burn.t > 0) dmg *= 1 - G.burn.d.cut;   // afterburner   // reflector: what it can't bounce, it softens
   if (G.curShooter && G.curShooter.burnT > 0) dmg *= BURN_WEAK;   // direct hits (melee, beams) from a burning enemy
   const d = dmg * G.diff.dmg * p.frame.armor * (1 - blk) * (G.od && G.od.t > 0 ? OD.armor : 1);
   G.dmgLog = G.dmgLog || {}; G.dmgLog[label || '?'] = (G.dmgLog[label || '?'] || 0) + d;
@@ -670,6 +672,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; empPulse(owner, d, dmgMul); if (me) G.stats.shots++; }
   } else if (d.type === 'sonar') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; sonarPulse(owner, slot, d, dmgMul); if (me) G.stats.shots++; }
+  } else if (d.type === 'burner') {
+    if (pressed && ws.cd <= 0 && me && owner.alive) { ws.cd = d.cd; G.burn = { t: d.dur, d, mul: dmgMul, slot, hit: new Map() }; sfx('qboost', 0); sfx('od', 0); G.stats.shots++; G.burns = (G.burns || 0) + 1; fx.ring(new V3(owner.pos.x, owner.pos.y + 0.4, owner.pos.z), null, 1, 7, 0.35, 0xff9a40); }
   } else if (d.type === 'repair') {
     if (pressed && ws.cd <= 0 && me && owner.alive) { ws.cd = d.cd; G.rbeam = { t: d.dur, d, mul: dmgMul, slot, tgt: null, sw: 0, aim: aim.clone() }; sfx('repair', 0); G.stats.shots++; }
     if (me && G.rbeam && G.rbeam.t > 0) G.rbeam.aim.copy(aim);
@@ -1887,7 +1891,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -7228,6 +7232,182 @@ export function dropRepair(pos) {
   G.pickups.push({ o, t: 0 });
 }
 
+// ------------------------------------------------------------------ v45 AB-1 afterburner: 5 s of ×1.6 speed and free energy;
+// ploughing into an enemy above 14 m/s rams it (90 damage, shoved and stunned, once a second per enemy, bosses take half)
+export function updateBurn(dt) {
+  const B = G.burn, P = G.player; if (!B) return;
+  B.t -= dt;
+  if (!P || !P.alive || B.t <= 0) { if (P) P.burnMul = 1; G.burn = null; sfx('odend', 0); return; }
+  P.burnMul = B.d.speed; P.en = P.maxEn; P.overheat = 0;
+  const pc = P.center(_c), sp = Math.hypot(P.vel.x, P.vel.y, P.vel.z);
+  // exhaust: two orange jets out of the back
+  const yaw = P.aimYaw ?? 0, bx = Math.sin(yaw), bz = Math.cos(yaw);
+  for (let k = 0; k < 2; k++) {
+    const sx = Math.cos(yaw) * (k ? 0.9 : -0.9), sz = -Math.sin(yaw) * (k ? 0.9 : -0.9);
+    G.fx.emit('add', { x: pc.x + bx * 1.6 + sx, y: pc.y + 0.6, z: pc.z + bz * 1.6 + sz, vx: bx * 9 - P.vel.x * 0.3, vy: (Math.random() - 0.5) * 1.5, vz: bz * 9 - P.vel.z * 0.3, life: 0.22, s0: 1.3, s1: 0.2, c0: 0xffd080, c1: 0xff4010 });
+  }
+  if (sp < B.d.ramV) return;
+  const now = G.time || 0;
+  for (const e of G.enemies) {
+    if (!e.alive || e.dying || !e.c || e.holo) continue;
+    const R = B.d.ramR + (e.r || 1.5);
+    if (e.c.distanceToSquared(pc) > R * R) continue;
+    const last = B.hit.get(e); if (last !== undefined && now - last < 1) continue;
+    B.hit.set(e, now);
+    const big = e.kind === 'boss' || e.kind === 'raider' || e.maxHp > 3000;
+    G.curLabel = 'p-burner'; dealDamage(e, B.d.ram * B.mul * (big ? 0.5 : 1), 'P', e.c, 'p-burner'); G.curLabel = null;
+    G.rams = (G.rams || 0) + 1;
+    _b.set(e.c.x - pc.x, 0, e.c.z - pc.z); if (_b.lengthSq() < 0.01) _b.set(P.vel.x, 0, P.vel.z); _b.normalize();
+    G.fx.sparks(e.c, _b, 14, 0xffb060, 16, 1.2, 0.35, 0.3); G.fx.ring(e.c, null, 0.6, 4, 0.25, 0xffa040); sfx('pilehit', 0);
+    G.fx.trauma = Math.min(1, (G.fx.trauma || 0) + 0.25);
+    if (!big && e.alive && e.pos && !e.isObjective) {
+      const ox = e.pos.x, oz = e.pos.z; e.pos.x += _b.x * B.d.push; e.pos.z += _b.z * B.d.push;
+      if (pointInSolid(new V3(e.pos.x, e.pos.y + 1, e.pos.z), e.r || 2)) { e.pos.x = ox; e.pos.z = oz; }
+      if (e.vel) e.vel.multiplyScalar(0.2);
+      e.stunT = Math.max(e.stunT || 0, B.d.stun); e.stunMax = e.stunT;
+    }
+    P.vel.x *= 0.8; P.vel.z *= 0.8;
+  }
+}
+export function clearBurn() { G.burn = null; G.burns = 0; G.rams = 0; if (G.player) G.player.burnMul = 1; }
+
+// ------------------------------------------------------------------ v45 beacon run: fly through 14 beacon gates in order against
+// the clock. Each gate +9 s, each kill +2 s (+1 for small fry). Engineers race ahead and weld turrets next to upcoming gates.
+export const BEACON = { n: 14, laps: 2, total: 28, rIn: 78, rOut: 118, lo: 5.5, hi: 14, passR: 6.5, passH: 7, t0: 30, add: 2.5, kill: 1.5, killS: 0.75, fin: 25 };
+export const BEACON_GATES = Array.from({ length: BEACON.n }, (_, i) => { const a = i / BEACON.n * Math.PI * 2 - Math.PI / 2; const r = i % 2 ? BEACON.rOut : BEACON.rIn; return [Math.round(Math.cos(a) * r), Math.round(Math.sin(a) * r), i % 4 === 3 ? BEACON.hi : BEACON.lo]; });
+export const BEACON_PATH = [...BEACON_GATES.map(([x, z]) => [x, z]), [BEACON_GATES[0][0], BEACON_GATES[0][1]]];
+const gateBeamGeo = new THREE.CylinderGeometry(0.7, 0.7, 90, 12, 1, true).translate(0, 45, 0);
+let beamMesh = null;
+const GATE_COL = { next: [0x30e0ff, 2.6], soon: [0x2a6a90, 0.9], done: [0x40ff80, 0.7] };
+function gateTint(g, k) {
+  const [c, s] = GATE_COL[k];
+  for (const m of g.mats) { if (m.emissive) { m.emissive.setHex(c); m.emissiveIntensity = s; } else m.color.setHex(c); }
+}
+export function startBeacon() {
+  clearBeacon();
+  const gates = BEACON_GATES.map(([x, z, h], i) => {
+    const y = groundAt(x, z, 40) + h;
+    const obj = cloneKit('P_Gate'); obj.position.set(x, y, z);
+    const [nx, nz] = BEACON_GATES[(i + 1) % BEACON.n], [px, pz] = BEACON_GATES[(i + BEACON.n - 1) % BEACON.n];
+    obj.rotation.y = Math.atan2(-(nx - px), -(nz - pz));
+    const mats = [];
+    obj.traverse((o) => { if (o.isMesh && o.material && /GateGlow/.test(o.material.name)) { o.material = o.material.clone(); mats.push(o.material); } });
+    G.scene.add(obj);
+    const g = { x, y, z, obj, mats, spin: nodes(obj).GT_Spin, passed: false, i };
+    gateTint(g, i === 0 ? 'next' : 'soon');
+    return g;
+  });
+  if (!beamMesh) { beamMesh = new THREE.Mesh(gateBeamGeo, new THREE.MeshBasicMaterial({ color: 0x40e8ff, transparent: true, opacity: 0.28, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide })); beamMesh.renderOrder = 3; }
+  G.scene.add(beamMesh);
+  G.beacon = { gates, i: 0, t: BEACON.t0, done: false, bonus: 0, kills: 0, flash: 0, best: BEACON.t0 };
+  placeBeam();
+}
+function placeBeam() {
+  const B = G.beacon; if (!B || !beamMesh) return;
+  const g = beaconNext(); beamMesh.visible = !!g;
+  if (g) beamMesh.position.set(g.x, groundAt(g.x, g.z, 40), g.z);
+}
+export function clearBeacon() {
+  const B = G.beacon; if (B) for (const g of B.gates) { g.obj.parent && g.obj.parent.remove(g.obj); for (const m of g.mats) m.dispose(); }
+  if (beamMesh && beamMesh.parent) beamMesh.parent.remove(beamMesh);
+  G.beacon = null;
+}
+export function beaconNext() { const B = G.beacon; return B && !B.done ? B.gates[B.i % BEACON.n] : null; }
+export function beaconTime(k) { const B = G.beacon; if (!B || B.done || B.t <= 0) return; const a = k === 'small' ? BEACON.killS : BEACON.kill; B.t += a; B.bonus += a; B.kills++; B.flash = 0.6; }
+export function updateBeacon(dt) {
+  const B = G.beacon, P = G.player; if (!B) return;
+  for (const g of B.gates) if (g.spin) g.spin.rotation.z += dt * (g === beaconNext() ? 1.6 : 0.4);
+  if (beamMesh && beamMesh.visible) beamMesh.material.opacity = 0.2 + 0.1 * Math.sin((G.time || 0) * 5);
+  B.flash = Math.max(0, B.flash - dt);
+  if (B.i > 0 && !B.won && !(G.player && G.player.alive === false)) B.t = Math.max(0, B.t - dt);
+  if (B.done) return;
+  if (!P || !P.alive || B.t <= 0) return;
+  const g = B.gates[B.i % BEACON.n], pc = P.center(_c);
+  if (Math.hypot(pc.x - g.x, pc.z - g.z) < BEACON.passR && Math.abs(pc.y - g.y) < BEACON.passH) {
+    g.passed = true; gateTint(g, 'done'); B.i++;
+    G.fx.ring(new V3(g.x, g.y, g.z), null, 1, 9, 0.4, 0x40ffc0); G.fx.sparks(new V3(g.x, g.y, g.z), null, 24, 0x80f0ff, 18, 1.4, 0.5, 0.3);
+    if (B.i >= BEACON.total) { B.done = true; B.t += BEACON.fin; }
+    else { B.t += BEACON.add; if (B.i % BEACON.n === 0) for (const q of B.gates) { q.passed = false; gateTint(q, 'soon'); } gateTint(B.gates[B.i % BEACON.n], 'next'); }
+    B.flash = 0.8; B.best = Math.max(B.best, B.t);
+    placeBeam(); G.onGate && G.onGate(B.i, B.done);
+  }
+}
+
+// ---- Engineer: a tracked construction rig. It drives ahead of you (in the beacon run, to the gate after next), stops and
+// welds a light turret together in 2.6 s, then backs off and goes for another. Up to three of its turrets at a time.
+export const ENG = { hp: 520, r: 1.9, speed: 10, buildT: 2.6, rest: [4, 7], max: 3, tHp: 170, tS: 0.78, near: 13 };
+export class Engineer extends Enemy {
+  constructor(pos) {
+    super('engineer', 'E_Engineer', pos, ENG.hp, ENG.r); this.boom = 0.9;
+    this.pos.y = groundAt(pos.x, pos.z, 40); this.yaw = Math.random() * 6; this.vel = new V3(); this.st = 'go'; this.t = 0; this.goT = 0; this.spot = null; this.builds = []; this.ph = Math.random() * 6;
+    this.stuckT = 0; this.sideT = 0; this.side = 1; this.last = this.pos.clone(); this.c.set(this.pos.x, this.pos.y + 1.2, this.pos.z);
+  }
+  drive(tx, tz, spd, dt) {
+    let dx = tx - this.pos.x, dz = tz - this.pos.z; const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+    if (this.sideT > 0) { this.sideT -= dt; const sx = -dz * this.side, sz = dx * this.side; dx = dx * 0.3 + sx; dz = dz * 0.3 + sz; }
+    const k = Math.min(1, dl / 6);
+    this.vel.x += (dx * spd * k - this.vel.x) * (1 - Math.exp(-4 * dt)); this.vel.z += (dz * spd * k - this.vel.z) * (1 - Math.exp(-4 * dt));
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    this.pos.x = Math.max(-ARENA + 5, Math.min(ARENA - 5, this.pos.x)); this.pos.z = Math.max(-ARENA + 5, Math.min(ARENA - 5, this.pos.z));
+    collideCyl(this.pos, 1.8, 2);
+    this.stuckT += dt; if (this.stuckT > 1.5) { if (this.pos.distanceTo(this.last) < 3 && dl > 3) { this.sideT = 1.4; this.side *= -1; } this.stuckT = 0; this.last.copy(this.pos); }
+    if (Math.hypot(this.vel.x, this.vel.z) > 1) this.yaw += angDiff(Math.atan2(-this.vel.x, -this.vel.z), this.yaw) * Math.min(1, dt * 6);   // kit front is -Z
+    return dl;
+  }
+  pickSpot() {
+    const B = G.beacon; let cx, cz;
+    if (B && !B.done) { const g = B.gates[(B.i + 1 + (Math.random() < 0.5 ? 1 : 0)) % BEACON.n]; cx = g.x; cz = g.z; }
+    else { const p = this.tg(); let dx = this.pos.x - p.pos.x, dz = this.pos.z - p.pos.z; const dl = Math.hypot(dx, dz) || 1; cx = p.pos.x + dx / dl * 32; cz = p.pos.z + dz / dl * 32; }
+    for (let k = 0; k < 24; k++) {
+      const a = Math.random() * Math.PI * 2, r = ENG.near * (0.7 + Math.random() * 0.6), x = cx + Math.cos(a) * r, z = cz + Math.sin(a) * r;
+      if (Math.abs(x) > ARENA - 10 || Math.abs(z) > ARENA - 10 || pointInSolid(new V3(x, 1, z), 4.5)) continue;
+      return new V3(x, 0, z);
+    }
+    return new V3(cx + 10, 0, cz);
+  }
+  update(dt) {
+    this.ph += dt; const n = this.n;
+    this.builds = this.builds.filter((t) => t.alive);
+    for (const t of this.builds) if (t.grow < 1) { t.grow = Math.min(1, t.grow + dt * 1.4); t.obj.scale.setScalar(ENG.tS * (0.12 + 0.88 * t.grow)); }
+    if (this.st === 'go') {
+      if (!this.spot) { this.spot = this.pickSpot(); this.goT = 0; }
+      this.goT += dt;
+      if (this.drive(this.spot.x, this.spot.z, ENG.speed, dt) < 2.2) { this.st = 'build'; this.t = ENG.buildT; this.vel.set(0, 0, 0); G.onWeld && G.onWeld(this); }
+      else if (this.goT > 22) this.spot = null;
+    } else if (this.st === 'build') {
+      this.t -= dt;
+      const tp = n.EN_Torch ? n.EN_Torch.getWorldPosition(_a) : _a.set(this.pos.x, this.pos.y + 1.5, this.pos.z);
+      if (Math.random() < 0.6) G.fx.sparks(tp, null, 3, Math.random() < 0.5 ? 0xffe080 : 0x80d0ff, 8, 0.9, 0.3, 0.18);
+      if (Math.random() < 0.15) G.fx.emit('add', { x: tp.x, y: tp.y, z: tp.z, life: 0.08, s0: 1.6, s1: 0.4, c0: 0xc0e8ff });
+      if (this.t <= 0) { this.weld(); this.st = 'rest'; this.t = ENG.rest[0] + Math.random() * (ENG.rest[1] - ENG.rest[0]); if (n.EN_Pod) n.EN_Pod.visible = false; }
+    } else {
+      this.t -= dt; const P = G.player;
+      const ax = P ? this.pos.x - P.pos.x : 1, az = P ? this.pos.z - P.pos.z : 0, al = Math.hypot(ax, az) || 1;
+      if (al < 40) this.drive(this.pos.x + ax / al * 20, this.pos.z + az / al * 20, ENG.speed * 0.8, dt);
+      else { this.vel.multiplyScalar(Math.exp(-3 * dt)); this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt; }
+      if (this.t <= 0) { if (this.builds.length < ENG.max) { this.st = 'go'; this.spot = null; if (n.EN_Pod) n.EN_Pod.visible = true; } else this.t = 2.5; }
+    }
+    if (n.EN_Arm) n.EN_Arm.rotation.x += ((this.st === 'build' ? 0.7 + Math.sin(this.ph * 9) * 0.12 : -0.15) - n.EN_Arm.rotation.x) * Math.min(1, dt * 5);
+    if (n.EN_Fore) n.EN_Fore.rotation.x += ((this.st === 'build' ? -0.9 : 0.4) - n.EN_Fore.rotation.x) * Math.min(1, dt * 5);
+    this.pos.y += (groundAt(this.pos.x, this.pos.z, this.pos.y + 1.5) - this.pos.y) * Math.min(1, dt * 10);
+    this.obj.rotation.set(0, this.yaw, 0);
+    this.c.set(this.pos.x, this.pos.y + 1.2, this.pos.z);
+  }
+  weld() {
+    const fx0 = -Math.sin(this.yaw), fz0 = -Math.cos(this.yaw);
+    let at = null;
+    for (const [f, sd] of [[4.5, 0], [3.5, 3.5], [3.5, -3.5], [-4, 0]]) {
+      const x = this.pos.x + fx0 * f + fz0 * sd, z = this.pos.z + fz0 * f - fx0 * sd;
+      if (!pointInSolid(new V3(x, 1, z), 2.2)) { at = new V3(x, groundAt(x, z, this.pos.y + 3), z); break; }
+    }
+    if (!at) return;
+    const t = new Turret(at); t.built = true; t.maxHp = ENG.tHp * G.diff.hp; t.hp = t.maxHp; t.r = 1.7; t.grow = 0; t.fireT = 1.5 + Math.random();
+    t.obj.scale.setScalar(ENG.tS * 0.12); t.c.set(at.x, at.y + 1.8 * ENG.tS, at.z);
+    this.builds.push(t); G.welded = (G.welded || 0) + 1;
+    G.fx.ring(new V3(at.x, at.y + 0.3, at.z), null, 0.6, 4, 0.3, 0xffd060); sfx('reload', G.player ? G.player.pos.distanceTo(at) : 0);
+  }
+}
+
 export function updateCombat(dt) {
   RAYF.skipIce = false;
   for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; q.fn(); } }
@@ -7260,7 +7440,7 @@ export function updateCombat(dt) {
   G.curLabel = null;
   LAVA.uT.value = G.time;
   if (G.blinkInv > 0) G.blinkInv -= dt;
-  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt);
+  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt); updateBurn(dt); updateBeacon(dt);
   updateMarks(dt);
   updateBurning(dt);
   updateChill(dt);
