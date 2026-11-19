@@ -122,6 +122,8 @@ M = dict(
     RamGlow=mat("RamGlow", "#ffd0a0", 0.3, emit="#ff6a20", strength=2.4),
     RicoGlow=mat("RicoGlow", "#d8fff0", 0.2, emit="#40ffc0", strength=2.0),
     NeedleGlow=mat("NeedleGlow", "#ffd0f4", 0.2, emit="#ff50d8", strength=2.2),
+    HeraldGlow=mat("HeraldGlow", "#ffd0c0", 0.3, emit="#ff3020", strength=2.2),
+    RodGlow=mat("RodGlow", "#e0f6ff", 0.2, emit="#80d8ff", strength=2.4),
     Rust2=mat("Rust2", "#5a3a26", 0.9, metal=0.2),
 )
 
@@ -2003,7 +2005,64 @@ def build_needler():
     box((-0.21, 0.3, 0.05), (0.04, 0.5, 0.2), M["Hazard"], K)
     muzzle("Muzzle_Needler", (0, 1.45, 0.06), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler()
+
+def build_herald():
+    # Herald: a squat four-legged command walker carrying a tall signal mast with a glowing red banner (HR_Banner,
+    # pivots at the mast so it can sway), two loudspeaker horns near the top and a light gun under the chin
+    # (Muzzle_HR). Origin at the feet. front = +Y
+    K = kit("E_Herald")
+    box((0, 0, 2.3), (2.6, 3.0, 1.3), M["EArmor"], K, bevel=0.2)
+    box((0, 0.2, 3.1), (1.9, 2.0, 0.5), M["EArmor2"], K, bevel=0.1)
+    box((0, 1.55, 2.4), (1.2, 0.2, 0.3), M["EEye"], K)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            box((sx * 1.35, sy * 1.15, 1.2), (0.4, 0.4, 2.0), M["Frame"], K, rot=(sy * 0.25, -sx * 0.25, 0), bevel=0.05)
+            box((sx * 1.6, sy * 1.4, 0.15), (0.7, 0.7, 0.3), M["Black"], K, bevel=0.05)
+            ball((sx * 1.3, sy * 1.1, 2.0), 0.3, M["Joint"], K, sub=1)
+    cyl((0, -0.6, 6.2), 0.16, 6.2, M["Frame"], K, verts=10)
+    for z in (4.0, 6.0, 8.0):
+        torus((0, -0.6, z), 0.3, 0.06, M["Joint"], K)
+    b = empty("HR_Banner", (0, -0.6, 8.6), K)
+    box((0, -0.95, -1.1), (0.08, 1.8, 2.4), M["HeraldGlow"], b)
+    box((0, -0.95, 0.15), (0.12, 1.9, 0.12), M["Frame"], b)
+    for sx in (-1, 1):
+        cyl((sx * 0.55, -0.35, 8.9), 0.12, 0.8, M["EArmor2"], K, rot=(0, sx * math.pi / 2 * 0.9, 0), r2=0.38, verts=12)
+    ball((0, -0.6, 9.45), 0.28, M["HeraldGlow"], K, sub=1)
+    g = empty("HR_Gun", (0, 1.4, 1.75), K)
+    box((0, 0, 0), (0.7, 0.6, 0.4), M["Frame"], g, bevel=0.05)
+    cyl((0, 0.55, 0), 0.1, 0.8, M["Joint"], g, rot=ALONG_Y, verts=10)
+    muzzle("Muzzle_HR", (0, 2.4, 1.75), K)
+
+def build_rod():
+    # Lightning rod: a tripod foot, a tall segmented mast with coil rings and a glowing tip (RD_Tip).
+    # Used both as the LR-1 deployable (scale ~1) and as the storm towers in the arena (scale ~2.4). front = +Y
+    K = kit("D_Rod")
+    cyl((0, 0, 0.25), 0.7, 0.3, M["Frame"], K, verts=16)
+    for i in range(3):
+        a = i / 3 * math.pi * 2
+        box((math.cos(a) * 0.9, math.sin(a) * 0.9, 0.2), (0.18, 0.18, 1.0), M["Joint"], K, rot=(math.sin(a) * 0.9, -math.cos(a) * 0.9, 0))
+        box((math.cos(a) * 1.3, math.sin(a) * 1.3, 0.05), (0.36, 0.36, 0.1), M["Hazard"], K)
+    cyl((0, 0, 3.4), 0.13, 6.2, M["Frame"], K, verts=10)
+    cyl((0, 0, 0.9), 0.32, 1.0, M["Armor2"], K, verts=12)
+    for z in (2.0, 3.2, 4.4, 5.6):
+        torus((0, 0, z), 0.34, 0.07, M["RodGlow"] if z > 5 else M["Joint"], K)
+    t = empty("RD_Tip", (0, 0, 6.7), K)
+    cyl((0, 0, 0.0), 0.08, 0.7, M["Joint"], t, verts=8, r2=0.01)
+    ball((0, 0, -0.25), 0.18, M["RodGlow"], t, sub=1)
+
+def build_rod_pack():
+    K = kit("S_Rod")
+    # shoulder rack carrying a folded rod: a long cradle with the mast lying along it, glowing tip forward
+    box((0, -0.1, 0.25), (0.62, 1.1, 0.4), M["Armor2"], K, bevel=0.05)
+    cyl((0, 0.05, 0.55), 0.07, 1.2, M["Frame"], K, rot=ALONG_Y, verts=8)
+    ball((0, 0.7, 0.55), 0.1, M["RodGlow"], K, sub=1)
+    for y in (-0.3, 0.15):
+        torus((0, y, 0.55), 0.14, 0.035, M["Joint"], K, rot=ALONG_Y)
+    for sx in (-1, 1):
+        box((sx * 0.34, -0.1, 0.25), (0.05, 0.9, 0.12), M["Hazard"], K)
+    muzzle("Muzzle_RodPack", (0, 0.8, 0.55), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

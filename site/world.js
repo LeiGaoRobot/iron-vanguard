@@ -7,6 +7,7 @@ export const RAYF = { skipIce: false };   // ice walls stop enemy fire only: ray
 export const WATER = { on: false, y: -50 };   // storm surge: flat water plane at height y (mechs wade slower below it)
 export const PLAT = { R: 0 };   // sky elevator: round deck of radius R, void beyond (0 = normal square arena)
 export const ARENA = 170;          // playable half-size (m)
+export const STORM_RODS = [];     // thunderhead lightning towers {x, z, top}
 export const solids = [];          // {min: V3, max: V3, kind, ref}
 export const barrels = [];         // explosive props {obj, pos, hp, solid}
 export const relaySites = [];      // objective tower spots (snowfield)
@@ -55,7 +56,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', gale = env === 'gale', salt = env === 'salt', scrap = env === 'scrap', quake = env === 'quake', snow = env === 'snow', storm = env === 'storm', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister';
+  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', gale = env === 'gale', salt = env === 'salt', scrap = env === 'scrap', quake = env === 'quake', snow = env === 'snow', storm = env === 'storm' || env === 'thunder', thunder = env === 'thunder', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister';
   LAVA.on = forge; GRID.on = grid; const PR = PLAT.R;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
@@ -328,6 +329,17 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   if (grid) {   // power plant: transmission pylons and transformers
     scatter(14, 5, (x, z) => { place.push({ kit: 'P_Pylon', matrix: M4(x, 0, z, rnd() < 0.5 ? 0 : Math.PI / 2, 1.1) }); addSolid(x, z, 3.0, 3.0, 11, 0, 'pylon'); });
     scatter(22, 3, (x, z) => { const r = rnd() < 0.5 ? 0 : Math.PI / 2; place.push({ kit: 'P_Transformer', matrix: M4(x, 0, z, r, 1) }); addSolid(x, z, r ? 2.2 : 3.2, r ? 3.2 : 2.2, 3.2, 0, 'transformer'); });
+  }
+  STORM_RODS.length = 0;
+  if (thunder) {   // thunderhead: six lightning towers spread around the arena, each covering 14 m from storm bolts
+    for (let i = 0; i < 6; i++) {
+      for (let t = 0; t < 40; t++) {
+        const a = (i + 0.2 + rnd() * 0.6) / 6 * Math.PI * 2, r = (i % 2 ? 0.62 : 0.34 + 0.1 * rnd()) * ARENA + t * 0.5 * (rnd() - 0.5);
+        const x = Math.sin(a) * r, z = Math.cos(a) * r;
+        if (!free(x, z, 3)) continue;
+        place.push({ kit: 'D_Rod', matrix: M4(x, 0, z, rnd() * 6.28, 2.4) }); addSolid(x, z, 1.8, 1.8, 15, 0, 'rod'); STORM_RODS.push({ x, z, top: 6.7 * 2.4 }); break;
+      }
+    }
   }
   if (quake) {   // fault-line city: broken columns, toppled barriers and debris
     scatter(18, 3, (x, z) => { place.push({ kit: 'P_Pillar', matrix: M4(x, 0, z, rnd() * 6.28, 0.6 + rnd() * 0.5) }); addSolid(x, z, 1.8, 1.8, 5, 0, 'pillar'); });

@@ -14,6 +14,7 @@ export const G = {
   hud: { hit: 0, hurt: 0, kill: 0 },
   aimPoint: new V3(), lockTarget: null, locks: [], onKill: null, onPlayerHit: null,
   pw: {},      // player weapon states by slot
+  rods: [],     // planted LR-1 lightning rods
   friends: [],  // other things enemies may shoot: wingman, reactor core ({pos, vel, center(), alive, _ent, foeW})
 };
 
@@ -49,6 +50,7 @@ export const WEAPONS = {
   decoy: { slot: 'shoulder', name: 'HD-1 全息诱饵', en: 'HD-1 Holo Decoy', desc: '投射机体全息影像 6 秒 · 吸引敌方火力（头目不易上当）· 被打碎时放出电磁冲击', type: 'decoy', hp: 380, dur: 6, cd: 20, burst: 70, burstR: 11, sfx: 'decoy' },
   orbital: { slot: 'shoulder', name: 'OS-1 轨道打击', en: 'OS-1 Orbital Strike', desc: '标记落点 · 1.4 秒后卫星光柱从天而降 · 半径 9 m 重击 · 落点灼烧 2 秒 · 锁定时卫星跟踪目标直到落下前 0.4 秒', type: 'orbital', dmg: 360, R: 9, delay: 1.4, dps: 40, burnT: 2, range: 170, cd: 13, sfx: 'orbital' },
   pmines: { slot: 'shoulder', name: 'LM-3 跳雷', en: 'LM-3 Bounding Mines', desc: '在身边撒下 4 枚跳雷 · 0.6 秒后布防 · 敌机进入 9 m 水平范围（20 m 高度内）即弹起追击引爆 · 90 伤害 / 6 m · 存在 25 秒', type: 'pmines', n: 4, arm: 0.6, trig: 9, hmax: 20, dmg: 90, R: 6, life: 25, cd: 9, max: 12, sfx: 'minedrop' },
+  rod: { slot: 'shoulder', name: 'LR-1 避雷针', en: 'LR-1 Lightning Rod', desc: '在前方 6 m 插下避雷针 14 秒 · 每 0.9 秒放电打 22 m 内最近的敌机（36，再连锁 1 个）· 雷暴里 14 m 内不会被雷劈 · 同时只能有 1 根', type: 'rod', dur: 14, zap: 0.9, dmg: 36, R: 22, chains: 2, cover: 14, cd: 18, sfx: 'sentry' },
   sentry: { slot: 'shoulder', name: 'TR-3 哨戒炮塔', en: 'TR-3 Sentry Turret', desc: '在前方架设自动炮塔 15 秒 · 双管速射 75 m 内敌机 · 吸引部分火力 · 耐久 400 · 同时只能有 1 座', type: 'sentry', hp: 400, dur: 15, dmg: 10, rate: 0.11, range: 75, cd: 22, sfx: 'sentry' },
   stasis: { slot: 'shoulder', name: 'TS-1 时滞场', en: 'TS-1 Stasis Field', desc: '在准星处展开 14 m 时滞球 5 秒 · 球内敌机动作放慢到三成、敌弹几乎停在空中 · 头目只放慢一半', type: 'stasis', range: 60, R: 14, dur: 5, k: 0.3, bossK: 0.6, shotK: 0.12, cd: 17, sfx: 'stasis' },
   smoke: { slot: 'shoulder', name: 'SM-2 烟幕弹', en: 'SM-2 Smoke Screen', desc: '在身前炸开 12 m 烟幕 8 秒 · 烟幕外的敌人看不穿它，无法瞄准烟里的你 · 已发射的导弹照样追踪', type: 'smoke', R: 12, dur: 8, cd: 16, sfx: 'smoke' },
@@ -56,7 +58,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -116,7 +118,7 @@ export const OD = { fill: 2600, dur: 10, dmg: 1.4, armor: 0.65 };
 // ------------------------------------------------------------------ damage
 function dealDamage(ent, dmg, team, at, label) {
   if (!ent.alive) return;
-  if (team === 'P') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.stunT > 0) dmg *= STUN_VULN; if (h.markT > 0) dmg *= h.maxHp > 3000 ? WEAPONS.sonar.bossVuln : WEAPONS.sonar.vuln; }   // EMP-stunned targets take extra damage
+  if (team === 'P') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.stunT > 0) dmg *= STUN_VULN; if (h.markT > 0) dmg *= h.maxHp > 3000 ? WEAPONS.sonar.bossVuln : WEAPONS.sonar.vuln; if (h.hornT > 0) { G.hornBlocked = (G.hornBlocked || 0) + dmg * (1 - HERALD.hornK); dmg *= HERALD.hornK; } }   // EMP-stunned targets take extra damage
   if ((team === 'P' || team === 'X') && !G.pierce && !ent.isBarrel && !ent.isMine && !ent.isPlayer && !ent.isAlly && G.player) {   // warden dome: hits from outside are absorbed
     const w = domeAt(ent.c);
     if (w && G.player.pos.distanceTo(w.pos) > w.R) { w.absorb(dmg, domeEntry(w, G.player.center(_c), ent.c, new V3())); if (team === 'P' && !isAlly(label || G.curLabel)) G.stats.hits++; return; }
@@ -132,6 +134,7 @@ function damagePlayer(dmg, src, label) {
   const p = G.player; if (!p || !p.alive || G.godMode || G.blinkInv > 0) return;
   const blk = shieldBlock(p, src || G.curSrc);
   if (blk) { G.stats.blocked = (G.stats.blocked || 0) + dmg * blk; if (Math.random() < 0.3) sfx('shield', 0); }
+  if (G.curShooter && G.curShooter.rally) { dmg *= HERALD.dmg; G.rallyHits = (G.rallyHits || 0) + 1; }   // rallied by a herald
   if (G.curShooter && G.curShooter.burnT > 0) dmg *= BURN_WEAK;   // direct hits (melee, beams) from a burning enemy
   const d = dmg * G.diff.dmg * p.frame.armor * (1 - blk) * (G.od && G.od.t > 0 ? OD.armor : 1);
   G.dmgLog = G.dmgLog || {}; G.dmgLog[label || '?'] = (G.dmgLog[label || '?'] || 0) + d;
@@ -168,6 +171,7 @@ export function spawnShot(o) {
   const s = { x: o.p.x, y: o.p.y, z: o.p.z, v: o.v.clone(), life: o.life ?? 2.5, dmg: o.dmg, team: o.team, kind: o.kind, splash: o.splash || 0,
     burn: o.burn || 0, burnT: o.burnT || 0, chill: o.chill || 0, label: o.label || G.curLabel || o.kind, color: o.color ?? 0xffd27a, w: o.w ?? 0.2, len: o.len ?? 6, target: o.target || null, aim: o.aim ? o.aim.clone() : null, age: 0, speed: o.v.length(), maxSpeed: o.maxSpeed || 0, size: o.size || 1, turn: o.turn || 5.5, grav: o.grav ?? 6 };
   if (o.flak) s.flak = o.flak; if (o.sticky) s.sticky = true;
+  if (s.team === 'E' && G.curShooter && G.curShooter.rally) s.dmg *= HERALD.dmg;
   if (s.team === 'E' && G.curShooter && G.curShooter.burnT > 0) s.dmg *= BURN_WEAK;   // burning enemies fire weakened shots
   G.shots.push(s);
   return s;
@@ -581,6 +585,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; popSmoke(owner, slot, d); if (me) G.stats.shots++; }
   } else if (d.type === 'pmines') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; dropPMines(owner, d, dmgMul); sfx('minedrop', dist); if (me) G.stats.shots += d.n; }
+  } else if (d.type === 'rod') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Rod(owner, slot, d, dmgMul); sfx('sentry', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'sentry') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Sentry(owner, slot, d, dmgMul); sfx('sentry', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'decoy') {
@@ -5209,6 +5215,181 @@ function updateFlares(dt) {
   F.exposed = F.st !== 'calm' && P.alive && !inShade(P.pos.x, P.pos.y + 2.5, P.pos.z);
 }
 
+// ---- Thunderhead: storm bolts lock onto the highest mech in the open (you or flying enemies) for 1.4 s, then strike.
+// Landing or standing within 14 m of a lightning rod (arena towers or LR-1) makes the bolt miss; a rod that takes a bolt zaps the nearest enemy.
+export const THUNDER = { first: 10, every: [4.5, 7], lock: 1.4, dmg: 58, edmg: 150, hov: 5, rodR: 14, react: 0.7, zap: 70, zapR: 18 };
+const _th = new V3(), _th2 = new V3(), _th3 = new V3();
+export const RODS_AT = [];   // arena storm towers {x, z, top}
+let rodRings = [];
+const ringMat = (c, o) => new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide });
+export function startThunder(rods) {
+  G.thunder = { t: THUNDER.first, lock: null };
+  RODS_AT.length = 0; for (const r of rods) RODS_AT.push(r);
+  const geo = new THREE.RingGeometry(THUNDER.rodR - 0.4, THUNDER.rodR, 64); geo.rotateX(-Math.PI / 2);
+  const mat = ringMat(0x60c8ff, 0.32);
+  for (const r of RODS_AT) { const m = new THREE.Mesh(geo, mat); m.position.set(r.x, groundAt(r.x, r.z, 2) + 0.15, r.z); G.scene.add(m); rodRings.push(m); }
+}
+export function clearThunder() { G.thunder = null; for (const m of rodRings) m.parent && m.parent.remove(m); rodRings = []; RODS_AT.length = 0; }
+export function rodCover(x, z) {
+  for (const r of RODS_AT) if (Math.hypot(r.x - x, r.z - z) < THUNDER.rodR) return _th2.set(r.x, r.top, r.z);
+  for (const r of G.rods) if (r.alive && r.up && Math.hypot(r.pos.x - x, r.pos.z - z) < r.d.cover) return r.tip(_th2);
+  return null;
+}
+const altOf = (o) => o.y - groundAt(o.x, o.z, o.y + 1);
+function boltFx(from, to, big) {
+  G.fx.lightning(from, to, 0xd8f2ff, big ? 1.1 : 0.7, 0.28, 5); G.fx.lightning(from, to, 0x80c8ff, big ? 0.6 : 0.4, 0.2, 7);
+  G.fx.flash(to, 0xa0e0ff, 34, 34, 0.22); G.fx.sparks(to, null, 24, 0xd8f2ff, 22, 1.2, 0.4, 0.3);
+  sfx('thunder', G.player ? G.player.pos.distanceTo(to) * 0.15 : 10); G.onBolt && G.onBolt('strike');
+}
+function rodZap(from, R, dmg) {   // a rod that took a bolt (or an LR-1 discharge) hits the nearest enemy in reach
+  let best = null, bd = R;
+  for (const e of G.enemies) { if (!e.alive || e.dying || !e.c || e.holo || e.cloaked) continue; const d = e.c.distanceTo(from); if (d < bd && clearLine(from, e.c)) { bd = d; best = e; } }
+  if (best) { G.fx.lightning(from, best.c, 0x9ff6ff, 0.45, 0.16, 2); dealDamage(best, dmg, 'P', best.c, 'rod'); G.fx.sparks(best.c, null, 10, 0x9ff6ff, 14, 1, 0.3, 0.24); }
+  return best;
+}
+function updateThunder(dt) {
+  const T = G.thunder, P = G.player; if (!T || !P) return;
+  if (!T.lock) {
+    T.t -= dt; if (T.t > 0) return;
+    T.t = THUNDER.every[0] + Math.random() * (THUNDER.every[1] - THUNDER.every[0]);
+    let best = null, bh = THUNDER.hov;
+    if (P.alive) { const h = altOf(P.pos); if (h > bh && !rodCover(P.pos.x, P.pos.z)) { best = P; bh = h; } }
+    for (const e of G.enemies) {
+      if (!e.alive || e.dying || !e.c || e.holo || e.cloaked || e.kind === 'boss' || e.c.distanceTo(P.pos) > 110) continue;
+      const h = altOf(e.c) - 1.5; if (h > bh && !rodCover(e.c.x, e.c.z)) { best = e; bh = h; }
+    }
+    if (!best) {   // nobody exposed: the bolt hits open ground somewhere near you
+      const a = Math.random() * 6.28, r = 18 + Math.random() * 30; _th.set(P.pos.x + Math.sin(a) * r, 0, P.pos.z + Math.cos(a) * r); _th.y = groundAt(_th.x, _th.z, 40);
+      const cov = rodCover(_th.x, _th.z); const to = cov ? _th3.copy(cov) : _th;
+      boltFx(_th2.set(to.x + (Math.random() - 0.5) * 10, to.y + 80, to.z + (Math.random() - 0.5) * 10), to, false); G.bolts = (G.bolts || 0) + 1;
+      if (cov) { rodZap(to, THUNDER.zapR, THUNDER.zap); G.boltRod = (G.boltRod || 0) + 1; }
+      return;
+    }
+    T.lock = { tg: best, t: THUNDER.lock, isP: best === P, react: Math.random() < THUNDER.react };
+    if (T.lock.isP) { G.onBolt && G.onBolt('lock'); sfx('coil', 0); G.boltLocks = (G.boltLocks || 0) + 1; }
+    return;
+  }
+  const L = T.lock, tg = L.tg; L.t -= dt;
+  if (!tg.alive || (!L.isP && tg.dying)) { T.lock = null; return; }
+  const c = L.isP ? tg.center(_th) : _th.copy(tg.c);
+  if (Math.random() < 0.6) G.fx.sparks(_th3.copy(c).add(_th2.set((Math.random() - 0.5) * 4, (Math.random() - 0.2) * 4, (Math.random() - 0.5) * 4)), null, 2, 0xbfe8ff, 9, 0.9, 0.25, 0.2);
+  if (L.t > 0) return;
+  T.lock = null; G.bolts = (G.bolts || 0) + 1;
+  const sky = _th3.set(c.x + (Math.random() - 0.5) * 8, c.y + 80, c.z + (Math.random() - 0.5) * 8).clone();
+  const cov = rodCover(c.x, c.z);
+  if (cov) { const to = cov.clone(); boltFx(sky, to, true); rodZap(to, THUNDER.zapR, THUNDER.zap); G.boltRod = (G.boltRod || 0) + 1; return; }
+  const h = L.isP ? altOf(tg.pos) : altOf(tg.c) - 1.5;
+  if (h > THUNDER.hov - 1.5) {
+    boltFx(sky, c, true);
+    if (L.isP) { G.curLabel = 'bolt'; hurtPlayer(THUNDER.dmg, 'bolt'); G.boltHits = (G.boltHits || 0) + 1; tg.vel.y = Math.min(tg.vel.y, -8); G.fx.trauma = Math.min(1, G.fx.trauma + 0.5); }
+    else { tg.hit(THUNDER.edmg, c, 'bolt'); G.boltE = (G.boltE || 0) + 1; G.onTally && G.onTally('boltE'); }
+  } else {   // it dropped in time: the bolt hits the ground beside it
+    const a = Math.random() * 6.28; const to = new V3(c.x + Math.sin(a) * 5, 0, c.z + Math.cos(a) * 5); to.y = groundAt(to.x, to.z, c.y);
+    boltFx(sky, to, false); if (L.isP) G.boltDodged = (G.boltDodged || 0) + 1;
+  }
+}
+
+// ---- LR-1 lightning rod (shoulder): planted 6 m ahead, zaps the nearest enemy every 0.9 s and covers you from storm bolts
+export class Rod {
+  constructor(owner, slot, d, dmgMul) {
+    for (const r of G.rods.slice()) r.end();
+    this.d = d; this.mul = dmgMul; this.t = d.dur; this.alive = true; this.up = false; this.drop = 0.45; this.zapT = 0.4;
+    const a = owner.aimYaw, p = new V3(owner.pos.x - Math.sin(a) * 6, 0, owner.pos.z - Math.cos(a) * 6);
+    if (pointInSolid(new V3(p.x, 1, p.z), 2) || (PLAT.R && Math.hypot(p.x, p.z) > PLAT.R - 4)) p.set(owner.pos.x, 0, owner.pos.z);
+    p.y = groundAt(p.x, p.z, owner.pos.y + 2); this.pos = p;
+    this.obj = cloneKit('D_Rod'); this.obj.scale.setScalar(1.1); this.obj.position.copy(p).setY(p.y + 8); G.scene.add(this.obj); this.n = nodes(this.obj);
+    const geo = new THREE.RingGeometry(d.cover - 0.3, d.cover, 56); geo.rotateX(-Math.PI / 2);
+    this.ring = new THREE.Mesh(geo, ringMat(0x80d8ff, 0)); this.ring.position.set(p.x, p.y + 0.18, p.z); G.scene.add(this.ring);
+    G.rods.push(this); G.rodsUsed = (G.rodsUsed || 0) + 1;
+    G.fx.streak(owner.muzzlePos(slot, new V3(), 0).clone(), this.obj.position, 0.4, 0x9fe8ff);
+  }
+  tip(out) { return out.set(this.pos.x, this.pos.y + 6.7 * 1.1, this.pos.z); }
+  end() {
+    if (!this.alive) return; this.alive = false;
+    G.fx.sparks(this.tip(new V3()), null, 14, 0x9fe8ff, 10, 1, 0.4, 0.22);
+    this.obj.parent && this.obj.parent.remove(this.obj); this.ring.parent && this.ring.parent.remove(this.ring); this.ring.geometry.dispose();
+    const i = G.rods.indexOf(this); if (i >= 0) G.rods.splice(i, 1);
+  }
+  update(dt) {
+    this.t -= dt; if (this.t <= 0) { this.end(); return; }
+    if (this.drop > 0) {
+      this.drop -= dt; const k = Math.max(0, this.drop / 0.45); this.obj.position.y = this.pos.y + 8 * k * k;
+      if (this.drop <= 0) { this.up = true; G.fx.ring(new V3(this.pos.x, this.pos.y + 0.3, this.pos.z), null, 1, 6, 0.35, 0x9fe8ff); G.fx.smoke(this.pos, 4, 2, 2, 0x8a8a8a, 1.2, 0.8); sfx('pile', G.player.pos.distanceTo(this.pos) * 0.6); }
+      return;
+    }
+    this.ring.material.opacity = 0.22 + 0.08 * Math.sin(G.time * 5) + (this.t < 2 ? -0.1 * Math.sin(G.time * 20) : 0);
+    this.zapT -= dt;
+    if (this.zapT <= 0) {
+      this.zapT = this.d.zap;
+      let from = this.tip(new V3()), hit = new Set();
+      for (let k = 0; k < this.d.chains; k++) {
+        let best = null, bd = k === 0 ? this.d.R : 12;
+        for (const e of G.enemies) { if (!e.alive || e.dying || !e.c || e.holo || e.cloaked || hit.has(e)) continue; const dd = e.c.distanceTo(from); if (dd < bd && clearLine(from, e.c)) { bd = dd; best = e; } }
+        if (!best) break;
+        hit.add(best); G.fx.lightning(from, best.c, 0x9ff6ff, k ? 0.3 : 0.45, 0.14, 2);
+        dealDamage(best, this.d.dmg * this.mul * (k ? 0.7 : 1), 'P', best.c, 'rod'); G.fx.sparks(best.c, null, 8, 0x9ff6ff, 14, 1, 0.3, 0.24);
+        from = best.c; G.rodZaps = (G.rodZaps || 0) + 1;
+      }
+      if (hit.size) sfx('coil', G.player.pos.distanceTo(this.pos));
+    }
+  }
+}
+export function clearRods() { for (const r of G.rods.slice()) r.end(); G.rods.length = 0; }
+function updateRods(dt) { for (const r of G.rods.slice()) r.update(dt); }
+
+// ---- Herald: a command walker that stays behind its escorts. Enemies within 24 m of it move x1.25 faster and hit x1.3 harder;
+// every 9-12 s its war horn gives them 2.5 s of half damage from you. Kill it first.
+export const HERALD = { hp: 1300, r: 2.8, walk: 6.5, R: 24, spd: 1.3, dmg: 1.3, horn: [7, 9], hornT: 2.5, hornK: 0.4, gunCd: [1.4, 2.0], gunDmg: 9, back: 18, min: 42 };
+const hrGeo = new THREE.RingGeometry(HERALD.R - 0.5, HERALD.R, 72); hrGeo.rotateX(-Math.PI / 2);
+export class Herald extends Enemy {
+  constructor(pos) {
+    super('herald', 'E_Herald', pos, HERALD.hp, HERALD.r); this.boom = 1.4;
+    this.vel = new V3(); this.yaw = Math.random() * 6.28; this.hornCd = 3 + Math.random() * 2; this.gunT = 2; this.c.set(pos.x, pos.y + 2.6, pos.z);
+    this.aura = new THREE.Mesh(hrGeo, ringMat(0xff4030, 0.28)); G.scene.add(this.aura);
+  }
+  remove() { super.remove(); this.aura.parent && this.aura.parent.remove(this.aura); this.aura.material.dispose(); }
+  update(dt) {
+    const tg = this.tg(), pc = tg.center(playerC);
+    let cx = 0, cz = 0, n = 0;
+    for (const e of G.enemies) { if (e === this || !e.alive || e.dying || !e.pos || e.kind === 'herald' || e.kind === 'boss' || e.holo || e.pos.distanceTo(this.pos) > 80) continue; cx += e.pos.x; cz += e.pos.z; n++; }
+    let gx, gz;
+    if (n) { cx /= n; cz /= n; const ax = cx - pc.x, az = cz - pc.z, al = Math.hypot(ax, az) || 1; gx = cx + ax / al * HERALD.back; gz = cz + az / al * HERALD.back; }
+    else { const ax = this.pos.x - pc.x, az = this.pos.z - pc.z, al = Math.hypot(ax, az) || 1; gx = pc.x + ax / al * 50; gz = pc.z + az / al * 50; }
+    { const ax = gx - pc.x, az = gz - pc.z, al = Math.hypot(ax, az) || 1; if (al < HERALD.min) { gx = pc.x + ax / al * HERALD.min; gz = pc.z + az / al * HERALD.min; } }
+    gx = Math.max(-ARENA + 6, Math.min(ARENA - 6, gx)); gz = Math.max(-ARENA + 6, Math.min(ARENA - 6, gz));
+    if (PLAT.R) { const d = Math.hypot(gx, gz), lim = PLAT.R - 6; if (d > lim) { gx *= lim / d; gz *= lim / d; } }
+    const mx = gx - this.pos.x, mz = gz - this.pos.z, ml = Math.hypot(mx, mz) || 1, sp = HERALD.walk * Math.min(1, ml / 4);
+    this.vel.x += (mx / ml * sp - this.vel.x) * (1 - Math.exp(-3 * dt)); this.vel.z += (mz / ml * sp - this.vel.z) * (1 - Math.exp(-3 * dt));
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 2.6, 4)) blockedSlide(this);
+    this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.8, 2);
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1;
+    this.yaw += angDiff(Math.atan2(-dx, -dz), this.yaw) * Math.min(1, dt * 3);
+    if (dist < 75 && this.checkLos(dt)) {
+      this.gunT -= dt;
+      if (this.gunT <= 0) {
+        this.gunT = HERALD.gunCd[0] + Math.random() * (HERALD.gunCd[1] - HERALD.gunCd[0]);
+        const m = this.n.Muzzle_HR, mp = m ? m.getWorldPosition(new V3()) : this.c.clone(), aim = lead(mp, 200, _b, tg);
+        _d.subVectors(aim, mp).normalize(); spawnShot({ p: mp, v: _d.multiplyScalar(200), dmg: HERALD.gunDmg, team: 'E', kind: 'ebullet', color: 0xff5040, w: 0.24, len: 5, life: 0.8, label: 'herald-gun' });
+        G.fx.muzzle(mp, _d, 0xff6040, 1); sfx('eshot', dist);
+      }
+    }
+    this.hornCd -= dt;
+    if (this.hornCd <= 0) {
+      let k = 0; for (const e of G.enemies) if (e.rally && e.alive && !e.dying && e.pos && Math.hypot(e.pos.x - this.pos.x, e.pos.z - this.pos.z) < HERALD.R) { e.hornT = HERALD.hornT; k++; }
+      if (k) {
+        this.hornCd = HERALD.horn[0] + Math.random() * (HERALD.horn[1] - HERALD.horn[0]); G.horns = (G.horns || 0) + 1;
+        G.fx.ring(new V3(this.pos.x, this.pos.y + 0.4, this.pos.z), null, 2, HERALD.R, 0.6, 0xff6040); sfx('horn', dist * 0.7);
+        if (!G.hornHintSaid) { G.hornHintSaid = true; G.onHint && G.onHint('号令机吹响战号 · 红圈里的敌机 2.5 秒内只受一半伤害 · 先打掉号令机', 4); }
+      } else this.hornCd = 2;
+    }
+    if (this.n.HR_Banner) this.n.HR_Banner.rotation.y = Math.sin(G.time * 2.1 + this.pos.x) * 0.35;
+    this.aura.position.set(this.pos.x, this.pos.y + 0.2, this.pos.z); this.aura.material.opacity = 0.2 + 0.08 * Math.sin(G.time * 3);
+    this.obj.rotation.y = this.yaw;
+    this.c.set(this.pos.x, this.pos.y + 2.6, this.pos.z);
+  }
+}
+
 // ---- NX-8 needler: homing needles stick in what they hit; eight in one target detonate together
 export const NEEDLE = { burst: 8, dmg: 100, R: 4.5, keep: 3 };
 const ndGeo = new THREE.CylinderGeometry(0.04, 0.04, 0.8, 5);
@@ -5296,8 +5477,12 @@ export function dropRepair(pos) {
 export function updateCombat(dt) {
   RAYF.skipIce = false;
   for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; q.fn(); } }
+  const hers = G.enemies.filter((e) => e.kind === 'herald' && e.alive && !e.dying && !(e.stunT > 0));
   for (const e of G.enemies) {
     G.curLabel = e.kind;
+    e.rally = false; if (hers.length && e.kind !== 'herald' && e.pos && e.alive && !e.dying) for (const h of hers) if (Math.hypot(h.pos.x - e.pos.x, h.pos.z - e.pos.z) < HERALD.R) { e.rally = true; break; }
+    if (e.hornT > 0) { e.hornT -= dt; if (e.c && Math.random() < 0.15) G.fx.sparks(_a.copy(e.c).add(_b.set((Math.random() - 0.5) * 3, Math.random() * 2, (Math.random() - 0.5) * 3)), null, 1, 0xffb040, 5, 0.8, 0.3, 0.2); }
+    else if (e.rally && e.c && Math.random() < 0.05) G.fx.sparks(_a.copy(e.c).setY(e.c.y + 1.5), null, 1, 0xff4030, 4, 0.8, 0.3, 0.2);
     if (e.stunT > 0 && e.alive && !e.dying) {
       e.stunT -= dt; if (e.snap) e.snap(true);
       if (Math.random() < 0.3) G.fx.sparks(_a.copy(e.c).add(_b.set((Math.random() - 0.5) * 3, (Math.random() - 0.3) * 3, (Math.random() - 0.5) * 3)), null, 2, 0x9fe0ff, 7, 0.9, 0.3, 0.18);
@@ -5306,7 +5491,7 @@ export function updateCombat(dt) {
     }
     const sp = G.stasis.length && (e.c || e.pos), sk = sp ? stasisK(sp, e.maxHp > 1500 || e.isColossus || e.isTrain || e.isLev) : 1;
     if (sk < 1) G.stasisSlow = (G.stasisSlow || 0) + dt;
-    G.curShooter = e; e.update((e.chill > 0 ? dt * (1 - 0.4 * e.chill / 100) : dt) * sk); G.curShooter = null;
+    G.curShooter = e; e.update((e.chill > 0 ? dt * (1 - 0.4 * e.chill / 100) : dt) * sk * (e.rally ? HERALD.spd : 1)); G.curShooter = null;
     if (e.flash > 0) e.flash -= dt;
   }
   const pp = G.player; G.jammed = null;
@@ -5340,7 +5525,7 @@ export function updateCombat(dt) {
   if (GRID.on) updateGrid(dt);
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
-  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt);
+  updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
