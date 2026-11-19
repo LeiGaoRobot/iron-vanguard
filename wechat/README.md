@@ -83,8 +83,9 @@ How the frames were set up, so they can be retaken:
 - **Banner shots**: run the autopilot (`sim(1)` steps) until `#banner` shows the wanted text. Then turn the autopilot off, try six camera headings for 18 frames each, keep the one with the longest camera-to-mech distance, and shoot. main.js clears the banner after 2.8 s of `step()`, so the heading search must fit inside that window; re-adding `show` afterwards does not work.
 - **Hints**: hide `#hint` before shooting. The autopilot dashes until it overheats, and the 能量过热 hint otherwise ends up in every frame.
 - **Hangar shots**: reload the page first, so the hangar does not show the last mission's world (the boss hovering behind the mech). Tabs sit at x = 0.42W + (i + 0.5)·(W − 0.35u − 0.42W)/7, y = 0.775u. The paint swatches are on the 机体 tab.
-- **Boss close-ups**: move the mech to 15 m in front of the boss along the camera's forward direction.
-- **Revive**: clamp hp to 1 every frame until the state becomes `revive`.
+- **Boss close-ups**: the autopilot holds the tyrant about 50 m off, too small to read, and 幻影 up close is mostly beam glow. So the mech is moved 15 m in front of the tyrant along the camera's forward direction (a spot a player can fly to), then 40 frames run normally. Armor is not touched.
+- **Revive**: a real death: 头目连战 on 王牌 with the autopilot, `sim(2)` until armor is under 30%, then `step(1)` until the state becomes `revive` (about 30 s of game time).
+- **系统1** uses its own title frame (6/35 暴雨) instead of the 1_场景 one.
 - **Splash**: shot about 1 s after reload, while `SPL.min` (3 s) still holds it on screen.
 
 ## Testing without WeChat DevTools

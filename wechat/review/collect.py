@@ -39,7 +39,7 @@ GROUPS = {
         ('rv_role_boss.jpg', '04_敌方头目_暴君.jpg'),
     ],
     '5_系统功能': [
-        ('rv_title.jpg', '系统1_任务选择.jpg'),
+        ('rv_sys_select.jpg', '系统1_任务选择.jpg'),
         ('rv_title_locked_toast.jpg', '系统1_未解锁任务.jpg'),
         ('rv_sys_overdrive.jpg', '系统2_超载启动.jpg'),
         ('rv_sys_reload.jpg', '系统2_武器装填中.jpg'),
