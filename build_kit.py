@@ -126,6 +126,10 @@ M = dict(
     RodGlow=mat("RodGlow", "#e0f6ff", 0.2, emit="#80d8ff", strength=2.4),
     AcidGlow=mat("AcidGlow", "#e0ffc0", 0.25, emit="#90ff30", strength=2.2),
     RiftGlow=mat("RiftGlow", "#f0e0ff", 0.2, emit="#b070ff", strength=2.4),
+    FogLampGlow=mat("FogLampGlow", "#fff6e0", 0.2, emit="#ffe0a0", strength=2.6),
+    LurkEye=mat("LurkEye", "#ff7060", 0.2, emit="#ff3020", strength=2.5),
+    LurkCore=mat("LurkCore", "#2a2c30", 0.5, metal=0.5),
+    RewindGlow=mat("RewindGlow", "#e0fff8", 0.2, emit="#40ffd0", strength=2.2),
     CrateGlow=mat("CrateGlow", "#fff4d0", 0.2, emit="#ffc040", strength=2.4),
     Chute=mat("Chute", "#e8e0d0", 0.9),
     ChuteRed=mat("ChuteRed", "#c8402c", 0.9),
@@ -2220,7 +2224,59 @@ def build_pound_pack():
     box((0, 0.3, 0.38), (0.4, 0.12, 0.12), M["Hazard"], K)
     muzzle("Muzzle_Pound", (0, 0, -0.7), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack()
+
+def build_fog_lamp():
+    # harbour fog lamp: a 9 m steel post on a concrete pad with a hazard ring, a lamp housing on top (dark glass
+    # FL_Off; JS swaps to the glowing FL_On when you light it) and a small control box at the foot. origin = bottom centre
+    K = kit("P_FogLamp")
+    cyl((0, 0, 0.2), 2.2, 0.4, M["Concrete"], K, verts=16)
+    torus((0, 0, 0.42), 2.0, 0.08, M["Hazard"], K)
+    cyl((0, 0, 4.6), 0.22, 8.4, M["Frame"], K, verts=10)
+    box((0, 0, 8.9), (1.5, 1.5, 0.25), M["Frame"], K)
+    box((0, 0, 9.9), (1.3, 1.3, 0.2), M["Frame"], K)
+    box((0, 0, 9.4), (1.1, 1.1, 0.8), M["Glass"], empty("FL_Off", (0, 0, 0), K))
+    box((0, 0, 9.4), (1.12, 1.12, 0.82), M["FogLampGlow"], empty("FL_On", (0, 0, 0), K))
+    box((0.6, 0, 1.2), (0.5, 0.4, 0.9), M["Frame"], K)
+    box((0.86, 0, 1.4), (0.04, 0.24, 0.24), M["Hazard"], K)
+
+def build_lurker():
+    # Lurker: an ambush walker hidden inside a standard 5 x 2.5 x 2.5 m cargo crate (same size and materials as
+    # P_Crate). The crate is two halves (LK_ShellL / LK_ShellR, hinged on the bottom of the short ends) that fall open;
+    # the core (LK_Body) rises on four legs (LK_Leg1-4, scaled out by JS) with a red eye and twin cannons (Muzzle_LK).
+    # front = +Y (a long face of the crate)
+    K = kit("E_Lurker")
+    for nm, sx in (("LK_ShellL", -1), ("LK_ShellR", 1)):
+        h = empty(nm, (sx * 2.5, 0, 0), K)
+        box((-sx * 1.25, 0, 1.25), (2.48, 2.5, 2.5), M["Crate"], h, bevel=0.04)
+        for i in range(4):
+            x = -sx * (0.3 + i * 0.55)
+            box((x, 1.27, 1.25), (0.12, 0.06, 2.3), M["CrateDark"], h)
+            box((x, -1.27, 1.25), (0.12, 0.06, 2.3), M["CrateDark"], h)
+        box((0, 0, 1.25), (0.08, 2.5, 2.5), M["CrateDark"], h)
+    b = empty("LK_Body", (0, 0, 0), K)
+    box((0, 0, 1.2), (2.2, 2.0, 1.3), M["LurkCore"], b, bevel=0.12)
+    box((0, 0.3, 1.95), (1.4, 1.2, 0.3), M["EArmor2"], b, bevel=0.06)
+    box((0, 1.02, 1.35), (0.7, 0.08, 0.22), M["LurkEye"], empty("LK_Eye", (0, 0, 0), b))
+    for sx in (-1, 1):
+        cyl((sx * 0.55, 1.4, 1.0), 0.16, 1.0, M["Joint"], b, rot=ALONG_Y, verts=10)
+        box((sx * 0.55, 0.9, 1.0), (0.42, 0.5, 0.42), M["EArmor"], b)
+    muzzle("Muzzle_LK", (0, 1.95, 1.0), b)
+    for i, (sx, sy) in enumerate(((-1, -1), (1, -1), (-1, 1), (1, 1))):
+        L = empty("LK_Leg%d" % (i + 1), (sx * 1.0, sy * 0.85, 0.6), b)
+        box((sx * 0.15, sy * 0.1, -0.9), (0.26, 0.26, 1.8), M["Joint"], L)
+        box((sx * 0.2, sy * 0.15, -1.75), (0.45, 0.45, 0.2), M["EArmor2"], L)
+
+def build_rewind_pack():
+    K = kit("S_Rewind")
+    # rewind pack: a squat housing with a glowing clock ring standing on it and a single hand
+    box((0, 0, 0.0), (0.7, 0.6, 0.5), M["Frame"], K, bevel=0.06)
+    torus((0, 0.05, 0.55), 0.36, 0.06, M["RewindGlow"], K, rot=(1.5708, 0, 0))
+    box((0, 0.05, 0.66), (0.05, 0.05, 0.26), M["RewindGlow"], K)
+    for sx in (-1, 1):
+        box((sx * 0.38, 0, 0.1), (0.06, 0.45, 0.3), M["Hazard"], K)
+    muzzle("Muzzle_RW", (0, 0.4, 0.55), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

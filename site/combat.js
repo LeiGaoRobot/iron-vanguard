@@ -54,6 +54,7 @@ export const WEAPONS = {
   decoy: { slot: 'shoulder', name: 'HD-1 全息诱饵', en: 'HD-1 Holo Decoy', desc: '投射机体全息影像 6 秒 · 吸引敌方火力（头目不易上当）· 被打碎时放出电磁冲击', type: 'decoy', hp: 380, dur: 6, cd: 20, burst: 70, burstR: 11, sfx: 'decoy' },
   orbital: { slot: 'shoulder', name: 'OS-1 轨道打击', en: 'OS-1 Orbital Strike', desc: '标记落点 · 1.4 秒后卫星光柱从天而降 · 半径 9 m 重击 · 落点灼烧 2 秒 · 锁定时卫星跟踪目标直到落下前 0.4 秒', type: 'orbital', dmg: 360, R: 9, delay: 1.4, dps: 40, burnT: 2, range: 170, cd: 13, sfx: 'orbital' },
   pmines: { slot: 'shoulder', name: 'LM-3 跳雷', en: 'LM-3 Bounding Mines', desc: '在身边撒下 4 枚跳雷 · 0.6 秒后布防 · 敌机进入 9 m 水平范围（20 m 高度内）即弹起追击引爆 · 90 伤害 / 6 m · 存在 25 秒', type: 'pmines', n: 4, arm: 0.6, trig: 9, hmax: 20, dmg: 90, R: 6, life: 25, cd: 9, max: 12, sfx: 'minedrop' },
+  rewind: { slot: 'shoulder', name: 'RW-3 时间回溯', en: 'RW-3 Rewind', desc: '按下：机体回到 3 秒前的位置，并找回这 3 秒内损失的装甲（最多 30%）· 0.4 秒无敌 · 原地留下的残影 0.5 秒后炸开 60 伤害 / 6 m · 冷却 15 秒', type: 'rewind', cd: 15, back: 3, cap: 0.3, inv: 0.4, burst: 60, burstR: 6 },
   pound: { slot: 'shoulder', name: 'GP-2 俯冲重击', en: 'GP-2 Ground Pound', desc: '空中按下：以 70 m/s 垂直砸向地面 · 落地冲击波的伤害和半径随下落高度增长（20 m 高约 190 伤害 / 11 m），震慑 0.6 秒并击退 · 下砸中受伤减半 · 在地面按下先跃起再砸', type: 'pound', cd: 6, base: 70, per: 6, r0: 6, rPer: 0.25, hMax: 40, hop: 30, hopT: 0.5, dive: 70, stun: 0.6, knock: 18 },
   rod: { slot: 'shoulder', name: 'LR-1 避雷针', en: 'LR-1 Lightning Rod', desc: '在前方 6 m 插下避雷针 14 秒 · 每 0.9 秒放电打 22 m 内最近的敌机（36，再连锁 1 个）· 雷暴里 14 m 内不会被雷劈 · 同时只能有 1 根', type: 'rod', dur: 14, zap: 0.9, dmg: 36, R: 22, chains: 2, cover: 14, cd: 18, sfx: 'sentry' },
   sentry: { slot: 'shoulder', name: 'TR-3 哨戒炮塔', en: 'TR-3 Sentry Turret', desc: '在前方架设自动炮塔 15 秒 · 双管速射 75 m 内敌机 · 吸引部分火力 · 耐久 400 · 同时只能有 1 座', type: 'sentry', hp: 400, dur: 15, dmg: 10, rate: 0.11, range: 75, cd: 22, sfx: 'sentry' },
@@ -63,7 +64,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -179,6 +180,7 @@ export function spawnShot(o) {
   const s = { x: o.p.x, y: o.p.y, z: o.p.z, v: o.v.clone(), life: o.life ?? 2.5, dmg: o.dmg, team: o.team, kind: o.kind, splash: o.splash || 0,
     burn: o.burn || 0, burnT: o.burnT || 0, chill: o.chill || 0, label: o.label || G.curLabel || o.kind, color: o.color ?? 0xffd27a, w: o.w ?? 0.2, len: o.len ?? 6, target: o.target || null, aim: o.aim ? o.aim.clone() : null, age: 0, speed: o.v.length(), maxSpeed: o.maxSpeed || 0, size: o.size || 1, turn: o.turn || 5.5, grav: o.grav ?? 6 };
   if (o.flak) s.flak = o.flak; if (o.sticky) s.sticky = true;
+  if (s.team === 'E' && G.curShooter) G.curShooter.pingT = FOG.ping;   // fog harbour: firing shows you on the radar
   if (s.team === 'E' && G.curShooter && G.curShooter.rally) s.dmg *= HERALD.dmg;
   if (s.team === 'E' && G.curShooter && G.curShooter.emp) s.dmg *= SUPPLY.empDmg;
   if (s.team === 'E' && G.curShooter && G.curShooter.burnT > 0) s.dmg *= BURN_WEAK;   // burning enemies fire weakened shots
@@ -621,6 +623,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
   } else if (d.type === 'disc') {
     if (held && ws.cd <= 0 && ws.ammo > 0 && isP) { ws.cd = d.rate; ws.ammo--; throwDisc(owner, slot, ws, d, dmgMul, aim); if (me) G.stats.shots++; mslot.recoil = 1; }
     for (const m of mslot.models) { const dk = m._disc || (m._disc = find(m, 'DS_Disc')); if (dk) { dk.visible = ws.ammo > 0; dk.rotation.y += dt * 8; } }
+  } else if (d.type === 'rewind') {
+    if (pressed && ws.cd <= 0 && me && owner.alive && doRewind(owner, d, dmgMul)) { ws.cd = d.cd; G.stats.shots++; }
   } else if (d.type === 'pound') {
     if (pressed && ws.cd <= 0 && me && owner.alive && !G.pound) { ws.cd = d.cd; startPound(owner, d, dmgMul); G.stats.shots++; }
   } else if (d.type === 'blink') {
@@ -1844,7 +1848,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -5874,6 +5878,165 @@ export function nearestRift(x, z) {
   return best && { g: best, d: bd };
 }
 
+// ---- Fog harbour: thick fog; the radar only shows enemies within 40 m, enemies that fired in the last 2.5 s, and
+// anything near a lit fog lamp. Stand by a lamp for 3 s to light it; every lit lamp also pushes the fog back 30 m.
+export const FOG = { R: 7, light: 3, radar: 40, lampSee: 60, ping: 2.5, near: 6, far0: 70, perLamp: 30, spots: [[-68, -58], [66, -62], [-62, 66], [70, 60]] };
+const fogHalo = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), gr = g.createRadialGradient(32, 32, 0, 32, 32, 32); gr.addColorStop(0, 'rgba(255,240,200,1)'); gr.addColorStop(0.35, 'rgba(255,220,150,0.45)'); gr.addColorStop(1, 'rgba(255,200,120,0)'); g.fillStyle = gr; g.fillRect(0, 0, 64, 64); return new THREE.CanvasTexture(c); })();
+const fogRingGeo = new THREE.RingGeometry(FOG.R - 0.4, FOG.R, 48);
+export function startFog() {
+  clearFog();
+  const F = G.fog = { lamps: [], lit: 0 };
+  for (const [sx, sz] of FOG.spots) {
+    let x = sx, z = sz;
+    for (let i = 0; i < 400; i++) {   // nearest open ground to the planned spot
+      const a = i * 2.4, r = Math.sqrt(i) * 2.2; x = sx + Math.cos(a) * r; z = sz + Math.sin(a) * r;
+      if (groundAt(x, z, 60) < 0.6 && !collideCyl(new V3(x, 0.5, z), 3, 3)) break;
+    }
+    const obj = cloneKit('P_FogLamp'); obj.position.set(x, 0, z); G.scene.add(obj);
+    const n = nodes(obj); if (n.FL_On) n.FL_On.visible = false;
+    const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: fogHalo, color: 0xffe8b0, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    halo.position.set(x, 9.4, z); halo.scale.set(16, 16, 1); G.scene.add(halo);
+    const ring = new THREE.Mesh(fogRingGeo, new THREE.MeshBasicMaterial({ color: 0xffd070, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.5, z); G.scene.add(ring);
+    F.lamps.push({ obj, n, halo, ring, x, z, k: 0, lit: false, sol: addSolid(x, z, 1.2, 1.2, 9, 0, 'lamp') });
+  }
+}
+export function clearFog() {
+  const F = G.fog; if (!F) return;
+  for (const L of F.lamps) { L.obj.parent && L.obj.parent.remove(L.obj); L.halo.parent && L.halo.parent.remove(L.halo); L.halo.material.dispose(); L.ring.parent && L.ring.parent.remove(L.ring); L.ring.material.dispose(); removeSolid(L.sol); }
+  G.fog = null;
+}
+function updateFog(dt) {
+  const F = G.fog, P = G.player; if (!F) return;
+  for (const L of F.lamps) {
+    if (L.lit) { L.halo.material.opacity = 0.8 + Math.sin(G.time * 3 + L.x) * 0.08; continue; }
+    const near = P && P.alive && Math.hypot(P.pos.x - L.x, P.pos.z - L.z) < FOG.R && P.pos.y - groundAt(P.pos.x, P.pos.z, P.pos.y + 1) < 8;
+    L.k = near ? L.k + dt / FOG.light : Math.max(0, L.k - dt * 0.25);
+    L.ring.material.opacity = 0.35 + 0.4 * L.k + (near ? Math.sin(G.time * 12) * 0.1 : 0);
+    L.ring.scale.setScalar(1 - 0.5 * L.k);
+    if (L.k >= 1) {
+      L.lit = true; F.lit++; if (L.n.FL_On) L.n.FL_On.visible = true; if (L.n.FL_Off) L.n.FL_Off.visible = false;
+      L.ring.visible = false; G.fx.flash(new V3(L.x, 9.4, L.z), 0xffe0a0, 60, 40, 0.4); G.fx.ring(new V3(L.x, 0.5, L.z), null, 2, 30, 0.6, 0xffd070);
+      sfx('repair', 0); G.lampsLit = (G.lampsLit || 0) + 1; G.onTally && G.onTally('lamp'); G.onLamp && G.onLamp(F.lit, F.lamps.length);
+    }
+  }
+}
+export function fogFar() { return G.fog ? FOG.far0 + FOG.perLamp * G.fog.lit : 0; }
+export function fogSeen(e) {   // may this enemy show on the radar (and be targeted by the autopilot)?
+  if (!G.fog) return true;
+  if (e.kind === 'boss' || e.markT > 0 || e.pingT > 0) return true;
+  const c = e.c || e.pos, P = G.player; if (!c) return true;
+  if (P && Math.hypot(c.x - P.pos.x, c.z - P.pos.z) < FOG.radar) return true;
+  for (const L of G.fog.lamps) if (L.lit && Math.hypot(c.x - L.x, c.z - L.z) < FOG.lampSee) return true;
+  return false;
+}
+
+// ---- Lurker: an ambush walker folded up inside a cargo crate. Asleep it is off the radar and cannot be locked, but
+// its eye glints every few seconds and it takes 1.5x damage. It wakes when you come within 20 m, when it is hit, after
+// 30 s, or when it is the last enemy left; the crate falls open, it stands up on four legs and hunts you with
+// three-shell cannon bursts. If you get more than 34 m away for 3 s it folds back up where it stands.
+export const LURK = { hp: 700, r: 2.4, wake: 20, unfold: 0.8, raise: 1.25, speed: 10, keep: [12, 20], burst: 3, shellDmg: 18, shellV: 75, splash: 3.5, cd: [1.5, 2.1], rehide: 34, hideT: 3, sleepMax: 30, sleepVuln: 1.5, eyeEvery: [3, 5] };
+export class Lurker extends Enemy {
+  constructor(pos) {
+    super('lurker', 'E_Lurker', pos, LURK.hp, LURK.r); this.boom = 1.3;
+    this.pos.y = groundAt(pos.x, pos.z, 40); this.yaw = Math.random() * 6.28; this.obj.rotation.y = this.yaw;
+    this.st = 'sleep'; this.t = 0; this.unf = 0; this.cloaked = true; this.sleepT = 0; this.farT = 0; this.ph = Math.random() * 6;
+    this.eyeT = 1 + Math.random() * 3; this.burstN = 0; this.burstT = 0; this.vel = new V3(); this.strafe = Math.random() < 0.5 ? 1 : -1; this.stT = 3;
+    if (this.n.LK_Eye) this.n.LK_Eye.visible = false;
+    this.c.set(this.pos.x, this.pos.y + 1.3, this.pos.z); G.lurkers = (G.lurkers || 0) + 1;
+  }
+  hit(dmg, at, label) {
+    if (this.st === 'sleep' && this.alive) { dmg *= LURK.sleepVuln; G.lurkSniped = (G.lurkSniped || 0) + 1; }
+    super.hit(dmg, at, label);
+    if (this.alive && (this.st === 'sleep' || this.st === 'fold')) this.wake('hit');
+  }
+  wake(why) {
+    this.st = 'unfold'; this.t = LURK.unfold; this.cloaked = false; this.farT = 0; G.lurkWakes = (G.lurkWakes || 0) + 1;
+    if (why === 'hit') G.lurkWokenHit = (G.lurkWokenHit || 0) + 1;
+    G.fx.smoke(this.pos, 6, 3, 2.5, 0x7a7468, 1.4, 1); G.fx.ring(new V3(this.pos.x, this.pos.y + 0.3, this.pos.z), null, 1, 8, 0.4, 0xff5030);
+    sfx('qboost', G.player ? G.player.pos.distanceTo(this.pos) : 0); G.onLurk && G.onLurk(this);
+  }
+  update(dt) {
+    const tg = this.tg(), pc = tg.center(playerC); this.ph += dt;
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1;
+    if (this.st === 'sleep') {
+      this.sleepT += dt; this.eyeT -= dt;
+      if (this.n.LK_Eye) this.n.LK_Eye.visible = this.eyeT < 0.22;
+      if (this.eyeT <= 0) this.eyeT = LURK.eyeEvery[0] + Math.random() * (LURK.eyeEvery[1] - LURK.eyeEvery[0]);
+      this.cloaked = !(this.markT > 0);   // a sonar pulse shows it, but does not wake it
+      const last = !G.enemies.some((e) => e !== this && e.alive && !e.dying && !(e.kind === 'lurker' && e.st === 'sleep'));
+      if (dist < LURK.wake || this.sleepT > LURK.sleepMax || last) this.wake(dist < LURK.wake ? 'near' : 'time');
+    } else if (this.st === 'unfold' || this.st === 'fold') {
+      this.t -= dt; const k = Math.max(0, this.t / LURK.unfold);
+      this.unf = this.st === 'unfold' ? 1 - k : k;
+      if (this.t <= 0) {
+        if (this.st === 'unfold') { this.st = 'hunt'; this.fireT = 0.4; if (this.n.LK_Eye) this.n.LK_Eye.visible = true; }
+        else { this.st = 'sleep'; this.sleepT = 0; this.cloaked = true; G.lurkHides = (G.lurkHides || 0) + 1; }
+      }
+    } else {   // hunt
+      const want = Math.atan2(dx, dz); this.yaw += angDiff(want, this.yaw) * Math.min(1, dt * 3);
+      const ox = dx / dist, oz = dz / dist; let mv = dist > LURK.keep[1] ? 1 : dist < LURK.keep[0] ? -0.6 : 0;
+      this.stT -= dt; if (this.stT <= 0) { this.stT = 2 + Math.random() * 2; this.strafe *= -1; }
+      const vx = (ox * mv - oz * this.strafe * 0.7) * LURK.speed, vz = (oz * mv + ox * this.strafe * 0.7) * LURK.speed;
+      this.vel.x += (vx - this.vel.x) * (1 - Math.exp(-4 * dt)); this.vel.z += (vz - this.vel.z) * (1 - Math.exp(-4 * dt));
+      this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+      this.pos.x = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.x)); this.pos.z = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.z));
+      if (collideCyl(this.pos, 2.2, 2.5)) { this.strafe *= -1; blockedSlide(this); }
+      this.pos.y += (groundAt(this.pos.x, this.pos.z, this.pos.y + 1.5) - this.pos.y) * Math.min(1, dt * 10);
+      const los = dist < 90 && this.checkLos(dt);
+      this.fireT -= dt;
+      if (this.burstN > 0) {
+        this.burstT -= dt;
+        if (this.burstT <= 0) {
+          this.burstN--; this.burstT = 0.14;
+          const m = this.n.Muzzle_LK, mp = m ? m.getWorldPosition(new V3()) : this.c.clone(), aim = lead(mp, LURK.shellV, _b, tg);
+          _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.z += (Math.random() - 0.5) * 0.05;
+          spawnShot({ p: mp, v: _d.normalize().multiplyScalar(LURK.shellV), dmg: LURK.shellDmg, team: 'E', kind: 'shell', splash: LURK.splash, life: 2.2, grav: 2, label: 'lurker-cannon' });
+          G.fx.muzzle(mp, _d, 0xff7040, 1.4); sfx('cannon', dist);
+        }
+      } else if (this.fireT <= 0 && los) { this.burstN = LURK.burst; this.burstT = 0; this.fireT = LURK.cd[0] + Math.random() * (LURK.cd[1] - LURK.cd[0]); }
+      const lastOne = !G.enemies.some((e) => e !== this && e.alive && !e.dying);
+      this.farT = dist > LURK.rehide && !lastOne ? this.farT + dt : 0;
+      if (this.farT > LURK.hideT) { this.st = 'fold'; this.t = LURK.unfold; this.farT = 0; this.vel.set(0, 0, 0); }
+    }
+    // pose: the shells fall open, the core rises on its legs and walks
+    const u = this.unf, n = this.n;
+    if (n.LK_ShellL) n.LK_ShellL.rotation.z = u * 1.75; if (n.LK_ShellR) n.LK_ShellR.rotation.z = -u * 1.75;
+    if (n.LK_Body) n.LK_Body.position.y = u * LURK.raise;
+    const walk = this.st === 'hunt' ? Math.min(1, Math.hypot(this.vel.x, this.vel.z) / 5) : 0;
+    for (let i = 1; i <= 4; i++) { const L = n['LK_Leg' + i]; if (!L) continue; L.scale.y = 0.08 + 0.92 * u; L.rotation.x = Math.sin(this.ph * 9 + (i % 2) * Math.PI + (i > 2 ? 0.8 : 0)) * 0.35 * walk; }
+    this.obj.rotation.y = this.yaw;
+    this.c.set(this.pos.x, this.pos.y + 1.3 + u * LURK.raise, this.pos.z);
+  }
+}
+
+// ---- RW-3 rewind: snaps you back to where you were 3 s ago and gives back the armour you lost since (up to 30 %).
+// 0.4 s of invulnerability; the afterimage you leave behind bursts for 60 / 6 m half a second later.
+const rwHist = []; let rwT = 0;
+function recordRewind(dt) {
+  const P = G.player; if (!P || !P.alive) { rwHist.length = 0; return; }
+  rwT -= dt; if (rwT > 0) return; rwT = 0.1;
+  rwHist.push({ t: G.time, x: P.pos.x, y: P.pos.y, z: P.pos.z, hp: P.hp }); while (rwHist.length > 50) rwHist.shift();
+}
+export function resetRewind() { rwHist.length = 0; rwT = 0; G.rewinds = 0; G.rewindHeal = 0; G.rewindDist = 0; }
+function doRewind(owner, d, mul) {
+  const P = owner; let past = null;
+  for (const h of rwHist) if (h.t <= G.time - d.back) past = h;
+  if (!past) past = rwHist[0]; if (!past) return false;
+  const from = P.pos.clone(), a = from.clone().setY(from.y + 2.5);
+  P.pos.set(past.x, past.y, past.z); P.vel.set(0, 0, 0);
+  const lost = Math.max(0, past.hp - P.hp), back = Math.min(lost, P.maxHp * d.cap);
+  P.hp = Math.min(P.maxHp, P.hp + back); G.rewindHeal = (G.rewindHeal || 0) + back; G.rewinds = (G.rewinds || 0) + 1; G.rewindDist = (G.rewindDist || 0) + from.distanceTo(P.pos);
+  G.blinkInv = Math.max(G.blinkInv || 0, d.inv); G.tether = null; rwHist.length = 0;
+  const b = P.pos.clone().setY(P.pos.y + 2.5), fx = G.fx;
+  fx.streak(a, b, 1.6, 0x40ffd0, 0.3); fx.streak(a, b, 0.5, 0xe0fff8, 0.3);
+  fx.flash(b, 0x40ffd0, 40, 26, 0.3); fx.ring(P.pos, null, 1, 7, 0.4, 0x40ffd0); fx.ring(from, null, 1, 5, 0.4, 0x80fff0);
+  for (let i = 0; i < 18; i++) fx.emit('add', { x: a.x + (Math.random() - 0.5) * 3, y: a.y + (Math.random() - 0.5) * 4, z: a.z + (Math.random() - 0.5) * 3, vy: 1, life: 0.5, s0: 1.4, s1: 0.2, c0: 0x60ffe0, c1: 0x104038 });
+  sfx('blink', 0);
+  G.queue.push({ label: 'p-rewind', t: 0.5, fn: () => { G.fx.flash(a, 0x60ffe0, 40, 30, 0.3); explodeAt(a, d.burstR, d.burst * mul, 'P', 0.8, 0x40ffd0); } });
+  return true;
+}
+
 // ---- Disarmer: a hovering drone that keeps 30-46 m away and fires a slow, gently homing violet orb every 5-7 s
 // (0.7 s charge first). The orb does 26 and LOCKS one of your weapon slots for 4 s. A sideways boost beats the orb.
 export const DISARM = { hp: 650, r: 1.8, hover: 9, near: 30, far: 46, speed: 11, every: [5, 7], charge: 0.7, orbV: 40, turn: 2.4, dmg: 26, jam: 4, gunCd: [1.2, 1.8], gunDmg: 8 };
@@ -6020,7 +6183,7 @@ export function updateCombat(dt) {
   for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; q.fn(); } }
   const hers = G.enemies.filter((e) => e.kind === 'herald' && e.alive && !e.dying && !(e.stunT > 0));
   for (const e of G.enemies) {
-    G.curLabel = e.kind;
+    G.curLabel = e.kind; if (e.pingT > 0) e.pingT -= dt;
     e.rally = false; if (hers.length && e.kind !== 'herald' && e.pos && e.alive && !e.dying) for (const h of hers) if (Math.hypot(h.pos.x - e.pos.x, h.pos.z - e.pos.z) < HERALD.R) { e.rally = true; break; }
     if (e.corrT > 0) { e.corrT -= dt; if (e.corrT <= 0) e.corr = 0; else if (e.c && Math.random() < 0.05 * e.corr) G.fx.emit('add', { x: e.c.x + (Math.random() - 0.5) * 2, y: e.c.y + (Math.random() - 0.5) * 2, z: e.c.z + (Math.random() - 0.5) * 2, vy: -2, life: 0.4, s0: 0.6, s1: 0.2, c0: 0xa0ff40, c1: 0x306010 }); }
     if (e.hornT > 0) { e.hornT -= dt; if (e.c && Math.random() < 0.15) G.fx.sparks(_a.copy(e.c).add(_b.set((Math.random() - 0.5) * 3, Math.random() * 2, (Math.random() - 0.5) * 3)), null, 1, 0xffb040, 5, 0.8, 0.3, 0.2); }
@@ -6047,6 +6210,7 @@ export function updateCombat(dt) {
   G.curLabel = null;
   LAVA.uT.value = G.time;
   if (G.blinkInv > 0) G.blinkInv -= dt;
+  recordRewind(dt); updateFog(dt);
   updateMarks(dt);
   updateBurning(dt);
   updateChill(dt);
