@@ -65,12 +65,13 @@ export const WEAPONS = {
   rod: { slot: 'shoulder', name: 'LR-1 避雷针', en: 'LR-1 Lightning Rod', desc: '在前方 6 m 插下避雷针 14 秒 · 每 0.9 秒放电打 22 m 内最近的敌机（36，再连锁 1 个）· 雷暴里 14 m 内不会被雷劈 · 同时只能有 1 根', type: 'rod', dur: 14, zap: 0.9, dmg: 36, R: 22, chains: 2, cover: 14, cd: 18, sfx: 'sentry' },
   sentry: { slot: 'shoulder', name: 'TR-3 哨戒炮塔', en: 'TR-3 Sentry Turret', desc: '在前方架设自动炮塔 15 秒 · 双管速射 75 m 内敌机 · 吸引部分火力 · 耐久 400 · 同时只能有 1 座', type: 'sentry', hp: 400, dur: 15, dmg: 10, rate: 0.11, range: 75, cd: 22, sfx: 'sentry' },
   stasis: { slot: 'shoulder', name: 'TS-1 时滞场', en: 'TS-1 Stasis Field', desc: '在准星处展开 14 m 时滞球 5 秒 · 球内敌机动作放慢到三成、敌弹几乎停在空中 · 头目只放慢一半', type: 'stasis', range: 60, R: 14, dur: 5, k: 0.3, bossK: 0.6, shotK: 0.12, cd: 17, sfx: 'stasis' },
+  net: { slot: 'shoulder', name: 'NT-4 捕获网', en: 'NT-4 Net Launcher', desc: '发射追踪捕获网 · 地面敌机被缠住 2.5 秒无法移动（仍能开火）· 小型飞行敌机直接被网落（140 伤害）· 头目与大型目标减速 40% · 信使被缠住 3 秒：车速 −65%、受到伤害 +30% · 冷却 7 秒', type: 'net', dmg: 30, air: 140, root: 2.5, speed: 70, cd: 7, sfx: 'cannon' },
   smoke: { slot: 'shoulder', name: 'SM-2 烟幕弹', en: 'SM-2 Smoke Screen', desc: '在身前炸开 12 m 烟幕 8 秒 · 烟幕外的敌人看不穿它，无法瞄准烟里的你 · 已发射的导弹照样追踪', type: 'smoke', R: 12, dur: 8, cd: 16, sfx: 'smoke' },
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -649,6 +650,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireCluster(owner, slot, d, aim, dmgMul, team); if (me) G.stats.shots++; }
   } else if (d.type === 'stasis') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; castStasis(owner, slot, d, aim); if (me) G.stats.shots++; }
+  } else if (d.type === 'net') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireNet(owner, slot, d, dmgMul, aim, target); if (me) G.stats.shots++; }
   } else if (d.type === 'smoke') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; popSmoke(owner, slot, d); if (me) G.stats.shots++; }
   } else if (d.type === 'pmines') {
@@ -1900,7 +1903,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -7608,6 +7611,256 @@ export function updateGrav(dt) {
   if (lock) { G.gravT = (G.gravT || 0) + dt; G.gravOn = 0.3; } else G.gravOn = Math.max(0, (G.gravOn || 0) - dt);
 }
 
+// ------------------------------------------------------------------ v47 Pursuit: a data courier drives a loop of the city
+// and stops at four upload stations; at 100% upload the mission is lost. Stay within 24 m while it uploads to jam it.
+export const COURIER = { path: [[-120, -60], [-70, -125], [50, -120], [125, -75], [125, 40], [75, 115], [-35, 125], [-125, 75]], stations: [1, 3, 5, 7],
+  hp: 18000, r: 3.2, speed: 14, stop: 9, per: 25, jamR: 24, jamK: 0.35, front: 0.45, rear: 1.4, mineT: [4, 6], panic: [0.66, 0.33], netK: 1.3, boost: 1.5, boostT: 6, turn: 2.6 };
+export const COURIER_PATH = [...COURIER.path, COURIER.path[0]];
+const upBeamGeo = new THREE.CylinderGeometry(0.7, 0.7, 260, 10, 1, true).translate(0, 130, 0);
+function stationSpot(i) {   // beside the road, on the outside of the loop
+  const [x, z] = COURIER.path[i], l = Math.hypot(x, z) || 1;
+  return new V3(x + x / l * 11, 0, z + z / l * 11);
+}
+export class Courier extends Enemy {
+  constructor() {
+    const [x, z] = COURIER.path[0];
+    super('courier', 'E_Courier', new V3(x, 0, z), COURIER.hp, COURIER.r); this.boom = 2.4; this.isCourier = true;
+    const [nx, nz] = COURIER.path[1];
+    this.i = 1; this.st = 'drive'; this.t = 0; this.yaw = Math.atan2(-(nx - x), -(nz - z)); this.spd = 0; this.vel = new V3(); this.mineT = 3; this.panicK = 0; this.boostT = 0; this.ph = 0; this.mines = 0; this.jamT = 0;
+    this.c.set(x, 1.4, z);
+  }
+  hit(dmg, at) {
+    if (!this.alive || this.dying) return;
+    if (at) { const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw), dx = at.x - this.pos.x, dz = at.z - this.pos.z, dl = Math.hypot(dx, dz) || 1, k = (dx * fx + dz * fz) / dl; dmg *= k > 0.45 ? COURIER.front : k < -0.45 ? COURIER.rear : 1; }
+    if (this.netT > 0) dmg *= COURIER.netK;   // caught in a net: the armour plates are pinned open
+    super.hit(dmg);
+    if (this.alive && this.panicK < COURIER.panic.length && this.hp < this.maxHp * COURIER.panic[this.panicK]) {   // panic: smoke, a burst of speed, a call for drones
+      this.panicK++; this.boostT = COURIER.boostT; if (this.st === 'upload') { this.st = 'drive'; this.i = (this.i + 1) % COURIER.path.length; }
+      G.smokes.push({ c: this.c.clone(), R: 11, t: 6, T: 6, puffT: 0 }); for (const e of G.enemies) if (e.losT !== undefined) e.losT = 0;
+      G.fx.flash(this.c, 0xd0d4d8, 20, 14, 0.2); sfx('smoke', G.player ? G.player.pos.distanceTo(this.pos) : 0);
+      G.onCourierPanic && G.onCourierPanic(this);
+    }
+  }
+  die() { this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this); explodeAt(this.c, 9, 40, 'P', 2.4, 0x60e8ff); G.fx.flash(this.c, 0x80f0ff, 60, 30, 0.5); this.remove(); }
+  update(dt) {
+    const P = G.player, n = this.n, CP = G.courier; this.ph += dt;
+    const path = COURIER.path, N = path.length;
+    let spd = 0;
+    if (this.st === 'drive') {
+      const [tx, tz] = path[this.i], dx = tx - this.pos.x, dz = tz - this.pos.z, dl = Math.hypot(dx, dz);
+      const isSt = COURIER.stations.includes(this.i);
+      if (dl < (isSt ? 3 : 7)) {
+        if (isSt && !this.skip) { this.st = 'upload'; this.t = COURIER.stop; this.station = CP && CP.stations[COURIER.stations.indexOf(this.i)]; G.onUpload && G.onUpload(this); }
+        else { this.skip = false; this.i = (this.i + 1) % N; }
+      }
+      this.yaw += Math.max(-COURIER.turn * dt, Math.min(COURIER.turn * dt, angDiff(Math.atan2(-dx, -dz), this.yaw)));
+      const off = Math.abs(angDiff(Math.atan2(-dx, -dz), this.yaw));
+      spd = COURIER.speed * (this.boostT > 0 ? COURIER.boost : 1) * (this.netT > 0 ? 0.35 : 1) * (off > 0.8 ? 0.45 : 1) * (isSt ? Math.min(1, 0.35 + dl / 30) : 1);
+      this.mineT -= dt;
+      if (this.mineT <= 0 && P && P.alive && Math.hypot(P.pos.x - this.pos.x, P.pos.z - this.pos.z) < 80) {
+        this.mineT = COURIER.mineT[0] + Math.random() * (COURIER.mineT[1] - COURIER.mineT[0]);
+        for (let k = -1; k <= 1; k += 2) { const m = new Mine(new V3(this.pos.x + Math.sin(this.yaw) * 3.2 + Math.cos(this.yaw) * k * 1.2, this.pos.y + 0.8, this.pos.z + Math.cos(this.yaw) * 3.2 - Math.sin(this.yaw) * k * 1.2), this); m.life = 25; this.mines++; }
+        sfx('minedrop', Math.hypot(P.pos.x - this.pos.x, P.pos.z - this.pos.z));
+      }
+    } else if (this.st === 'upload') {
+      this.t -= dt;
+      const jam = P && P.alive && Math.hypot(P.pos.x - this.pos.x, P.pos.z - this.pos.z) < COURIER.jamR;
+      if (jam) this.jamT += dt;
+      if (CP) { CP.up = Math.min(100, CP.up + COURIER.per / COURIER.stop * dt * (jam ? COURIER.jamK : 1)); CP.jam = jam; if (CP.up >= 100) { CP.done = true; G.onCourierDone && G.onCourierDone(); } }
+      if (this.t <= 0) { this.st = 'drive'; this.i = (this.i + 1) % N; this.station = null; }
+    }
+    if (this.boostT > 0) { this.boostT -= dt; if (Math.random() < 0.5) G.fx.sparks(_a.set(this.pos.x + Math.sin(this.yaw) * 2.8, this.pos.y + 1, this.pos.z + Math.cos(this.yaw) * 2.8), _b.set(Math.sin(this.yaw), 0.2, Math.cos(this.yaw)), 2, 0x80e8ff, 14, 0.4, 0.3, 0.3); }
+    this.spd += (spd - this.spd) * Math.min(1, dt * 2.5);
+    this.vel.set(-Math.sin(this.yaw) * this.spd, 0, -Math.cos(this.yaw) * this.spd);
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    collideCyl(this.pos, 2.4, 2);
+    const gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 2);
+    this.pos.y += (gy + 0.35 + Math.sin(this.ph * 3) * 0.08 - this.pos.y) * Math.min(1, dt * 6);
+    this.obj.rotation.set(0, this.yaw, 0); this.obj.rotation.z = -angDiff(this.yaw, this.lastYaw ?? this.yaw) / Math.max(dt, 1e-3) * 0.06; this.lastYaw = this.yaw;
+    for (let k = 1; k <= 4; k++) { const f = n['CR_Fan' + k]; if (f) f.rotation.z += dt * (14 + this.spd); }
+    if (n.CR_Core) { n.CR_Core.rotation.z += dt * 1.5; n.CR_Core.scale.setScalar(1 + (this.st === 'upload' ? 0.2 : 0.06) * Math.sin(this.ph * (this.st === 'upload' ? 14 : 4))); }
+    this.c.set(this.pos.x, this.pos.y + 1.3, this.pos.z);
+  }
+}
+class UpStation {
+  constructor(i) {
+    this.i = i; this.obj = cloneKit('P_UpStation'); const p = stationSpot(i); p.y = groundAt(p.x, p.z, 20); this.obj.position.copy(p); G.scene.add(this.obj); this.pos = this.obj.position;
+    this.n = nodes(this.obj); this.solid = addSolid(p.x, p.z, 4.4, 4.4, 0.6, p.y, 'station');
+    this.beam = new THREE.Mesh(upBeamGeo, new THREE.MeshBasicMaterial({ color: 0x50e8ff, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+    this.beam.position.set(p.x, p.y + 6.6, p.z); G.scene.add(this.beam); this.k = 0; this.ph = Math.random() * 6;
+    if (this.n.US_Dish) { const [x, z] = COURIER.path[i]; this.n.US_Dish.rotation.z = Math.atan2(-(x - p.x), -(z - p.z)); }
+  }
+  remove() { this.obj.parent && this.obj.parent.remove(this.obj); this.beam.parent && this.beam.parent.remove(this.beam); this.beam.material.dispose(); removeSolid(this.solid); }
+  update(dt, on, jam) {
+    this.ph += dt; this.k += ((on ? 1 : 0) - this.k) * Math.min(1, dt * 5);
+    this.beam.material.opacity = this.k * (jam ? 0.18 + 0.15 * Math.abs(Math.sin(this.ph * 20)) : 0.42 + 0.08 * Math.sin(this.ph * 8));
+    this.beam.material.color.setHex(jam ? 0xff9040 : 0x50e8ff); this.beam.visible = this.k > 0.01;
+    if (this.n.US_Beacon) this.n.US_Beacon.scale.setScalar(on ? 1.4 + 0.5 * Math.sin(this.ph * 10) : 0.8);
+  }
+}
+export function startPursuit() {
+  clearPursuit();
+  G.courier = { stations: COURIER.stations.map((i) => new UpStation(i)), up: 0, jam: false, done: false, c: null };
+  G.courier.c = new Courier();
+}
+export function clearPursuit() { if (G.courier) for (const st of G.courier.stations) st.remove(); G.courier = null; }
+function updatePursuit(dt) {
+  const CP = G.courier; if (!CP) return;
+  const c = CP.c, upAt = c && c.alive && c.st === 'upload' ? c.station : null;
+  for (const st of CP.stations) st.update(dt, st === upAt, CP.jam && st === upAt);
+  if (!upAt) CP.jam = false;
+}
+
+// ---- Torcher: a flame tank. it closes to 8-13 m, sprays a 16 m cone of fire for 2.6 s (you keep burning for 3 s
+// afterwards) and leaves burning patches on the ground. the fuel tanks on its back take 1.8x damage and blow up when it dies.
+export const TORCH = { hp: 700, r: 2.4, speed: 7.5, keep: [8, 13], range: 18, cone: 0.42, dps: 34, burnT: 3, burnDps: 8, spray: 2.6, rest: [2.2, 3.4], lob: [4.5, 6], lobDmg: 22, lobR: 5, patchR: 3.2, patchT: 6, patchDps: 16, rear: 1.8, boomR: 8, boomDmg: 90 };
+export class Torcher extends Enemy {
+  constructor(pos) {
+    super('torcher', 'E_Torcher', pos, TORCH.hp, TORCH.r); this.boom = 1.2;
+    this.pos.y = groundAt(pos.x, pos.z, 40); this.yaw = Math.random() * 6; this.tYaw = this.yaw; this.vel = new V3(); this.st = 'go'; this.t = 1.5; this.ph = Math.random() * 6; this.patchT = 0; this.lobT = 2 + Math.random() * 2;
+    this.stuckT = 0; this.sideT = 0; this.side = 1; this.last = this.pos.clone(); this.c.set(this.pos.x, this.pos.y + 1.4, this.pos.z);
+  }
+  drive(tx, tz, spd, dt) { return Engineer.prototype.drive.call(this, tx, tz, spd, dt); }
+  hit(dmg, at) {
+    if (at && this.alive) { const fx = -Math.sin(this.yaw), fz = -Math.cos(this.yaw), dx = at.x - this.pos.x, dz = at.z - this.pos.z, dl = Math.hypot(dx, dz) || 1; if ((dx * fx + dz * fz) / dl < -0.4) { dmg *= TORCH.rear; this.tankHit = (this.tankHit || 0) + 1; } }
+    super.hit(dmg);
+  }
+  die() {
+    this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this);
+    G.curLabel = 'torcher-tank'; explodeAt(this.c, TORCH.boomR, TORCH.boomDmg, 'X', 1.7, 0xff8030); G.fx.flash(this.c, 0xff8030, 40, 24, 0.35);
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.random(); addFire(this.pos.x + Math.cos(a) * 4, this.pos.z + Math.sin(a) * 4, this.pos.y); }
+    this.remove();
+  }
+  update(dt) {
+    const t = this.tg(), n = this.n; this.ph += dt;
+    const tc = t.center ? t.center(playerC) : t.pos;
+    const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, dl = Math.hypot(dx, dz) || 1;
+    if (this.st === 'spray') {
+      this.vel.multiplyScalar(Math.exp(-4 * dt)); this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    } else if (dl > TORCH.keep[1]) this.drive(t.pos.x, t.pos.z, TORCH.speed, dt);
+    else if (dl < TORCH.keep[0]) this.drive(this.pos.x - dx / dl * 10, this.pos.z - dz / dl * 10, TORCH.speed * 0.7, dt);
+    else { this.vel.multiplyScalar(Math.exp(-3 * dt)); this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt; }
+    this.pos.y += (groundAt(this.pos.x, this.pos.z, this.pos.y + 2) - this.pos.y) * Math.min(1, dt * 8);
+    this.obj.rotation.set(0, this.yaw, 0);
+    // the turret tracks the target (world yaw), a bit slower while spraying so you can strafe out of the cone
+    const want = Math.atan2(-(tc.x - this.pos.x), -(tc.z - this.pos.z));
+    this.tYaw += Math.max(-dt * (this.st === 'spray' ? 1.1 : 2.6), Math.min(dt * (this.st === 'spray' ? 1.1 : 2.6), angDiff(want, this.tYaw)));
+    if (n.TC_Turret) n.TC_Turret.rotation.y = this.tYaw - this.yaw;
+    this.c.set(this.pos.x, this.pos.y + 1.4, this.pos.z);
+    this.t -= dt;
+    if (this.st === 'go' || this.st === 'rest') {
+      if (this.t <= 0 && dl < TORCH.range && Math.abs(angDiff(want, this.tYaw)) < 0.5 && this.checkLos(dt)) { this.st = 'spray'; this.t = TORCH.spray; sfx('erupt', G.player ? G.player.pos.distanceTo(this.pos) : 0); }
+      else if (this.st === 'rest' && this.t <= 0) this.st = 'go';
+      this.lobT -= dt;   // napalm lob at targets out of flame range: a marked landing spot that leaves a fire patch
+      if (this.lobT <= 0 && dl > TORCH.range && dl < 60 && this.checkLos(dt)) {
+        this.lobT = TORCH.lob[0] + Math.random() * (TORCH.lob[1] - TORCH.lob[0]);
+        const mp = n.Muzzle_Torch ? n.Muzzle_Torch.getWorldPosition(new V3()) : new V3(this.pos.x, this.pos.y + 2, this.pos.z);
+        const D = Math.hypot(t.pos.x - mp.x, t.pos.z - mp.z), Tf = 1.0 + D / 55, g = 24;
+        const aim = new V3().copy(tc).addScaledVector(t.vel || _c.set(0, 0, 0), Tf * 0.8);
+        const gy = groundAt(aim.x, aim.z, aim.y + 1), hit = aim.y - gy < 4 ? (aim.y = gy, true) : false;
+        const v = new V3((aim.x - mp.x) / Tf, (aim.y - mp.y + 0.5 * g * Tf * Tf) / Tf, (aim.z - mp.z) / Tf);
+        G.curShooter = this; spawnShot({ p: mp, v, dmg: TORCH.lobDmg, team: 'E', kind: 'shell', splash: TORCH.lobR, life: Tf + 1, grav: g, label: 'torcher-napalm', color: 0xff7020, size: 1.4 }); G.curShooter = null;
+        if (hit) { G.fx.warn(aim, TORCH.lobR, Tf); G.queue.push({ label: 'napalm', t: Tf, fn: () => addFire(aim.x, aim.z, aim.y) }); }
+        G.fx.muzzle(mp, _d.copy(v).normalize(), 0xff9040, 1.8); sfx('eshell', dl);
+      }
+    } else if (this.st === 'spray') {
+      const mp = n.Muzzle_Torch ? n.Muzzle_Torch.getWorldPosition(new V3()) : new V3(this.pos.x, this.pos.y + 1.8, this.pos.z);
+      const fx = -Math.sin(this.tYaw), fz = -Math.cos(this.tYaw);
+      for (let k = 0; k < 2; k++) { const sp = 18 + Math.random() * 8, a = (Math.random() - 0.5) * TORCH.cone * 1.6, cx = fx * Math.cos(a) - fz * Math.sin(a), cz = fz * Math.cos(a) + fx * Math.sin(a);
+        G.fx.emit('add', { x: mp.x, y: mp.y, z: mp.z, vx: cx * sp, vy: (Math.random() - 0.3) * 3, vz: cz * sp, life: 0.5 + Math.random() * 0.25, s0: 0.6, s1: 2.3, c0: k ? 0xff8a30 : 0xffb050, c1: 0x801808 }); }
+      if (Math.random() < 0.3) G.fx.smoke(_b.set(mp.x + fx * 8, mp.y + 1, mp.z + fz * 8), 1, 2.4, 1.4, 0x2a2420, 1, 0.5);
+      for (const f of [G.player, ...G.friends]) {
+        if (!f || !f.alive || !f.pos) continue;
+        const fc = f.center ? f.center(_c) : _c.copy(f.pos), ex = fc.x - mp.x, ez = fc.z - mp.z, ed = Math.hypot(ex, ez) || 1;
+        if (ed > TORCH.range + (f.isPlayer || f === G.player ? 0.5 : 1) || Math.abs(fc.y - mp.y) > 9) continue;
+        if ((ex * fx + ez * fz) / ed < Math.cos(TORCH.cone)) continue;
+        if (!clearLine(mp, fc)) continue;
+        if (f === G.player) { G.curSrc = mp; damagePlayer(TORCH.dps * dt, mp, 'torcher'); G.pBurnT = TORCH.burnT; G.torchHit = (G.torchHit || 0) + dt; }
+        else if (f.hit) f.hit(TORCH.dps * dt * 0.7, fc, 'torcher');
+      }
+      this.patchT -= dt;
+      if (this.patchT <= 0) { this.patchT = 0.3; const r = 4 + Math.random() * (TORCH.range - 5), a = (Math.random() - 0.5) * TORCH.cone; addFire(mp.x + (fx * Math.cos(a) - fz * Math.sin(a)) * r, mp.z + (fz * Math.cos(a) + fx * Math.sin(a)) * r, this.pos.y); }
+      if (this.t <= 0) { this.st = 'rest'; this.t = TORCH.rest[0] + Math.random() * (TORCH.rest[1] - TORCH.rest[0]); }
+    }
+    if (n.TC_Tank) n.TC_Tank.scale.setScalar(1 + (this.st === 'spray' ? 0.03 * Math.sin(this.ph * 30) : 0));
+  }
+}
+G.fires = [];
+const fireGeo = new THREE.CircleGeometry(1, 20);
+let firePool = null;
+function addFire(x, z, yRef) {
+  const y = groundAt(x, z, yRef + 3);
+  if (G.fires.length >= 40) G.fires.shift();
+  G.fires.push({ x, z, y, R: TORCH.patchR * (0.8 + Math.random() * 0.4), t: TORCH.patchT, T: TORCH.patchT, ph: Math.random() * 6 });
+}
+function updateFires(dt) {
+  if (!firePool) { firePool = []; for (let k = 0; k < 40; k++) { const m = new THREE.Mesh(fireGeo, new THREE.MeshBasicMaterial({ color: 0xc03810, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; m.renderOrder = 3; firePool.push(m); } }
+  const P = G.player;
+  for (let i = G.fires.length - 1; i >= 0; i--) {
+    const f = G.fires[i]; f.t -= dt; f.ph += dt;
+    if (f.t <= 0) { G.fires.splice(i, 1); continue; }
+    if (Math.random() < 0.25) G.fx.emit('add', { x: f.x + (Math.random() - 0.5) * f.R * 1.4, y: f.y + 0.3, z: f.z + (Math.random() - 0.5) * f.R * 1.4, vx: 0, vy: 2.5 + Math.random() * 2, vz: 0, life: 0.45, s0: 0.8, s1: 0.2, c0: 0xff8030, c1: 0x902008 });
+    if (P && P.alive && Math.hypot(P.pos.x - f.x, P.pos.z - f.z) < f.R && P.pos.y - f.y < 2.5) { G.curSrc = null; damagePlayer(TORCH.patchDps * dt, null, 'fire'); G.pBurnT = Math.max(G.pBurnT || 0, 1.2); G.fireT = (G.fireT || 0) + dt; }
+  }
+  for (let k = 0; k < firePool.length; k++) {
+    const m = firePool[k], f = G.fires[k];
+    if (!f) { if (m.visible) { m.visible = false; m.parent && m.parent.remove(m); } continue; }
+    if (!m.parent) G.scene.add(m);
+    m.visible = true; m.position.set(f.x, f.y + 0.08, f.z); m.scale.setScalar(f.R * (0.9 + 0.1 * Math.sin(f.ph * 9)));
+    m.material.opacity = 0.32 * Math.min(1, f.t / 1.2, (f.T - f.t) / 0.3 + 0.3);
+  }
+  if (G.pBurnT > 0 && P && P.alive) {   // you keep burning for a moment after the spray
+    G.pBurnT -= dt; G.curSrc = null; damagePlayer(TORCH.burnDps * dt, null, 'burn');
+    if (Math.random() < 0.5) G.fx.emit('add', { x: P.pos.x + (Math.random() - 0.5) * 2, y: P.pos.y + 1 + Math.random() * 3, z: P.pos.z + (Math.random() - 0.5) * 2, vx: 0, vy: 3, vz: 0, life: 0.4, s0: 1.0, s1: 0.2, c0: 0xffb050, c1: 0xff3010 });
+  }
+}
+export function clearFires() { G.fires.length = 0; G.pBurnT = 0; if (firePool) for (const m of firePool) { m.visible = false; m.parent && m.parent.remove(m); } }
+
+// ---- NT-4 net launcher: a homing net. ground enemies are pinned 2.5 s (they still shoot), small flyers are brought down,
+// big ones are slowed 40%, the courier drops to 35% speed
+G.nets = [];
+const netGeo = new THREE.IcosahedronGeometry(1, 1);
+function fireNet(owner, slot, d, dmgMul, aim, target) {
+  const mp = owner.muzzlePos(slot, new V3(), 0), v = new V3().subVectors(aim, mp).normalize().multiplyScalar(d.speed);
+  const m = new THREE.Mesh(netGeo, new THREE.MeshBasicMaterial({ color: 0x60ffb8, wireframe: true, transparent: true, opacity: 0.9, fog: false }));
+  m.position.copy(mp); m.scale.setScalar(0.5); G.scene.add(m);
+  let tgt = target && target.alive ? target : null;
+  if (!tgt) { let bd = 0.96; for (const e of entsFor('P')) { if (!e.alive || e.isBarrel || e.isMine || !e.c) continue; _c.subVectors(e.c, mp); const dl = _c.length(); if (dl > 120) continue; const k = _c.dot(v) / (dl * d.speed); if (k > bd) { bd = k; tgt = e; } } }
+  G.nets.push({ p: mp.clone(), v, t: 1.8, d, mul: dmgMul, tgt, m });
+  G.fx.muzzle(mp, _d.copy(v).normalize(), 0x80ffc0, 1.6); sfx('cannon', 0);
+}
+function netHit(e, n) {
+  const h = e.kind === 'cpart' ? e.owner : e, d = n.d;
+  G.netHits = (G.netHits || 0) + 1;
+  const small = ['drone', 'swarm', 'jammer', 'mender', 'scav', 'disarmer', 'hijack', 'sapper'].includes(h.kind);
+  dealDamage(e, (small ? d.air : d.dmg) * n.mul, 'P', n.p, 'net');
+  if (!h.alive) return;
+  h.netT = h.isCourier ? 3 : d.root; G.fx.ring(h.c.clone(), null, 0.5, (h.r || 2) * 1.6, 0.3, 0x60ffb8);
+  if (h.isCourier) G.onCourierNet && G.onCourierNet();
+}
+function netVisual(e) {
+  if (!(e.netT > 0) || !e.alive || e.dying) { if (e.netMesh) { e.netMesh.parent && e.netMesh.parent.remove(e.netMesh); e.netMesh = null; } return; }
+  if (!e.netMesh) { e.netMesh = new THREE.Mesh(netGeo, new THREE.MeshBasicMaterial({ color: 0x60ffb8, wireframe: true, transparent: true, opacity: 0.7, fog: false })); G.scene.add(e.netMesh); }
+  e.netMesh.position.copy(e.c); e.netMesh.scale.setScalar((e.r || 2) * 1.15); e.netMesh.rotation.y += 0.02; e.netMesh.material.opacity = 0.7 * Math.min(1, e.netT * 2);
+}
+function updateNets(dt) {
+  for (let i = G.nets.length - 1; i >= 0; i--) {
+    const n = G.nets[i]; n.t -= dt;
+    if (n.tgt && n.tgt.alive && n.tgt.c) { const sp = n.v.length(); _a.subVectors(n.tgt.c, n.p).normalize(); _b.copy(n.v).divideScalar(sp); if (_a.dot(_b) > 0) { _b.lerp(_a, Math.min(1, 2.8 * dt)).normalize(); n.v.copy(_b).multiplyScalar(sp); } }
+    n.v.y -= 4 * dt;
+    const L = n.v.length() * dt; _d.copy(n.v).normalize();
+    const w = raySolids(n.p, _d, L);
+    let hit = null;
+    for (const e of entsFor('P')) { if (!e.alive || e.isBarrel || e.isMine || !e.c) continue; if (e.c.distanceTo(n.p) < (e.r || 1.5) + 1.3) { hit = e; break; } }
+    if (hit) { netHit(hit, n); n.t = 0; }
+    else if (w.solid || n.t <= 0) { G.fx.sparks(n.p, null, 6, 0x80ffc0, 8, 0.8, 0.3, 0.2); n.t = 0; }
+    else n.p.addScaledVector(n.v, dt);
+    n.m.position.copy(n.p); n.m.scale.setScalar(Math.min(1.4, n.m.scale.x + dt * 2.2)); n.m.rotation.x += dt * 6; n.m.rotation.y += dt * 4;
+    if (n.t <= 0) { n.m.parent && n.m.parent.remove(n.m); n.m.material.dispose(); G.nets.splice(i, 1); }
+  }
+}
+export function clearNets() { for (const n of G.nets) { n.m.parent && n.m.parent.remove(n.m); } G.nets.length = 0; }
+
 export function updateCombat(dt) {
   RAYF.skipIce = false;
   for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; q.fn(); } }
@@ -7626,7 +7879,9 @@ export function updateCombat(dt) {
     }
     const sp = G.stasis.length && (e.c || e.pos), sk = sp ? stasisK(sp, e.maxHp > 1500 || e.isColossus || e.isTrain || e.isLev) : 1;
     if (sk < 1) G.stasisSlow = (G.stasisSlow || 0) + dt;
-    G.curShooter = e; e.update((e.chill > 0 ? dt * (1 - 0.4 * e.chill / 100) : dt) * sk * (e.rally ? HERALD.spd : 1)); G.curShooter = null;
+    const netted = e.netT > 0 && !e.isCourier, netBig = netted && (e.maxHp > 3000 || e.kind === 'boss' || e.kind === 'raider'), nx = e.pos ? e.pos.x : 0, nz = e.pos ? e.pos.z : 0;
+    G.curShooter = e; e.update((e.chill > 0 ? dt * (1 - 0.4 * e.chill / 100) : dt) * sk * (e.rally ? HERALD.spd : 1) * (netBig ? 0.6 : 1)); G.curShooter = null;
+    if (e.netT > 0) { e.netT -= dt; if (netted && !netBig && e.pos && e.alive) { e.pos.x = nx; e.pos.z = nz; } netVisual(e); } else if (e.netMesh) netVisual(e);
     if (e.flash > 0) e.flash -= dt;
   }
   const pp = G.player; G.jammed = null;
@@ -7636,11 +7891,11 @@ export function updateCombat(dt) {
     if (!e.pos || !e.alive || e.kind === 'jet' || e.kind === 'dropship') continue;
     const d = Math.hypot(e.pos.x, e.pos.z), lim = PLAT.R - 3; if (d > lim) { e.pos.x *= lim / d; e.pos.z *= lim / d; }
   }
-  for (let i = G.enemies.length - 1; i >= 0; i--) if (G.enemies[i].gone) G.enemies.splice(i, 1);
+  for (let i = G.enemies.length - 1; i >= 0; i--) if (G.enemies[i].gone) { const e = G.enemies[i]; if (e.netMesh) { e.netMesh.parent && e.netMesh.parent.remove(e.netMesh); e.netMesh = null; } G.enemies.splice(i, 1); }
   G.curLabel = null;
   LAVA.uT.value = G.time;
   if (G.blinkInv > 0) G.blinkInv -= dt;
-  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt); updateBurn(dt); updateBeacon(dt); updateLance(dt); updateGrav(dt);
+  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt); updateBurn(dt); updateBeacon(dt); updateLance(dt); updateGrav(dt); updatePursuit(dt); updateFires(dt); updateNets(dt);
   updateMarks(dt);
   updateBurning(dt);
   updateChill(dt);
