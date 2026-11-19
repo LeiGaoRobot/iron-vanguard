@@ -12,7 +12,7 @@ import { AtmospherePass, makeRidge } from './post.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff, PHYS } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, Leaper, LEAP, FLARE, Herald, HERALD, Tower, Citadel, Trooper, Shade, SHADE, LANE, Reviver, REVIVE, noteWreck, CAMO, clearCamo, clearWrecks, SABOT, startSabot, clearSabot, sabTarget, Weaver, WEAVE, HACK, hackable, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, clearWebs, clearHacks, Launcher, Cruise, SKY, startSky, clearSky, Courier, COURIER, COURIER_PATH, startPursuit, clearPursuit, Torcher, TORCH, clearFires, clearNets, Dish, Anchor, ANCHOR, LANCE, startLance, clearLance, Engineer, ENG, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, clearBurn, startLane, clearLane, laneObjective, laneEscorted, clearRBeam, Bastion, Hijacker, HIJACK, FORT, FORT_PADS, startFort, clearFort, padAction, fortGoal, clearRefl, Scav, SCAV, SALV, startSalvage, clearSalvage, dropCores, nearestCore, Planter, PLANT, DEPOT, startDepots, clearDepots, nearestCharge, Lurker, LURK, FOG, startFog, clearFog, fogSeen, fogFar, resetRewind, Snatcher, SNATCH, SUPPLY, startSupply, clearSupply, nearestCrate, Disarmer, DISARM, RIFT, startRifts, clearRifts, Leech, LEECH, TRAFFIC, startTraffic, clearTraffic, truckAhead, THUNDER, startThunder, clearThunder, rodCover, clearRods, startFlares, clearFlares, inShade, resetNeedles, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, Leaper, LEAP, FLARE, Herald, HERALD, Tower, Citadel, Trooper, Shade, SHADE, LANE, Marshal, DECAP, startDecap, clearDecap, Dazzler, DAZZ, clearLinkB, Reviver, REVIVE, noteWreck, CAMO, clearCamo, clearWrecks, SABOT, startSabot, clearSabot, sabTarget, Weaver, WEAVE, HACK, hackable, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, clearWebs, clearHacks, Launcher, Cruise, SKY, startSky, clearSky, Courier, COURIER, COURIER_PATH, startPursuit, clearPursuit, Torcher, TORCH, clearFires, clearNets, Dish, Anchor, ANCHOR, LANCE, startLance, clearLance, Engineer, ENG, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, clearBurn, startLane, clearLane, laneObjective, laneEscorted, clearRBeam, Bastion, Hijacker, HIJACK, FORT, FORT_PADS, startFort, clearFort, padAction, fortGoal, clearRefl, Scav, SCAV, SALV, startSalvage, clearSalvage, dropCores, nearestCore, Planter, PLANT, DEPOT, startDepots, clearDepots, nearestCharge, Lurker, LURK, FOG, startFog, clearFog, fogSeen, fogFar, resetRewind, Snatcher, SNATCH, SUPPLY, startSupply, clearSupply, nearestCrate, Disarmer, DISARM, RIFT, startRifts, clearRifts, Leech, LEECH, TRAFFIC, startTraffic, clearTraffic, truckAhead, THUNDER, startThunder, clearThunder, rodCover, clearRods, startFlares, clearFlares, inShade, resetNeedles, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 // rail loop for the train mission: a 118 x 82 m oval, closed (last point == first)
@@ -123,6 +123,9 @@ const MISSIONS = {
   ] },
   lane: { name: '前线 · 兵线推进', en: 'PUSH THE LINE', desc: '黄昏兵线 · 友军坦克每 18 秒从基地出发推进 · 两座防御塔不倒，敌方要塞就有护盾 · 幽影会隐藏身边的敌机（开火时现形）· 守住基地，攻破要塞', seed: 373, env: 'front', reward: 8200, lane: true, coreHp: 4000, bossHp: 1.0, sites: [[125, 0], [-130, 0], [-60, 16], [-60, -16]], waves: [
     { title: 'PUSH THE LINE', sub: '跟随友军坦克推进 · 摧毁两座防御塔，再攻破敌方要塞', spawn: {} },
+  ] },
+  decap: { name: '斩首 · 指挥官', en: 'DECAPITATION', desc: '琥珀暮色 · 敌方指挥官混在三台全息诱饵里，都罩着干扰力场（只吃 15% 伤害）· 进入 30 m 黄圈扫描 3.5 秒识别真身 · 真身会逃向运输机，登机前击毁它 · 小心眩惑机的强光', seed: 433, env: 'decap', reward: 8400, decap: true, sites: DECAP.sites.concat(DECAP.pads), waves: [
+    { title: 'DECAPITATION', sub: '找出真正的指挥官', spawn: {} },
   ] },
   sabot: { name: '破袭 · 敌后爆破', en: 'SABOTAGE', desc: '黎明前的敌后基地 · 四座能源塔为敌军轨道炮供能，武器打不动它们：落地站在塔下 2.5 秒安放炸药，22 秒后引爆 · 敌方步行机会冲过去拆弹 · 复苏者能把残骸重建成敌机 · 轨道炮充能完毕前炸掉全部能源塔，再击破「幻影」', seed: 427, env: 'sabot', reward: 8300, sabot: true, sites: SABOT.sites, bossHp: 0.75, waves: [
     { title: 'SABOTAGE', sub: '炸掉四座能源塔', spawn: {} },
@@ -321,6 +324,7 @@ const ENVS = {
   sky3: { top: 0x060c26, hor: 0x3a6ab8, fog: [300, 2400], hemi: [0xb8ccff, 0x202838, 0.42], sun: [0xfff6ec, 2.5], env: 0.24, exp: 0.95, dir: [-0.4, 0.42, 0.55], disc: 0.6, stars: 0.5, earth: [0, -1, 0] },
   sky4: { top: 0x000002, hor: 0x0c1c40, fog: [500, 3200], hemi: [0xa8b4cc, 0x101420, 0.3], sun: [0xffffff, 2.6], env: 0.2, exp: 0.95, dir: [0.5, 0.42, -0.5], disc: 0.2, stars: 1, earth: [0, -1, 0] },
   dune: { top: 0x8a6e58, hor: 0xe0b890, fog: [50, 340], hemi: [0xffe4c4, 0x6a5038, 0.6], sun: [0xffd4a4, 2.0], env: 0.32, exp: 0.9, dir: [-0.4, 0.45, 0.45], disc: 0.7, sand: true },
+  decap: { top: 0x2c2430, hor: 0xc08a5c, fog: [60, 380], hemi: [0xe0b890, 0x22201c, 0.5], sun: [0xffb070, 1.25], env: 0.22, exp: 0.95, dir: [0.62, 0.24, -0.42], disc: 0.85, cl: 0.62 },
   sabot: { top: 0x0e1626, hor: 0x5a6e8c, fog: [55, 360], hemi: [0x9ab0d0, 0x161a22, 0.42], sun: [0xc8d4ff, 0.95], env: 0.18, exp: 1.02, dir: [-0.55, 0.3, 0.5], disc: 0.4 },
   evac: { top: 0x2c2232, hor: 0xd8784a, fog: [70, 430], hemi: [0xdcc8c0, 0x34261e, 0.5], sun: [0xff8a50, 1.55], env: 0.26, exp: 0.95, dir: [0.42, 0.24, -0.6], disc: 1.0 },
   shield: { top: 0x1c2a56, hor: 0xe4945e, fog: [90, 520], hemi: [0xd0d4ec, 0x302c38, 0.46], sun: [0xff9c68, 1.7], env: 0.24, exp: 0.95, dir: [-0.52, 0.2, 0.6], disc: 1.0 },
@@ -351,7 +355,7 @@ const ENVS = {
   meteor: { top: 0x050414, hor: 0x3c2050, fog: [110, 680], hemi: [0xd0b0ff, 0x2a1a2c, 0.5], sun: [0xffc0a0, 1.7], env: 0.26, exp: 0.98, dir: [-0.45, 0.4, 0.55], disc: 0.4, stars: 0.8, earth: [0, -1, 0] },
   night: { top: 0x060b18, hor: 0x18223a, fog: [45, 340], hemi: [0x6880b8, 0x141419, 0.22], sun: [0xa8bcff, 0.55], env: 0.1, exp: 1.08, dir: [0.3, 0.62, -0.5], disc: 0.45 },
 };
-const KILL_CR = { reviver: 240, weaver: 190, launcher: 260, cruise: 25, courier: 1200, torcher: 170, dish: 600, anchor: 220, engineer: 180, tower: 400, citadel: 1200, shade: 160, hijack: 130, scav: 140, planter: 150, lurker: 160, snatcher: 140, disarmer: 200, leech: 45, herald: 260, leaper: 220, rammer: 240, deflector: 200, mirage: 260, blimp: 420, frost: 180, watch: 250, blinker: 160, hive: 300, swarm: 5, fencer: 110, prism: 220, skimmer: 200, splitter: 60, jet: 220, eel: 200, grappler: 240, train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
+const KILL_CR = { marshal: 600, dazzler: 200, reviver: 240, weaver: 190, launcher: 260, cruise: 25, courier: 1200, torcher: 170, dish: 600, anchor: 220, engineer: 180, tower: 400, citadel: 1200, shade: 160, hijack: 130, scav: 140, planter: 150, lurker: 160, snatcher: 140, disarmer: 200, leech: 45, herald: 260, leaper: 220, rammer: 240, deflector: 200, mirage: 260, blimp: 420, frost: 180, watch: 250, blinker: 160, hive: 300, swarm: 5, fencer: 110, prism: 220, skimmer: 200, splitter: 60, jet: 220, eel: 200, grappler: 240, train: 2500, burrower: 180, warden: 200, howitzer: 220, dropship: 350, jammer: 180, sapper: 160, crawler: 20, mender: 140, stalker: 260, drone: 40, turret: 60, walker: 120, bulwark: 150, gunship: 220, raider: 300, relay: 450, boss: 1200 };
 const UPGRADES = {
   armor: { name: '装甲强化', desc: 'AP +8%' },
   gen: { name: '发电机', desc: 'EN 上限与回复 +8%' },
@@ -802,6 +806,7 @@ const _p = new V3(), _q = new V3(), _r = new V3();
 function updateCamera(dt) {
   const p = G.player; if (!p) return;
   if (G.camYawKick) { cam.yaw += G.camYawKick; G.camYawKick = 0; }
+  G.camYaw = cam.yaw; G.camPitch = cam.pitch;
   const s = p.scale;
   const right = _r.set(Math.cos(cam.yaw), 0, -Math.sin(cam.yaw));
   const pivot = _p.set(p.pos.x, p.pos.y + 4.6 * s, p.pos.z).addScaledVector(right, 3.1 * s);
@@ -862,6 +867,7 @@ function updateAim() {
   }
   locks.sort((a, b) => a.sd - b.sd);
   if (G.jammed) locks.length = 0;
+  if (G.dazzleT > 0) locks.length = 0;
   const prevPrim = G.lockTarget;
   G.lockTarget = locks.length && locks[0].sd < lockR() ? locks[0].e : null;
   G.locks = locks.slice(0, 6).map((l) => l.e);
@@ -943,7 +949,7 @@ function makePlayer() {
 const wingOn = () => !!(save.wing && cfg.wing);
 function clearWorld() {
   if (G.wing) G.wing.dispose(); if (G.core) G.core.dispose();
-  clearDecoys(); clearWells(); clearChill(); clearStrikes(); clearDiscs(); clearMeteors(); clearHooks(); clearSmokes(); clearStasis(); clearAcid(); clearGrid(); clearTwisters(); clearBarrage(); clearIce(); clearWind(); clearStickies(); clearCranes(); clearPMines(); clearQuakes(); clearFlares(); resetNeedles(); clearThunder(); clearRods(); clearTraffic(); clearRifts(); clearSupply(); clearDepots(); clearSalvage(); clearFort(); clearRefl(); clearLane(); clearRBeam(); clearBeacon(); clearBurn(); clearLance(); clearPursuit(); clearFires(); clearNets(); clearCamo(); clearWrecks(); clearSabot(); G.camoUses = 0; G.camoT = 0; G.camoBonus = 0; G.camoLost = 0; G.wrecksMade = 0; G.wrecksBroken = 0; G.revived = 0; G.reviveBreaks = 0; G.sabPlanted = 0; G.sabCamoPlant = 0; G.sabDefused = 0; G.sabSaid = false; G.revSaid = false; G.camoSaid = false; G.defSaid = false; clearWebs(); clearHacks(); clearEvac(); G.webHits = 0; G.webBroke = 0; G.webbedT = 0; G.websMade = 0; G.websBurnt = 0; G.webShots = 0; G.hacked = 0; G.hackTries = 0; G.hackFail = 0; G.hackShots = 0; G.civDmg = 0; G.civLog = {}; G.rescueSaid = false; G.civSaid = false; G.webSaid = false; G.hackSaid = false; G.shuttleSaid = 0; clearSky(); G.ciwsL.length = 0; G.cruiseN = 0; G.cruiseDown = 0; G.ciwsEat = 0; G.ciwsHit = 0; G.skySaid = false; G.cruiseSaid = false; G.netHits = 0; G.torchHit = 0; G.fireT = 0; G.courierUp = null; G.pursuitSaid = false; G.jamSaid = false; G.lanceSaid = false; G.gravSaid = false; G.gravT = 0; G.drillThru = 0; G.drillWallHits = 0; G.welded = 0; G.withdrawn = 0; G.engSaid = false; G.planted = 0; G.defused = 0; G.detonated = 0; G.tanksLost = 0; G.meltPeak = 0; G.plantSaid = false; clearFog(); resetRewind(); G.lampsLit = 0; G.lurkers = 0; G.lurkWakes = 0; G.lurkWokenHit = 0; G.lurkSniped = 0; G.lurkHides = 0; G.lurkSaid = false; G.fogSaid = false; G.pound = null; G.pBoostT = 0; G.crates = 0; G.cratesP = 0; G.cratesE = 0; G.empowered = 0; G.snatched = 0; G.snatchDeliver = 0; G.pounds = 0; G.poundHits = 0; G.poundMaxH = 0; G.supplySaid = false; G.empSaid = false; G.snatchSaid = false; G.jam.R = G.jam.L = G.jam.S = 0; G.jamHits = 0; G.jamOrbs = 0; G.jamSaid2 = false; G.riftP = 0; G.riftE = 0; G.riftShots = 0; G.riftSaid = false; G.siphonHeal = 0; G.leechOn = 0; G.leechLatch = 0; G.leechShaken = 0; G.leechT = 0; G.leechSaid = false; G.trucks = 0; G.truckHits = 0; G.truckE = 0; G.roadkill = 0; G.corrStacks = 0; G.corrBonus = 0; G.boltSaid = false; G.hornHintSaid = false; G.heraldSaid = false; G.bolts = 0; G.boltLocks = 0; G.boltHits = 0; G.boltDodged = 0; G.boltE = 0; G.boltRod = 0; G.rodZaps = 0; G.rodsUsed = 0; G.horns = 0; G.hornBlocked = 0; G.rallyHits = 0; G.leapSaid = false; G.leapDownSaid = false; G.flareSaid = false; G.leaps = 0; G.leapDowned = 0; G.leapHits = 0; G.flares = 0; G.flareT = 0; G.flareE = 0; G.needleBursts = 0; G.ramSaid = false; G.ramStunSaid = false; G.quakeSaid = false; G.ramCharges = 0; G.ramHits = 0; G.ramStuns = 0; G.ramBlocked = 0; G.quakes = 0; G.fisT = 0; G.ricochets = 0; G.ricoSeek = 0; G.defl = []; G.deflected = 0; G.magnetOn = 0; G.scrapDrops = 0; G.pmBlown = 0; G.deflDown = 0; G.magSaid = false; G.deflSaid = false; G.holoSpawned = 0; G.holoPopped = 0; G.stuckN = 0; G.holoSaid = false; G.bombsDropped = 0; G.windSaid = false; G.bombSaid = false; G.frozeSaid = false; G.holeSaid = false; G.spotSaid = false; G.twistSaid = false; G.blinkSaid = false; G.gridSaid = false; G.hiveSaid = false; G.levSaid = false; G.levSwimSaid = false; G.smokeN = 0; G.levBreaches = 0; G.meteorSaid = false; G.wadeSaid = false; G.tether = null; G.blinkInv = 0; G.eelSaid = false; G.jetSaid = false; G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
+  clearDecoys(); clearWells(); clearChill(); clearStrikes(); clearDiscs(); clearMeteors(); clearHooks(); clearSmokes(); clearStasis(); clearAcid(); clearGrid(); clearTwisters(); clearBarrage(); clearIce(); clearWind(); clearStickies(); clearCranes(); clearPMines(); clearQuakes(); clearFlares(); resetNeedles(); clearThunder(); clearRods(); clearTraffic(); clearRifts(); clearSupply(); clearDepots(); clearSalvage(); clearFort(); clearRefl(); clearLane(); clearRBeam(); clearBeacon(); clearBurn(); clearLance(); clearPursuit(); clearFires(); clearNets(); clearDecap(); clearLinkB(); G.dazzleT = 0; G.dazzled = 0; G.dazzleDodge = 0; G.linkUses = 0; G.linkDmg = 0; G.linkedN = 0; G.linkFizz = 0; G.decoysOut = 0; G.vipBoarded = false; G.shroudBlocked = 0; G.dazSaid = false; G.dcSaid = false; G.lkSaid = false; clearCamo(); clearWrecks(); clearSabot(); G.camoUses = 0; G.camoT = 0; G.camoBonus = 0; G.camoLost = 0; G.wrecksMade = 0; G.wrecksBroken = 0; G.revived = 0; G.reviveBreaks = 0; G.sabPlanted = 0; G.sabCamoPlant = 0; G.sabDefused = 0; G.sabSaid = false; G.revSaid = false; G.camoSaid = false; G.defSaid = false; clearWebs(); clearHacks(); clearEvac(); G.webHits = 0; G.webBroke = 0; G.webbedT = 0; G.websMade = 0; G.websBurnt = 0; G.webShots = 0; G.hacked = 0; G.hackTries = 0; G.hackFail = 0; G.hackShots = 0; G.civDmg = 0; G.civLog = {}; G.rescueSaid = false; G.civSaid = false; G.webSaid = false; G.hackSaid = false; G.shuttleSaid = 0; clearSky(); G.ciwsL.length = 0; G.cruiseN = 0; G.cruiseDown = 0; G.ciwsEat = 0; G.ciwsHit = 0; G.skySaid = false; G.cruiseSaid = false; G.netHits = 0; G.torchHit = 0; G.fireT = 0; G.courierUp = null; G.pursuitSaid = false; G.jamSaid = false; G.lanceSaid = false; G.gravSaid = false; G.gravT = 0; G.drillThru = 0; G.drillWallHits = 0; G.welded = 0; G.withdrawn = 0; G.engSaid = false; G.planted = 0; G.defused = 0; G.detonated = 0; G.tanksLost = 0; G.meltPeak = 0; G.plantSaid = false; clearFog(); resetRewind(); G.lampsLit = 0; G.lurkers = 0; G.lurkWakes = 0; G.lurkWokenHit = 0; G.lurkSniped = 0; G.lurkHides = 0; G.lurkSaid = false; G.fogSaid = false; G.pound = null; G.pBoostT = 0; G.crates = 0; G.cratesP = 0; G.cratesE = 0; G.empowered = 0; G.snatched = 0; G.snatchDeliver = 0; G.pounds = 0; G.poundHits = 0; G.poundMaxH = 0; G.supplySaid = false; G.empSaid = false; G.snatchSaid = false; G.jam.R = G.jam.L = G.jam.S = 0; G.jamHits = 0; G.jamOrbs = 0; G.jamSaid2 = false; G.riftP = 0; G.riftE = 0; G.riftShots = 0; G.riftSaid = false; G.siphonHeal = 0; G.leechOn = 0; G.leechLatch = 0; G.leechShaken = 0; G.leechT = 0; G.leechSaid = false; G.trucks = 0; G.truckHits = 0; G.truckE = 0; G.roadkill = 0; G.corrStacks = 0; G.corrBonus = 0; G.boltSaid = false; G.hornHintSaid = false; G.heraldSaid = false; G.bolts = 0; G.boltLocks = 0; G.boltHits = 0; G.boltDodged = 0; G.boltE = 0; G.boltRod = 0; G.rodZaps = 0; G.rodsUsed = 0; G.horns = 0; G.hornBlocked = 0; G.rallyHits = 0; G.leapSaid = false; G.leapDownSaid = false; G.flareSaid = false; G.leaps = 0; G.leapDowned = 0; G.leapHits = 0; G.flares = 0; G.flareT = 0; G.flareE = 0; G.needleBursts = 0; G.ramSaid = false; G.ramStunSaid = false; G.quakeSaid = false; G.ramCharges = 0; G.ramHits = 0; G.ramStuns = 0; G.ramBlocked = 0; G.quakes = 0; G.fisT = 0; G.ricochets = 0; G.ricoSeek = 0; G.defl = []; G.deflected = 0; G.magnetOn = 0; G.scrapDrops = 0; G.pmBlown = 0; G.deflDown = 0; G.magSaid = false; G.deflSaid = false; G.holoSpawned = 0; G.holoPopped = 0; G.stuckN = 0; G.holoSaid = false; G.bombsDropped = 0; G.windSaid = false; G.bombSaid = false; G.frozeSaid = false; G.holeSaid = false; G.spotSaid = false; G.twistSaid = false; G.blinkSaid = false; G.gridSaid = false; G.hiveSaid = false; G.levSaid = false; G.levSwimSaid = false; G.smokeN = 0; G.levBreaches = 0; G.meteorSaid = false; G.wadeSaid = false; G.tether = null; G.blinkInv = 0; G.eelSaid = false; G.jetSaid = false; G.train = null; G.hornSaid = false; G.wing = null; G.core = null; G.friends.length = 0;
   for (const e of G.enemies) e.remove ? e.remove() : null;
   G.enemies.length = 0; G.shots.length = 0; G.queue.length = 0; clearMinis(); clearMines(); snipeSaid = false; G.mendSaid = false; G.mineSaid = false; G.jamSaid = false; G.jammed = null; clearZones();
   for (const k of G.pickups) scene.remove(k.o);
@@ -971,6 +977,7 @@ function newGame() {
     G.core = new Reactor(scene, new V3(LANE.home[0], 0, LANE.home[1]), M.coreHp); G.core.label = '基地'; G.friends.push(G.core);
     G.player.pos.set(LANE.home[0] - 24, 0, 0); cam.yaw = Math.PI / 2; G.player.aimYaw = cam.yaw;
   }
+  if (M.decap) { startDecap(); G.player.pos.set(0, 0, 116); cam.yaw = 0; G.player.aimYaw = cam.yaw; decapGarrison(); }
   if (M.sabot) { startSabot(); G.player.pos.set(0, 0, 112); cam.yaw = 0; G.player.aimYaw = cam.yaw; sabotGarrison(); }
   if (M.rescue) { startEvac(); G.player.pos.set(EVAC.pad[0] + 16, 0, EVAC.pad[1] + 18); cam.yaw = 0.7; G.player.aimYaw = cam.yaw; }
   if (M.sky) { startSky(); G.player.pos.set(0, 0, 8); cam.yaw = 0; G.player.aimYaw = 0; }
@@ -987,7 +994,7 @@ function newGame() {
   G.od = { k: 0, t: 0, ringT: 0, dur: OD.dur + (chipOn('cap') ? 3 : 0) }; G.odGain = chipOn('cap') ? 1.4 : 1; G.hurtAt = -99;
   $('coreName').textContent = G.core ? (M.convoy ? '运输车 CONVOY' : M.lane ? '基地 HQ' : '反应堆 REACTOR') : '';
   if (wingOn()) { G.wing = new Wingman(scene, mctx, cfg.palette === 'kestrel' ? 'vanguard' : 'kestrel'); G.friends.push(G.wing); }
-  run.coreLost = false; run.trainLost = false; run.depotLost = false; run.salvage = !!M.salvage; run.quota = M.quota || 0; run.fortify = !!M.fortify; run.hackSaid = false; run.sabot = !!M.sabot; run.sbT = 14; run.sbN = 0; run.sbBoss = false; run.orbLost = false; run.sbWarn = 0; run.rescue = !!M.rescue; run.rsT = 10; run.rsN = 0; run.rsCap = 5; run.rsBoss = false; run.civLost = false; run.sky = !!M.sky; run.skyW = 0; run.skyBreak = 5; run.skyT = 16; run.skyB = 12; run.cityLost = false; run.pursuit = !!M.pursuit; run.prsT = 10; run.prsN = 0; run.dataLost = false; run.lance = !!M.lance; run.lcnT = 6; run.lcnN = 0; run.beacon = !!M.beacon; run.bcnT = 3; run.bcnN = 0; run.timeUp = false; run.lane = !!M.lane; run.laneT = 8; run.laneN = 0; run.shadeSaid = false; run.squadSaid = false; run.armorSaid = false;
+  run.coreLost = false; run.trainLost = false; run.depotLost = false; run.salvage = !!M.salvage; run.quota = M.quota || 0; run.fortify = !!M.fortify; run.hackSaid = false; run.decap = !!M.decap; run.dcT = 16; run.dcN = 0; run.vipLost = false; run.dcWarn = 0; run.sabot = !!M.sabot; run.sbT = 14; run.sbN = 0; run.sbBoss = false; run.orbLost = false; run.sbWarn = 0; run.rescue = !!M.rescue; run.rsT = 10; run.rsN = 0; run.rsCap = 5; run.rsBoss = false; run.civLost = false; run.sky = !!M.sky; run.skyW = 0; run.skyBreak = 5; run.skyT = 16; run.skyB = 12; run.cityLost = false; run.pursuit = !!M.pursuit; run.prsT = 10; run.prsN = 0; run.dataLost = false; run.lance = !!M.lance; run.lcnT = 6; run.lcnN = 0; run.beacon = !!M.beacon; run.bcnT = 3; run.bcnN = 0; run.timeUp = false; run.lane = !!M.lane; run.laneT = 8; run.laneN = 0; run.shadeSaid = false; run.squadSaid = false; run.armorSaid = false;
   run.ring = M.storm ? { x: 0, z: 0, r: STORM.r0, x0: 0, z0: 0, r0: STORM.r0, x1: 0, z1: 0, r1: STORM.r0, t: 0, T: 1, wait: 0, outT: 0, said: false } : null; G.ring = run.ring; G.tether = null; G.blinkInv = 0; G.grapHits = 0; G.snaps = 0; G.blinks = 0; G.stormT = 0; run.tetherSaid = false;
   stormWall.visible = !!M.storm; stormNext.visible = false;
   run.extract = !!M.extract; run.dlN = 0; run.got = 0; run.evac = null; run.lateBoss = null;
@@ -1162,6 +1169,7 @@ function spawnGroup(S, R = 1, b) {
   for (let k = 0; k < (S.hijack || 0); k++) new Hijacker(spot(80 * R, 120 * R, true, b));
   for (let k = 0; k < (S.scav || 0); k++) new Scav(spot(80 * R, 130 * R, true, b));
   for (let k = 0; k < (S.planter || 0); k++) new Planter(spot(95 * R, 150 * R, false, b));
+  for (let k = 0; k < (S.dazzler || 0); k++) new Dazzler(spot(55, 85, true, b));
   for (let k = 0; k < (S.reviver || 0); k++) new Reviver(spot(60, 95, true, b));
   for (let k = 0; k < (S.weaver || 0); k++) new Weaver(spot(55 * R, 90 * R, false, b));
   for (let k = 0; k < (S.launcher || 0); k++) new Launcher(spot(70 * R, 110 * R, false, b));
@@ -1289,6 +1297,12 @@ function waveLogic(dt) {
     if (run.deathT <= 0) finish(false);
     return;
   }
+  if (G.decap && G.decap.lost) {
+    if (!run.deathT) { run.deathT = 3.4; run.vipLost = true; sfx('alarm', 0); banner('目标已撤离', 'DECAPITATION FAILED', true); }
+    run.deathT -= dt;
+    if (run.deathT <= 0) finish(false);
+    return;
+  }
   if (G.sabot && G.sabot.lost) {
     if (!run.deathT) { run.deathT = 3.4; run.orbLost = true; fx.trauma = 0.9; fx.flash(G.player.center(new V3()), 0xffe0c0, 300, 200, 0.6); sfx('bigboom', 0); banner('轨道炮充能完毕', 'SABOTAGE FAILED', true); }
     run.deathT -= dt;
@@ -1334,6 +1348,7 @@ function waveLogic(dt) {
     }
     return;
   }
+  if (run.decap) { decapLogic(dt); return; }
   if (run.sabot) { sabotLogic(dt); return; }
   if (run.rescue) { rescueLogic(dt); return; }
   if (run.sky) { skyLogic(dt); return; }
@@ -1647,6 +1662,45 @@ function beaconSquad() {
   for (const e of G.enemies.slice(n0)) e.bcnBorn = run.t;
   run.bcnN++;
 }
+// ---- v51 decapitation director: four commanders (combat.js Marshal; one real, three holographic decoys) each with an escort
+// walker and a dazzler; squads land beside the nearest unidentified commander (or the fleeing real one) every 20 s
+function decapGarrison() {
+  G.decap.ms.forEach((m, i) => { const w = new Walker(nearPt(m.pos.x, m.pos.z, false, 12, 24)); w.goalP = m.home; w.goalR = 18; if (i % 2 === 0) { const d = new Dazzler(nearPt(m.pos.x, m.pos.z, true, 18, 30)); d.home = m.home; } });
+}
+function dcFoes() { return G.enemies.filter((e) => e.alive && !e.dying && !e.hacked && e.kind !== 'marshal' && e.kind !== 'turret' && e.kind !== 'boss' && e.kind !== 'raider').length; }
+function decapAnchor() {
+  const S = G.decap, p = G.player;
+  if (S.found && S.real && S.real.alive) return S.real.pos;
+  let best = null, bd = 1e9; for (const m of S.ms) if (m.alive && !m.known) { const d = Math.hypot(m.pos.x - p.pos.x, m.pos.z - p.pos.z); if (d < bd) { bd = d; best = m.pos; } }
+  return best || p.pos;
+}
+function decapSquad() {
+  const a = decapAnchor(), cap = 7, f0 = dcFoes(); if (f0 >= cap) return;
+  run.dcN++;
+  new Walker(nearPt(a.x, a.z, false, 26, 44));
+  if (f0 + 1 < cap) (run.dcN % 2 ? new Bulwark(nearPt(a.x, a.z, false, 28, 46)) : new Drone(nearPt(a.x, a.z, true, 30, 46)));
+  if (run.dcN >= 2 && f0 + 2 < cap && G.enemies.filter((e) => e.kind === 'dazzler' && e.alive && !e.dying).length < 3) new Dazzler(nearPt(a.x, a.z, true, 30, 50));
+}
+function decapLogic(dt) {
+  const S = G.decap; if (!S) return;
+  if (run.won) { run.deathT -= dt; if (run.deathT <= 0) finish(true); return; }
+  if (S.real && !S.real.alive && !S.escaped) { run.won = true; banner('MISSION COMPLETE', `敌方指挥官被击毁 · 用时 ${Math.floor(run.t / 60)}:${String(Math.floor(run.t % 60)).padStart(2, '0')}`, false); sfx('wave'); run.deathT = 3.5; return; }
+  if (!S.found) { const w = S.t > DECAP.alertAt - 15 ? 2 : S.t > DECAP.alertAt - 60 ? 1 : 0; if (w > run.dcWarn) { run.dcWarn = w; banner('指挥官起疑', w === 2 ? '15 秒后它会自行撤离' : '一分钟内找不出真身，它就会撤离', true); sfx('alarm'); } }
+  run.dcT -= dt;
+  if (run.dcT <= 0) { run.dcT = S.found ? 18 : 24; decapSquad(); }
+}
+G.onVipFound = (m, why) => {
+  const P = G.player, d = Math.round(Math.hypot(G.decap.pad.x - m.pos.x, G.decap.pad.z - m.pos.z));
+  banner('目标确认', why === 'alert' ? `指挥官起疑了 · 正赶往 ${d} m 外的运输机` : `真正的指挥官 · 正赶往 ${d} m 外的运输机`, true); sfx('alarm');
+  showHint('干扰力场已失效 · 运输机 28 秒后在红色光柱处降落，登机要 7 秒 · 在那之前击毁它', 4);
+  new Walker(nearPt(m.pos.x, m.pos.z, false, 14, 24));
+};
+G.onDecoyFound = (m) => { const S = G.decap, k = S.ms.filter((x) => !x.real && x.known).length; banner('全息诱饵', `${k}/${S.ms.length - 1} · 它要炸了，离远点`, true); if (!G.dcSaid) { G.dcSaid = true; showHint('诱饵被识破后会自爆并放出两架无人机 · 继续扫描下一台', 3.5); } };
+G.onDecoyPop = (at) => { new Drone(nearPt(at.x, at.z, true, 4, 10)); new Drone(nearPt(at.x, at.z, true, 4, 10)); };
+G.onVipBoard = () => { banner('目标正在登机', '7 秒内击毁它', true); sfx('alarm'); };
+G.onVipGuard = (m) => { new Boss(nearPt(m.pos.x, m.pos.z, false, 16, 28), mctx, 'lancer', 0.7); showHint('指挥官呼叫了护卫机甲「枪骑兵」', 3); };
+G.onDazzle = () => { sfx('hurt', 0); if (!G.dazSaid) { G.dazSaid = true; showHint('被眩惑机强光致盲 · 它亮起蓄力时把视线移开或躲到掩体后', 4); } };
+
 // ---- v50 sabotage director: four pylons (combat.js updateSabot) each with a walker and a turret, a reviver from the start;
 // squads land beside the pylon nearest to you every 18 s, a planted charge brings two walkers running; the Phantom comes
 // once all four are down
@@ -2057,7 +2111,7 @@ function finish(win) {
   writeSave();
   $('rRank').textContent = rank;
   $('rTitle').textContent = run.endless ? 'LINE BROKEN' : win ? 'MISSION COMPLETE' : 'MISSION FAILED';
-  $('rSub').textContent = `${M.name} · ${D.name} · ` + (run.endless ? `坚守 ${Math.max(0, run.wave)} 波` : win ? (G.core ? `任务完成 · ${G.core.label}剩余 ${Math.ceil(G.core.hp / G.core.maxHp * 100)}%` : G.salv ? `任务完成 · 回收 ${G.salv.delivered} 个核心` : G.depot ? `任务完成 · 油罐剩余 ${G.depot.tanks.filter((t) => t.alive).length}/${G.depot.tanks.length}` : '任务完成') : run.coreLost ? `${G.core ? G.core.label : '反应堆'}在第 ${run.wave + 1} 波被摧毁` : run.orbLost ? '能源塔没能在轨道炮充能前全部炸毁' : run.civLost ? `平民伤亡 ${EVAC.maxLost} 人，撤离失败` : run.cityLost ? '三座避难所全部被摧毁' : run.dataLost ? '数据信使完成了上传' : run.depotLost ? '三座油罐全部被炸毁' : run.trainLost ? '装甲列车逃脱' : run.timeUp ? (G.beacon && G.beacon.done ? '时间耗尽 · 没能及时击破「幻影」' : `时间耗尽 · 通过 ${G.beacon ? G.beacon.i : 0}/${BEACON.total} 道信标`) : `在第 ${run.wave + 1} 波被击毁`) + (G.wing ? ' · 僚机随行（报酬 ×0.85）' : '') + (mm > 1 ? ` · 挑战 ×${mm.toFixed(2)}` : '');
+  $('rSub').textContent = `${M.name} · ${D.name} · ` + (run.endless ? `坚守 ${Math.max(0, run.wave)} 波` : win ? (G.core ? `任务完成 · ${G.core.label}剩余 ${Math.ceil(G.core.hp / G.core.maxHp * 100)}%` : G.salv ? `任务完成 · 回收 ${G.salv.delivered} 个核心` : G.depot ? `任务完成 · 油罐剩余 ${G.depot.tanks.filter((t) => t.alive).length}/${G.depot.tanks.length}` : '任务完成') : run.coreLost ? `${G.core ? G.core.label : '反应堆'}在第 ${run.wave + 1} 波被摧毁` : run.vipLost ? '敌方指挥官登上运输机撤离了' : run.orbLost ? '能源塔没能在轨道炮充能前全部炸毁' : run.civLost ? `平民伤亡 ${EVAC.maxLost} 人，撤离失败` : run.cityLost ? '三座避难所全部被摧毁' : run.dataLost ? '数据信使完成了上传' : run.depotLost ? '三座油罐全部被炸毁' : run.trainLost ? '装甲列车逃脱' : run.timeUp ? (G.beacon && G.beacon.done ? '时间耗尽 · 没能及时击破「幻影」' : `时间耗尽 · 通过 ${G.beacon ? G.beacon.i : 0}/${BEACON.total} 道信标`) : `在第 ${run.wave + 1} 波被击毁`) + (G.wing ? ' · 僚机随行（报酬 ×0.85）' : '') + (mm > 1 ? ` · 挑战 ×${mm.toFixed(2)}` : '');
   const bestTxt = run.endless ? (save.best[bk] ? `${save.best[bk]} 波` : '—') : (save.best[bk] ? fmt(save.best[bk]) : '—');
   $('rStats').innerHTML = `<span>用时</span><b>${fmt(tm)}</b><span>击毁</span><b>${s.kills}</b><span>命中率</span><b>${acc}%</b><span>造成伤害</span><b>${Math.round(s.dmgDealt)}</b><span>承受伤害</span><b>${Math.round(s.dmgTaken)}</b><span>${run.endless ? '最佳波数' : '最佳用时'}</span><b>${bestTxt}${newBest ? ' <em>NEW</em>' : ''}</b>`
     + `<span class="cr">击毁报酬</span><b class="cr">${run.cr} C</b>` + (bonus ? `<span class="cr">任务报酬 · 评级 ${rank}</span><b class="cr">${bonus} C</b>` : '') + `<span class="cr">持有资金</span><b class="cr">${save.cr} C</b>`
@@ -2176,6 +2230,7 @@ const MEDALS = [
   { id: 'sandking', name: '驯沙', desc: '击败沙海巨虫', cr: 1500, tally: 'leviathan', need: 1 },
   { id: 'mirrorbreak', name: '裂镜', desc: '累计击毁 20 台棱镜', cr: 1200, tally: 'prism', need: 20 },
   { id: 'unfence', name: '断网', desc: '累计击毁 20 台栅栏机', cr: 1200, tally: 'fencer', need: 20 },
+  { id: 'decap', name: '斩首', desc: '赢得「斩首 · 指挥官」且目标没能登上运输机', cr: 1100, test: (r) => r.win && cfg.mission === 'decap' && !G.vipBoarded },
   { id: 'sabot', name: '断电', desc: '赢得「破袭 · 敌后爆破」且没有一枚炸药被拆除', cr: 1100, test: (r) => r.win && cfg.mission === 'sabot' && !(G.sabDefused > 0) },
   { id: 'rescue', name: '方舟', desc: '赢得「撤离 · 平民疏散」且平民伤亡不超过 3 人', cr: 1100, test: (r) => r.win && cfg.mission === 'rescue' && G.evac && G.evac.lost <= 3 },
   { id: 'sky', name: '金穹', desc: '赢得「防空 · 导弹拦截」且三座避难所全部保住', cr: 1100, test: (r) => r.win && cfg.mission === 'sky' && G.sky && G.sky.shelters.every((q) => q.alive) },
@@ -2455,6 +2510,14 @@ function drawHUD(dt) {
     const o = laneObjective(); if (o && o.kind === 'tower' && !laneEscorted(o) && o.pos.distanceTo(G.player.pos) < 120) t += ' · 没有友军坦克在旁，防御塔只受 30% 伤害';
     if (G.veilN) t += ' · ' + G.veilN + ' 台敌机隐身中';
     ft.style.display = 'block'; ft.classList.toggle('safe', !tw); ft.textContent = t; }
+  if (G.decap && state === 'play' && G.player.alive) { const ft = $('flareTag'), S = G.decap, R = S.real, P = G.player;
+    let t;
+    if (!S.found) { const sc = S.ms.filter((m) => m.alive && !m.known && m.scanK > 0).sort((a, b) => b.scanK - a.scanK)[0]; t = `🎯 指挥官 ? · 已识破诱饵 ${S.ms.filter((m) => !m.real && m.known).length}/${S.ms.length - 1}` + (sc ? ` · 扫描 ${Math.round(Math.min(1, sc.scanK) * 100)}%` : ''); }
+    else if (R && R.alive) t = R.st === 'board' ? `🎯 目标登机中 · ${Math.max(0, R.boardT).toFixed(1)} 秒` : `🎯 目标撤离中 · 距运输机 ${Math.round(Math.hypot(S.pad.x - R.pos.x, S.pad.z - R.pos.z))} m` + (S.shipT > 0 ? ` · 运输机 ${Math.ceil(S.shipT)} 秒后降落` : ' · 运输机已降落') + ` · 装甲 ${Math.round(R.hp / R.maxHp * 100)}%`;
+    else t = '🎯 目标已击毁';
+    if (G.dazzleT > 0) t = '✸ 致盲 · ' + t;
+    ft.style.display = 'block'; ft.classList.toggle('safe', !S.found); ft.textContent = t; }
+  else if (G.dazzleT > 0 && state === 'play' && G.player.alive) { const ft = $('flareTag'); ft.style.display = 'block'; ft.classList.remove('safe'); ft.textContent = `✸ 眩光致盲 · ${G.dazzleT.toFixed(1)} 秒`; }
   if (G.sabot && state === 'play' && G.player.alive) { const ft = $('flareTag'), S = G.sabot, c = S.charges.slice().sort((a, b) => a.t - b.t)[0];
     let t = `⚡ 能源塔 ${S.gens.length - S.done}/${S.gens.length} · 轨道炮 ${Math.ceil(S.t)} 秒`;
     if (c) t += c.k > 0 ? ` · 炸药被拆 ${Math.round(c.k * 100)}%` : ` · 炸药 ${Math.ceil(c.t)} 秒后引爆`;
@@ -2518,6 +2581,7 @@ function drawHUD(dt) {
       if (L && L.isP) txt = '⚡ 雷击锁定 ' + Math.max(0, L.t).toFixed(1) + ' s · 落地或进入避雷塔圈'; else if (high && cov) { txt = '⚡ 避雷塔保护中'; safe = true; } else if (high) txt = '⚡ 高空暴露 · 会被雷击锁定';
       ft.style.display = txt ? 'block' : 'none'; ft.classList.toggle('safe', safe); ft.textContent = txt; } }
   $('spotTag').style.display = G.spotT > 0 && G.player.alive && state === 'play' ? 'block' : 'none';
+  { const dz = $('dazzle'); if (dz) { const k = G.dazzleT > 0 && state === 'play' ? Math.min(1, G.dazzleT / DAZZ.blind) : 0; dz.style.opacity = k > 0 ? (0.25 + 0.72 * Math.pow(k, 0.6)).toFixed(3) : '0'; } }
   { const gl = $('glare'), on = MISSIONS[cfg.mission].glare && state === 'play';
     if (!on) gl.style.opacity = 0; else { camera.getWorldDirection(_glv); const k = Math.max(0, (_glv.dot(SUN_DIR) - 0.72) / 0.28); _glp.copy(camera.position).addScaledVector(SUN_DIR, 600).project(camera);
       gl.style.opacity = (k * k * 0.9).toFixed(3); gl.style.background = `radial-gradient(circle at ${(_glp.x * 50 + 50).toFixed(1)}% ${(50 - _glp.y * 50).toFixed(1)}%, rgba(255,252,240,0.98) 0%, rgba(255,246,222,0.6) 16%, rgba(255,240,210,0.12) 45%, rgba(255,240,210,0) 70%)`; } }
@@ -2535,7 +2599,7 @@ function drawHUD(dt) {
     $('waveTitle').textContent = curWave().title;
     const left = G.enemies.filter((e) => e.alive).length;
     const rl = G.enemies.filter((e) => e.kind === 'relay' && e.alive).length;
-    $('waveSub').textContent = run.breakT > 0 ? '整备中…' : run.sabot && G.sabot ? (G.boss && G.boss.alive ? '击破「幻影」' : `能源塔 ${G.sabot.gens.length - G.sabot.done}/${G.sabot.gens.length} · 轨道炮 ${Math.ceil(G.sabot.t)} 秒`) : run.rescue && G.evac ? (G.boss && G.boss.alive ? `撤离 ${G.evac.saved}/${EVAC.goal} · 击破「暴君」` : `撤离 ${G.evac.saved}/${EVAC.goal} · 伤亡 ${G.evac.lost}/${EVAC.maxLost}`) : run.sky && G.sky ? (run.skyBreak > 0 ? '下一波即将到来…' : `第 ${run.skyW}/3 波 · 导弹车 ${G.enemies.filter((e) => e.kind === 'launcher' && e.alive).length}`) : run.pursuit && G.courier ? (G.courier.c.alive ? `情报上传 ${Math.floor(G.courier.up)}%` : '击破「幻影」') : run.lance && G.lance ? (G.lance.hijack ? '击破「暴君」' : `卫星天线 ${G.lance.dishes.filter((d) => d.alive).length}/3`) : run.beacon && G.beacon ? (G.beacon.done ? `剩余 ${G.beacon.t.toFixed(0)} 秒 · 击破「幻影」` : `信标 ${G.beacon.i}/${BEACON.total} · 剩余 ${G.beacon.t.toFixed(0)} 秒`) : run.lane && G.lane ? (G.lane.towers.some((t) => t.alive) ? `防御塔 ${G.lane.towers.filter((t) => t.alive).length}/2 · 敌机 ${left}` : `要塞 ${Math.ceil(G.lane.cit.hp / G.lane.cit.maxHp * 100)}% · 敌机 ${left}`) : run.extract ? (run.evac ? `撤离 ${Math.floor(run.evac.k * 100)}%` : `数据 ${run.got}/3`) + ` · 敌机 ${left}` : run.salvage && G.salv ? `回收 ${G.salv.delivered}/${run.quota} · 敌机 ${left}` : run.capture ? run.zones.map((z) => `${z.name}${z.own === 'P' ? '◆' : z.own === 'E' ? '✕' : '○'}`).join(' ') + ` · 敌机 ${left}` : (G.train && G.train.alive ? `逃脱 ${Math.floor(G.train.timeLeft() / 60)}:${String(Math.floor(G.train.timeLeft() % 60)).padStart(2, '0')} · 车厢 ${G.train.parts.filter((q) => q.alive && q.key !== 'loco').length}/3 · 敌机 ${left - 1}` : rl ? `中继塔 ${rl} · 敌机 ${left - rl}` : `剩余敌机 ${left}`);
+    $('waveSub').textContent = run.breakT > 0 ? '整备中…' : run.decap && G.decap ? (!G.decap.found ? `扫描指挥官 · 诱饵 ${G.decap.ms.filter((m) => !m.real && m.known).length}/3` : '在登机前击毁指挥官') : run.sabot && G.sabot ? (G.boss && G.boss.alive ? '击破「幻影」' : `能源塔 ${G.sabot.gens.length - G.sabot.done}/${G.sabot.gens.length} · 轨道炮 ${Math.ceil(G.sabot.t)} 秒`) : run.rescue && G.evac ? (G.boss && G.boss.alive ? `撤离 ${G.evac.saved}/${EVAC.goal} · 击破「暴君」` : `撤离 ${G.evac.saved}/${EVAC.goal} · 伤亡 ${G.evac.lost}/${EVAC.maxLost}`) : run.sky && G.sky ? (run.skyBreak > 0 ? '下一波即将到来…' : `第 ${run.skyW}/3 波 · 导弹车 ${G.enemies.filter((e) => e.kind === 'launcher' && e.alive).length}`) : run.pursuit && G.courier ? (G.courier.c.alive ? `情报上传 ${Math.floor(G.courier.up)}%` : '击破「幻影」') : run.lance && G.lance ? (G.lance.hijack ? '击破「暴君」' : `卫星天线 ${G.lance.dishes.filter((d) => d.alive).length}/3`) : run.beacon && G.beacon ? (G.beacon.done ? `剩余 ${G.beacon.t.toFixed(0)} 秒 · 击破「幻影」` : `信标 ${G.beacon.i}/${BEACON.total} · 剩余 ${G.beacon.t.toFixed(0)} 秒`) : run.lane && G.lane ? (G.lane.towers.some((t) => t.alive) ? `防御塔 ${G.lane.towers.filter((t) => t.alive).length}/2 · 敌机 ${left}` : `要塞 ${Math.ceil(G.lane.cit.hp / G.lane.cit.maxHp * 100)}% · 敌机 ${left}`) : run.extract ? (run.evac ? `撤离 ${Math.floor(run.evac.k * 100)}%` : `数据 ${run.got}/3`) + ` · 敌机 ${left}` : run.salvage && G.salv ? `回收 ${G.salv.delivered}/${run.quota} · 敌机 ${left}` : run.capture ? run.zones.map((z) => `${z.name}${z.own === 'P' ? '◆' : z.own === 'E' ? '✕' : '○'}`).join(' ') + ` · 敌机 ${left}` : (G.train && G.train.alive ? `逃脱 ${Math.floor(G.train.timeLeft() / 60)}:${String(Math.floor(G.train.timeLeft() % 60)).padStart(2, '0')} · 车厢 ${G.train.parts.filter((q) => q.alive && q.key !== 'loco').length}/3 · 敌机 ${left - 1}` : rl ? `中继塔 ${rl} · 敌机 ${left - rl}` : `剩余敌机 ${left}`);
   } else { $('waveTitle').textContent = 'STANDBY'; $('waveSub').textContent = ''; }
   const cb = $('coreBox'); cb.classList.toggle('hidden', !G.core && !run.capture && !run.extract && !run.salvage);
   if (run.extract && !G.core) {
@@ -2588,6 +2652,8 @@ function drawHUD(dt) {
     if (e.kind === 'engineer') { rctx.fillStyle = '#ffc830'; rctx.fillRect(x - 4, z - 4, 8, 8); continue; }
     if (e.kind === 'jammer') { rctx.fillStyle = '#c070ff'; rctx.beginPath(); rctx.arc(x, z, 5, 0, Math.PI * 2); rctx.fill(); continue; }
     if (e.kind === 'anchor') { rctx.strokeStyle = 'rgba(176, 96, 255, 0.7)'; rctx.lineWidth = 1.5; rctx.beginPath(); rctx.arc(x, z, ANCHOR.R * K, 0, Math.PI * 2); rctx.stroke(); }
+    if (e.kind === 'marshal') { if (e.known) { rctx.fillStyle = '#ff3020'; rctx.beginPath(); rctx.moveTo(x, z - 7); rctx.lineTo(x + 6, z); rctx.lineTo(x, z + 7); rctx.lineTo(x - 6, z); rctx.fill(); } else { rctx.fillStyle = '#ffd040'; rctx.fillRect(x - 5, z - 5, 10, 10); rctx.fillStyle = '#201a10'; rctx.font = 'bold 9px sans-serif'; rctx.textAlign = 'center'; rctx.fillText('?', x, z + 3); } continue; }
+    if (e.kind === 'dazzler' && e.st === 'charge') { rctx.strokeStyle = '#ffffff'; rctx.lineWidth = 2; rctx.beginPath(); rctx.arc(x, z, 5, 0, Math.PI * 2); rctx.stroke(); }
     if (e.kind === 'reviver') { rctx.strokeStyle = '#50ff90'; rctx.lineWidth = 2; rctx.beginPath(); rctx.arc(x, z, 4.5, 0, Math.PI * 2); rctx.stroke(); continue; }
     if (e.hacked) { rctx.fillStyle = '#70ffb8'; rctx.beginPath(); rctx.arc(x, z, 4, 0, Math.PI * 2); rctx.fill(); continue; }
     if (e.kind === 'cruise') { rctx.fillStyle = '#ff9a40'; rctx.beginPath(); rctx.arc(x, z, 3, 0, Math.PI * 2); rctx.fill(); continue; }
@@ -2599,6 +2665,7 @@ function drawHUD(dt) {
   }
   if (run.capture || run.extract) for (const z of run.zones) { const x = (z.x - p.pos.x) * K, y = (z.z - p.pos.z) * K; rctx.strokeStyle = z.kind === 'evac' ? '#6dff9a' : z.own === 'P' ? '#5fe3ff' : z.own === 'E' ? '#ff4a3a' : z.kind === 'cache' ? '#ffd23a' : '#e8e8e8'; rctx.lineWidth = 3; rctx.beginPath(); rctx.arc(x, y, Math.max(6, z.R * K), 0, Math.PI * 2); rctx.stroke(); rctx.fillStyle = rctx.strokeStyle; rctx.font = 'bold 13px system-ui'; rctx.textAlign = 'center'; rctx.textBaseline = 'middle'; rctx.fillText(z.name, x, y); }
   rctx.fillStyle = '#ffb040'; if (!G.jammed) for (const m of G.mines) if (m.alive) rctx.fillRect((m.pos.x - p.pos.x) * K - 2, (m.pos.z - p.pos.z) * K - 2, 4, 4);
+  if (G.decap) { const S = G.decap; if (S.pad && S.real && S.real.alive) { rctx.strokeStyle = '#ff4030'; rctx.lineWidth = 2; rctx.beginPath(); rctx.arc((S.pad.x - p.pos.x) * K, (S.pad.z - p.pos.z) * K, 6, 0, Math.PI * 2); rctx.stroke(); } }
   if (G.sabot) for (const g of G.sabot.gens) { if (!g.alive) continue; rctx.fillStyle = g.charge ? (g.charge.k > 0 ? '#ffd040' : '#ff4030') : '#ffa040'; rctx.fillRect((g.x - p.pos.x) * K - 5, (g.z - p.pos.z) * K - 5, 10, 10); }
   for (const w of G.wrecks) { rctx.fillStyle = '#8a8a86'; rctx.fillRect((w.x - p.pos.x) * K - 2, (w.z - p.pos.z) * K - 2, 4, 4); }
   if (G.evac) { const E = G.evac; rctx.fillStyle = 'rgba(110, 255, 150, 0.9)'; rctx.fillRect((EVAC.pad[0] - p.pos.x) * K - 5, (EVAC.pad[1] - p.pos.z) * K - 5, 10, 10);
@@ -2634,7 +2701,7 @@ const auto = { on: false, st: 1, stT: 0, jT: 3, hover: 0, sT: 0 };
 const incomingAny = () => G.shots.some((sh) => sh.team === 'E' && (sh.kind === 'missile' || sh.kind === 'plasma') && Math.hypot(sh.x - G.player.pos.x, sh.y - G.player.pos.y - 3, sh.z - G.player.pos.z) < 30);
 function autoIntent(dt) {
   const p = G.player; let tgt = null, bd = 1e9;
-  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked || e.hacked || !fogSeen(e)) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'cruise' ? (e.c.distanceTo(p.pos) < 120 ? -110 : 60) : e.kind === 'launcher' ? (e.st === 'setup' || e.st === 'fire' ? -45 : -20) : e.kind === 'courier' ? (e.st === 'upload' ? -40 : -10) : e.kind === 'dish' ? -50 : e.kind === 'relay' ? -25 : e.kind === 'tower' ? -30 : e.kind === 'citadel' ? (e.shielded ? 90 : -45) : e.kind === 'shade' ? -45 : e.kind === 'mender' ? -35 : e.kind === 'herald' ? -40 : e.kind === 'hijack' ? (e.st === 'chan' || e.st === 'hold' ? -70 : e.st === 'go' ? -40 : -15) : e.kind === 'scav' ? (e.load > 0 ? -50 : -10) : e.kind === 'planter' ? (e.st === 'plant' ? -60 : 0) : e.kind === 'snatcher' && e.carry ? -45 : e.emp ? -15 : e.kind === 'hive' ? -20 : e.kind === 'watch' ? (G.spotT > 0 && e.lock > 0 ? -45 : -10) : e.kind === 'blinker' ? (e.st === 'exposed' || e.st === 'strike' ? -40 : 0) : e.kind === 'swarm' ? (e.c.distanceTo(p.pos) < 12 ? -20 : 60) : e.kind === 'jammer' ? (G.jammed === e ? -45 : -15) : e.kind === 'dropship' ? (e.cargo && e.st !== 'in' ? -60 : e.cargo ? -20 : 400) : e.kind === 'howitzer' ? -25 : e.kind === 'warden' ? (domeAt(p.pos) === e ? -90 : -30) : e.kind === 'crawler' && e.c.distanceTo(p.pos) < 35 ? -30 : e.kind === 'prism' && !(e.vent > 0) && e.fwd.x * (p.pos.x - e.pos.x) + e.fwd.z * (p.pos.z - e.pos.z) > 0 ? 25 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (G.evac && e.foe && e.foe.isCiv) d -= 35; if (e.kind === 'reviver') d -= e.st === 'chan' ? 50 : 20; if (e.sabC) d -= 35; if (d < bd) { bd = d; tgt = e; } }
+  for (const e of G.enemies) { if (!e.alive || e.dying || e.cloaked || e.hacked || !fogSeen(e) || (G.dazzleT > 0 && e.c.distanceTo(p.pos) > 16)) continue; let d = e.c.distanceTo(p.pos) + (e.kind === 'boss' ? -30 : e.kind === 'cruise' ? (e.c.distanceTo(p.pos) < 120 ? -110 : 60) : e.kind === 'launcher' ? (e.st === 'setup' || e.st === 'fire' ? -45 : -20) : e.kind === 'courier' ? (e.st === 'upload' ? -40 : -10) : e.kind === 'dish' ? -50 : e.kind === 'relay' ? -25 : e.kind === 'tower' ? -30 : e.kind === 'citadel' ? (e.shielded ? 90 : -45) : e.kind === 'shade' ? -45 : e.kind === 'mender' ? -35 : e.kind === 'herald' ? -40 : e.kind === 'hijack' ? (e.st === 'chan' || e.st === 'hold' ? -70 : e.st === 'go' ? -40 : -15) : e.kind === 'scav' ? (e.load > 0 ? -50 : -10) : e.kind === 'planter' ? (e.st === 'plant' ? -60 : 0) : e.kind === 'snatcher' && e.carry ? -45 : e.emp ? -15 : e.kind === 'hive' ? -20 : e.kind === 'watch' ? (G.spotT > 0 && e.lock > 0 ? -45 : -10) : e.kind === 'blinker' ? (e.st === 'exposed' || e.st === 'strike' ? -40 : 0) : e.kind === 'swarm' ? (e.c.distanceTo(p.pos) < 12 ? -20 : 60) : e.kind === 'jammer' ? (G.jammed === e ? -45 : -15) : e.kind === 'dropship' ? (e.cargo && e.st !== 'in' ? -60 : e.cargo ? -20 : 400) : e.kind === 'howitzer' ? -25 : e.kind === 'warden' ? (domeAt(p.pos) === e ? -90 : -30) : e.kind === 'crawler' && e.c.distanceTo(p.pos) < 35 ? -30 : e.kind === 'prism' && !(e.vent > 0) && e.fwd.x * (p.pos.x - e.pos.x) + e.fwd.z * (p.pos.z - e.pos.z) > 0 ? 25 : 0); if (G.core) d = d * 0.5 + e.c.distanceTo(G.core.pos) * 0.7; if (G.evac && e.foe && e.foe.isCiv) d -= 35; if (e.kind === 'reviver') d -= e.st === 'chan' ? 50 : 20; if (e.kind === 'marshal') d += e.shroud ? 30 : e.real ? -60 : 0; if (e.kind === 'dazzler') d -= e.st === 'charge' ? 15 : 5; if (e.sabC) d -= 35; if (d < bd) { bd = d; tgt = e; } }
   // pick up repairs when hurt
   let goal = null;
   if (p.hp < p.maxHp * 0.6) for (const k of G.pickups) { const d = k.o.position.distanceTo(p.pos); if (d < 70) { goal = k.o.position; break; } }
@@ -2737,6 +2804,11 @@ function autoIntent(dt) {
     if (L.autoR && L.st === 'drop' && dl < L.R + 12) goal = new V3(p.pos.x + (dx / dl) * 16, 0, p.pos.z + (dz / dl) * 16);
     else if (L.autoR && dl < L.R + 9) { const sx = L.st === 'sprint' || L.st === 'warn' ? -L.dir.z : 0, sz = L.st === 'sprint' || L.st === 'warn' ? L.dir.x : 0, sg = Math.sign(dx * sx + dz * sz) || 1; goal = new V3(p.pos.x + (dx / dl) * 14 + sx * sg * 14, 0, p.pos.z + (dz / dl) * 14 + sz * sg * 14); } }
   if (!goal && G.fires.length) for (const f of G.fires) { const dx = p.pos.x - f.x, dz = p.pos.z - f.z, dl = Math.hypot(dx, dz) || 1; if (dl < f.R + 1 && p.pos.y - f.y < 3) { goal = new V3(f.x + dx / dl * (f.R + 6), 0, f.z + dz / dl * (f.R + 6)); break; } }
+  if (!goal && G.decap && !run.won) {
+    const S = G.decap;
+    if (S.found && S.real && S.real.alive) { if (Math.hypot(S.real.pos.x - p.pos.x, S.real.pos.z - p.pos.z) > 30) goal = S.real.pos; }
+    else { let m0 = null, bd = 1e9; for (const m of S.ms) if (m.alive && !m.known) { const dd = Math.hypot(m.pos.x - p.pos.x, m.pos.z - p.pos.z); if (dd < bd) { bd = dd; m0 = m; } } if (m0 && (bd > 18 || !clearLine(p.center(new V3()), m0.c))) goal = m0.pos; }
+  }
   auto.plant = false;
   if (!goal && G.sabot && !run.won) {
     const S = G.sabot; let away = null, C = null;
@@ -2768,6 +2840,10 @@ function autoIntent(dt) {
     cam.yaw = Math.atan2(-dx, -dz) + Math.atan2(camRight, h) * 0.9;
     cam.pitch = Math.max(-0.6, Math.min(0.8, Math.atan2(tgt.c.y - pc.y - 1.0, h)));
   }
+  for (const e of G.enemies) {   // a dazzler about to strobe: look away (a human doesn't catch every one)
+    if (e.kind !== 'dazzler' || e.st !== 'charge' || !e.alive || !e.autoR || e.c.distanceTo(p.pos) > DAZZ.range) continue;
+    cam.yaw = Math.atan2(-(e.c.x - p.pos.x), -(e.c.z - p.pos.z)) + Math.PI; auto.away = (auto.away || 0) + dt; break;
+  }
   auto.stT -= dt; if (auto.stT <= 0) { auto.stT = 2 + Math.random() * 2.5; auto.st = Math.random() < 0.5 ? 1 : -1; }
   auto.jT -= dt; let jump = false; if (auto.jT <= 0 && p.grounded) { auto.jT = 4 + Math.random() * 4; jump = true; auto.hover = 0.8 + Math.random(); }
   auto.hover -= dt;
@@ -2794,6 +2870,7 @@ function autoIntent(dt) {
   let f = tgt ? (melee ? (d > (flamer ? 13 : 24) ? 1 : 0) : (d > 45 ? 1 : d < 22 ? -1 : 0)) : 0, s = tgt ? auto.st : 0;
   if (goal) { const gx = goal.x - p.pos.x, gz = goal.z - p.pos.z; const yaw = cam.yaw; const fw = [-Math.sin(yaw), -Math.cos(yaw)], rt = [Math.cos(yaw), -Math.sin(yaw)]; f = Math.sign(gx * fw[0] + gz * fw[1]); s = Math.sign(gx * rt[0] + gz * rt[1]); }
   const los = tgt && clearLine(p.center(new V3()), tgt.c);
+  const lkK = G.pw.S.d.type === 'chainb', lkNear = lkK && !!tgt && !!los && tgt.c.distanceTo(p.pos) < 90 && G.enemies.filter((e) => e !== tgt && e.alive && !e.dying && e.c && e.c.distanceTo(tgt.c) < WEAPONS.chainb.R).length >= 1;
   const cmK = G.pw.S.d.type === 'camo', cmNear = cmK && !(G.camo && G.camo.t > 0) && ((G.sabot && !!sabTarget(p.pos) && Math.hypot(sabTarget(p.pos).x - p.pos.x, sabTarget(p.pos).z - p.pos.z) < 40) || (G.hud.hurt > 0.3 && p.hp < p.maxHp * 0.6) || incomingAny());
   const hkK = G.pw.S.d.type === 'hack', hkNear = hkK && !!tgt && hackable(tgt) && tgt.c.distanceTo(p.pos) < 80 && !!los;
   const cwK = G.pw.S.d.type === 'ciws', cwNear = cwK && (G.enemies.some((e) => e.kind === 'cruise' && e.alive && e.c.distanceTo(p.pos) < 50) || G.shots.filter((sh) => sh.team === 'E' && sh.speed < 90 && sh.kind !== 'bullet' && sh.kind !== 'ebullet' && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 40).length >= 2 || G.enemies.filter((e) => e.alive && (e.kind === 'drone' || e.kind === 'swarm') && e.c.distanceTo(p.pos) < 32).length >= 2);
@@ -2806,7 +2883,7 @@ function autoIntent(dt) {
   const rwK = G.pw.S.d.type === 'rewind', rwNear = rwK && G.hud.hurt > 0.3 && p.hp < p.maxHp * 0.85;
   const pndK = G.pw.S.d.type === 'pound', pndNear = pndK && !G.pound && G.enemies.filter((e) => e.alive && !e.dying && !e.holo && e.c && e.pos && Math.hypot(e.pos.x - p.pos.x, e.pos.z - p.pos.z) < 11 && e.pos.y - groundAt(e.pos.x, e.pos.z, e.pos.y + 1) < 3).length >= 1;
   const rodK = G.pw.S.d.type === 'rod', rodNear = rodK && (!!(G.thunder && G.thunder.lock && G.thunder.lock.isP) || G.enemies.some((e) => e.alive && !e.dying && !e.holo && e.c && e.c.distanceTo(p.pos) < 22));
-  auto.sT -= dt; const sPress = auto.sT <= 0 && (cmK ? cmNear : hkK ? hkNear : cwK ? cwNear : rwK ? rwNear : pndK ? pndNear : rodK ? rodNear : empK ? empNear : pmK ? pmNear : sonK ? sonNear : iwK ? iwNear : chfK ? chfNear : stsK ? stsNear : smkK ? G.hud.hurt > 0.25 : los && !(mirror && refl(G.pw.S))) && (G.pw.S.d.type !== 'orbital' || (!!G.lockTarget && d < 150)); if (sPress) auto.sT = 0.6;
+  auto.sT -= dt; const sPress = auto.sT <= 0 && (lkK ? lkNear : cmK ? cmNear : hkK ? hkNear : cwK ? cwNear : rwK ? rwNear : pndK ? pndNear : rodK ? rodNear : empK ? empNear : pmK ? pmNear : sonK ? sonNear : iwK ? iwNear : chfK ? chfNear : stsK ? stsNear : smkK ? G.hud.hurt > 0.25 : los && !(mirror && refl(G.pw.S))) && (G.pw.S.d.type !== 'orbital' || (!!G.lockTarget && d < 150)); if (sPress) auto.sT = 0.6;
   const sniped = G.enemies.some((e) => e.kind === 'stalker' && e.st === 'aim' && e.lockOn === p && e.stT < 0.5);
   const incoming = G.shots.some((sh) => sh.team === 'E' && sh.kind === 'missile' && Math.hypot(sh.x - p.pos.x, sh.y - p.pos.y - 3, sh.z - p.pos.z) < 22);
   const shellAt = G.barrage.some((b) => b.t < 0.55 && Math.hypot(b.p.x - p.pos.x, b.p.z - p.pos.z) < WATCH.R + 1 && b.vol && b.vol.autoD);
@@ -2952,7 +3029,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=55');
+    await loadKit('./assets/kit.glb?v=57');
     ensureArena();
     makePlayer();
     setState('title');
