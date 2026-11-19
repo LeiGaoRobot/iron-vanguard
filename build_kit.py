@@ -143,6 +143,9 @@ M = dict(
     GateGlow=mat("GateGlow", "#e0fbff", 0.2, emit="#30e0ff", strength=2.4),
     EngPaint=mat("EngPaint", "#b8861e", 0.55, metal=0.35),
     BurnerGlow=mat("BurnerGlow", "#fff0d8", 0.2, emit="#ff8a28", strength=2.2),
+    DishGlow=mat("DishGlow", "#ffe0d8", 0.2, emit="#ff2a18", strength=2.6),
+    AnchorGlow=mat("AnchorGlow", "#f0dcff", 0.2, emit="#a040ff", strength=2.4),
+    DrillPaint=mat("DrillPaint", "#8a6a3a", 0.45, metal=0.6),
     FogLampGlow=mat("FogLampGlow", "#fff6e0", 0.2, emit="#ffe0a0", strength=2.6),
     LurkEye=mat("LurkEye", "#ff7060", 0.2, emit="#ff3020", strength=2.5),
     LurkCore=mat("LurkCore", "#2a2c30", 0.5, metal=0.5),
@@ -2658,7 +2661,71 @@ def build_burner():
     torus((0, 0.05, 0.35), 0.25, 0.03, M["Hazard"], K, rot=ALONG_Y)
     muzzle("Muzzle_Burner", (0, -0.72, 0.15), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner()
+
+def build_dish():
+    # orbital uplink dish: a 10 m targeting station. armoured plinth, a thick mast, a yawing head (DH_Yaw) carrying a
+    # big dish tilted at the sky with a red emitter at its focus (DH_Core, the hit point), cable runs and warning stripes
+    K = kit("E_Dish")
+    box((0, 0, 0.7), (7.0, 7.0, 1.4), M["EArmor2"], K, bevel=0.15)
+    box((0, 0, 1.55), (5.2, 5.2, 0.3), M["Hazard"], K)
+    for (x, y) in ((1, 1), (-1, 1), (1, -1), (-1, -1)):
+        box((x * 2.9, y * 2.9, 1.2), (1.2, 1.2, 2.4), M["EArmor"], K, bevel=0.08)
+        box((x * 2.9, y * 2.9, 2.5), (0.5, 0.5, 0.2), M["DishGlow"], K)
+    cyl((0, 0, 3.6), 1.0, 4.2, M["Frame"], K, verts=10, smooth=False)
+    cyl((0, 0, 2.4), 1.5, 1.0, M["EArmor"], K, verts=10, smooth=False)
+    for i in range(3):
+        a = i * 2 * math.pi / 3
+        cyl((math.cos(a) * 1.05, math.sin(a) * 1.05, 3.8), 0.12, 3.6, M["Black"], K, verts=6)
+    y = empty("DH_Yaw", (0, 0, 5.8), K)
+    box((0, 0, 0.3), (1.8, 1.8, 0.8), M["EArmor"], y, bevel=0.1)
+    cyl((0, -0.6, 1.6), 3.2, 0.3, M["EArmor2"], y, rot=(math.radians(35), 0, 0), verts=20, r2=1.2, smooth=False)
+    cyl((0, -0.55, 1.62), 2.9, 0.06, M["Frame"], y, rot=(math.radians(35), 0, 0), verts=20, smooth=False)
+    for sx in (-1, 1):
+        cyl((sx * 1.4, 0.9, 2.6), 0.07, 2.8, M["Frame"], y, rot=(math.radians(-25), sx * math.radians(25), 0), verts=6)
+    cyl((0, 1.0, 2.8), 0.07, 2.6, M["Frame"], y, rot=(math.radians(-40), 0, 0), verts=6)
+    c = empty("DH_Core", (0, 1.1, 3.9), y)
+    ball((0, 0, 0), 0.75, M["DishGlow"], c, sub=2)
+    torus((0, 0, 0), 0.95, 0.08, M["Joint"], c, rot=(math.radians(35), 0, 0))
+
+def build_anchor():
+    # Grav-Lock: a squat 4-legged heavy walker. armoured hull, a violet gravity core under a ring (AN_Core / AN_Ring),
+    # three emitter fins, a mortar tube on the back (Muzzle_Anchor). legs AN_Leg1-4 pivot at the hips. front = +Y
+    K = kit("E_Anchor")
+    box((0, 0, 2.7), (3.0, 3.6, 1.3), M["EArmor"], K, bevel=0.15)
+    box((0, 0.2, 3.5), (2.2, 2.4, 0.5), M["EArmor2"], K, bevel=0.1)
+    box((0, 1.85, 2.8), (1.4, 0.2, 0.4), M["EEye"], K)
+    for i, (x, yy) in enumerate(((1, 1), (-1, 1), (1, -1), (-1, -1))):
+        leg = empty("AN_Leg%d" % (i + 1), (x * 1.5, yy * 1.6, 2.4), K)
+        box((x * 0.45, yy * 0.45, -0.3), (0.55, 0.55, 1.1), M["Frame"], leg, rot=(yy * -0.5, x * 0.5, 0))
+        box((x * 0.9, yy * 0.9, -1.4), (0.42, 0.42, 1.8), M["EArmor2"], leg, bevel=0.06)
+        box((x * 0.9, yy * 0.9, -2.3), (0.9, 0.9, 0.2), M["Joint"], leg)
+    c = empty("AN_Core", (0, -0.1, 4.3), K)
+    ball((0, 0, 0.2), 0.6, M["AnchorGlow"], c, sub=2)
+    r = empty("AN_Ring", (0, -0.1, 4.5), K)
+    torus((0, 0, 0), 0.95, 0.08, M["AnchorGlow"], r)
+    for i in range(3):
+        a = i * 2 * math.pi / 3 + math.pi / 2
+        box((math.cos(a) * 0.95, math.sin(a) * 0.95, 0), (0.18, 0.18, 0.5), M["Frame"], r)
+    for sx in (-1, 0, 1):
+        wedge((sx * 0.9, -0.9, 4.2), (0.18, 0.6, 1.0), M["AnchorGlow"] if sx == 0 else M["EArmor2"], K, taper=0.3)
+    cyl((0.9, -1.2, 4.0), 0.3, 1.6, M["Black"], K, rot=(math.radians(-30), 0, 0), verts=10)
+    muzzle("Muzzle_Anchor", (0.9, -0.8, 4.75), K)
+
+def build_drill():
+    K = kit("W_Drill")
+    # drill gun: a boxy breech with a magazine, a spinning drum (DR_Spin) carrying a fluted drill bit out front
+    box((0, -0.05, 0.05), (0.42, 0.8, 0.42), M["Frame"], K, bevel=0.05)
+    box((0, -0.15, -0.3), (0.3, 0.4, 0.3), M["DrillPaint"], K, bevel=0.04)
+    box((0.22, -0.1, 0.12), (0.04, 0.6, 0.1), M["Hazard"], K)
+    d = empty("DR_Spin", (0, 0.45, 0.05), K)
+    cyl((0, 0.08, 0), 0.19, 0.3, M["Joint"], d, rot=ALONG_Y, verts=8, smooth=False)
+    cyl((0, 0.45, 0), 0.15, 0.5, M["DrillPaint"], d, rot=ALONG_Y, verts=6, r2=0.02, smooth=False)
+    for i in range(3):
+        a = i * 2 * math.pi / 3
+        box((math.cos(a) * 0.1, 0.4, math.sin(a) * 0.1), (0.04, 0.42, 0.04), M["BurnerGlow"], d, rot=(0, a, 0))
+    muzzle("Muzzle_Drill", (0, 0.95, 0.05), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

@@ -25,6 +25,7 @@ export const WEAPONS = {
   acid: { slot: 'arm', name: 'AC-2 酸液喷枪', en: 'AC-2 Acid Sprayer', desc: '抛射酸液团（有下坠）· 溅射 3 m · 命中叠加腐蚀：每层受伤 +7%，最多 5 层，4 秒不补就消退', type: 'bullet', acid: true, rate: 0.15, dmg: 15, speed: 90, spread: 0.02, mag: 30, reload: 2.0, color: 0x90ff30, w: 0.45, len: 1.6, life: 1.1, sfx: 'rifle', recoil: 0.12 },
   needler: { slot: 'arm', name: 'NX-8 针刺枪', en: 'NX-8 Needler', desc: '追踪锁定目标的钢针 · 扎在敌机上 · 同一目标扎满 8 根一起引爆（100 / 4.5 m）· 3 秒没补针就脱落', type: 'bullet', needle: true, rate: 0.085, dmg: 5, speed: 150, spread: 0.02, mag: 48, reload: 2.2, color: 0xff70e0, w: 0.16, len: 3, life: 1.6, sfx: 'rifle', recoil: 0.08 },
   ricochet: { slot: 'arm', name: 'RB-4 跳弹枪', en: 'RB-4 Ricochet', desc: '撞墙反弹 3 次 · 反弹后转向附近敌机 · 每弹一次 +25%', type: 'bullet', rate: 0.11, dmg: 14, speed: 240, spread: 0.008, mag: 36, reload: 2.0, color: 0x80ffd0, w: 0.22, len: 6, life: 1.8, bounce: 3, sfx: 'rifle', recoil: 0.15 },
+  drill: { slot: 'arm', name: 'DR-2 钻地弹', en: 'DR-2 Drill Gun', desc: '慢速钻头弹 · 可钻透 18 m 内的墙体与掩体 · 命中后爆炸 3.5 m · 隔着墙打躲在后面的敌机（看雷达）', type: 'bullet', drill: 18, rate: 0.36, dmg: 58, splash: 3.5, speed: 110, spread: 0.004, mag: 10, reload: 2.2, life: 1.8, color: 0xffa040, w: 0.45, len: 3, sfx: 'cannon', recoil: 0.4 },
   rifle: { slot: 'arm', name: 'AR-77 突击步枪', en: 'AR-77 Rifle', desc: '全自动 · 精准 · 均衡', type: 'bullet', rate: 0.1, dmg: 17, speed: 320, spread: 0.005, mag: 40, reload: 1.7, color: 0xffd27a, w: 0.22, len: 7, sfx: 'rifle', recoil: 0.18 },
   gatling: { slot: 'arm', name: 'GX-6 加特林', en: 'GX-6 Gatling', desc: '需预转 · 高射速 · 散布大', type: 'bullet', rate: 0.042, spinUp: 0.45, dmg: 8.5, speed: 290, spread: 0.022, mag: 200, reload: 3.0, color: 0xffb860, w: 0.18, len: 6, sfx: 'gatling', recoil: 0.08 },
   coil: { slot: 'arm', name: 'LC-3 闪电线圈', en: 'LC-3 Arc Coil', desc: '自动索敌 · 连锁 3 个目标', type: 'chain', rate: 0.5, dmg: 44, range: 60, chains: 3, chainR: 18, mag: 14, reload: 2.2, sfx: 'coil', recoil: 0.3 },
@@ -68,7 +69,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -313,8 +314,15 @@ function updateShots(DT) {
     const h = segHit(_a, _b, s.team === 'P' ? entsP : entsE, s.kind === 'plasma' ? 0.6 : s.frostP ? 1.1 : s.kind === 'flame' ? 0.4 + s.age * 2.5 : 0);
     // vs world
     const L = _a.distanceTo(_b); _d.subVectors(_b, _a).divideScalar(L || 1);
-    const w = raySolids(_a, _d, L);
+    let w = raySolids(_a, _d, L);
+    if (s.drill && w.solid && w.solid !== 'floor' && w.solid.kind !== 'barrel' && (s.wallIn || 0) < s.drill) { if (!s.inW) { s.inW = true; G.drillThru = (G.drillThru || 0) + 1; } s.wallIn = (s.wallIn || 0) + 4; _c.copy(_a).addScaledVector(_d, w.t); G.fx.sparks(_c, _d.clone().multiplyScalar(-1), 10, 0xffb060, 14, 0.9, 0.35, 0.3); G.fx.smoke(_c, 2, 1.4, 1.0, 0x9a8468, 0.7, 0.45); s.wasIn = true; w = { t: Infinity, solid: null }; }   // DR-2: bore on through
+    if (s.drill && s.wasIn && !pointInSolid(_b) && pointInSolid(_a)) { G.fx.sparks(_a, _d, 12, 0xffb060, 16, 0.8, 0.35, 0.3); G.fx.smoke(_a, 2, 1.4, 1.0, 0x9a8468, 0.7, 0.45); s.wasIn = false; }   // bursting out the far side
+    if (s.drill && pointInSolid(_b)) {
+      s.wallIn = (s.wallIn || 0) + L; s.wasIn = true;
+      if (s.wallIn >= s.drill) { impact(s, _b.clone(), null); G.shots.splice(i, 1); continue; }
+    }
     if (h && h.t * L <= w.t) {
+      if (s.inW && s.team === 'P') G.drillWallHits = (G.drillWallHits || 0) + 1;
       _c.lerpVectors(_a, _b, h.t);
       if (h.ent.kind === 'prism' && s.team === 'P' && (s.kind === 'bullet' || s.kind === 'missile') && h.ent.reflects(s, _a)) {
         const pr = h.ent; G.prismRefl = (G.prismRefl || 0) + 1; pr.glint = 0.12;
@@ -407,6 +415,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
           if (d.flak && team === 'P') { sh.flak = d.flak; sh.splash = d.splash; }
           if (d.split && team === 'P') { sh.split = d.split; sh.fragN = d.fragN; sh.fragDmg = d.fragDmg * dmgMul; }
           if (d.bounce && team === 'P') sh.bounce = d.bounce;
+          if (d.drill && team === 'P') { sh.drill = d.drill; sh.splash = d.splash; }
           if (d.acid && team === 'P') sh.acid = true;
           if (d.siphon && me) sh.siphon = d.siphon;
           if (d.needle && team === 'P') { sh.needle = true; sh.target = target && target.alive ? target : null; }
@@ -1891,7 +1900,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -7408,6 +7417,197 @@ export class Engineer extends Enemy {
   }
 }
 
+// ------------------------------------------------------------------ v46 Sunlance: an orbital laser walks the ground after you.
+// Three uplink dishes aim it; each one destroyed slows and narrows it. Kill all three and the beam is yours: it hunts enemies.
+export const LANCE = { R: 6.5, speed: 9.5, dps: 55, edps: 200, bossDps: 22, delay: 10, sprintEvery: [12, 16], warn: 1.4, sprint: 24, sprintT: 2.2,
+  dishHp: 4000, perDish: 0.2, huntSpeed: 11, sites: [[-112, -78], [118, -56], [-6, 124]] };
+const lanceCore = new THREE.CylinderGeometry(1, 1, 420, 16, 1, true).translate(0, 210, 0);
+const lanceRingGeo = new THREE.RingGeometry(0.9, 1, 48);
+const scorchGeo = new THREE.CircleGeometry(1, 16), UPV = new V3(0, 1, 0);
+let lanceGrp = null;
+function lanceMeshes() {
+  if (lanceGrp) return lanceGrp;
+  const mk = (geo, c, o) => new THREE.Mesh(geo, new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: o, blending: THREE.AdditiveBlending, depthWrite: false, fog: false, side: THREE.DoubleSide }));
+  const g = new THREE.Group(), core = mk(lanceCore, 0xffe0c8, 0.9), glow = mk(lanceCore, 0xff3418, 0.28), ring = mk(lanceRingGeo, 0xff4020, 0.8), warn = mk(lanceRingGeo, 0xffd040, 0.0);
+  ring.rotation.x = -Math.PI / 2; ring.position.y = 0.35; warn.rotation.x = -Math.PI / 2; warn.position.y = 0.4;
+  g.add(core, glow, ring, warn); g.renderOrder = 4;
+  const scorch = [];
+  for (let k = 0; k < 48; k++) { const m = new THREE.Mesh(scorchGeo, new THREE.MeshBasicMaterial({ color: 0x140a06, transparent: true, opacity: 0, depthWrite: false })); m.rotation.x = -Math.PI / 2; m.visible = false; scorch.push(m); }
+  lanceGrp = { g, core, glow, ring, warn, scorch, si: 0 };
+  return lanceGrp;
+}
+export class Dish extends Enemy {
+  constructor(pos) {
+    super('dish', 'E_Dish', pos, LANCE.dishHp, 3.0); this.boom = 2.4; this.isObjective = true;
+    this.pos.y = 0;
+    this.solids = [addSolid(pos.x, pos.z, 7, 7, 2.4, this.pos.y, 'dish'), addSolid(pos.x, pos.z, 2.2, 2.2, 4.4, this.pos.y + 2.4, 'dish')];
+    this.c.set(pos.x, this.pos.y + 9.5, pos.z); this.ph = Math.random() * 6;
+  }
+  die() {
+    for (const so of this.solids) removeSolid(so);
+    this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this);
+    explodeAt(this.c, 10, 40, 'P', 2.6, 0xff6040); G.fx.flash(this.c, 0xff6040, 60, 30, 0.5);
+    for (let k = 0; k < 4; k++) G.queue.push({ label: 'dish', t: 0.25 + k * 0.3, fn: () => explodeAt(new V3(this.pos.x + (Math.random() - 0.5) * 4, this.pos.y + 3 + k * 2, this.pos.z + (Math.random() - 0.5) * 4), 0, 0, 'P', 1.2) });
+    this.remove();
+  }
+  update(dt) {
+    this.ph += dt; const L = G.lance, n = this.n;
+    if (n.DH_Yaw && L) n.DH_Yaw.rotation.y += angDiff(Math.atan2(-(L.x - this.pos.x), -(L.z - this.pos.z)) + Math.PI, n.DH_Yaw.rotation.y) * Math.min(1, dt * 2);
+    if (n.DH_Core) { n.DH_Core.getWorldPosition(this.c); n.DH_Core.scale.setScalar(1 + 0.12 * Math.sin(this.ph * 6)); }
+  }
+}
+export function startLance() {
+  clearLance();
+  const M = lanceMeshes(); G.scene.add(M.g); for (const m of M.scorch) G.scene.add(m);
+  const dishes = LANCE.sites.map(([x, z]) => new Dish(new V3(x, 0, z)));
+  G.lance = { x: 0, z: 0, vx: 0, vz: 0, st: 'idle', t: LANCE.delay, sprT: 18, R: LANCE.R, dishes, hijack: false, dmgP: 0, dmgE: 0, lockT: 0, sprints: 0, sprintHit: 0, scT: 0, sndT: 0, dir: new V3() };
+  M.g.visible = false;
+}
+export function clearLance() {
+  if (lanceGrp) { lanceGrp.g.parent && lanceGrp.g.parent.remove(lanceGrp.g); for (const m of lanceGrp.scorch) { m.visible = false; m.material.opacity = 0; m.parent && m.parent.remove(m); } }
+  G.lance = null;
+}
+function lanceTarget(L) {
+  if (!L.hijack) return G.player && G.player.alive ? G.player.pos : null;
+  let best = null, bd = 1e9;
+  for (const e of G.enemies) { if (!e.alive || e.dying || !e.pos || e.isObjective) continue; const d = Math.hypot(e.pos.x - L.x, e.pos.z - L.z) + (e.kind === 'boss' ? 40 : 0); if (d < bd) { bd = d; best = e.pos; } }
+  return best;
+}
+export function updateLance(dt) {
+  const L = G.lance, M = lanceGrp; if (!L || !M) return;
+  const alive = L.dishes.filter((d) => d.alive).length, k = L.dishes.length - alive;
+  if (alive === 0 && !L.hijack) { L.hijack = true; L.st = 'track'; G.onLanceHijack && G.onLanceHijack(); }
+  L.R = LANCE.R * (L.hijack ? 1 : 1 - 0.1 * k);
+  const col = L.hijack ? 0x40d8ff : 0xff3418;
+  M.glow.material.color.setHex(col); M.ring.material.color.setHex(L.hijack ? 0x60e0ff : 0xff4020);
+  const P = G.player, tp = lanceTarget(L);
+  if (L.st === 'idle') {
+    L.t -= dt; M.g.visible = false;
+    if (L.t <= 0 && P) { const a = Math.random() * Math.PI * 2; L.x = P.pos.x + Math.cos(a) * 55; L.z = P.pos.z + Math.sin(a) * 55; L.st = 'track'; G.onLanceOn && G.onLanceOn(); }
+    return;
+  }
+  M.g.visible = true;
+  const spd = L.hijack ? LANCE.huntSpeed : LANCE.speed * (1 - LANCE.perDish * k);
+  if (L.st === 'track') {
+    if (tp) { const lv = !L.hijack && P ? 0.6 : 0; let dx = tp.x + (lv ? P.vel.x * lv : 0) - L.x, dz = tp.z + (lv ? P.vel.z * lv : 0) - L.z; const dl = Math.hypot(dx, dz) || 1; const want = Math.min(spd, dl * 1.5); L.vx += (dx / dl * want - L.vx) * Math.min(1, dt * 2.5); L.vz += (dz / dl * want - L.vz) * Math.min(1, dt * 2.5); }
+    else { L.vx *= Math.exp(-2 * dt); L.vz *= Math.exp(-2 * dt); }
+    const far = !L.hijack && tp && P && Math.hypot(tp.x - L.x, tp.z - L.z) > 45;
+    L.farT = far ? (L.farT || 0) + dt : 0;
+    if (L.farT > 2.5) {   // fallen behind: the satellite re-aims and drops the beam on the ground ahead of you
+      L.farT = 0; const vx = P.vel.x, vz = P.vel.z, vl = Math.hypot(vx, vz), a = Math.random() * Math.PI * 2, o = 4 + Math.random() * 6;
+      L.x = tp.x + (vl > 3 ? vx / vl * Math.min(26, vl * 1.5) : 0) + Math.cos(a) * o; L.z = tp.z + (vl > 3 ? vz / vl * Math.min(26, vl * 1.5) : 0) + Math.sin(a) * o;
+      L.vx = L.vz = 0; L.st = 'drop'; L.t = 1.3; L.drops = (L.drops || 0) + 1; sfx('warn', 0); G.onLanceWarn && G.onLanceWarn(true);
+    }
+    if (!L.hijack) { L.sprT -= dt; if (L.sprT <= 0 && tp && Math.hypot(tp.x - L.x, tp.z - L.z) < 70) { L.st = 'warn'; L.t = LANCE.warn; L.vx = L.vz = 0; sfx('warn', 0); G.onLanceWarn && G.onLanceWarn(); } }
+  } else if (L.st === 'warn') {
+    L.t -= dt; L.vx = L.vz = 0;
+    if (tp) { L.dir.set(tp.x + (P ? P.vel.x * 0.5 : 0) - L.x, 0, tp.z + (P ? P.vel.z * 0.5 : 0) - L.z); if (L.dir.lengthSq() < 0.01) L.dir.set(1, 0, 0); L.dir.normalize(); }
+    if (L.t <= 0) { L.st = 'sprint'; L.t = LANCE.sprintT; L.spd = tp ? Math.min(32, Math.max(LANCE.sprint, Math.hypot(tp.x - L.x, tp.z - L.z) / (LANCE.sprintT * 0.7))) : LANCE.sprint; L.sprints++; L.hitThis = false; sfx('laser', 0); }
+  } else if (L.st === 'drop') {   // red warning ring on the spot, no damage until it lands
+    L.t -= dt; L.vx = L.vz = 0; if (L.t <= 0) { L.st = 'track'; L.sprT = Math.max(L.sprT, 4); G.fx.flash(_a.set(L.x, groundAt(L.x, L.z, 60) + 2, L.z), 0xff5030, 40, 30, 0.3); G.fx.ring(_a.set(L.x, groundAt(L.x, L.z, 60) + 0.5, L.z), null, 1, L.R * 2.4, 0.4, 0xff6040); sfx('laser', 0); }
+  } else if (L.st === 'sprint') {
+    L.t -= dt; L.vx = L.dir.x * L.spd; L.vz = L.dir.z * L.spd;
+    if (L.t <= 0) { L.st = 'track'; L.sprT = LANCE.sprintEvery[0] + Math.random() * (LANCE.sprintEvery[1] - LANCE.sprintEvery[0]); if (L.hitThis) L.sprintHit++; }
+  }
+  L.x += L.vx * dt; L.z += L.vz * dt;
+  L.x = Math.max(-ARENA, Math.min(ARENA, L.x)); L.z = Math.max(-ARENA, Math.min(ARENA, L.z));
+  const gy = groundAt(L.x, L.z, 60);
+  // visuals
+  const fl = 0.85 + 0.15 * Math.sin((G.time || 0) * 40) * Math.random();
+  M.g.position.set(L.x, gy, L.z);
+  M.core.scale.set(L.R * 0.38 * fl, 1, L.R * 0.38 * fl); M.glow.scale.set(L.R, 1, L.R); M.ring.scale.setScalar(L.R * 1.15);
+  const dropK = L.st === 'drop' ? 1 - L.t / 1.3 : 1;
+  M.core.visible = M.glow.visible = M.ring.visible = L.st !== 'drop';
+  M.glow.material.opacity = L.st === 'warn' ? 0.12 + 0.3 * Math.abs(Math.sin(L.t * 18)) : L.st === 'sprint' ? 0.4 : 0.2;
+  M.warn.material.opacity = L.st === 'warn' ? 0.9 : L.st === 'drop' ? 0.5 + 0.5 * Math.abs(Math.sin(L.t * 14)) : 0; M.warn.scale.setScalar(L.st === 'drop' ? L.R * (2.6 - 1.6 * dropK) : L.R * (1.2 + (L.st === 'warn' ? (1 - L.t / LANCE.warn) * 1.6 : 0)));
+  if (L.st !== 'drop' && Math.random() < 0.7) G.fx.sparks(_a.set(L.x + (Math.random() - 0.5) * L.R, gy + 0.5, L.z + (Math.random() - 0.5) * L.R), UPV, 2, L.hijack ? 0x80e8ff : 0xffa060, 14, 1.4, 0.4, 0.25);
+  if (Math.random() < 0.25) G.fx.smoke(_a.set(L.x, gy + 1, L.z), 1, 2.5, 1.6, 0x2a2420, 1, 0.5);
+  L.scT -= dt;
+  if (L.scT <= 0 && L.st !== 'drop') { L.scT = 0.3; const m = M.scorch[M.si++ % M.scorch.length]; m.position.set(L.x + (Math.random() - 0.5), gy + 0.06, L.z + (Math.random() - 0.5)); m.scale.setScalar(L.R * (0.8 + Math.random() * 0.3)); m.material.opacity = 0.55; m.visible = true; }
+  for (const m of M.scorch) if (m.visible) { m.material.opacity -= dt * 0.045; if (m.material.opacity <= 0) m.visible = false; }
+  L.sndT -= dt; if (L.sndT <= 0 && P) { L.sndT = 1.3; sfx('laser', Math.hypot(P.pos.x - L.x, P.pos.z - L.z)); }
+  // damage: the column reaches all the way up, so flying over it does not help
+  if (L.st === 'drop') return;
+  if (P && P.alive && !L.hijack && Math.hypot(P.pos.x - L.x, P.pos.z - L.z) < L.R) {
+    G.curSrc = null; damagePlayer(LANCE.dps * dt, null, 'lance'); L.dmgP += LANCE.dps * dt; L.hitThis = L.st === 'sprint' || L.hitThis; G.lanceOnYou = 0.3;
+  }
+  for (const e of G.enemies) {
+    if (!e.alive || e.dying || !e.pos || e.isObjective || e.holo) continue;
+    if (Math.hypot(e.pos.x - L.x, e.pos.z - L.z) > L.R + (e.r || 1.5) * 0.5) continue;
+    const d = (e.kind === 'boss' ? LANCE.bossDps : LANCE.edps) * dt; L.dmgE += d;
+    dealDamage(e, d, 'X', e.c, 'lance');
+  }
+}
+
+// ---- Grav-Lock: a slow four-legged heavy that projects a 22 m violet gravity dome. Inside it your hover jets cut out,
+// gravity is 2.6×, and boosting is 25% slower; it walks up to put you inside and lobs mortar shells at you.
+export const ANCHOR = { hp: 950, r: 2.6, R: 22, speed: 5.2, keep: [9, 17], g: 2.6, boostK: 0.75, fire: [3.2, 4.2], dmg: 24, splash: 5.5 };
+const domeGeo = new THREE.SphereGeometry(1, 32, 12, 0, Math.PI * 2, 0, Math.PI / 2);
+const domeRingGeo = new THREE.RingGeometry(0.97, 1, 64);
+export class Anchor extends Enemy {
+  constructor(pos) {
+    super('anchor', 'E_Anchor', pos, ANCHOR.hp, ANCHOR.r); this.boom = 1.5;
+    this.pos.y = groundAt(pos.x, pos.z, 40); this.yaw = Math.random() * 6; this.vel = new V3(); this.ph = Math.random() * 6; this.fireT = 2.5; this.side = Math.random() < 0.5 ? 1 : -1; this.sideT = 0; this.stuckT = 0; this.last = this.pos.clone(); this.on = 0;
+    this.dome = new THREE.Mesh(domeGeo, new THREE.MeshBasicMaterial({ color: 0xa050ff, transparent: true, opacity: 0.07, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, fog: false }));
+    this.ring = new THREE.Mesh(domeRingGeo, new THREE.MeshBasicMaterial({ color: 0xb060ff, transparent: true, opacity: 0.6, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+    this.ring.rotation.x = -Math.PI / 2; this.dome.scale.setScalar(ANCHOR.R); this.ring.scale.setScalar(ANCHOR.R);
+    G.scene.add(this.dome, this.ring); this.c.set(this.pos.x, this.pos.y + 3.2, this.pos.z);
+  }
+  remove() { super.remove(); for (const m of [this.dome, this.ring]) { m.parent && m.parent.remove(m); m.material.dispose(); } }
+  domeOn() { return this.alive && !(this.stunT > 0); }
+  update(dt) {
+    const t = this.tg(), n = this.n; this.ph += dt;
+    let dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z; const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+    let mx = 0, mz = 0;
+    if (dl > ANCHOR.keep[1]) { mx = dx; mz = dz; } else if (dl < ANCHOR.keep[0]) { mx = -dx; mz = -dz; } else { mx = -dz * this.side * 0.6; mz = dx * this.side * 0.6; }
+    if (this.sideT > 0) { this.sideT -= dt; mx = mx * 0.3 - dz * this.side; mz = mz * 0.3 + dx * this.side; }
+    this.vel.x += (mx * ANCHOR.speed - this.vel.x) * (1 - Math.exp(-3 * dt)); this.vel.z += (mz * ANCHOR.speed - this.vel.z) * (1 - Math.exp(-3 * dt));
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    this.pos.x = Math.max(-ARENA + 5, Math.min(ARENA - 5, this.pos.x)); this.pos.z = Math.max(-ARENA + 5, Math.min(ARENA - 5, this.pos.z));
+    collideCyl(this.pos, 2.4, 3);
+    this.stuckT += dt; if (this.stuckT > 1.6) { if (this.pos.distanceTo(this.last) < 2 && dl > ANCHOR.keep[1]) { this.sideT = 1.6; this.side *= -1; } this.stuckT = 0; this.last.copy(this.pos); }
+    this.yaw += angDiff(Math.atan2(-dx, -dz), this.yaw) * Math.min(1, dt * 2);
+    this.pos.y += (groundAt(this.pos.x, this.pos.z, this.pos.y + 2) - this.pos.y) * Math.min(1, dt * 8);
+    this.obj.rotation.set(0, this.yaw, 0);
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    for (let i = 1; i <= 4; i++) { const l = n['AN_Leg' + i]; if (l) l.rotation.x = Math.sin(this.ph * 5 + (i % 2) * Math.PI) * 0.3 * Math.min(1, sp / 3); }
+    if (n.AN_Ring) n.AN_Ring.rotation.y += dt * 2.5;
+    this.c.set(this.pos.x, this.pos.y + 3.2, this.pos.z);
+    const on = this.domeOn(); this.on += ((on ? 1 : 0) - this.on) * Math.min(1, dt * 4);
+    this.dome.position.set(this.pos.x, this.pos.y, this.pos.z); this.ring.position.set(this.pos.x, this.pos.y + 0.3, this.pos.z);
+    this.dome.material.opacity = (0.05 + 0.03 * Math.sin(this.ph * 3) + (this.inside ? 0.05 : 0)) * this.on; this.ring.material.opacity = 0.6 * this.on;
+    // mortar: three lobbed shells at you, landing spots marked
+    if (dl < 70 && this.checkLos(dt)) {
+      this.fireT -= dt;
+      if (this.fireT <= 0) {
+        this.fireT = ANCHOR.fire[0] + Math.random() * (ANCHOR.fire[1] - ANCHOR.fire[0]);
+        for (let k = 0; k < 3; k++) G.queue.push({ label: 'anchor-mortar', t: k * 0.35, fn: () => {
+          if (!this.alive || !this.n.Muzzle_Anchor) return;
+          const mp = this.n.Muzzle_Anchor.getWorldPosition(new V3());
+          const f = this.tg(), D = Math.hypot(f.pos.x - mp.x, f.pos.z - mp.z), Tf = 1.1 + D / 60, g = 26;
+          const aim = new V3().copy(f.pos).addScaledVector(f.vel || _c.set(0, 0, 0), Tf * 0.7);
+          aim.x += (Math.random() - 0.5) * 6; aim.z += (Math.random() - 0.5) * 6; aim.y = groundAt(aim.x, aim.z, aim.y + 1);
+          const v = new V3((aim.x - mp.x) / Tf, (aim.y - mp.y + 0.5 * g * Tf * Tf) / Tf, (aim.z - mp.z) / Tf);
+          G.curShooter = this; spawnShot({ p: mp, v, dmg: ANCHOR.dmg, team: 'E', kind: 'shell', splash: ANCHOR.splash, life: Tf + 1, grav: g, label: 'anchor-mortar', color: 0xc070ff }); G.curShooter = null;
+          G.fx.warn(aim, ANCHOR.splash, Tf); G.fx.muzzle(mp, _d.copy(v).normalize(), 0xc080ff, 1.6); sfx('eshell', dl);
+        } });
+      }
+    }
+  }
+}
+export function updateGrav(dt) {
+  const P = G.player; if (!P) return;
+  let lock = false;
+  for (const e of G.enemies) {
+    if (e.kind !== 'anchor') continue;
+    e.inside = false;
+    if (!e.domeOn() || !P.alive) continue;
+    if (Math.hypot(P.pos.x - e.pos.x, P.pos.z - e.pos.z) < ANCHOR.R && P.pos.y - e.pos.y < ANCHOR.R) { e.inside = true; lock = true; }
+  }
+  P.gravMul = lock ? ANCHOR.g : 1; P.gravBoost = lock ? ANCHOR.boostK : 1;
+  if (lock) { G.gravT = (G.gravT || 0) + dt; G.gravOn = 0.3; } else G.gravOn = Math.max(0, (G.gravOn || 0) - dt);
+}
+
 export function updateCombat(dt) {
   RAYF.skipIce = false;
   for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; q.fn(); } }
@@ -7440,7 +7640,7 @@ export function updateCombat(dt) {
   G.curLabel = null;
   LAVA.uT.value = G.time;
   if (G.blinkInv > 0) G.blinkInv -= dt;
-  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt); updateBurn(dt); updateBeacon(dt);
+  recordRewind(dt); updateFog(dt); updateDepots(dt); updateSalvage(dt); updateFort(dt); updateReflect(dt); updateLane(dt); updateVeil(dt); updateRBeam(dt); updateBurn(dt); updateBeacon(dt); updateLance(dt); updateGrav(dt);
   updateMarks(dt);
   updateBurning(dt);
   updateChill(dt);
