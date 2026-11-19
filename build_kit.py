@@ -158,6 +158,8 @@ M = dict(
     ReviverPaint=mat("ReviverPaint", "#d4d8cc", 0.4, metal=0.35), Nanite=mat("Nanite", "#c8ffd0", 0.2, emit="#30ff78", strength=2.4),
     PylonPaint=mat("PylonPaint", "#3a3440", 0.5, metal=0.4), PylonGlow=mat("PylonGlow", "#ffd0c0", 0.2, emit="#ff4a2a", strength=2.6),
     CamoLens=mat("CamoLens", "#c8f4ff", 0.1, emit="#60d8ff", strength=1.6),
+    LiftGlow=mat("LiftGlow", "#ffd8a0", 0.3, emit="#ff9a30", strength=2.2), PulseCore=mat("PulseCore", "#fff0e0", 0.2, emit="#ffe0c0", strength=2.0),
+    BarrierGlow=mat("BarrierGlow", "#c8f0ff", 0.15, emit="#4cc8ff", strength=2.0), PulsePaint=mat("PulsePaint", "#5a6470", 0.5, metal=0.4),
     CommandGold=mat("CommandGold", "#c89a3a", 0.35, metal=0.8), DazzleLens=mat("DazzleLens", "#fffbe8", 0.05, emit="#fff4d0", strength=1.0),
     LinkGlow=mat("LinkGlow", "#c8faff", 0.15, emit="#50e8ff", strength=2.0), DazzPaint=mat("DazzPaint", "#e8e2d4", 0.45, metal=0.3),
     FogLampGlow=mat("FogLampGlow", "#fff6e0", 0.2, emit="#ffe0a0", strength=2.6),
@@ -3126,7 +3128,71 @@ def build_link_pod():
     box((0, -0.25, 0.38), (0.45, 0.03, 0.03), M["LinkGlow"], K)
     muzzle("Muzzle_Link", (0, 0.5, 0.5), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod()
+
+def build_liftwall():
+    # rising wall segment for the Shifting Walls maze: 14 m long (X), 1.8 m thick, 10 m tall, origin at the base centre.
+    # concrete slab with buttress ribs, a hazard band and a glowing seam along the top edge
+    K = kit("P_LiftWall")
+    box((0, 0, 5.0), (14.0, 1.8, 10.0), M["Concrete"], K, bevel=0.06)
+    for i in range(5):
+        x = -5.6 + i * 2.8
+        for sy in (-1, 1):
+            box((x, sy * 1.0, 4.6), (0.6, 0.3, 9.2), M["Frame"], K)
+    for sy in (-1, 1):
+        box((0, sy * 0.92, 8.7), (13.8, 0.06, 0.7), M["Hazard"], K)
+        box((0, sy * 0.93, 1.2), (13.8, 0.05, 0.25), M["Hazard"], K)
+    box((0, 0, 10.05), (14.1, 1.3, 0.14), M["LiftGlow"], K)
+    for sx in (-1, 1):
+        box((sx * 7.0, 0, 5.0), (0.16, 1.9, 10.0), M["Frame"], K)
+
+def build_pulsar():
+    # pulsar: a three-legged emitter tower. PU_Body carries the hub, a pillar with a glowing core (PU_Core, PulseCore
+    # material tinted in game) and a horizontal emitter ring (PU_Ring, slides up and down the pillar to show which ring
+    # comes next). legs PU_Leg1-3 rock while walking; Muzzle_Pulse is the small twin gun under the hub front
+    K = kit("E_Pulsar")
+    body = empty("PU_Body", (0, 0, 2.6), K)
+    cyl((0, 0, 0), 1.35, 1.1, M["PulsePaint"], body, verts=12)
+    cyl((0, 0, 0.65), 1.0, 0.25, M["Hazard"], body, verts=12)
+    cyl((0, 0, 3.0), 0.42, 5.2, M["Frame"], body, verts=10)
+    for k in range(3):
+        a = k * 2 * math.pi / 3
+        box((math.cos(a) * 0.55, math.sin(a) * 0.55, 3.0), (0.22, 0.22, 4.8), M["EArmor2"], body, rot=(0, 0, a))
+    core = empty("PU_Core", (0, 0, 5.9), body)
+    ball((0, 0, 0), 0.75, M["PulseCore"], core, sub=2)
+    torus((0, 0, 0), 0.95, 0.09, M["EArmor"], core)
+    cyl((0, 0, 1.0), 0.6, 0.18, M["EArmor"], body if False else core, verts=12, r2=0.2)
+    ring = empty("PU_Ring", (0, 0, 1.6), body)
+    torus((0, 0, 0), 2.0, 0.16, M["PulseCore"], ring)
+    torus((0, 0, 0), 2.25, 0.08, M["EArmor2"], ring)
+    for k in range(6):
+        a = k * math.pi / 3
+        box((math.cos(a) * 1.25, math.sin(a) * 1.25, 0), (1.0, 0.16, 0.12), M["Frame"], ring, rot=(0, 0, a))
+    box((0, 1.25, -0.25), (0.6, 0.7, 0.4), M["EArmor2"], body, bevel=0.04)
+    box((0, 1.3, -0.1), (0.5, 0.06, 0.12), M["EEye"], body)
+    for sx in (-1, 1):
+        cyl((sx * 0.16, 1.75, -0.35), 0.07, 0.7, M["Black"], body, rot=ALONG_Y, verts=8)
+    muzzle("Muzzle_Pulse", (0, 2.15, -0.35), body)
+    for i in range(3):
+        a = i * 2 * math.pi / 3 + math.pi / 6
+        leg = empty(f"PU_Leg{i + 1}", (math.cos(a) * 1.1, math.sin(a) * 1.1, -0.2), body, rot=(0, 0, a))
+        ball((0, 0, 0), 0.32, M["Joint"], leg)
+        box((0.9, 0, 0.35), (1.9, 0.42, 0.42), M["PulsePaint"], leg, rot=(0, math.radians(-22), 0), bevel=0.04)
+        box((1.95, 0, -1.0), (0.36, 0.36, 2.6), M["Frame"], leg, rot=(0, math.radians(-10), 0), bevel=0.03)
+        box((2.15, 0, -2.3), (0.9, 0.7, 0.2), M["EArmor2"], leg, bevel=0.03)
+        box((1.2, 0, 0.62), (0.9, 0.44, 0.06), M["Hazard"], leg, rot=(0, math.radians(-22), 0))
+
+def build_barrier_pod():
+    # BP-4 barrier ram: a flat projector with a wide glowing emitter bar across the front and two side fins
+    K = kit("S_Barrier")
+    box((0, 0, 0.2), (0.9, 0.6, 0.36), M["Armor2"], K, bevel=0.05)
+    box((0, 0.32, 0.42), (1.0, 0.16, 0.2), M["Frame"], K, bevel=0.02)
+    box((0, 0.41, 0.42), (0.9, 0.04, 0.1), M["BarrierGlow"], K)
+    for sx in (-1, 1):
+        box((sx * 0.5, 0.05, 0.42), (0.06, 0.55, 0.42), M["Armor2"], K)
+        ball((sx * 0.3, -0.22, 0.42), 0.06, M["BarrierGlow"], K, sub=1)
+    muzzle("Muzzle_Barrier", (0, 0.45, 0.42), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

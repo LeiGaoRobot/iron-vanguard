@@ -65,6 +65,7 @@ export const WEAPONS = {
   rod: { slot: 'shoulder', name: 'LR-1 避雷针', en: 'LR-1 Lightning Rod', desc: '在前方 6 m 插下避雷针 14 秒 · 每 0.9 秒放电打 22 m 内最近的敌机（36，再连锁 1 个）· 雷暴里 14 m 内不会被雷劈 · 同时只能有 1 根', type: 'rod', dur: 14, zap: 0.9, dmg: 36, R: 22, chains: 2, cover: 14, cd: 18, sfx: 'sentry' },
   sentry: { slot: 'shoulder', name: 'TR-3 哨戒炮塔', en: 'TR-3 Sentry Turret', desc: '在前方架设自动炮塔 15 秒 · 双管速射 75 m 内敌机 · 吸引部分火力 · 耐久 400 · 同时只能有 1 座', type: 'sentry', hp: 400, dur: 15, dmg: 10, rate: 0.11, range: 75, cd: 22, sfx: 'sentry' },
   stasis: { slot: 'shoulder', name: 'TS-1 时滞场', en: 'TS-1 Stasis Field', desc: '在准星处展开 14 m 时滞球 5 秒 · 球内敌机动作放慢到三成、敌弹几乎停在空中 · 头目只放慢一半', type: 'stasis', range: 60, R: 14, dur: 5, k: 0.3, bossK: 0.6, shotK: 0.12, cd: 17, sfx: 'stasis' },
+  bwall: { slot: 'shoulder', name: 'BP-4 推进屏障', en: 'BP-4 Barrier Ram', desc: '在身前立起 11 m 宽的能量墙并以 16 m/s 向前推进 35 m · 挡下迎面的敌方子弹、炮弹与导弹 · 撞上的敌机（头目除外）被推着走，撞上墙壁再受重击并瘫痪 0.8 秒 · 冷却 11 秒', type: 'bwall', W: 11, H: 7, speed: 16, dur: 2.2, dmg: 70, slam: 90, bossDmg: 40, stun: 0.8, cd: 11, sfx: 'shield' },
   chainb: { slot: 'shoulder', name: 'LK-3 连锁信标', en: 'LK-3 Link Beacon', desc: '射出信标 · 命中处 18 m 内最多 5 台敌机被连接 9 秒 · 你对其中任何一台造成的伤害，其余每台再受 40%（头目只受一半）· 冷却 14 秒', type: 'chainb', speed: 85, R: 18, max: 5, dur: 9, share: 0.4, cd: 14, sfx: 'grenade' },
   camo: { slot: 'shoulder', name: 'OC-1 光学迷彩', en: 'OC-1 Optical Camo', desc: '隐身 7 秒 · 敌人看不见 10 m 外的你（头目 16 m），只会朝你隐身时的位置开火，来袭导弹失去锁定 · 隐身中造成的伤害 ×1.5，命中后 0.8 秒现形 · 冷却 20 秒', type: 'camo', dur: 7, cd: 20, sfx: 'decoy' },
   hack: { slot: 'shoulder', name: 'HK-1 入侵模块', en: 'HK-1 Hack Module', desc: '发射追踪入侵飞镖 · 命中普通敌机后上传 0.8 秒，使其倒戈 10 秒：替你攻击附近的敌人、吸引敌方火力 · 头目 / 大型目标 / 部分特殊兵种无法入侵：改为 150 伤害并瘫痪 1.5 秒 · 冷却 16 秒', type: 'hack', speed: 110, cd: 16, dur: 10, up: 0.8, fail: 150, stun: 1.5, sfx: 'cannon' },
@@ -75,7 +76,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -664,6 +665,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireCluster(owner, slot, d, aim, dmgMul, team); if (me) G.stats.shots++; }
   } else if (d.type === 'stasis') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; castStasis(owner, slot, d, aim); if (me) G.stats.shots++; }
+  } else if (d.type === 'bwall') {
+    if (pressed && ws.cd <= 0 && isP && owner.alive) { ws.cd = d.cd; fireBWall(owner, d, dmgMul); if (me) G.stats.shots++; }
   } else if (d.type === 'chainb') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireLinkB(owner, slot, d, aim, target); if (me) G.stats.shots++; }
   } else if (d.type === 'camo') {
@@ -1928,7 +1931,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -8888,6 +8891,287 @@ function updateLinkB(dt) {
 }
 export function clearLinkB() { for (const n of G.lbeacons) n.m.parent && n.m.parent.remove(n.m); G.lbeacons.length = 0; for (const g of [...G.lgroups]) dropLinkG(g); G.lgroups.length = 0; }
 
+// ------------------------------------------------------------------ v52 Shifting Walls: two sets of concrete wall segments
+// trade places every 20 s (yellow stripes on the floor 2.4 s before a wall rises; whatever stands there is thrown clear and
+// hurt); a laser canopy at 16 m burns your mech if it flies higher than 11 m. Pulsars send out expanding rings that
+// alternate low (jump over it) and high (stay on the ground under it); walls stop rings. BP-4 pushes an energy wall forward
+export const MAZE = { cell: 22, n: 4, len: 14, th: 1.8, h: 9, warn: 2.4, rise: 0.9, period: 20, canopy: 16, burnAt: 11, dps: 30, dmg: 20, edmg: 120, bossDmg: 40, fling: 13 };
+G.maze = null;
+const mzHash = (i, j, k) => { let x = Math.imul(i + 97, 73856093) ^ Math.imul(j + 211, 19349663) ^ Math.imul(k + 7, 83492791); x = Math.imul(x ^ (x >>> 13), 0x5bd1e995); return ((x ^ (x >>> 15)) >>> 0) / 4294967296; };
+const stripeTex = (() => { const c = document.createElement('canvas'); c.width = 128; c.height = 32; const g = c.getContext('2d'); g.fillStyle = '#000000'; g.fillRect(0, 0, 128, 32); g.fillStyle = '#ffffff';
+  for (let x = -32; x < 160; x += 16) { g.beginPath(); g.moveTo(x, 32); g.lineTo(x + 8, 32); g.lineTo(x + 16, 0); g.lineTo(x + 8, 0); g.closePath(); g.fill(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.repeat.set((MAZE.len + 5) / 5, 1); return t; })();
+const gridTex = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'); g.fillStyle = '#000000'; g.fillRect(0, 0, 64, 64); g.strokeStyle = '#ffffff'; g.lineWidth = 2; g.strokeRect(1, 1, 62, 62);
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(ARENA * 2 / 8, ARENA * 2 / 8); return t; })();
+const mzPlaneGeo = new THREE.PlaneGeometry(1, 1);
+export function startMaze() {
+  clearMaze();
+  const S = G.maze = { walls: [], up: 'A', t: MAZE.period, warned: false, shifts: 0 };
+  for (let i = -MAZE.n; i <= MAZE.n; i++) for (let j = -MAZE.n; j <= MAZE.n; j++) {
+    const rot = mzHash(i, j, 1) < 0.5 ? 1 : 0, x = i * MAZE.cell + (mzHash(i, j, 2) - 0.5) * 6, z = j * MAZE.cell + (mzHash(i, j, 3) - 0.5) * 6;
+    const hw = rot ? MAZE.th / 2 : MAZE.len / 2, hd = rot ? MAZE.len / 2 : MAZE.th / 2;
+    let clash = false;
+    for (const q of [[0, 0], [hw, hd], [-hw, -hd], [hw, -hd], [-hw, hd]]) if (pointInSolid(_a.set(x + q[0], 1, z + q[1]), 2.5)) { clash = true; break; }
+    if (clash) continue;
+    const set = ((i + j) & 1) ? 'A' : 'B', k = set === 'A' ? 1 : 0;
+    const obj = cloneKit('P_LiftWall'); obj.rotation.y = rot ? Math.PI / 2 : 0; obj.position.set(x, -MAZE.h * (1 - k) + (k ? 0 : 0.25), z); G.scene.add(obj);
+    const sol = addSolid(x, z, hw * 2, hd * 2, MAZE.h, 0, 'mazewall'); sol.max.y = Math.max(0.25, MAZE.h * k);
+    const stripe = new THREE.Mesh(mzPlaneGeo, new THREE.MeshBasicMaterial({ map: stripeTex, color: new THREE.Color(0xffc030).multiplyScalar(1.8), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+    stripe.rotation.set(-Math.PI / 2, 0, rot ? Math.PI / 2 : 0); stripe.scale.set(MAZE.len + 5, MAZE.th + 5, 1); stripe.position.set(x, 0.07, z); stripe.visible = false; G.scene.add(stripe);
+    S.walls.push({ x, z, rot, hw, hd, set, k, tgt: k, obj, sol, stripe, warnT: 0, hits: new Set() });
+  }
+  const cm = new THREE.Mesh(mzPlaneGeo, new THREE.MeshBasicMaterial({ map: gridTex, color: new THREE.Color(0xff2a30).multiplyScalar(1.6), transparent: true, opacity: 0.06, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false }));
+  cm.rotation.x = -Math.PI / 2; cm.scale.set(ARENA * 2, ARENA * 2, 1); cm.position.y = MAZE.canopy; cm.renderOrder = 3; G.scene.add(cm); S.canopy = cm;
+  G.mazeFling = 0; G.mazeCrush = 0; G.mazeKills = 0; G.canopyT = 0; G.canopyOn = 0;
+}
+export function clearMaze() {
+  const S = G.maze;
+  if (S) {
+    for (const w of S.walls) { w.obj.parent && w.obj.parent.remove(w.obj); removeSolid(w.sol); w.stripe.parent && w.stripe.parent.remove(w.stripe); w.stripe.material.dispose(); }
+    S.canopy.parent && S.canopy.parent.remove(S.canopy); S.canopy.material.dispose();
+  }
+  G.maze = null; G.canopyOn = 0;
+}
+function mazeIn(w, x, z, r) { return Math.abs(x - w.x) < w.hw + r && Math.abs(z - w.z) < w.hd + r; }
+function mazeOut(w, p, r) {   // shove p out of the footprint along the wall's short axis; returns the unit push direction
+  if (w.rot) { const sg = Math.sign(p.x - w.x) || 1; p.x = w.x + sg * (w.hw + r + 0.3); return _d.set(sg, 0, 0); }
+  const sg = Math.sign(p.z - w.z) || 1; p.z = w.z + sg * (w.hd + r + 0.3); return _d.set(0, 0, sg);
+}
+function updateMaze(dt) {
+  const S = G.maze, P = G.player; if (!S) return;
+  S.t -= dt;
+  if (S.t <= MAZE.warn && !S.warned) {
+    S.warned = true;
+    for (const w of S.walls) if (w.set !== S.up) { w.warnT = MAZE.warn; w.stripe.visible = true; w.autoR = Math.random() < 0.65; }
+    sfx('warn', 0); G.onMazeWarn && G.onMazeWarn();
+  }
+  if (S.t <= 0) {
+    S.up = S.up === 'A' ? 'B' : 'A'; S.t = MAZE.period; S.warned = false; S.shifts++;
+    for (const w of S.walls) { w.tgt = w.set === S.up ? 1 : 0; if (w.tgt) w.hits.clear(); }
+    sfx('rumble', 0); G.fx.trauma = Math.min(1, G.fx.trauma + 0.25); G.onMazeShift && G.onMazeShift(S);
+  }
+  for (const w of S.walls) {
+    if (w.warnT > 0) { w.warnT -= dt; w.stripe.material.opacity = 0.35 + 0.35 * Math.abs(Math.sin(G.time * (6 + 10 * (1 - w.warnT / MAZE.warn)))); }
+    else if (w.stripe.visible && w.k > 0.6) { w.stripe.visible = false; w.stripe.material.opacity = 0; }
+    if (w.k === w.tgt) continue;
+    const rising = w.tgt > w.k;
+    w.k = rising ? Math.min(1, w.k + dt / MAZE.rise) : Math.max(0, w.k - dt / (MAZE.rise * 1.6));
+    w.obj.position.y = -MAZE.h * (1 - w.k) + (w.k < 0.03 ? 0.25 : 0); w.sol.max.y = Math.max(0.25, MAZE.h * w.k);
+    if (Math.random() < 0.5) G.fx.dust(_a.set(w.x + (Math.random() - 0.5) * w.hw * 2, 0.4, w.z + (Math.random() - 0.5) * w.hd * 2), 1, 2.2, 4);
+    if (!rising) continue;
+    const top = MAZE.h * w.k;
+    if (P && P.alive && !w.hits.has(P)) {
+      const r = P.radius || 1.6;
+      if (mazeIn(w, P.pos.x, P.pos.z, 1.5 + r * 0.5) && P.pos.y < top - 0.2 && !(G.blinkInv > 0)) {
+        w.hits.add(P); G.curLabel = 'mazewall'; hurtPlayer(MAZE.dmg, 'mazewall'); G.mazeFling++;
+        const dir = mazeOut(w, P.pos, r); P.vel.x = dir.x * MAZE.fling; P.vel.z = dir.z * MAZE.fling; P.vel.y = 7; P.grounded = false;
+        G.fx.sparks(P.center(_c), null, 18, 0xffd090, 16, 1, 0.35, 0.25); G.fx.trauma = Math.min(1, G.fx.trauma + 0.5); sfx('boom', 0);
+      }
+    }
+    for (const e of G.enemies) {
+      if (!e.alive || e.dying || !e.pos || e.holo || w.hits.has(e) || e.isTrain || e.isColossus || e.isLev || e.kind === 'cpart') continue;
+      const r = 2.5 + (e.r || 2) * 0.3;   // the striped footprint (2.5 m round the wall)
+      if (!mazeIn(w, e.pos.x, e.pos.z, r) || e.pos.y > top - 0.2 || e.pos.y > 2.5) continue;
+      w.hits.add(e);
+      const dir = mazeOut(w, e.pos, r), boss = e.kind === 'boss';
+      if (e.c) { e.c.x = e.pos.x; e.c.z = e.pos.z; }
+      e.hit(boss ? MAZE.bossDmg : MAZE.edmg, e.c, 'mazewall'); G.mazeCrush++;
+      if (!e.alive) { G.mazeKills++; G.onTally && G.onTally('mazekill'); }
+      if (e.vel) { e.vel.x = dir.x * 10; e.vel.z = dir.z * 10; }
+      G.fx.sparks(e.c || e.pos, null, 14, 0xffd090, 14, 1, 0.3, 0.25); sfx('boom', P ? P.pos.distanceTo(e.pos) : 40);
+    }
+  }
+  // laser canopy: anything of yours above 11 m gets burnt and pushed down
+  if (P) {
+    const feet = P.pos.y, k = Math.max(0, Math.min(1, 1 - (MAZE.burnAt - feet) / 7));
+    S.canopy.material.opacity = 0.05 + 0.4 * k * k + (G.canopyOn > 0 ? 0.15 * Math.abs(Math.sin(G.time * 20)) : 0);
+    if (P.alive && feet > MAZE.burnAt) {
+      G.curLabel = 'canopy'; hurtPlayer(MAZE.dps * dt, 'canopy'); G.canopyT += dt; G.canopyOn = 0.3;
+      if (P.vel.y > -3) P.vel.y = -3;
+      if (Math.random() < 0.5) G.fx.sparks(_a.set(P.pos.x + (Math.random() - 0.5) * 3, P.pos.y + 5, P.pos.z + (Math.random() - 0.5) * 3), null, 2, 0xff4030, 8, 1, 0.3, 0.2);
+      G.onCanopy && G.onCanopy();
+    } else G.canopyOn = Math.max(0, G.canopyOn - dt);
+  }
+}
+
+// ---- Pulsar: a three-legged emitter tower. every 5.5-7 s it charges for 1 s (core orange = low ring next, cyan = high)
+// and sends out an expanding ring (15 m/s, out to 70 m). a low ring fills 0-3.4 m above its feet: jump over it. a high ring
+// fills 6.5-14 m: stay on the ground under it. 40 damage and a shove; walls in the way stop it. a twin gun in between
+export const PULSE = { hp: 1200, r: 2.6, speed: 4.2, keep: [22, 38], cd: [5.5, 7], charge: 1.0, v: 15, R: 70, low: 3.4, high: [6.5, 14], dmg: 40, push: 14, gunCd: 2.2, gunDmg: 12, gunR: 70, trig: 80 };
+const PU_COL = { low: 0xff8a30, high: 0x40d8ff };
+G.rings = [];
+const pRingGeo = new THREE.CylinderGeometry(1, 1, 1, 96, 1, true);
+const pRingTex = (() => { const c = document.createElement('canvas'); c.width = 4; c.height = 64; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.12, 'rgba(255,255,255,0.35)'); gr.addColorStop(0.5, 'rgba(255,255,255,0.18)'); gr.addColorStop(0.88, 'rgba(255,255,255,0.35)'); gr.addColorStop(1, 'rgba(255,255,255,1)');
+  g.fillStyle = gr; g.fillRect(0, 0, 4, 64); return new THREE.CanvasTexture(c); })();
+export function clearRings() { for (const r of G.rings) { r.mesh.parent && r.mesh.parent.remove(r.mesh); r.mesh.material.dispose(); } G.rings.length = 0; G.ringsMade = 0; G.ringHits = 0; G.ringDodged = 0; G.ringBlocked = 0; }
+export class Pulsar extends Enemy {
+  constructor(pos) {
+    super('pulsar', 'E_Pulsar', pos, PULSE.hp, PULSE.r); this.boom = 1.4;
+    this.pos.y = groundAt(pos.x, pos.z, 40); this.yaw = Math.random() * 6.28; this.vel = new V3(); this.ph = Math.random() * 6; this.side = Math.random() < 0.5 ? 1 : -1; this.sideT = 0; this.stuckT = 0; this.last = this.pos.clone();
+    this.st = 'idle'; this.cdT = 2.5 + Math.random() * 2.5; this.chT = 0; this.next = Math.random() < 0.5 ? 'low' : 'high'; this.gunT = 1.5 + Math.random(); this.ringY = null;
+    this.core = null; this.obj.traverse((o) => { if (o.isMesh && o.material && o.material.name === 'PulseCore') { if (!this.core) this.core = o.material.clone(); o.material = this.core; } });
+    this.c.set(this.pos.x, this.pos.y + 4, this.pos.z); this.tint();
+  }
+  tint() { if (this.core && this.core.emissive) { this.core.emissive.setHex(PU_COL[this.next]); this.core.color.setHex(PU_COL[this.next]); } }
+  update(dt) {
+    const t = this.tg(), n = this.n; this.ph += dt;
+    const tc = t.center(playerC);
+    let dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z; const dl = Math.hypot(dx, dz) || 1; dx /= dl; dz /= dl;
+    const los = this.checkLos(dt);
+    let mx = 0, mz = 0;
+    if (dl > PULSE.keep[1] || !los) { mx = dx; mz = dz; } else if (dl < PULSE.keep[0]) { mx = -dx; mz = -dz; } else { mx = -dz * this.side * 0.6; mz = dx * this.side * 0.6; }
+    if (this.sideT > 0) { this.sideT -= dt; mx = mx * 0.3 - dz * this.side; mz = mz * 0.3 + dx * this.side; }
+    const spd = PULSE.speed * (this.st === 'charge' ? 0.15 : 1), kk = 1 - Math.exp(-3 * dt);
+    this.vel.x += (mx * spd - this.vel.x) * kk; this.vel.z += (mz * spd - this.vel.z) * kk;
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    this.pos.x = Math.max(-ARENA + 5, Math.min(ARENA - 5, this.pos.x)); this.pos.z = Math.max(-ARENA + 5, Math.min(ARENA - 5, this.pos.z));
+    collideCyl(this.pos, 2.4, 3);
+    this.stuckT += dt; if (this.stuckT > 1.6) { if (this.pos.distanceTo(this.last) < 2 && (dl > PULSE.keep[1] || !los)) { this.sideT = 1.8; this.side *= -1; } this.stuckT = 0; this.last.copy(this.pos); }
+    this.yaw += angDiff(Math.atan2(-dx, -dz), this.yaw) * Math.min(1, dt * 2);
+    this.pos.y += (groundAt(this.pos.x, this.pos.z, this.pos.y + 2) - this.pos.y) * Math.min(1, dt * 8);
+    this.obj.rotation.set(0, this.yaw, 0);
+    const sp = Math.hypot(this.vel.x, this.vel.z);
+    for (let i = 1; i <= 3; i++) { const l = n['PU_Leg' + i]; if (l) l.rotation.z = Math.sin(this.ph * 5 + i * 2.1) * 0.16 * Math.min(1, sp / 2.5); }
+    this.c.set(this.pos.x, this.pos.y + 4, this.pos.z);
+    // charge and fire a ring
+    this.cdT -= dt;
+    if (this.st === 'idle' && this.cdT <= 0) {
+      if (dl < PULSE.trig) { this.st = 'charge'; this.chT = PULSE.charge; sfx('charge', dl * 0.5); G.onPulseCharge && G.onPulseCharge(this); }
+      else this.cdT = 0.8;
+    }
+    const R = n.PU_Ring; if (R && this.ringY === null) this.ringY = R.position.y;
+    let ck = 0;
+    if (this.st === 'charge') {
+      this.chT -= dt; ck = 1 - Math.max(0, this.chT) / PULSE.charge;
+      if (Math.random() < 0.6) G.fx.emit('add', { x: this.c.x + (Math.random() - 0.5) * 3, y: this.pos.y + (this.next === 'low' ? 1 : 8) + Math.random() * 2, z: this.c.z + (Math.random() - 0.5) * 3, vy: 0, life: 0.18, s0: 1.4, s1: 0.3, c0: PU_COL[this.next] });
+      if (this.chT <= 0) { spawnPulseRing(this, this.next); this.next = this.next === 'low' ? 'high' : 'low'; this.tint(); this.st = 'idle'; this.cdT = PULSE.cd[0] + Math.random() * (PULSE.cd[1] - PULSE.cd[0]); }
+    }
+    if (this.core && this.core.emissive) this.core.emissiveIntensity = 1.2 + ck * 7 + 0.3 * Math.sin(this.ph * 4);
+    if (R) { R.rotation.y += dt * (this.st === 'charge' ? 9 : 1.4); const want = this.ringY + (this.next === 'high' ? 2.6 : -0.9) * (0.35 + 0.65 * ck); R.position.y += (want - R.position.y) * Math.min(1, dt * 5); }
+    // twin gun between rings
+    this.gunT -= dt;
+    if (this.st === 'idle' && this.gunT <= 0 && dl < PULSE.gunR && los) {
+      this.gunT = PULSE.gunCd;
+      for (let i = 0; i < 2; i++) G.queue.push({ t: i * 0.16, label: 'pulsar-gun', fn: () => {
+        if (!this.alive) return;
+        const mp = this.n.Muzzle_Pulse ? this.n.Muzzle_Pulse.getWorldPosition(new V3()) : this.c.clone();
+        const aim = lead(mp, 110, _b, this.tg()); _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.y += (Math.random() - 0.5) * 0.04; _d.z += (Math.random() - 0.5) * 0.05; _d.normalize();
+        spawnShot({ p: mp, v: _d.clone().multiplyScalar(110), dmg: PULSE.gunDmg, team: 'E', kind: 'ebullet', color: 0xffc080, w: 0.28, len: 4, life: 0.8, label: 'pulsar-gun' });
+        G.fx.muzzle(mp, _d, 0xffb060, 1.0);
+      } });
+    }
+  }
+}
+function spawnPulseRing(src, type) {
+  const col = PU_COL[type], b0 = type === 'low' ? 0 : PULSE.high[0], b1 = type === 'low' ? PULSE.low : PULSE.high[1];
+  const mat = new THREE.MeshBasicMaterial({ map: pRingTex, color: new THREE.Color(col).multiplyScalar(2.2), transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const m = new THREE.Mesh(pRingGeo, mat); m.position.set(src.pos.x, src.pos.y + (b0 + b1) / 2, src.pos.z); m.scale.set(1.5, b1 - b0, 1.5); m.frustumCulled = false; G.scene.add(m);
+  G.rings.push({ x: src.pos.x, z: src.pos.z, y0: src.pos.y, b0, b1, R: 1.5, type, mesh: m, hit: new Set(), src, autoR: Math.random() < 0.65 });
+  G.ringsMade = (G.ringsMade || 0) + 1;
+  G.fx.flash(_a.set(src.pos.x, src.pos.y + (b0 + b1) / 2, src.pos.z), col, 90, 50, 0.25);
+  sfx(type === 'low' ? 'sonic' : 'emp', G.player ? G.player.pos.distanceTo(src.pos) * 0.5 : 40);
+}
+function updateRings(dt) {
+  const P = G.player;
+  for (let i = G.rings.length - 1; i >= 0; i--) {
+    const r = G.rings[i], R0 = r.R; r.R += PULSE.v * dt;
+    const k = r.R / PULSE.R; r.mesh.scale.set(r.R, r.b1 - r.b0, r.R); r.mesh.material.opacity = 0.8 * (1 - k * k);
+    if (r.R >= PULSE.R) { r.mesh.parent && r.mesh.parent.remove(r.mesh); r.mesh.material.dispose(); G.rings.splice(i, 1); continue; }
+    if (!P || !P.alive || r.hit.has(P)) continue;
+    const d = Math.hypot(P.pos.x - r.x, P.pos.z - r.z), rr = P.radius || 1.6;
+    if (d < R0 - rr || d > r.R + rr * 0.5) continue;
+    r.hit.add(P);
+    const feet = P.pos.y - r.y0, head = feet + 4.8;
+    if (feet >= r.b1 || head <= r.b0 || G.blinkInv > 0) { G.ringDodged = (G.ringDodged || 0) + 1; continue; }
+    const em = _a.set(r.x, r.y0 + (r.b0 + r.b1) / 2, r.z), tc = P.center(_c); tc.y = Math.max(r.y0 + r.b0 + 0.5, Math.min(r.y0 + r.b1 - 0.5, tc.y));
+    if (!clearLine(em, tc)) { G.ringBlocked = (G.ringBlocked || 0) + 1; continue; }
+    G.curShooter = r.src; G.curLabel = 'pulsar-ring'; hurtPlayer(PULSE.dmg, 'pulsar-ring'); G.curShooter = null;
+    if (!(r.src && r.src.hacked)) {
+      G.ringHits = (G.ringHits || 0) + 1;
+      const ux = (P.pos.x - r.x) / (d || 1), uz = (P.pos.z - r.z) / (d || 1);
+      P.vel.x += ux * PULSE.push; P.vel.z += uz * PULSE.push; if (r.type === 'low') { P.vel.y = Math.max(P.vel.y, 5); P.grounded = false; } else P.vel.y = Math.min(P.vel.y, -6);
+      G.fx.sparks(P.center(_c), null, 16, PU_COL[r.type], 16, 1, 0.3, 0.25); G.fx.trauma = Math.min(1, G.fx.trauma + 0.4);
+      G.onRingHit && G.onRingHit(r);
+    }
+  }
+}
+
+// ---- BP-4 barrier ram: an 11 m x 7 m energy wall that slides forward 35 m. eats enemy shots that meet it, carries the
+// enemies it runs into (bosses only take a knock) and slams them if it reaches a wall
+G.bwalls = [];
+const bwTex = (() => { const c = document.createElement('canvas'); c.width = 64; c.height = 64; const g = c.getContext('2d'), gr = g.createLinearGradient(0, 0, 0, 64);
+  gr.addColorStop(0, 'rgba(255,255,255,0.9)'); gr.addColorStop(0.08, 'rgba(255,255,255,0.25)'); gr.addColorStop(0.7, 'rgba(255,255,255,0.32)'); gr.addColorStop(1, 'rgba(255,255,255,1)');
+  g.fillStyle = gr; g.fillRect(0, 0, 64, 64); g.globalCompositeOperation = 'lighter'; g.strokeStyle = 'rgba(255,255,255,0.35)'; g.lineWidth = 1.5;
+  for (let y = 0; y < 64; y += 8) for (let x = (y / 8) % 2 ? 0 : 8; x < 72; x += 16) { g.beginPath(); for (let q = 0; q < 6; q++) { const a = q * Math.PI / 3; g.lineTo(x + Math.cos(a) * 5, y + Math.sin(a) * 5); } g.closePath(); g.stroke(); }
+  const t = new THREE.CanvasTexture(c); t.wrapS = THREE.RepeatWrapping; t.repeat.set(3, 1); return t; })();
+export function clearBWalls() { for (const b of G.bwalls) { b.mesh.parent && b.mesh.parent.remove(b.mesh); b.mesh.material.dispose(); } G.bwalls.length = 0; G.bwUses = 0; G.bwBlocked = 0; G.bwCarry = 0; G.bwSlams = 0; G.bwDmg = 0; }
+function fireBWall(owner, d, mul) {
+  const yaw = owner.aimYaw ?? G.camYaw ?? 0, dir = new V3(-Math.sin(yaw), 0, -Math.cos(yaw));
+  const p = owner.pos.clone().addScaledVector(dir, 5);
+  const base = Math.max(groundAt(p.x, p.z, owner.pos.y + 1), owner.pos.y - 1.5);
+  const mat = new THREE.MeshBasicMaterial({ map: bwTex, color: new THREE.Color(0x4cc8ff).multiplyScalar(1.8), transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+  const mesh = new THREE.Mesh(mzPlaneGeo, mat); mesh.scale.set(d.W, d.H, 1); mesh.rotation.set(0, yaw, 0); mesh.position.set(p.x, base + d.H / 2, p.z); G.scene.add(mesh);
+  G.bwalls.push({ owner, d, mul, dir, p, base, t: d.dur, yaw, carried: new Set(), hit: new Set(), mesh, me: owner === G.player, age: 0 });
+  G.bwUses = (G.bwUses || 0) + 1; sfx('shield', 0); G.fx.ring(_a.set(p.x, base + 0.3, p.z), null, 1, 7, 0.35, 0x4cc8ff);
+}
+function updateBWalls(dt) {
+  for (let i = G.bwalls.length - 1; i >= 0; i--) {
+    const b = G.bwalls[i], d = b.d, dir = b.dir; b.t -= dt; b.age += dt;
+    let reach = 0; for (const e of b.carried) if (e.alive) reach = Math.max(reach, (e.r || 2) + 1.2);
+    const step = d.speed * dt;
+    let blocked = false;
+    for (const hy of [1.4, d.H * 0.6]) { _a.set(b.p.x, b.base + hy, b.p.z); const w = raySolids(_a, dir, step + 1 + reach, true); if (w.solid && w.solid !== 'floor' && w.solid.kind !== 'barrel' && w.solid.kind !== 'icewall') { blocked = true; break; } }
+    if (!blocked) b.p.addScaledVector(dir, step);
+    const gy = groundAt(b.p.x, b.p.z, b.base + 2); if (gy > b.base) b.base = gy;
+    b.mesh.position.set(b.p.x, b.base + d.H / 2, b.p.z);
+    b.mesh.material.opacity = 0.6 * Math.min(1, b.age * 6, Math.max(0, b.t) * 4 + (blocked ? 0 : 0.2)) * (0.85 + 0.15 * Math.sin(G.time * 30));
+    const lx = -dir.z * d.W / 2, lz = dir.x * d.W / 2;
+    G.fx.streak(_a.set(b.p.x - lx, b.base + d.H, b.p.z - lz), _b.set(b.p.x + lx, b.base + d.H, b.p.z + lz), 0.22, 0x9fe8ff);
+    G.fx.streak(_a.set(b.p.x - lx, b.base + 0.1, b.p.z - lz), _b.set(b.p.x + lx, b.base + 0.1, b.p.z + lz), 0.3, 0x9fe8ff);
+    if (Math.random() < 0.7) G.fx.sparks(_a.set(b.p.x + (Math.random() - 0.5) * 2 * lx, b.base + 0.2, b.p.z + (Math.random() - 0.5) * 2 * lz), null, 1, 0x9fe8ff, 6, 1, 0.3, 0.18);
+    // enemy fire that meets it
+    for (let j = G.shots.length - 1; j >= 0; j--) {
+      const s = G.shots[j]; if (s.team !== 'E') continue;
+      const rx = s.x - b.p.x, rz = s.z - b.p.z, lat = -rx * dir.z + rz * dir.x;
+      if (Math.abs(lat) > d.W / 2 || s.y < b.base - 0.3 || s.y > b.base + d.H + 0.3) continue;
+      const al = rx * dir.x + rz * dir.z, al0 = al - (s.v.x * dir.x + s.v.z * dir.z) * dt + step;
+      if (!(Math.abs(al) < 1.0 || (al < 0) !== (al0 < 0) && Math.abs(al0) < 12)) continue;
+      G.shots.splice(j, 1); G.bwBlocked = (G.bwBlocked || 0) + 1;
+      G.fx.sparks(_c.set(s.x, s.y, s.z), dir, s.kind === 'ebullet' ? 3 : 10, 0x9fe8ff, 12, 0.8, 0.25, 0.2);
+      if (s.kind !== 'ebullet') G.fx.explosion(_c, 0.5, 0x60c8ff);
+    }
+    // enemies in its path
+    for (const e of G.enemies) {
+      if (!e.alive || e.dying || !e.c || !e.pos || e.holo || e.isObjective || e.isTrain || e.isColossus || e.isLev || e.kind === 'cpart' || e.isMine) continue;
+      const r = e.r || 2, rx = e.c.x - b.p.x, rz = e.c.z - b.p.z, al = rx * dir.x + rz * dir.z, lat = -rx * dir.z + rz * dir.x;
+      if (Math.abs(lat) > d.W / 2 + r * 0.5 || e.c.y < b.base - 1 || e.c.y > b.base + d.H + r) continue;
+      const big = e.kind === 'boss' || e.maxHp > 3000;
+      if (!b.carried.has(e) && !(al > -1.5 && al < r + 1.5)) continue;
+      if (!b.hit.has(e)) {
+        b.hit.add(e); G.curLabel = 'bwall'; const dm = (big ? d.bossDmg : d.dmg) * b.mul; dealDamage(e, dm, 'P', e.c, 'bwall'); G.bwDmg = (G.bwDmg || 0) + dm;
+        G.fx.sparks(e.c, dir, 14, 0x9fe8ff, 14, 0.9, 0.3, 0.22); sfx('hit', G.player ? G.player.pos.distanceTo(e.c) : 30);
+        if (!big && e.alive) { b.carried.add(e); G.bwCarry = (G.bwCarry || 0) + 1; }
+      }
+      if (b.carried.has(e) && e.alive && !blocked) {
+        const dl = r + 1.2 - al;
+        if (dl > 0) { e.pos.x += dir.x * dl; e.pos.z += dir.z * dl; e.c.x += dir.x * dl; e.c.z += dir.z * dl; }
+        if (e.vel) { e.vel.x = dir.x * d.speed; e.vel.z = dir.z * d.speed; }
+      }
+    }
+    if (blocked || b.t <= 0) {
+      for (const e of b.carried) {
+        if (!e.alive) continue;
+        if (blocked) { G.curLabel = 'bwall'; dealDamage(e, d.slam * b.mul, 'P', e.c, 'bwall'); G.bwDmg = (G.bwDmg || 0) + d.slam * b.mul; e.stunT = Math.max(e.stunT || 0, d.stun); G.bwSlams = (G.bwSlams || 0) + 1; G.fx.sparks(e.c, null, 20, 0xffffff, 18, 1, 0.35, 0.25); }
+        else e.stunT = Math.max(e.stunT || 0, 0.35);
+        if (e.vel) e.vel.multiplyScalar(0.2);
+      }
+      if (blocked) { G.fx.ring(_a.set(b.p.x, b.base + d.H / 2, b.p.z), dir, 1, 8, 0.3, 0x9fe8ff); G.fx.trauma = Math.min(1, G.fx.trauma + 0.2); sfx('shieldbreak', G.player ? G.player.pos.distanceTo(b.p) * 0.5 : 30); }
+      b.mesh.parent && b.mesh.parent.remove(b.mesh); b.mesh.material.dispose(); G.bwalls.splice(i, 1);
+    }
+  }
+}
+
 export function updateCombat(dt) {
   RAYF.skipIce = false;
   for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; if (q.sh && q.sh.hacked) G.curShooter = q.sh; q.fn(); G.curShooter = null; } }
@@ -8944,6 +9228,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
+  updateMaze(dt); updateRings(dt); updateBWalls(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
