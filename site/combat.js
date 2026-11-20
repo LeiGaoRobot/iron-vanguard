@@ -288,7 +288,13 @@ function updateShots(DT) {
         s.speed = Math.min(s.maxSpeed, s.speed + 120 * dt);
         s.v.copy(_b).multiplyScalar(s.speed);
       } else s.v.y -= 12 * dt;
-      fx.emit('smoke', { x: s.x, y: s.y, z: s.z, vx: (Math.random() - 0.5), vy: 0.5, vz: (Math.random() - 0.5), life: 0.9, s0: 0.6, s1: 2.2, c0: 0xc8c6c0, c1: 0xa09e98, a0: 0.5, drag: 2 });
+      {   // trail: puffs spaced ~0.7 m along this frame's path so they merge into one plume instead of beads
+        const stp = s.speed * dt, n = Math.max(1, Math.min(4, Math.ceil(stp / 0.7)));
+        for (let k = 0; k < n; k++) {
+          const f = -k / n * dt;
+          fx.emit('smoke', { x: s.x + s.v.x * f, y: s.y + s.v.y * f, z: s.z + s.v.z * f, vx: (Math.random() - 0.5) * 0.8, vy: 0.4, vz: (Math.random() - 0.5) * 0.8, life: 0.8 + Math.random() * 0.25, s0: 1.4, s1: 4.0 + Math.random() * 1.2, c0: 0xc8c6c0, c1: 0xa09e98, a0: 0.3, drag: 2 });
+        }
+      }
       fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.05, s0: s.team === 'E' ? 1.8 : 1.3, c0: s.team === 'E' ? 0xff5030 : 0xffc070 });
     } else if (s.kind === 'flame') {
       s.v.multiplyScalar(1 - Math.min(0.5, 1.3 * dt)); s.v.y += 4 * dt;

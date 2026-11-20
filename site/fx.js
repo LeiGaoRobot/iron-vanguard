@@ -153,7 +153,7 @@ export class FX {
   constructor(scene) {
     this.scene = scene;
     this.add = makeParts(5000, softTex, THREE.AdditiveBlending);
-    this.smk = makeParts(2400, smokeTex, THREE.NormalBlending);
+    this.smk = makeParts(3200, smokeTex, THREE.NormalBlending);
     this.smk.pts.renderOrder = 1; this.add.pts.renderOrder = 2;
     scene.add(this.smk.pts, this.add.pts);
     this.time = 0;

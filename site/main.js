@@ -627,12 +627,19 @@ function tideLogic(dt) {
 const storm = { on: false, k: 0, t: 6, hemi: 0.4, top: new THREE.Color(), flashTop: new THREE.Color(0xb8c8e8) };
 function updateRain(dt) {
   if (!storm.on) return;
-  const a = rainFx.geometry.attributes.position.array, c = camera.position, H = RAIN_BOX / 2, vx = 3, vy = -34, L = 0.045;
+  const a = rainFx.geometry.attributes.position.array, c = camera.position, H = RAIN_BOX / 2, vx = 3, vy = -34, L = 0.045, gy = WATER.on ? WATER.y : 0;
   if (rainFx.visible) for (let i = 0; i < RAIN_N; i++) {
     const j = i * 6;
     let x = a[j] + vx * dt, y = a[j + 1] + vy * dt, z = a[j + 2];
     if (y - c.y < -H) y += RAIN_BOX; if (x - c.x > H) x -= RAIN_BOX; else if (x - c.x < -H) x += RAIN_BOX; if (z - c.z > H) z -= RAIN_BOX; else if (z - c.z < -H) z += RAIN_BOX;
     if (y - c.y > H) y -= RAIN_BOX;
+    if (a[j + 1] > gy && y <= gy && Math.random() < 0.45) {   // splash where the drop crosses the floor / water, near the camera
+      const dx = x - c.x, dz = z - c.z;
+      if (dx * dx + dz * dz < 1400) {
+        fx.emit('add', { x, y: gy + 0.04, z, life: 0.17, s0: 0.12, s1: 0.95, c0: 0xc8d8ea, a0: 0.38 });
+        if (Math.random() < 0.35) fx.emit('add', { x, y: gy + 0.1, z, vx: (Math.random() - 0.5) * 1.6, vy: 1.8 + Math.random() * 1.6, vz: (Math.random() - 0.5) * 1.6, grav: 18, life: 0.28, s0: 0.11, s1: 0.06, c0: 0xd8e6f4, a0: 0.5 });
+      }
+    }
     a[j] = x; a[j + 1] = y; a[j + 2] = z; a[j + 3] = x - vx * L; a[j + 4] = y - vy * L; a[j + 5] = z;
   }
   if (rainFx.visible) rainFx.geometry.attributes.position.needsUpdate = true;

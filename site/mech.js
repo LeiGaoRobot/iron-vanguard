@@ -29,14 +29,28 @@ export const angDiff = (a, b) => { let d = a - b; while (d > Math.PI) d -= Math.
 
 // wide end at the nozzle (origin), tip at y = -1.6
 const flameGeo = new THREE.ConeGeometry(0.2, 1.6, 10, 1, true).rotateX(Math.PI).translate(0, -0.8, 0);
-const flameTex = (() => {
-  const cv = document.createElement('canvas'); cv.width = 8; cv.height = 64;
-  const g = cv.getContext('2d'), gr = g.createLinearGradient(0, 64, 0, 0);   // uv.y 0 (nozzle) = canvas bottom
-  gr.addColorStop(0, 'rgba(255,255,255,1)'); gr.addColorStop(0.35, 'rgba(255,255,255,0.65)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
-  g.fillStyle = gr; g.fillRect(0, 0, 8, 64);
-  const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
-})();
-const flameMat = (c) => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(1.7), map: flameTex, side: THREE.DoubleSide, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+// thruster plume: soft view-facing falloff instead of a hard cone edge, scrolling turbulence, shock diamonds near the
+// nozzle; colour runs from the tint at the tip to a hot core at the nozzle (only the core crosses the bloom threshold)
+const FLAME_T = { value: 0 };
+const flameMat = (c, core, kc, kk) => new THREE.ShaderMaterial({
+  uniforms: { uC: { value: new THREE.Color(c).multiplyScalar(kc) }, uCore: { value: new THREE.Color(core).multiplyScalar(kk) }, uT: FLAME_T },
+  vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+    void main(){ vUv = uv; vec4 mv = modelViewMatrix * vec4(position, 1.0); vN = normalize(normalMatrix * normal); vV = -mv.xyz; gl_Position = projectionMatrix * mv; }`,
+  fragmentShader: `uniform vec3 uC; uniform vec3 uCore; uniform float uT; varying vec2 vUv; varying vec3 vN; varying vec3 vV;
+    float h(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+    float n2(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f); return mix(mix(h(i), h(i + vec2(1.0, 0.0)), f.x), mix(h(i + vec2(0.0, 1.0)), h(i + vec2(1.0, 1.0)), f.x), f.y); }
+    void main(){
+      float u = vUv.y;   // 0 at the nozzle, 1 at the tip
+      float face = abs(dot(normalize(vN), normalize(vV)));
+      float body = smoothstep(0.0, 0.75, face);
+      float n = n2(vec2(vUv.x * 7.0, u * 5.0 - uT * 22.0)) * 0.6 + n2(vec2(vUv.x * 15.0, u * 11.0 - uT * 37.0)) * 0.4;
+      float fall = pow(1.0 - u, 1.5) * (0.65 + 0.7 * n) * (1.0 - smoothstep(0.6, 1.0, u + n * 0.3));
+      float diam = pow(0.5 + 0.5 * cos(u * 34.0), 8.0) * (1.0 - smoothstep(0.06, 0.5, u));
+      vec3 col = mix(uC, uCore, pow(1.0 - u, 4.0) * face) + uCore * diam * 0.8 * face;
+      gl_FragColor = vec4(col, body * fall * 0.75);
+    }`,
+  side: THREE.DoubleSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false,
+});
 
 export class Mech {
   constructor(scene, ctx, opts) {
@@ -59,7 +73,7 @@ export class Mech {
     for (const [nm, size] of [['T_Back1', 1.25], ['T_Back2', 1.25], ['T_LegL', 0.85], ['T_LegR', 0.85]]) {
       const holder = this.n[nm]; if (!holder) continue;
       const f = new THREE.Group();
-      const outer = new THREE.Mesh(flameGeo, flameMat(fc)); const inner = new THREE.Mesh(flameGeo, flameMat(0xffffff));
+      const outer = new THREE.Mesh(flameGeo, flameMat(fc, this.isBoss ? 0xffe0b0 : 0xd0ecff, 0.7, 1.1)); const inner = new THREE.Mesh(flameGeo, flameMat(fc, 0xffffff, 0.9, 1.9));
       inner.scale.set(0.45, 0.7, 0.45);
       f.add(outer, inner); f.scale.setScalar(0.001); f.rotation.x = nm.startsWith('T_Back') ? -0.5 : -0.25;
       holder.add(f);
@@ -283,6 +297,7 @@ export class Mech {
     // weapon spin
     for (const side of ['L', 'R']) { const sl = this.slots[side]; if (sl.spin) sl.spin.rotation.y += (sl.spinV || 0) * dt; }
     // flames
+    FLAME_T.value = performance.now() / 1000;
     for (const fl of this.flames) {
       const lv = fl.back ? this.thrustLv : Math.max(this.hoverLv, this.thrustLv * 0.4);
       fl.lv = lv;
@@ -291,7 +306,7 @@ export class Mech {
       fl.f.visible = true;
       fl.f.scale.set(fl.size * (0.7 + lv * 0.5), fl.size * lv * j * 1.6, fl.size * (0.7 + lv * 0.5));
     }
-    this.light.intensity = this.thrustLv * 14 + this.hoverLv * 8;
+    this.light.intensity = this.thrustLv * 6 + this.hoverLv * 3.5;
   }
 
   hit(dmg) {

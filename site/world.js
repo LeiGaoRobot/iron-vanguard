@@ -347,6 +347,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       boxes.push([x, z, w2, d2, h2, h]); addSolid(x, z, w2, d2, h2, h, 'building');
     }
   }
+  const nBld = boxes.length;   // rooftop clutter goes on these (not on the perimeter wall)
   // perimeter wall + far skyline (not playable)
   const wallH = 14;
   if (!PR) for (const [x, z, w, d] of [[0, -ARENA - 2, ARENA * 2 + 8, 4], [0, ARENA + 2, ARENA * 2 + 8, 4], [-ARENA - 2, 0, 4, ARENA * 2 + 8], [ARENA + 2, 0, 4, ARENA * 2 + 8]]) {
@@ -364,6 +365,86 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   }
   const merged = mergeBoxes(geos);
   const bld = new THREE.Mesh(merged, bldMat); bld.castShadow = true; bld.receiveShadow = true; group.add(bld);
+
+  // ---- rooftop clutter (visual only, no collision): parapets, HVAC units, vents, water tanks, masts with blinking
+  // aviation lights; the far skyline gets masts too so the horizon has lights at night
+  if (!PR) {
+    const rg = [], lg = [];
+    const B = (w, h, d, x, y, z) => rg.push(new THREE.BoxGeometry(w, h, d).translate(x, y + h / 2, z));
+    const C = (r, h, x, y, z, seg = 10, r2 = r) => rg.push(new THREE.CylinderGeometry(r2, r, h, seg).translate(x, y + h / 2, z));
+    const L = (x, y, z, sz) => {
+      const g = new THREE.BoxGeometry(sz, sz, sz).translate(x, y, z), ph = rnd();
+      g.setAttribute('aPh', new THREE.Float32BufferAttribute(new Float32Array(g.attributes.position.count).fill(ph), 1)); lg.push(g);
+    };
+    const mast = (x, y, z, h, far) => {
+      const k = far ? 3 : 1;
+      C(0.12 * k, h, x, y, z, 6, 0.05 * k); B(1.0 * k, 0.08 * k, 0.08 * k, x, y + h * 0.62, z); B(0.08 * k, 0.08 * k, 0.7 * k, x, y + h * 0.4, z);
+      L(x, y + h + 0.15 * k, z, far ? 2.6 : 0.36);
+    };
+    const tops = boxes.slice(0, nBld);
+    for (const [x, z, w, d, h, y0 = 0] of tops) {
+      const top = y0 + h, cap = tops.find((q) => (q[5] || 0) === top && q[0] === x && q[1] === z);
+      const pt = 0.3, ph = y0 ? 0.45 : 0.75;
+      B(w + pt, ph, pt, x, top, z - d / 2); B(w + pt, ph, pt, x, top, z + d / 2); B(pt, ph, d - pt, x - w / 2, top, z); B(pt, ph, d - pt, x + w / 2, top, z);
+      const spot = (m) => {
+        for (let t = 0; t < 14; t++) {
+          const px = x + (rnd() - 0.5) * (w - 2 * m), pz = z + (rnd() - 0.5) * (d - 2 * m);
+          if (cap && Math.abs(px - x) < cap[2] / 2 + m && Math.abs(pz - z) < cap[3] / 2 + m) continue;
+          return [px, pz];
+        }
+        return null;
+      };
+      const nAC = y0 ? (rnd() < 0.5 ? 1 : 0) : 1 + Math.floor(rnd() * 3);
+      for (let i = 0; i < nAC; i++) {
+        const q = spot(1.8); if (!q) continue;
+        const rot = rnd() < 0.5, aw = rot ? 1.5 : 2.2, ad = rot ? 2.2 : 1.5;
+        B(aw, 1.0, ad, q[0], top, q[1]); B(aw * 0.92, 0.1, ad * 0.92, q[0], top + 1.0, q[1]); C(0.46, 0.14, q[0], top + 1.05, q[1], 14);
+        B(0.18, 0.18, 1.4, q[0] + aw / 2 + 0.1, top + 0.2, q[1]);   // duct stub
+      }
+      for (let i = 0, nv = Math.floor(rnd() * 3); i < nv; i++) {
+        const q = spot(0.8); if (!q) continue;
+        const vh = 0.7 + rnd() * 1.0; C(0.2, vh, q[0], top, q[1], 8); C(0.34, 0.16, q[0], top + vh, q[1], 8, 0.12);
+      }
+      if (!y0 && !cap && rnd() < 0.3) {
+        const q = spot(2.3);
+        if (q) {
+          for (const [lx, lz] of [[-0.95, -0.95], [0.95, -0.95], [-0.95, 0.95], [0.95, 0.95]]) B(0.16, 1.5, 0.16, q[0] + lx, top, q[1] + lz);
+          C(1.4, 2.6, q[0], top + 1.5, q[1], 16); C(1.5, 0.12, q[0], top + 2.7, q[1], 16); C(1.45, 0.6, q[0], top + 4.1, q[1], 16, 0.05);
+        }
+      }
+      if (rnd() < (h > 20 ? 0.6 : 0.25)) { const q = spot(1.2); if (q) mast(q[0], top, q[1], 4 + rnd() * 6); }
+    }
+    for (const [x, z, w, d, h] of skyline) if (h > 30 && rnd() < 0.6) mast(x + (rnd() - 0.5) * w * 0.5, h, z + (rnd() - 0.5) * d * 0.5, 6 + rnd() * 12, true);
+    const roofMat = panelMaterial(0x5c636e, { rough: 0.75, metal: 0.35, frag: `
+      diffuseColor.rgb *= 0.78 + 0.3 * h21(floor(vWP.xz * 0.45) + floor(vWP.y * 0.7));
+      if (vWN.y > 0.5) diffuseColor.rgb *= 0.88 + 0.12 * vn2(vWP.xz * 2.0);
+      else diffuseColor.rgb *= 1.0 - 0.25 * smoothstep(0.55, 0.0, fract(vWP.y));${snow ? `
+      if (vWN.y > 0.5) diffuseColor.rgb = vec3(0.84, 0.88, 0.93);` : ''}${desert ? `
+      if (vWN.y > 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.55, 0.42), 0.6);` : ''}${abyss ? `
+      diffuseColor.rgb *= vec3(0.5, 0.68, 0.7);` : ''}${jungle ? `
+      if (vWN.y > 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.18, 0.32, 0.12), 0.6);` : ''}${cyber ? `
+      diffuseColor.rgb *= 0.3;` : ''}` });
+    const roof = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(rg), roofMat); roof.castShadow = true; roof.receiveShadow = true; group.add(roof);
+    const dark = /night|lockdown|storm|thunder|grid|cyber|rift|meteor|ion|abyss|fog|lunar|eclipse/.test(env);
+    const lMat = new THREE.ShaderMaterial({
+      uniforms: THREE.UniformsUtils.merge([THREE.UniformsLib.fog, { uT: { value: 0 }, uK: { value: dark ? 1 : 0.4 } }]), fog: true, toneMapped: false,
+      vertexShader: `attribute float aPh; varying float vPh;
+        #include <common>
+        #include <fog_pars_vertex>
+        void main(){ vPh = aPh; vec4 mvPosition = modelViewMatrix * vec4(position, 1.0); gl_Position = projectionMatrix * mvPosition;
+        #include <fog_vertex>
+        }`,
+      fragmentShader: `uniform float uT; uniform float uK; varying float vPh;
+        #include <common>
+        #include <fog_pars_fragment>
+        void main(){ float b = fract(uT * 0.6 + vPh); float on = smoothstep(0.0, 0.04, b) * (1.0 - smoothstep(0.16, 0.3, b));
+          gl_FragColor = vec4(vec3(1.0, 0.1, 0.05) * (0.5 + uK * (0.9 + on * 6.0)), 1.0);
+        #include <fog_fragment>
+        }`,
+    });
+    lMat.uniforms.uT = LAVA.uT;   // shared clock, advanced every frame
+    if (lg.length) group.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(lg), lMat));
+  }
 
   // ---- kit props (baked)
   const place = [];
