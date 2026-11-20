@@ -65,6 +65,7 @@ export const WEAPONS = {
   pound: { slot: 'shoulder', name: 'GP-2 俯冲重击', en: 'GP-2 Ground Pound', desc: '空中按下：以 70 m/s 垂直砸向地面 · 落地冲击波的伤害和半径随下落高度增长（20 m 高约 190 伤害 / 11 m），震慑 0.6 秒并击退 · 下砸中受伤减半 · 在地面按下先跃起再砸', type: 'pound', cd: 6, base: 70, per: 6, r0: 6, rPer: 0.25, hMax: 40, hop: 30, hopT: 0.5, dive: 70, stun: 0.6, knock: 18 },
   rod: { slot: 'shoulder', name: 'LR-1 避雷针', en: 'LR-1 Lightning Rod', desc: '在前方 6 m 插下避雷针 14 秒 · 每 0.9 秒放电打 22 m 内最近的敌机（36，再连锁 1 个）· 雷暴里 14 m 内不会被雷劈 · 同时只能有 1 根', type: 'rod', dur: 14, zap: 0.9, dmg: 36, R: 22, chains: 2, cover: 14, cd: 18, sfx: 'sentry' },
   sentry: { slot: 'shoulder', name: 'TR-3 哨戒炮塔', en: 'TR-3 Sentry Turret', desc: '在前方架设自动炮塔 15 秒 · 双管速射 75 m 内敌机 · 吸引部分火力 · 耐久 400 · 同时只能有 1 座', type: 'sentry', hp: 400, dur: 15, dmg: 10, rate: 0.11, range: 75, cd: 22, sfx: 'sentry' },
+  nanocloud: { slot: 'shoulder', name: 'NC-2 纳米云', en: 'NC-2 Nanite Cloud', desc: '在机体周围放出 10 m 纳米虫群 8 秒，跟着你走 · 云里的敌机每秒受 45 伤害（头目一半）· 飞进云里的敌方子弹 / 导弹 / 炮弹有一半被吃掉', type: 'nanocloud', R: 10, dur: 8, dps: 45, bossK: 0.5, eat: 0.5, cd: 15, sfx: 'stasis' },
   stasis: { slot: 'shoulder', name: 'TS-1 时滞场', en: 'TS-1 Stasis Field', desc: '在准星处展开 14 m 时滞球 5 秒 · 球内敌机动作放慢到三成、敌弹几乎停在空中 · 头目只放慢一半', type: 'stasis', range: 60, R: 14, dur: 5, k: 0.3, bossK: 0.6, shotK: 0.12, cd: 17, sfx: 'stasis' },
   bwall: { slot: 'shoulder', name: 'BP-4 推进屏障', en: 'BP-4 Barrier Ram', desc: '在身前立起 11 m 宽的能量墙并以 16 m/s 向前推进 35 m · 挡下迎面的敌方子弹、炮弹与导弹 · 撞上的敌机（头目除外）被推着走，撞上墙壁再受重击并瘫痪 0.8 秒 · 冷却 11 秒', type: 'bwall', W: 11, H: 7, speed: 16, dur: 2.2, dmg: 70, slam: 90, bossDmg: 40, stun: 0.8, cd: 11, sfx: 'shield' },
   chainb: { slot: 'shoulder', name: 'LK-3 连锁信标', en: 'LK-3 Link Beacon', desc: '射出信标 · 命中处 18 m 内最多 5 台敌机被连接 9 秒 · 你对其中任何一台造成的伤害，其余每台再受 40%（头目只受一半）· 冷却 14 秒', type: 'chainb', speed: 85, R: 18, max: 5, dur: 9, share: 0.4, cd: 14, sfx: 'grenade' },
@@ -77,7 +78,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -664,6 +665,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; popChaff(owner, slot, d); if (me) G.stats.shots++; }
   } else if (d.type === 'cluster') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireCluster(owner, slot, d, aim, dmgMul, team); if (me) G.stats.shots++; }
+  } else if (d.type === 'nanocloud') {
+    if (pressed && ws.cd <= 0 && isP && owner.alive) { ws.cd = d.cd; castNano(owner, d, dmgMul, me); if (me) G.stats.shots++; }
   } else if (d.type === 'stasis') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; castStasis(owner, slot, d, aim); if (me) G.stats.shots++; }
   } else if (d.type === 'bwall') {
@@ -1940,7 +1943,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -9333,6 +9336,248 @@ function pressHit(p, F) {
   }
 }
 
+
+// ------------------------------------------------------------------ v54 Tsunami: tide pumps on the seaward (west) edge
+// drive a wall of water across the whole map every 30 s. It carries and drowns everything below its crest; hover above
+// it or stand on a roof. Every pump destroyed lowers the wave 3 m and gives 6 s more between waves; all three down and
+// the sea calms. Swappers lock a tether onto you and trade places, preferably dropping you on the sea side
+export const TSU = { period: 26, first: 14, warn: 7, speed: 24, thick: 26, h: 15, hPer: 3, perAdd: 5, carry: 0.6, pDps: 36, eDps: 70, bossDps: 10, x0: -185, x1: 190,
+  pumpHp: 6000, pumps: [[-150, -90], [-150, 0], [-150, 90]] };
+G.tsu = null;
+let tsuGeo = null;
+function waveGeo() {
+  if (tsuGeo) return tsuGeo;
+  const sh = new THREE.Shape(), pts = [];
+  for (let i = 0; i <= 28; i++) {   // front at x = 0, crest just behind it, long sloping back to x = -thick
+    const u = i / 28, x = -u * TSU.thick;
+    const y = u < 0.12 ? Math.sin(u / 0.12 * Math.PI / 2) : Math.pow(1 - (u - 0.12) / 0.88, 1.6);
+    pts.push([x, y]);
+  }
+  sh.moveTo(0.6, 0); for (const [x, y] of pts) sh.lineTo(x, y); sh.lineTo(-TSU.thick, 0); sh.lineTo(0.6, 0);
+  tsuGeo = new THREE.ExtrudeGeometry(sh, { depth: 2 * 190, bevelEnabled: false, steps: 95, curveSegments: 4 });
+  tsuGeo.translate(0, 0, -190);
+  // undulate the crest along its length and shade deep teal at the foot through to white foam at the crest
+  const pa = tsuGeo.attributes.position, col = new Float32Array(pa.count * 3), deep = new THREE.Color(0x15485c), mid = new THREE.Color(0x3fa2bc), foam = new THREE.Color(0xeefcff), cc = new THREE.Color();
+  for (let i = 0; i < pa.count; i++) {
+    const x = pa.getX(i), y = pa.getY(i), z = pa.getZ(i), lead = Math.max(0, 1 + x / 6);
+    const wob = 1 + 0.13 * Math.sin(z * 0.045) + 0.07 * Math.sin(z * 0.13 + 1.7);
+    pa.setY(i, y * wob); pa.setX(i, x + lead * 2.2 * Math.sin(z * 0.03 + 0.5) * y);
+    const k = y * wob;
+    if (k < 0.7) cc.copy(deep).lerp(mid, k / 0.7); else cc.copy(mid).lerp(foam, Math.min(1, (k - 0.7) / 0.32));
+    col[i * 3] = cc.r; col[i * 3 + 1] = cc.g; col[i * 3 + 2] = cc.b;
+  }
+  tsuGeo.setAttribute('color', new THREE.BufferAttribute(col, 3)); tsuGeo.computeVertexNormals();
+  return tsuGeo;
+}
+export class TidePump extends Enemy {
+  constructor(x, z, i) {
+    super('pump', 'E_Pump', new V3(x, 0, z), TSU.pumpHp, 3.0); this.boom = 2.4; this.isObjective = true; this.i = i;
+    this.obj.rotation.y = Math.PI / 2;   // intakes (kit -Z) face the sea to the west
+    this.solids = [addSolid(x, z, 9.4, 9.4, 5.0, 0, 'pump')];
+    this.c.set(x, 7.2, z); this.ph = Math.random() * 6;
+  }
+  die() {
+    for (const so of this.solids) removeSolid(so);
+    this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this);
+    explodeAt(this.c, 11, 40, 'P', 2.6, 0x60c8ff); G.fx.flash(this.c, 0x60c8ff, 60, 30, 0.5);
+    for (let k = 0; k < 4; k++) G.queue.push({ label: 'pump', t: 0.2 + k * 0.3, fn: () => explodeAt(new V3(this.pos.x + (Math.random() - 0.5) * 8, 1.5 + Math.random() * 4, this.pos.z + (Math.random() - 0.5) * 8), 0, 0, 'P', 1.3) });
+    const T = G.tsu; if (T) { T.h = Math.max(4, T.h - TSU.hPer); T.per += TSU.perAdd; T.down++; G.onPumpDown && G.onPumpDown(this, T); }
+    this.remove();
+  }
+  update(dt) {
+    const T = G.tsu, n = this.n, busy = T && (T.st === 'warn' || T.st === 'wave') ? 1 : 0; this.ph += dt;
+    if (n.TP_Fan) n.TP_Fan.rotation.y += dt * (1.2 + busy * 6);
+    if (n.TP_Core) n.TP_Core.scale.setScalar(1 + 0.08 * Math.sin(this.ph * (3 + busy * 8)) + busy * 0.12);
+    if (busy && Math.random() < 0.3) G.fx.emit('add', { x: this.pos.x - 6, y: 1.6, z: this.pos.z + (Math.random() - 0.5) * 5, vx: -4, vy: 2, life: 0.6, s0: 1.2, s1: 2.5, c0: 0xcfefff });
+  }
+}
+export function startTsunami() {
+  clearTsunami();
+  const g = new THREE.Group();
+  const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, vertexColors: true, roughness: 0.18, metalness: 0.15, transparent: true, opacity: 0.86, side: THREE.DoubleSide, depthWrite: false });
+  const wave = new THREE.Mesh(waveGeo(), mat); wave.renderOrder = 2; g.add(wave);
+  const foam = new THREE.Mesh(new THREE.BoxGeometry(5, 1, 380), new THREE.MeshBasicMaterial({ color: 0xe8fbff, transparent: true, opacity: 0.55, depthWrite: false }));
+  foam.renderOrder = 3; g.add(foam);
+  const line = new THREE.Mesh(new THREE.PlaneGeometry(3, 340).rotateX(-Math.PI / 2), new THREE.MeshBasicMaterial({ color: 0xff3020, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false }));
+  line.position.set(-160, 0.15, 0); g.add(line);
+  g.visible = true; wave.visible = foam.visible = false; G.scene.add(g);
+  const pumps = TSU.pumps.map(([x, z], i) => new TidePump(x, z, i));
+  G.tsu = { g, wave, foam, line, pumps, st: 'calm', t: TSU.first, X: TSU.x0, h: TSU.h, per: TSU.period, n: 0, down: 0, acc: 0, eAcc: 0, hitsP: 0, carried: 0 };
+  G.tsuKills = 0; G.tsuDmgP = 0;
+}
+export function clearTsunami() { if (G.tsu) G.tsu.g.parent && G.tsu.g.parent.remove(G.tsu.g); G.tsu = null; }
+export function tsuEta() {   // seconds until the next wave front reaches the player (null when calm forever)
+  const T = G.tsu, P = G.player; if (!T || !P) return null;
+  if (T.down >= TSU.pumps.length && T.st === 'calm') return null;
+  const reach = Math.max(0, (P.pos.x - (T.st === 'wave' ? T.X : TSU.x0)) / TSU.speed);
+  if (T.st === 'wave') return P.pos.x < T.X - TSU.thick ? null : reach;
+  return (T.st === 'warn' ? T.t : T.t + TSU.warn) + reach;
+}
+export function inWave(pos, pad = 0) {
+  const T = G.tsu; if (!T || T.st !== 'wave') return false;
+  return pos.x < T.X + 1 + pad && pos.x > T.X - TSU.thick && pos.y < T.h * waveAt(T.X - pos.x) + 0.8;
+}
+function waveAt(back) { const u = Math.max(0, Math.min(1, back / TSU.thick)); return u < 0.12 ? Math.max(0.35, Math.sin(u / 0.12 * Math.PI / 2)) : Math.pow(1 - (u - 0.12) / 0.88, 1.6); }
+function updateTsunami(dt) {
+  const T = G.tsu; if (!T) return;
+  const P = G.player;
+  T.t -= dt;
+  if (T.st === 'calm') {
+    if (T.t <= 0 && T.down < TSU.pumps.length) { T.st = 'warn'; T.t = TSU.warn; sfx('alarm', 0); G.onTsuWarn && G.onTsuWarn(T); }
+  } else if (T.st === 'warn') {
+    T.line.material.opacity = 0.35 + 0.3 * Math.sin(G.time * 12);
+    if (Math.random() < 0.4) G.fx.emit('add', { x: TSU.x0 + 25 + Math.random() * 6, y: Math.random() * 3, z: (Math.random() - 0.5) * 320, vy: 3, life: 0.8, s0: 1.5, s1: 3, c0: 0xdff6ff });
+    if (T.t <= 0) { T.st = 'wave'; T.X = TSU.x0; T.n++; T.line.material.opacity = 0; T.wave.visible = true; T.hitE = new Set(); T.hitP = false; sfx('rumble', 0); G.onTsuWave && G.onTsuWave(T); }
+  } else if (T.st === 'wave') {
+    T.X += TSU.speed * dt;
+    T.wave.position.set(T.X, 0, 0); T.wave.scale.set(1, T.h, 1);
+    T.foam.position.set(T.X - 2.6, T.h * 0.98, 0); T.foam.scale.set(1, Math.max(0.6, T.h * 0.06), 1);
+    if (P) {
+      const dx = P.pos.x - T.X;
+      if (dx < 30 && dx > -40) for (let k = 0; k < 4; k++) G.fx.emit('add', { x: T.X - Math.random() * 4, y: T.h * (0.8 + Math.random() * 0.25), z: P.pos.z + (Math.random() - 0.5) * 60, vx: 6 + Math.random() * 6, vy: 2 + Math.random() * 4, life: 0.7, s0: 1.2, s1: 3.2, c0: 0xeefcff });
+      if (Math.abs(dx) < 60) G.fx.trauma = Math.max(G.fx.trauma, 0.25 * (1 - Math.abs(dx) / 60));
+      if (P.alive && inWave(P.pos)) {
+        if (!T.hitP) { T.hitP = true; T.hitsP++; G.onTsuHit && G.onTsuHit(); }
+        P.pos.x += TSU.speed * TSU.carry * dt; P.vel.x = Math.max(P.vel.x, TSU.speed * TSU.carry * 0.5); P.vel.y = Math.min(P.vel.y, 5.5);
+        T.carried += dt; T.acc += TSU.pDps * dt;
+        if (T.acc >= 6) { G.curSrc = new V3(T.X - 4, P.pos.y, P.pos.z); damagePlayer(T.acc, G.curSrc, 'tsunami'); G.tsuDmgP += T.acc; T.acc = 0; }
+      }
+    }
+    T.eAcc += dt; const tick = T.eAcc >= 0.25; if (tick) T.eAcc = 0;
+    for (const e of G.enemies) {
+      if (!e.alive || e.dying || e.isObjective || !e.pos || e.holo || e.isMine || e.kind === 'cpart' || e.isTrain || e.isColossus || e.isLev) continue;
+      if (!inWave(e.pos)) continue;
+      const big = e.kind === 'boss' || e.kind === 'raider' || e.maxHp > 3000;
+      if (!big && !e.tbHeld) { e.pos.x += TSU.speed * TSU.carry * dt; if (e.c && e.c !== e.pos && !e.mech) e.c.x += TSU.speed * TSU.carry * dt; }
+      if (tick) {
+        G.curLabel = 'tsunami'; dealDamage(e, (big ? TSU.bossDps : TSU.eDps) * 0.25, 'X', e.c || e.pos, 'tsunami'); G.curLabel = null;
+        if (!e.alive) G.tsuKills = (G.tsuKills || 0) + 1;
+        if (Math.random() < 0.5) G.fx.sparks(e.c || e.pos, null, 4, 0xdff6ff, 8, 1, 0.3, 0.3);
+      }
+    }
+    if (T.X > TSU.x1 + TSU.thick) { T.st = 'calm'; T.t = T.per; T.wave.visible = T.foam.visible = false; T.acc = 0; }
+  }
+}
+
+export const SWAP = { hp: 700, r: 2.2, hover: 8, keep: [30, 50], speed: 12, cd: [8, 10], lock: 1.2, range: 60, brk: 220, daze: 1.5, dazeK: 1.5, gunCd: 2.2, gunR: 70, dmg: 7 };
+export class Swapper extends Enemy {
+  constructor(pos) {
+    super('swapper', 'E_Swap', pos, SWAP.hp, SWAP.r); this.boom = 1.0;
+    this.vel = new V3(); this.yaw = Math.random() * 6.28; this.st = 'idle'; this.cdT = 3 + Math.random() * 3; this.lockT = 0; this.lockDmg = 0; this.dazeT = 0; this.gunT = 1.5 + Math.random();
+    this.side = Math.random() < 0.5 ? 1 : -1; this.goalV = new V3(); this.climbT = 0;
+    this.pos.y = groundAt(pos.x, pos.z, 40) + SWAP.hover; this.c.copy(this.pos);
+  }
+  hit(dmg) {
+    if (this.st === 'daze') dmg *= SWAP.dazeK;
+    if (this.st === 'lock') this.lockDmg += dmg;
+    super.hit(dmg);
+  }
+  update(dt) {
+    const tg = this.tg(), pc = tg.center(playerC), P = G.player, n = this.n;
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1;
+    const los = this.checkLos(dt);
+    this.cdT -= dt;
+    if (this.st === 'idle' && this.cdT <= 0) {
+      if (P && P.alive && tg === P && this.c.distanceTo(pc) < SWAP.range && los && !(G.camo && G.camo.t > 0)) { this.st = 'lock'; this.lockT = SWAP.lock; this.lockDmg = 0; sfx('warn', 0); G.swapLocks = (G.swapLocks || 0) + 1; G.onSwapLock && G.onSwapLock(this); }
+      else this.cdT = 0.7;
+    }
+    if (this.st === 'lock') {
+      this.lockT -= dt; const k = 1 - Math.max(0, this.lockT) / SWAP.lock;
+      const ok = P && P.alive && clearLine(P.center(_c), this.c) && this.lockDmg < SWAP.brk && this.c.distanceTo(P.center(_c)) < SWAP.range * 1.15;
+      if (!ok) { this.st = 'idle'; this.cdT = 3.5; G.swapBreaks = (G.swapBreaks || 0) + 1; G.fx.sparks(this.c, null, 14, 0xc070ff, 12, 1, 0.4, 0.25); sfx('snap', dist * 0.5); }
+      else {
+        G.fx.streak(_a.copy(this.c), _b.copy(P.center(_c)), 0.12 + k * 0.25, 0xc060ff);
+        if (Math.random() < 0.6) G.fx.sparks(P.center(_c), null, 2, 0xc070ff, 6, 1, 0.3, 0.2);
+        if (this.lockT <= 0) this.swap(P);
+      }
+    } else if (this.st === 'daze') {
+      this.dazeT -= dt; if (Math.random() < 0.4) G.fx.sparks(this.c, null, 2, 0xd0a0ff, 6, 1, 0.3, 0.2);
+      if (this.dazeT <= 0) { this.st = 'idle'; this.cdT = SWAP.cd[0] + Math.random() * (SWAP.cd[1] - SWAP.cd[0]); }
+    }
+    const spin = this.st === 'lock' ? 9 : this.st === 'daze' ? 14 : 1.6;
+    if (n.SX_Ring1) n.SX_Ring1.rotation.y += dt * spin;
+    if (n.SX_Ring2) n.SX_Ring2.rotation.x += dt * spin * 0.7;
+    if (n.SX_Core) n.SX_Core.scale.setScalar(1 + (this.st === 'lock' ? 0.35 * (1 - Math.max(0, this.lockT) / SWAP.lock) + 0.1 * Math.sin(G.time * 30) : 0.06 * Math.sin(G.time * 4)));
+    // keep 30-50 m away, preferring the seaward (west) side of the target when the tsunami is running
+    const want = Math.max(SWAP.keep[0], Math.min(SWAP.keep[1], dist));
+    const a = G.tsu ? Math.PI + this.side * (0.5 + 0.35 * Math.sin(G.time * 0.25 + this.side)) : Math.atan2(-dz, -dx) + this.side * 0.45;
+    const goal = this.goalV.set(pc.x + Math.cos(a) * want, 0, pc.z + Math.sin(a) * want);
+    const gx = goal.x - this.pos.x, gz = goal.z - this.pos.z, gl = Math.hypot(gx, gz) || 1;
+    const sp = SWAP.speed * Math.min(1, gl / 6 + 0.15) * (this.st === 'lock' ? 0.2 : this.st === 'daze' ? 0.1 : 1), kk = 1 - Math.exp(-2.2 * dt);
+    this.vel.x += (gx / gl * sp - this.vel.x) * kk; this.vel.z += (gz / gl * sp - this.vel.z) * kk;
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 2, 2.2)) { this.pos.x -= this.vel.x * dt; this.pos.z -= this.vel.z * dt; this.vel.multiplyScalar(-0.3); this.side *= -1; this.climbT = 2.5; }
+    if (this.climbT > 0) this.climbT -= dt;
+    const gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 1.5) + SWAP.hover + (this.climbT > 0 ? 14 : 0) + Math.sin(G.time * 1.7 + this.side) * 0.5 - (this.st === 'daze' ? 2 : 0);
+    this.pos.y += (gy - this.pos.y) * (1 - Math.exp(-2.5 * dt));
+    const ny = Math.atan2(-(pc.x - this.pos.x), -(pc.z - this.pos.z)), turn = angDiff(ny, this.yaw); this.yaw += turn * Math.min(1, dt * 3);
+    this.obj.rotation.set(0, this.yaw, this.st === 'daze' ? Math.sin(G.time * 9) * 0.4 : 0, 'YXZ');
+    this.c.copy(this.pos);
+    this.gunT -= dt;
+    if (this.st === 'idle' && this.gunT <= 0 && dist < SWAP.gunR && los) {
+      this.gunT = SWAP.gunCd;
+      for (let i = 0; i < 2; i++) G.queue.push({ t: i * 0.16, label: 'swapper-gun', fn: () => {
+        if (!this.alive) return;
+        const mp = this.n.Muzzle_Swap ? this.n.Muzzle_Swap.getWorldPosition(new V3()) : this.c.clone();
+        const aim = lead(mp, 110, _b, this.tg()); _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.y += (Math.random() - 0.5) * 0.04; _d.z += (Math.random() - 0.5) * 0.05; _d.normalize();
+        spawnShot({ p: mp, v: _d.clone().multiplyScalar(110), dmg: SWAP.dmg, team: 'E', kind: 'ebullet', color: 0xe0b0ff, w: 0.22, len: 3, life: 0.8, label: 'swapper-gun' });
+      } });
+    }
+  }
+  swap(P) {
+    const pp = P.pos.clone(), mp = this.pos.clone();
+    G.fx.flash(pp, 0xc060ff, 40, 30, 0.3); G.fx.flash(mp, 0xc060ff, 40, 30, 0.3);
+    G.fx.ring(pp.clone().setY(pp.y + 2), null, 1, 7, 0.35, 0xc070ff); G.fx.ring(mp.clone(), null, 1, 7, 0.35, 0xc070ff);
+    const gy = groundAt(mp.x, mp.z, mp.y + 1);
+    P.pos.set(mp.x, Math.max(gy, mp.y - 2.6), mp.z); P.vel.set(0, 0, 0); if (P.lungeT) P.lungeT = 0;
+    this.pos.set(pp.x, pp.y + 2.6, pp.z); this.c.copy(this.pos); this.vel.set(0, 0, 0);
+    this.st = 'daze'; this.dazeT = SWAP.daze; G.swaps = (G.swaps || 0) + 1;
+    sfx('blink', 0); G.fx.trauma = Math.min(1, G.fx.trauma + 0.3);
+    G.onSwap && G.onSwap(this);
+  }
+}
+
+// NC-2 nanite cloud: a 10 m swarm that follows its owner for 8 s, chewing on enemies inside and eating half the enemy
+// projectiles that fly into it
+G.nanos = [];
+const nanoWire = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x7cf0e0).multiplyScalar(1.3), wireframe: true, transparent: true, opacity: 0.06, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+const nanoGeo = new THREE.IcosahedronGeometry(1, 2);
+function castNano(owner, d, mul, me) {
+  G.nanos = G.nanos.filter((c) => { if (c.owner === owner) { c.o.parent && c.o.parent.remove(c.o); return false; } return true; });
+  const o = new THREE.Mesh(nanoGeo, nanoWire.clone()); o.scale.setScalar(0.5); G.scene.add(o);
+  G.nanos.push({ owner, d, mul, t: d.dur, age: 0, tick: 0, o, me });
+  G.nanoN = (G.nanoN || 0) + 1;
+  sfx(d.sfx || 'stasis', 0); const c = owner.center(new V3()); G.fx.ring(c, null, 1, d.R * 1.3, 0.45, 0x7cf0e0);
+}
+function updateNano(dt) {
+  for (let i = G.nanos.length - 1; i >= 0; i--) {
+    const N = G.nanos[i], d = N.d; N.t -= dt; N.age += dt;
+    if (N.t <= 0 || !N.owner.alive) { N.o.parent && N.o.parent.remove(N.o); G.nanos.splice(i, 1); continue; }
+    const c = N.owner.center(N.cp || (N.cp = new V3())), R = d.R, fade = Math.min(1, N.t * 2);
+    N.o.position.copy(c); N.o.scale.setScalar(R * Math.min(1, N.age * 4)); N.o.rotation.y += dt * 0.6; N.o.rotation.x += dt * 0.25; N.o.material.opacity = 0.06 * fade;
+    for (let k = 0; k < 5; k++) {
+      const a = Math.random() * 6.28, b = Math.acos(Math.random() * 2 - 1), r = R * (0.35 + 0.65 * Math.cbrt(Math.random()));
+      G.fx.emit('add', { x: c.x + Math.sin(b) * Math.cos(a) * r, y: Math.max(0.3, c.y + Math.cos(b) * r * 0.7), z: c.z + Math.sin(b) * Math.sin(a) * r, vx: -Math.sin(a) * 3, vz: Math.cos(a) * 3, life: 0.35, s0: 0.35, s1: 0.1, c0: 0x9ff8ec });
+    }
+    for (let j = G.shots.length - 1; j >= 0; j--) {
+      const sh = G.shots[j]; if (sh.team !== 'E' || sh._nc) continue;
+      if (Math.hypot(sh.x - c.x, sh.y - c.y, sh.z - c.z) > R) continue;
+      sh._nc = true;
+      if (Math.random() < d.eat) { G.shots.splice(j, 1); G.nanoEat = (G.nanoEat || 0) + 1; G.fx.sparks(_a.set(sh.x, sh.y, sh.z), null, 4, 0x9ff8ec, 8, 0.8, 0.25, 0.15); }
+    }
+    N.tick += dt; if (N.tick < 0.25) continue; N.tick = 0;
+    for (const e of G.enemies) {
+      if (!e.alive || e.dying || e.holo || e.isMine || e.hacked || !(e.c || e.pos)) continue;
+      const ec = e.c || e.pos; if (ec.distanceTo(c) > R + (e.r || 2) * 0.5) continue;
+      const big = e.kind === 'boss' || e.kind === 'raider' || e.maxHp > 3000 || e.isColossus || e.isTrain || e.isLev;
+      G.curLabel = 'nanocloud'; dealDamage(e, d.dps * 0.25 * N.mul * (big ? d.bossK : 1), 'P', ec, 'nanocloud'); G.curLabel = null;
+      G.nanoDmg = (G.nanoDmg || 0) + d.dps * 0.25 * N.mul * (big ? d.bossK : 1);
+      if (Math.random() < 0.5) G.fx.sparks(ec, null, 3, 0x9ff8ec, 6, 1, 0.25, 0.15);
+    }
+  }
+}
+export function clearNano() { for (const N of G.nanos) N.o.parent && N.o.parent.remove(N.o); G.nanos.length = 0; G.nanoEat = 0; G.nanoDmg = 0; G.nanoN = 0; }
+
 // forklift: lobs explosive barrels from its forks. While a barrel sits on the forks the forklift takes x1.5 damage, and
 // 150 damage dealt in that window sets the barrel off on the forklift itself
 export const FORK = { hp: 1100, r: 2.4, speed: 6, keep: [25, 45], reload: 1.2, load: 3, aim: 0.8, dmg: 45, splash: 7, vuln: 1.5, pop: 150, popDmg: 320, popR: 7, popE: 45, range: 70 };
@@ -9543,7 +9788,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
-  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt);
+  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

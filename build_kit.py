@@ -158,6 +158,8 @@ M = dict(
     ReviverPaint=mat("ReviverPaint", "#d4d8cc", 0.4, metal=0.35), Nanite=mat("Nanite", "#c8ffd0", 0.2, emit="#30ff78", strength=2.4),
     PylonPaint=mat("PylonPaint", "#3a3440", 0.5, metal=0.4), PylonGlow=mat("PylonGlow", "#ffd0c0", 0.2, emit="#ff4a2a", strength=2.6),
     CamoLens=mat("CamoLens", "#c8f4ff", 0.1, emit="#60d8ff", strength=1.6),
+    PumpGlow=mat("PumpGlow", "#d0f4ff", 0.2, emit="#30b8ff", strength=2.2), SwapCore=mat("SwapCore", "#f0d8ff", 0.15, emit="#b040ff", strength=2.4),
+    NanoGlow=mat("NanoGlow", "#e0fff8", 0.2, emit="#7cf0e0", strength=1.8), SwapPaint=mat("SwapPaint", "#3a3448", 0.35, metal=0.6), PumpPaint=mat("PumpPaint", "#4a5a60", 0.55, metal=0.4),
     PressGlow=mat("PressGlow", "#ffd0c0", 0.3, emit="#ff3a20", strength=2.0), FabGlow=mat("FabGlow", "#fff0c8", 0.2, emit="#ffb040", strength=2.2),
     TractorGlow=mat("TractorGlow", "#d8fff0", 0.15, emit="#40ffc0", strength=2.0), ForkPaint=mat("ForkPaint", "#d89a20", 0.45, metal=0.2),
     LiftGlow=mat("LiftGlow", "#ffd8a0", 0.3, emit="#ff9a30", strength=2.2), PulseCore=mat("PulseCore", "#fff0e0", 0.2, emit="#ffe0c0", strength=2.0),
@@ -3296,7 +3298,68 @@ def build_tractor():
         ball((x * 0.9, 1.12, 0.05 + (z - 0.05) * 0.9), 0.05, M["TractorGlow"], K, sub=1)
     muzzle("Muzzle_Tractor", (0, 1.15, 0.05), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor()
+
+def build_pump():
+    # tide pump: the seaward machine that drives the tsunami waves. a heavy plinth (collision box 9 x 9 x 5 m in game),
+    # four piston towers, two intake pipes facing the sea (+Y = game -Z, turned in game to face west) and a glowing
+    # reactor TP_Core on the roof with a turbine TP_Fan spinning around it
+    K = kit("E_Pump")
+    box((0, 0, 1.6), (9.0, 9.0, 3.2), M["PumpPaint"], K, bevel=0.08)
+    box((0, 0, 3.6), (7.6, 7.6, 0.8), M["Frame"], K, bevel=0.05)
+    box((0, 0, 0.15), (9.4, 9.4, 0.3), M["Hazard"], K)
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            cyl((sx * 3.3, sy * 3.3, 5.0), 0.7, 3.0, M["Joint"], K, verts=12)
+            cyl((sx * 3.3, sy * 3.3, 6.6), 0.8, 0.3, M["Hazard"], K, verts=12)
+    for sx in (-1, 1):
+        cyl((sx * 2.4, 5.6, 1.6), 1.15, 3.0, M["PumpPaint"], K, rot=ALONG_Y, verts=14)
+        torus((sx * 2.4, 7.1, 1.6), 1.15, 0.16, M["PumpGlow"], K, rot=ALONG_Y)
+        cyl((sx * 2.4, 7.15, 1.6), 0.9, 0.1, M["Black"], K, rot=ALONG_Y, verts=14)
+    cyl((0, 0, 4.6), 1.5, 1.4, M["Frame"], K, verts=14)
+    core = empty("TP_Core", (0, 0, 7.0), K)
+    ball((0, 0, 0), 1.35, M["PumpGlow"], core, sub=2)
+    torus((0, 0, 0), 1.7, 0.12, M["EArmor2"], core)
+    fan = empty("TP_Fan", (0, 0, 7.0), K)
+    for k in range(4):
+        a = k * math.pi / 2
+        box((math.cos(a) * 2.6, math.sin(a) * 2.6, 0), (2.4, 0.5, 0.18), M["EArmor2"], fan, rot=(0.35, 0, a))
+    torus((0, 0, 0), 3.9, 0.14, M["Frame"], fan)
+
+def build_swapper():
+    # swapper: a hovering bipyramid with a purple core and two gyroscope rings (SX_Ring1 horizontal, SX_Ring2 vertical);
+    # the core SX_Core pulses while it locks on; a small twin gun under the front (Muzzle_Swap)
+    K = kit("E_Swap")
+    cyl((0, 0, 0.9), 1.1, 1.8, M["SwapPaint"], K, verts=6, r2=0.05, smooth=False)
+    cyl((0, 0, -0.9), 0.05, 1.8, M["SwapPaint"], K, verts=6, r2=1.1, smooth=False)
+    box((0, 0, 0), (2.3, 2.3, 0.18), M["EArmor2"], K, rot=(0, 0, math.pi / 4))
+    core = empty("SX_Core", (0, 0, 0), K)
+    ball((0, 0, 0), 0.62, M["SwapCore"], core, sub=2)
+    r1 = empty("SX_Ring1", (0, 0, 0), K)
+    torus((0, 0, 0), 1.75, 0.09, M["SwapCore"], r1)
+    for k in range(3):
+        a = k * 2 * math.pi / 3
+        box((math.cos(a) * 1.75, math.sin(a) * 1.75, 0), (0.3, 0.3, 0.3), M["Frame"], r1, rot=(0, 0, a))
+    r2 = empty("SX_Ring2", (0, 0, 0), K)
+    torus((0, 0, 0), 1.45, 0.07, M["EArmor"], r2, rot=(1.5708, 0, 0))
+    box((0, 0.9, -0.55), (0.5, 0.6, 0.3), M["Frame"], K, bevel=0.03)
+    box((0, 1.2, -0.5), (0.3, 0.05, 0.1), M["EEye"], K)
+    for sx in (-1, 1):
+        cyl((sx * 0.12, 1.45, -0.6), 0.06, 0.6, M["Black"], K, rot=ALONG_Y, verts=8)
+    muzzle("Muzzle_Swap", (0, 1.8, -0.6), K)
+
+def build_nanocloud():
+    # NC-2 nanite cloud: a squat canister pod with a ring of glowing vents on top that the swarm pours out of
+    K = kit("S_NanoCloud")
+    cyl((0, 0, 0.28), 0.42, 0.56, M["Armor2"], K, verts=14)
+    cyl((0, 0, 0.6), 0.36, 0.12, M["Frame"], K, verts=14)
+    for k in range(6):
+        a = k * math.pi / 3
+        box((math.cos(a) * 0.28, math.sin(a) * 0.28, 0.68), (0.12, 0.06, 0.06), M["NanoGlow"], K, rot=(0, 0, a))
+    ball((0, 0, 0.7), 0.13, M["NanoGlow"], K, sub=1)
+    box((0, 0.42, 0.25), (0.5, 0.12, 0.3), M["Frame"], K, bevel=0.02)
+    muzzle("Muzzle_NanoCloud", (0, 0, 0.8), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
