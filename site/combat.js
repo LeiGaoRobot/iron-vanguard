@@ -1,6 +1,6 @@
 // Weapons, projectiles, enemies, damage.  Shared state lives in G.
 import * as THREE from 'three';
-import { RAYF, barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD, GRID, CREEP } from './world.js';
+import { RAYF, barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD, GRID, CREEP, RADZ } from './world.js';
 import { cloneKit, nodes, find, recolor } from './kit.js';
 import { Mech, angDiff, PALETTES, PHYS } from './mech.js';
 import { sfx } from './audio.js';
@@ -27,6 +27,7 @@ export const WEAPONS = {
   ricochet: { slot: 'arm', name: 'RB-4 跳弹枪', en: 'RB-4 Ricochet', desc: '撞墙反弹 3 次 · 反弹后转向附近敌机 · 每弹一次 +25%', type: 'bullet', rate: 0.11, dmg: 14, speed: 240, spread: 0.008, mag: 36, reload: 2.0, color: 0x80ffd0, w: 0.22, len: 6, life: 1.8, bounce: 3, sfx: 'rifle', recoil: 0.15 },
   drill: { slot: 'arm', name: 'DR-2 钻地弹', en: 'DR-2 Drill Gun', desc: '慢速钻头弹 · 可钻透 18 m 内的墙体与掩体 · 命中后爆炸 3.5 m · 隔着墙打躲在后面的敌机（看雷达）', type: 'bullet', drill: 18, rate: 0.36, dmg: 58, splash: 3.5, speed: 110, spread: 0.004, mag: 10, reload: 2.2, life: 1.8, color: 0xffa040, w: 0.45, len: 3, sfx: 'cannon', recoil: 0.4 },
   plorb: { slot: 'arm', name: 'PL-3 等离子球', en: 'PL-3 Plasma Orb', desc: '发射缓慢飞行的等离子球 · 飞行中每 0.25 秒电击身边 8 m 内最多 2 台敌机（对菌巢 / 菌瘤 / 播种者 ×1.5）· 撞上敌机、墙体或飞满 2.8 秒后炸开', type: 'plorb', rate: 0.5, dmg: 60, splash: 5, zap: 13, zapR: 8, zapN: 2, bio: 1.5, speed: 22, life: 2.8, mag: 8, reload: 2.2, sfx: 'coil', recoil: 0.35 },
+  isotope: { slot: 'arm', name: 'IS-3 衰变枪', en: 'IS-3 Isotope Rifle', desc: '绿色衰变弹 · 每发命中给敌机叠一层衰变（最多 6 层，每层每秒 5 伤害，4 秒不补就消退）· 带 2 层以上衰变的敌机被击毁时，衰变扩散到 12 m 内所有敌机', type: 'bullet', decay: true, rate: 0.12, dmg: 11, speed: 300, spread: 0.007, mag: 36, reload: 1.9, color: 0x9cff40, w: 0.24, len: 5, sfx: 'rifle', recoil: 0.14 },
   rifle: { slot: 'arm', name: 'AR-77 突击步枪', en: 'AR-77 Rifle', desc: '全自动 · 精准 · 均衡', type: 'bullet', rate: 0.1, dmg: 17, speed: 320, spread: 0.005, mag: 40, reload: 1.7, color: 0xffd27a, w: 0.22, len: 7, sfx: 'rifle', recoil: 0.18 },
   gatling: { slot: 'arm', name: 'GX-6 加特林', en: 'GX-6 Gatling', desc: '需预转 · 高射速 · 散布大', type: 'bullet', rate: 0.042, spinUp: 0.45, dmg: 8.5, speed: 290, spread: 0.022, mag: 200, reload: 3.0, color: 0xffb860, w: 0.18, len: 6, sfx: 'gatling', recoil: 0.08 },
   coil: { slot: 'arm', name: 'LC-3 闪电线圈', en: 'LC-3 Arc Coil', desc: '自动索敌 · 连锁 3 个目标', type: 'chain', rate: 0.5, dmg: 44, range: 60, chains: 3, chainR: 18, mag: 14, reload: 2.2, sfx: 'coil', recoil: 0.3 },
@@ -78,7 +79,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -163,6 +164,7 @@ function damagePlayer(dmg, src, label) {
   if (G.curShooter && G.curShooter.rally) { dmg *= HERALD.dmg; G.rallyHits = (G.rallyHits || 0) + 1; }   // rallied by a herald
   if (G.curShooter && G.curShooter.emp) dmg *= SUPPLY.empDmg;   // empowered by a supply crate
   if (G.pound && G.pound.st === 'dive') dmg *= 0.5;
+  if (G.atom && G.atom.dose > 0) { const k = Math.min(G.atom.dose, ATOM.vulnCap) / ATOM.vulnK; G.atomBonus = (G.atomBonus || 0) + dmg * k; dmg *= 1 + k; }   // irradiated armour
   if (G.refl && G.refl.t > 0) dmg *= 1 - G.refl.d.cut;
   if (G.burn && G.burn.t > 0) dmg *= 1 - G.burn.d.cut;   // afterburner   // reflector: what it can't bounce, it softens
   if (G.curShooter && G.curShooter.burnT > 0) dmg *= BURN_WEAK;   // direct hits (melee, beams) from a burning enemy
@@ -237,6 +239,7 @@ function impact(s, at, ent) {
     if (ent) dealDamage(ent, s.dmg, s.team, at);
     if (s.needle && ent && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly) embedNeedle(ent, at);
     if (s.acid) acidSplash(ent, at, s.dmg);
+    if (s.decay && ent && ent.alive !== false && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly) decayAdd(ent, 1);
     if (s.siphon && ent && ent.alive !== false && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly && !ent.holo && G.player && G.player.alive) { const P = G.player, h = Math.min(P.maxHp - P.hp, s.dmg * s.siphon); if (h > 0) { P.hp += h; G.siphonHeal = (G.siphonHeal || 0) + h; } }
     if (s.jamOrb && ent && ent.isPlayer) jamPlayer();
     if (s.chill && ent && ent.alive && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly) { chillAdd(ent.kind === 'cpart' ? ent.owner : ent, s.chill); fx.sparks(at, null, 3, 0xd8f6ff, 6, 0.8, 0.3, 0.2); }
@@ -442,6 +445,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
           if (d.bounce && team === 'P') sh.bounce = d.bounce;
           if (d.drill && team === 'P') { sh.drill = d.drill; sh.splash = d.splash; }
           if (d.acid && team === 'P') sh.acid = true;
+          if (d.decay && team === 'P') sh.decay = true;
           if (d.siphon && me) sh.siphon = d.siphon;
           if (d.needle && team === 'P') { sh.needle = true; sh.target = target && target.alive ? target : null; }
         }
@@ -1953,7 +1957,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -6417,7 +6421,7 @@ function reflectShot(s, pc) {
   else { s.grav = 0; s.splash = Math.max(s.splash || 0, 3.5); s.v.multiplyScalar(Math.max(70, Math.min(sp, 120))); }
   s.x = pc.x + (s.x - pc.x) * 1.02; s.y = pc.y + (s.y - pc.y) * 1.02; s.z = pc.z + (s.z - pc.z) * 1.02;
   s.team = 'P'; s.dmg *= d.mul; s.label = 'reflect'; s.color = 0x80f0ff; s.age = 0; s.life = Math.max(s.life, 1.6);
-  s.frostP = 0; s.jamOrb = false; s.acid = false; s.chill = 0; s.bounce = 0;
+  s.frostP = 0; s.jamOrb = false; s.acid = false; s.decay = false; s.chill = 0; s.bounce = 0;
   G.stats.shots++; G.reflN = (G.reflN || 0) + 1;
   G.fx.sparks(at, s.v.clone().normalize(), 5, 0xb0f8ff, 14, 0.6, 0.2, 0.2);
   if (Math.random() < 0.3) sfx('ric', 0);
@@ -9830,6 +9834,220 @@ function updatePlOrbs(dt) {
 }
 export function clearPlOrbs() { for (const O of G.plorbs) O.o.parent && O.o.parent.remove(O.o); G.plorbs.length = 0; G.plorbN = 0; G.plorbZap = 0; }
 
+
+// ------------------------------------------------------------------ v56 Meltdown: a nuclear plant is overheating. Four
+// coolant pumps sit in radiation zones; stand at one for 4 s to restart it. The reactor core's own zone grows with the
+// heat, two plumes drift round the plant and burst bloaters leave puddles. Standing in radiation builds up a dose that
+// makes you take more damage (+1 % per 2.5 rad, up to +60 %) and above 100 rad eats your armour; decon pads wash it off.
+// The core heats up all mission (each restarted pump slows it); at 100 % it melts down and you fail
+export const ATOM = { pumps: [[-84, -60], [88, -54], [-78, 80], [84, 76]], pumpR: 6.5, fixT: 8.0, fixDecay: 0.4, contR: 16, zoneR: 23, zoneFade: 6,
+  coreR0: 24, coreRk: 0.14, plumes: 2, plumeR: 13, plumeSpd: 3.4, rMax: 105, decon: [[-36, -82], [40, 86]], deconR: 5.5, deconK: 32,
+  heat0: 100 / 195, pumpCut: 0.22, cool: 1.5, dose: 8, coreDose: 11, decayP: 1.5, vulnK: 250, vulnCap: 150, sick: 100, sickDps: 5, hMax: 16,
+  towers: [[-40, 118], [46, 124]], puddleR: 7, puddleT: 10 };
+G.atom = null;
+export function radAt(x, z, y = 0) {   // dose rate (rad/s) at a point
+  const A = G.atom; if (!A) return 0;
+  const hk = Math.max(0, 1 - y / ATOM.hMax); if (hk <= 0) return 0;
+  let r = 0;
+  for (const Z of A.zones) { if (Z.r < 1 || Z.w <= 0) continue; const d = Math.hypot(x - Z.x, z - Z.z); if (d < Z.r) r = Math.max(r, Z.k * Z.w * (0.45 + 0.55 * (1 - d / Z.r))); }
+  return r * hk;
+}
+function lampMat(c) { return new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 2.4, roughness: 0.3 }); }
+const pumpRingGeo = new THREE.RingGeometry(ATOM.pumpR - 0.4, ATOM.pumpR, 48);
+export function startAtom() {
+  clearAtom();
+  const A = G.atom = { pumps: [], pads: [], zones: [], props: [], heat: 0, peak: 0, dose: 0, peakDose: 0, fixed: 0, sickAcc: 0, plT: 0, hot: false };
+  const red = lampMat(0xff3020), green = lampMat(0x50ff40);
+  ATOM.pumps.forEach(([x, z], i) => {
+    const obj = cloneKit('P_Coolant'); obj.position.set(x, 0, z); obj.rotation.y = Math.atan2(-x, -z) + Math.PI; G.scene.add(obj);
+    const n = nodes(obj); if (n.CP_Lamp) n.CP_Lamp.traverse((o) => { if (o.isMesh) o.material = red; });
+    const ring = new THREE.Mesh(pumpRingGeo, new THREE.MeshBasicMaterial({ color: 0xffd040, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.6, z); G.scene.add(ring);
+    const Z = { x, z, r: ATOM.zoneR, k: ATOM.dose, w: 1, src: 'pump' }; A.zones.push(Z);
+    A.pumps.push({ i, obj, n, ring, x, z, k: 0, fixed: false, said: false, zone: Z, green, sol: addSolid(x, z, 7, 7, 4.2, 0, 'pump') });
+  });
+  A.core = { x: 0, z: 0, r: ATOM.coreR0, k: ATOM.coreDose, w: 1, src: 'core' }; A.zones.push(A.core);
+  for (let k = 0; k < ATOM.plumes; k++) { const a = k * Math.PI + 0.8, Z = { x: Math.cos(a) * 60, z: Math.sin(a) * 60, r: ATOM.plumeR, k: ATOM.dose, w: 1, src: 'plume', tx: 0, tz: 0 }; plumeGoal(Z); A.zones.push(Z); }
+  for (const [x, z] of ATOM.decon) {
+    const obj = cloneKit('P_Decon'); obj.position.set(x, 0, z); obj.rotation.y = Math.atan2(x, z); G.scene.add(obj);
+    A.pads.push({ obj, n: nodes(obj), x, z, on: false });
+  }
+  const dome = cloneKit('P_AtomDome'); dome.position.set(0, 0, 0); dome.rotation.y = 0.6; G.scene.add(dome);
+  A.props.push({ obj: dome, sol: [addSolid(0, 0, 24, 24, 14, 0, 'dome'), addSolid(Math.cos(0.6) * 15.5, -Math.sin(0.6) * 15.5, 9, 9, 6.3, 0, 'dome')] });
+  for (const [x, z] of ATOM.towers) { const o = cloneKit('P_CoolTower'); o.position.set(x, 0, z); o.rotation.y = x * 0.1; G.scene.add(o); A.props.push({ obj: o, sol: [addSolid(x, z, 17, 17, 30, 0, 'tower')] }); }
+  G.atomFix = 0; G.atomBonus = 0; G.atomSick = 0; G.bloatHunts = 0; G.bloatBursts = 0; G.bloatPops = 0; G.decayDmg = 0; G.decaySpreads = 0; G.deconT = 0;
+}
+function plumeGoal(Z) { for (let i = 0; i < 30; i++) { const a = Math.random() * 6.28, r = 40 + Math.random() * (ATOM.rMax - 40); Z.tx = Math.cos(a) * r; Z.tz = Math.sin(a) * r; if (Math.hypot(Z.tx - Z.x, Z.tz - Z.z) > 35) break; } }
+export function clearAtom() {
+  const A = G.atom; for (const v of RADZ.uR.value) v.set(0, 0, 0, 0);
+  if (!A) return;
+  for (const P of A.pumps) { P.obj.parent && P.obj.parent.remove(P.obj); P.ring.parent && P.ring.parent.remove(P.ring); P.ring.material.dispose(); removeSolid(P.sol); }
+  for (const D of A.pads) D.obj.parent && D.obj.parent.remove(D.obj);
+  for (const Q of A.props) { Q.obj.parent && Q.obj.parent.remove(Q.obj); for (const so of Q.sol) removeSolid(so); }
+  G.atom = null;
+}
+export function atomPuddle(x, z, r = ATOM.puddleR, t = ATOM.puddleT) { const A = G.atom; if (!A) return; A.zones.push({ x, z, r, k: ATOM.dose * 1.2, w: 1, src: 'puddle', t, t0: t }); }
+function updateAtom(dt) {
+  const A = G.atom, P = G.player; if (!A) return;
+  const all = A.fixed >= A.pumps.length;
+  // core heat: rises all mission, each restarted pump cuts the rate; all four restarted and it cools down
+  if (!A.melted) {
+    if (all) A.heat = Math.max(0, A.heat - ATOM.cool * dt); else A.heat = Math.min(100, A.heat + ATOM.heat0 * (1 - ATOM.pumpCut * A.fixed) * dt);
+    A.peak = Math.max(A.peak, A.heat); if (A.heat >= 100) { A.melted = true; G.onMeltdown && G.onMeltdown(); }
+    if (!A.hot && A.heat > 75) { A.hot = true; G.onAtomHot && G.onAtomHot(); }
+  }
+  A.core.r = ATOM.coreR0 + A.heat * ATOM.coreRk;
+  // pumps: stand next to one, low, to restart it
+  for (const Q of A.pumps) {
+    if (Q.fixed) { Q.zone.w = Math.max(0, Q.zone.w - dt / ATOM.zoneFade); if (Q.n.CP_Wheel) Q.n.CP_Wheel.rotation.y += dt * 0.6; continue; }
+    const near = P && P.alive && Math.hypot(P.pos.x - Q.x, P.pos.z - Q.z) < ATOM.pumpR + 1 && P.pos.y - groundAt(P.pos.x, P.pos.z, P.pos.y + 1) < 6;
+    let cont = false;
+    if (near) for (const e of G.enemies) { if (!e.alive || e.dying || !e.pos || e.hacked || e.isObjective || e.kind === 'drone' || e.kind === 'bloater' || e.kind === 'boss' || e.kind === 'gunship') continue; if (Math.hypot(e.pos.x - Q.x, e.pos.z - Q.z) < ATOM.contR && e.pos.y - groundAt(e.pos.x, e.pos.z, e.pos.y + 1) < 6) { cont = true; break; } }
+    Q.cont = cont; if (near) A.at = Q; else if (A.at === Q) A.at = null;
+    Q.k = near ? (cont ? Q.k : Q.k + dt / ATOM.fixT) : Math.max(0, Q.k - dt * ATOM.fixDecay);
+    Q.ring.material.color.setHex(cont ? 0xff4030 : 0xffd040);
+    if (near && !Q.said) { Q.said = true; G.onPumpStart && G.onPumpStart(Q); }
+    if (near && Q.n.CP_Wheel) Q.n.CP_Wheel.rotation.y += dt * 4;
+    Q.ring.material.opacity = 0.35 + 0.4 * Q.k + (near ? Math.sin(G.time * 12) * 0.1 : 0); Q.ring.scale.setScalar(1 - 0.5 * Math.min(1, Q.k));
+    if (near && Math.random() < 0.3) G.fx.sparks(_a.set(Q.x + (Math.random() - 0.5) * 3, 2 + Math.random() * 2, Q.z + (Math.random() - 0.5) * 3), null, 2, 0xd0f4ff, 6, 1, 0.3, 0.15);
+    if (Q.k >= 1) {
+      Q.fixed = true; A.fixed++; G.atomFix++; Q.ring.visible = false;
+      if (Q.n.CP_Lamp) Q.n.CP_Lamp.traverse((o) => { if (o.isMesh) o.material = Q.green; });
+      G.fx.flash(new V3(Q.x, 5, Q.z), 0x80ffd0, 60, 40, 0.4); G.fx.ring(new V3(Q.x, 0.6, Q.z), null, 2, 26, 0.6, 0x80ffd0);
+      for (let k = 0; k < 14; k++) G.fx.emit('smoke', { x: Q.x + (Math.random() - 0.5) * 4, y: 4 + Math.random() * 2, z: Q.z + (Math.random() - 0.5) * 4, vy: 4 + Math.random() * 3, life: 2.2, s0: 1.5, s1: 5, c0: 0xe8ecef, c1: 0xc0c6cc, a0: 0.5, drag: 1 });
+      sfx('repair', 0); G.onPumpFixed && G.onPumpFixed(Q, A);
+    }
+  }
+  // drifting plumes (they die down once the core is safe), puddles fade
+  for (let i = A.zones.length - 1; i >= 0; i--) {
+    const Z = A.zones[i];
+    if (Z.src === 'plume') {
+      if (all) Z.w = Math.max(0, Z.w - dt / 8);
+      const dx = Z.tx - Z.x, dz = Z.tz - Z.z, L = Math.hypot(dx, dz);
+      if (L < 4) plumeGoal(Z); else { Z.x += dx / L * ATOM.plumeSpd * dt; Z.z += dz / L * ATOM.plumeSpd * dt; }
+    } else if (Z.src === 'puddle') { Z.t -= dt; Z.w = Math.min(1, Z.t / 2); if (Z.t <= 0) { A.zones.splice(i, 1); continue; } }
+    else if (Z.src === 'core' && all) Z.w = Math.max(0.35, Z.w - dt / 12);
+  }
+  let vi = 0;
+  for (const Z of A.zones) { if (vi >= 8) break; if (Z.w <= 0.01 || Z.r < 1) continue; RADZ.uR.value[vi++].set(Z.x, Z.z, Z.r, Z.w); }
+  for (; vi < 8; vi++) RADZ.uR.value[vi].set(0, 0, 0, 0);
+  // floating motes over the zones, steam over the towers
+  for (const Z of A.zones) { if (Z.w <= 0.05) continue; if (Math.random() < Z.r * Z.r * 0.0006 * Z.w) { const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * Z.r; G.fx.emit('add', { x: Z.x + Math.cos(a) * r, y: 0.4 + Math.random() * 3, z: Z.z + Math.sin(a) * r, vy: 0.8 + Math.random(), life: 1.6, s0: 0.35, s1: 0.1, c0: 0xb0ff50 }); } }
+  A.plT -= dt;
+  if (A.plT <= 0) { A.plT = 0.22; for (const [x, z] of ATOM.towers) G.fx.emit('smoke', { x: x + (Math.random() - 0.5) * 10, y: 30, z: z + (Math.random() - 0.5) * 10, vx: 1.2, vy: 3 + Math.random() * 2, life: 5, s0: 5, s1: 13, c0: 0xe6e8e4, c1: 0xbcc0bc, a0: 0.38, drag: 0.3 }); }
+  // the player's dose
+  if (P && P.alive) {
+    const gy = groundAt(P.pos.x, P.pos.z, P.pos.y + 1), rr = radAt(P.pos.x, P.pos.z, P.pos.y - gy);
+    A.rate = rr;
+    let pad = null; for (const D of A.pads) { D.on = Math.hypot(P.pos.x - D.x, P.pos.z - D.z) < ATOM.deconR && P.pos.y - gy < 4; if (D.on) pad = D; }
+    if (pad) { A.dose = Math.max(0, A.dose - ATOM.deconK * dt); G.deconT += dt; if (Math.random() < 0.8) G.fx.emit('add', { x: pad.x + (Math.random() - 0.5) * 6, y: 5, z: pad.z + (Math.random() - 0.5) * 2, vy: -6, life: 0.6, s0: 0.3, s1: 0.1, c0: 0xc8f0ff }); }
+    else if (rr > 0) A.dose += rr * dt;
+    else A.dose = Math.max(0, A.dose - ATOM.decayP * dt);
+    A.peakDose = Math.max(A.peakDose, A.dose);
+    if (rr > 0 && !A.doseSaid) { A.doseSaid = true; G.onDose && G.onDose(); }
+    if (A.dose > ATOM.sick) {
+      A.sickAcc += ATOM.sickDps * dt;
+      if (A.sickAcc >= 4) { G.curSrc = null; damagePlayer(A.sickAcc, null, 'radiation'); G.atomSick += A.sickAcc; A.sickAcc = 0; if (!A.sickSaid) { A.sickSaid = true; G.onSick && G.onSick(); } }
+    }
+  }
+  for (const D of A.pads) if (D.n.DC_Spray) D.n.DC_Spray.scale.setScalar(D.on ? 1.3 + 0.2 * Math.sin(G.time * 20) : 1);
+}
+
+// bloater: a floating hazard tank. It drifts to the nearest radiation zone, soaks it up for 7 s (swelling and glowing),
+// then hunts you at 15 m/s and bursts beside you (40 damage, +45 rad). Shoot it before it is full and it just pops;
+// shoot it full and it bursts where it is, hurting enemies around it and leaving a radiation puddle
+export const BLOAT = { hp: 520, r: 1.9, hover: 4.5, speed: 9, hunt: 15, feed: 6, boomR: 9, dmg: 40, dose: 45, popDose: 25, eDmg: 140, huntT: 16 };
+export class Bloater extends Enemy {
+  constructor(pos) {
+    super('bloater', 'E_Bloater', pos, BLOAT.hp, BLOAT.r); this.boom = 0.8;
+    this.vel = new V3(); this.st = 'seek'; this.charge = 0; this.zone = null; this.zT = 0; this.ph = Math.random() * 6; this.huntT = 0; this.off = new V3();
+    this.pos.y = groundAt(pos.x, pos.z, 40) + BLOAT.hover; this.c.copy(this.pos);
+  }
+  pickZone() {
+    const A = G.atom; let best = null, bd = 1e9;
+    if (A) for (const Z of A.zones) { if (Z.w < 0.3 || Z.r < 5) continue; const d = Math.hypot(Z.x - this.pos.x, Z.z - this.pos.z) - Z.r + (Z.src === 'core' ? 25 : 0); if (d < bd) { bd = d; best = Z; } }
+    this.zone = best; if (best) { const a = Math.random() * 6.28, r = Math.random() * best.r * 0.5; this.off.set(Math.cos(a) * r, 0, Math.sin(a) * r); }
+  }
+  update(dt) {
+    const tg = this.tg(), pc = tg.center(playerC), n = this.n; this.ph += dt;
+    let gx = 0, gz = 0, gyT = groundAt(this.pos.x, this.pos.z, this.pos.y + 1) + BLOAT.hover, spd = BLOAT.speed;
+    if (this.st === 'seek') {
+      this.zT -= dt; if (this.zT <= 0 || !this.zone || this.zone.w < 0.3) { this.zT = 3; this.pickZone(); }
+      if (!this.zone) { this.charge = Math.min(1, this.charge + dt / (BLOAT.feed * 3)); if (this.charge >= 1) this.goHunt(); gx = pc.x; gz = pc.z; spd *= 0.4; }
+      else {
+        gx = this.zone.x + this.off.x; gz = this.zone.z + this.off.z;
+        if (Math.hypot(this.pos.x - this.zone.x, this.pos.z - this.zone.z) < this.zone.r * 0.75) { this.st = 'feed'; G.onBloatFeed && G.onBloatFeed(this); }
+      }
+    } else if (this.st === 'feed') {
+      gx = this.pos.x + Math.sin(this.ph * 0.7) * 3; gz = this.pos.z + Math.cos(this.ph * 0.6) * 3; spd = 2; gyT -= 1.5;
+      const inZ = this.zone && this.zone.w > 0.2 && Math.hypot(this.pos.x - this.zone.x, this.pos.z - this.zone.z) < this.zone.r + 2;
+      if (!inZ) { this.st = 'seek'; this.zT = 0; }
+      else { this.charge = Math.min(1, this.charge + dt / BLOAT.feed); if (Math.random() < 0.5) G.fx.emit('add', { x: this.pos.x + (Math.random() - 0.5) * 8, y: 0.5, z: this.pos.z + (Math.random() - 0.5) * 8, vy: 3, life: 0.8, s0: 0.4, s1: 0.1, c0: 0xb0ff50 }); }
+      if (this.charge >= 1) this.goHunt();
+    } else if (this.st === 'hunt') {
+      this.huntT -= dt; gx = pc.x; gz = pc.z; gyT = Math.max(gyT - 2, pc.y + 0.5); spd = BLOAT.hunt;
+      if (this.c.distanceTo(pc) < 4.2 && tg === G.player) { this.burst(true); return; }
+      if (this.huntT <= 0) { this.burst(true); return; }
+      if (Math.random() < 0.5) G.fx.emit('add', { x: this.pos.x, y: this.pos.y, z: this.pos.z, life: 0.4, s0: 1.0, s1: 0.2, c0: 0xa0ff40 });
+    }
+    const dx = gx - this.pos.x, dz = gz - this.pos.z, L = Math.hypot(dx, dz) || 1, kk = 1 - Math.exp(-(this.st === 'hunt' ? 3 : 1.8) * dt);
+    const sp = spd * Math.min(1, L / 5 + 0.2);
+    this.vel.x += (dx / L * sp - this.vel.x) * kk; this.vel.z += (dz / L * sp - this.vel.z) * kk;
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 1.8, 2)) { this.pos.x -= this.vel.x * dt; this.pos.z -= this.vel.z * dt; this.vel.multiplyScalar(-0.3); this.climb = 2; }
+    if (this.climb > 0) { this.climb -= dt; gyT += 12; }
+    const vy = this.st === 'hunt' ? 6 : 2.5;
+    this.pos.y += Math.max(-vy * dt, Math.min(vy * dt, (gyT + Math.sin(this.ph * 1.9) * 0.4 - this.pos.y) * Math.min(1, dt * 3)));
+    const sw = 1 + 0.6 * this.charge + (this.st === 'hunt' ? 0.06 * Math.sin(this.ph * 30) : 0.03 * Math.sin(this.ph * 4));
+    if (n.BF_Shell) n.BF_Shell.scale.setScalar(sw);
+    if (n.BF_Core) n.BF_Core.scale.setScalar(sw * (0.9 + 0.3 * this.charge + (this.st === 'hunt' ? 0.15 * Math.sin(this.ph * 25) : 0)));
+    if (n.BF_Fins) { n.BF_Fins.rotation.z += dt * (this.st === 'hunt' ? 18 : 4); n.BF_Fins.position.z = -1.05 * sw; }
+    this.r = BLOAT.r * sw; this.obj.rotation.set(Math.sin(this.ph) * 0.1, this.ph * 0.4, Math.cos(this.ph * 1.3) * 0.1, 'YXZ');
+    this.c.copy(this.pos);
+  }
+  goHunt() { this.st = 'hunt'; this.huntT = BLOAT.huntT; this.charge = 1; G.bloatHunts++; sfx('warn', G.player ? G.player.pos.distanceTo(this.pos) * 0.5 : 0); G.onBloatHunt && G.onBloatHunt(this); }
+  burst(self) {
+    if (this.gone) return;
+    const at = this.c.clone(), P = G.player;
+    this.alive = false; this.dying = true;
+    if (!self) { G.stats.kills++; G.onKill && G.onKill(this); }
+    G.curLabel = self ? 'ally-bloat' : 'bloater-burst'; explodeAt(at, BLOAT.boomR, BLOAT.eDmg, 'P', 1.6, 0x9cff3a); G.curLabel = null;
+    if (P && P.alive) { const d = P.center(_c).distanceTo(at); if (d < BLOAT.boomR + 1) { const f = 1 - Math.max(0, d - 2) / BLOAT.boomR * 0.6; G.curSrc = at; damagePlayer(BLOAT.dmg * f * (self ? 1 : 0.6), at, 'bloater'); if (G.atom) G.atom.dose += (self ? BLOAT.dose : BLOAT.popDose) * f; } }
+    G.fx.flash(at, 0x9cff3a, 50, 30, 0.4); G.fx.ring(at.clone().setY(groundAt(at.x, at.z, at.y) + 0.5), null, 1, BLOAT.boomR + 2, 0.5, 0x9cff3a);
+    atomPuddle(at.x, at.z);
+    G.bloatBursts++; this.remove();
+  }
+  die() {
+    if (this.charge >= 0.5) { this.burst(false); return; }
+    G.bloatPops++; Enemy.prototype.die.call(this);
+  }
+}
+
+// IS-3 isotope rifle: every hit adds a decay stack (up to 6, 5 damage/s each, 4 s without a refresh and it fades);
+// an enemy with 2+ stacks that dies passes its stacks to every enemy within 12 m
+export const DECAY = { dps: 5, max: 6, T: 4, boss: 0.5, R: 12, min: 2 };
+function decayAdd(e, n) {
+  const h = e.kind === 'cpart' ? e.owner : e; if (!h || !h.alive || h.isBarrel || h.isPlayer || h.isMine || h.isAlly || h.holo) return;
+  h.decay = Math.min(DECAY.max, Math.max(h.decay || 0, 0) + n); h.decT = DECAY.T;
+}
+function decayTick(e, dt) {
+  e.decT -= dt; if (e.decT <= 0 || !e.alive || e.dying) { e.decay = 0; e.decT = 0; return; }
+  e.decAcc = (e.decAcc || 0) + DECAY.dps * e.decay * dt * (e.maxHp > 3000 || e.kind === 'boss' ? DECAY.boss : 1);
+  if (e.decAcc >= 6) { const dm = e.decAcc; e.decAcc = 0; G.curLabel = 'isotope-decay'; dealDamage(e, dm, 'P', e.c, 'isotope-decay'); G.curLabel = null; G.stats.shots++; G.decayDmg = (G.decayDmg || 0) + dm; }
+  if (e.c && Math.random() < 0.06 * e.decay) G.fx.emit('add', { x: e.c.x + (Math.random() - 0.5) * 2.5, y: e.c.y + (Math.random() - 0.5) * 2, z: e.c.z + (Math.random() - 0.5) * 2.5, vy: 1.5, life: 0.5, s0: 0.5, s1: 0.1, c0: 0x9cff40 });
+}
+export function decaySpread(e) {
+  if (!(e.decay >= DECAY.min) || !e.c) return;
+  let n = 0;
+  for (const o of G.enemies) {
+    if (o === e || !o.alive || o.dying || !o.c || o.isBarrel || o.isMine || o.holo || o.hacked) continue;
+    if (o.c.distanceTo(e.c) > DECAY.R + (o.r || 1.5) * 0.5) continue;
+    decayAdd(o, Math.max(0, e.decay - (o.decay || 0)));
+    n++; G.fx.streak(e.c.clone(), o.c.clone(), 0.12, 0x9cff40);
+  }
+  if (n) { G.decaySpreads = (G.decaySpreads || 0) + n; G.fx.ring(e.c.clone(), null, 1, DECAY.R, 0.4, 0x9cff40); }
+}
+
 // forklift: lobs explosive barrels from its forks. While a barrel sits on the forks the forklift takes x1.5 damage, and
 // 150 damage dealt in that window sets the barrel off on the forklift itself
 export const FORK = { hp: 1100, r: 2.4, speed: 6, keep: [25, 45], reload: 1.2, load: 3, aim: 0.8, dmg: 45, splash: 7, vuln: 1.5, pop: 150, popDmg: 320, popR: 7, popE: 45, range: 70 };
@@ -9991,6 +10209,7 @@ export function updateCombat(dt) {
   for (const e of G.enemies) {
     G.curLabel = e.kind; if (e.pingT > 0) e.pingT -= dt;
     e.rally = false; if (hers.length && e.kind !== 'herald' && e.pos && e.alive && !e.dying) for (const h of hers) if (Math.hypot(h.pos.x - e.pos.x, h.pos.z - e.pos.z) < HERALD.R) { e.rally = true; break; }
+    if (e.decT > 0) decayTick(e, dt);
     if (e.corrT > 0) { e.corrT -= dt; if (e.corrT <= 0) e.corr = 0; else if (e.c && Math.random() < 0.05 * e.corr) G.fx.emit('add', { x: e.c.x + (Math.random() - 0.5) * 2, y: e.c.y + (Math.random() - 0.5) * 2, z: e.c.z + (Math.random() - 0.5) * 2, vy: -2, life: 0.4, s0: 0.6, s1: 0.2, c0: 0xa0ff40, c1: 0x306010 }); }
     if (e.hornT > 0) { e.hornT -= dt; if (e.c && Math.random() < 0.15) G.fx.sparks(_a.copy(e.c).add(_b.set((Math.random() - 0.5) * 3, Math.random() * 2, (Math.random() - 0.5) * 3)), null, 1, 0xffb040, 5, 0.8, 0.3, 0.2); }
     else if (e.rally && e.c && Math.random() < 0.05) G.fx.sparks(_a.copy(e.c).setY(e.c.y + 1.5), null, 1, 0xff4030, 4, 0.8, 0.3, 0.2);
@@ -10040,7 +10259,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
-  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt);
+  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

@@ -158,6 +158,8 @@ M = dict(
     ReviverPaint=mat("ReviverPaint", "#d4d8cc", 0.4, metal=0.35), Nanite=mat("Nanite", "#c8ffd0", 0.2, emit="#30ff78", strength=2.4),
     PylonPaint=mat("PylonPaint", "#3a3440", 0.5, metal=0.4), PylonGlow=mat("PylonGlow", "#ffd0c0", 0.2, emit="#ff4a2a", strength=2.6),
     CamoLens=mat("CamoLens", "#c8f4ff", 0.1, emit="#60d8ff", strength=1.6),
+    RadGlow=mat("RadGlow", "#e8ffc8", 0.3, emit="#8cff30", strength=2.2), BloatPaint=mat("BloatPaint", "#c8b030", 0.45, metal=0.3),
+    TowerConc=mat("TowerConc", "#a8a8a2", 0.85), IsoGlow=mat("IsoGlow", "#eaffd0", 0.2, emit="#a8ff40", strength=2.0),
     BioFlesh=mat("BioFlesh", "#4c2c3c", 0.5), BioGlow=mat("BioGlow", "#eaffb8", 0.3, emit="#9cff3a", strength=2.0),
     Chitin=mat("Chitin", "#2a2432", 0.32, metal=0.2), PlasmaGlow=mat("PlasmaGlow", "#e2f0ff", 0.2, emit="#5c9cff", strength=2.2),
     PumpGlow=mat("PumpGlow", "#d0f4ff", 0.2, emit="#30b8ff", strength=2.2), SwapCore=mat("SwapCore", "#f0d8ff", 0.15, emit="#b040ff", strength=2.4),
@@ -3433,7 +3435,133 @@ def build_plorb():
     ball((0, 1.0, 0.05), 0.15, M["PlasmaGlow"], K, sub=1)
     muzzle("Muzzle_PlOrb", (0, 1.15, 0.05), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb()
+
+def build_bloater():
+    # bloater: a floating yellow hazard tank. the swelling body BF_Shell (scaled up in game as it feeds on radiation) holds
+    # the glowing core window ring; BF_Core is the green core that brightens; BF_Fins is a ring of vanes that spins;
+    # three small thruster pods underneath
+    K = kit("E_Bloater")
+    sh = empty("BF_Shell", (0, 0, 0), K)
+    ball((0, 0, 0), 1.35, M["BloatPaint"], sh, sub=3)
+    for z in (-0.55, 0.55):
+        torus((0, 0, z), 1.25, 0.09, M["Black"], sh)
+    torus((0, 0, 0), 1.38, 0.12, M["Hazard"], sh)
+    for k in range(4):
+        a = k * math.pi / 2 + math.pi / 4
+        cyl((math.cos(a) * 1.2, math.sin(a) * 1.2, 0.0), 0.36, 0.3, M["RadGlow"], sh, rot=(0, math.pi / 2, a), verts=12)
+        cyl((math.cos(a) * 1.28, math.sin(a) * 1.28, 0.0), 0.44, 0.12, M["Frame"], sh, rot=(0, math.pi / 2, a), verts=12)
+    cyl((0, 0, 1.35), 0.4, 0.5, M["Frame"], sh, verts=10)
+    cyl((0, 0, 1.68), 0.22, 0.25, M["Hazard"], sh, verts=8)
+    core = empty("BF_Core", (0, 0, 0), K)
+    ball((0, 0, 0), 0.95, M["RadGlow"], core, sub=2)
+    fins = empty("BF_Fins", (0, 0, -1.05), K)
+    for k in range(6):
+        a = k * math.pi / 3
+        box((math.cos(a) * 1.0, math.sin(a) * 1.0, 0), (0.9, 0.12, 0.42), M["EArmor2"], fins, rot=(0.4, 0, a))
+    torus((0, 0, 0), 0.62, 0.1, M["Frame"], fins)
+    for k in range(3):
+        a = k * 2 * math.pi / 3 + 0.5
+        cyl((math.cos(a) * 0.85, math.sin(a) * 0.85, -1.25), 0.2, 0.5, M["Nozzle"], K, verts=8, r2=0.26)
+        cyl((math.cos(a) * 0.85, math.sin(a) * 0.85, -1.52), 0.16, 0.06, M["NozzleGlow"], K, verts=8)
+
+def build_coolant():
+    # coolant pump station (collision box 7 x 7 x 4 m in game): a slab with hazard edge, two upright coolant tanks with
+    # glowing gauge bands, looping pipes into the ground and a big valve wheel CP_Wheel on the front (+Y) that turns while
+    # it is restarted; CP_Lamp is the status beacon on the tank tops (its material is swapped red/green in game)
+    K = kit("P_Coolant")
+    box((0, 0, 0.25), (7.4, 7.4, 0.5), M["Concrete"], K, bevel=0.05)
+    box((0, 0, 0.52), (7.8, 7.8, 0.06), M["Hazard"], K)
+    for sx in (-1, 1):
+        cyl((sx * 1.9, -0.8, 2.6), 1.25, 4.2, M["Frame"], K, verts=16)
+        cyl((sx * 1.9, -0.8, 4.8), 1.0, 0.4, M["Joint"], K, verts=16, r2=0.6)
+        torus((sx * 1.9, -0.8, 2.2), 1.27, 0.07, M["RadGlow"], K)
+        torus((sx * 1.9, -0.8, 3.4), 1.27, 0.07, M["Hazard"], K)
+        cyl((sx * 1.9, 1.6, 1.4), 0.32, 2.2, M["Joint"], K, rot=ALONG_Y, verts=10)
+        cyl((sx * 1.9, 2.9, 0.6), 0.32, 1.6, M["Joint"], K, verts=10)
+        torus((sx * 1.9, 2.9, 1.4), 0.36, 0.06, M["Frame"], K)
+    box((0, 1.2, 1.6), (2.2, 1.4, 2.2), M["EArmor2"], K, bevel=0.06)
+    box((0, 1.95, 2.2), (1.3, 0.08, 0.6), M["Glass"], K)
+    lamp = empty("CP_Lamp", (0, -0.8, 5.25), K)
+    for sx in (-1, 1):
+        ball((sx * 1.9, 0, 0), 0.3, M["RadGlow"], lamp, sub=1)
+    wh = empty("CP_Wheel", (0, 1.95, 1.3), K)
+    torus((0, 0, 0), 0.62, 0.07, M["Accent"], wh, rot=ALONG_Y)
+    for k in range(4):
+        box((0, 0, 0), (1.2, 0.08, 0.08), M["Accent"], wh, rot=(0, k * math.pi / 4, 0))
+    cyl((0, 0, 0), 0.12, 0.2, M["Frame"], wh, rot=ALONG_Y, verts=8)
+
+def build_cooltower():
+    # hyperbolic cooling tower, ~30 m tall and 22 m across at the base (collision box 16 x 16 in game): a stack of
+    # tapering concrete rings with two warning bands near the lip and a ring of leg struts at the foot
+    K = kit("P_CoolTower")
+    prof = [(11.0, 0.0), (9.6, 4.0), (8.3, 8.5), (7.3, 13.5), (6.8, 18.5), (6.9, 23.0), (7.4, 27.0), (7.9, 30.0)]
+    for i in range(len(prof) - 1):
+        (r0, z0), (r1, z1) = prof[i], prof[i + 1]
+        cyl((0, 0, (z0 + z1) / 2), r0, z1 - z0, M["TowerConc"], K, verts=36, r2=r1)
+    for z in (26.0, 28.4):
+        cyl((0, 0, z), 7.5 + (z - 26) * 0.18, 0.9, M["Accent"], K, verts=36)
+    torus((0, 0, 30.0), 7.9, 0.25, M["Concrete"], K)
+    cyl((0, 0, 29.95), 7.6, 0.12, M["Black"], K, verts=36)
+    for k in range(24):
+        a = k * math.pi / 12
+        box((math.cos(a) * 11.2, math.sin(a) * 11.2, 0.9), (0.55, 0.55, 1.8), M["Concrete"], K, rot=(0, 0, a))
+
+def build_atomdome():
+    # reactor containment (collision box 26 x 26 x 14 m in game): a concrete drum with a cracked dome, the cracks AD_Crack
+    # glow green, a stubby stack, an annex block and pipe runs
+    K = kit("P_AtomDome")
+    cyl((0, 0, 5.0), 12.0, 10.0, M["Concrete"], K, verts=40)
+    ball((0, 0, 10.0), 12.0, M["TowerConc"], K, scale=(1, 1, 0.55), sub=3)
+    for z in (2.0, 9.6):
+        torus((0, 0, z), 12.05, 0.18, M["Frame"], K)
+    cr = empty("AD_Crack", (0, 0, 0), K)
+    for (a, rho, l, t) in ((0.4, 8.0, 5.5, 0.2), (1.2, 10.0, 4.0, -0.3), (2.6, 6.5, 6.0, 0.4), (4.1, 9.0, 3.2, 0.0), (5.2, 7.5, 5.0, -0.2)):
+        z = 10.0 + 6.6 * math.sqrt(1 - (rho / 12.0) ** 2)
+        box((math.cos(a) * rho, math.sin(a) * rho, z), (l, 0.35, 0.4), M["RadGlow"], cr, rot=(0, 0, a + math.pi / 2 + t))
+    for k in range(10):
+        a = k * math.pi / 5 + 0.2
+        box((math.cos(a) * 11.6, math.sin(a) * 11.6, 5.0), (0.9, 0.9, 10.0), M["Frame"], K, rot=(0, 0, a))
+    box((15.5, 0, 3.0), (8.0, 10.0, 6.0), M["Concrete"], K, bevel=0.1)
+    box((15.5, 0, 6.15), (8.4, 10.4, 0.3), M["Frame"], K)
+    cyl((-10.0, 9.0, 9.0), 1.4, 18.0, M["Concrete"], K, verts=14)
+    cyl((-10.0, 9.0, 17.0), 1.5, 1.2, M["Accent"], K, verts=14)
+    for k, a in enumerate((0.9, 2.5, 4.0)):
+        cyl((math.cos(a) * 14.5, math.sin(a) * 14.5, 0.8), 0.6, 6.0, M["Joint"], K, rot=(0, math.pi / 2, a + math.pi / 2), verts=10)
+
+def build_decon():
+    # decontamination pad: an 8 x 8 m grated slab with a yellow-black edge, a gantry arch with six sprinkler heads
+    # (DC_Spray, they glow while you stand in it) and two corner beacons
+    K = kit("P_Decon")
+    box((0, 0, 0.12), (8.0, 8.0, 0.24), M["Frame"], K)
+    for k in range(9):
+        box((-3.6 + k * 0.9, 0, 0.26), (0.08, 7.6, 0.05), M["Joint"], K)
+    for (x, y, sx, sy) in ((0, 4.1, 8.4, 0.25), (0, -4.1, 8.4, 0.25), (4.1, 0, 0.25, 8.4), (-4.1, 0, 0.25, 8.4)):
+        box((x, y, 0.2), (sx, sy, 0.16), M["Hazard"], K)
+    for sx in (-1, 1):
+        box((sx * 3.6, 0, 2.6), (0.4, 0.5, 5.2), M["Joint"], K)
+        cyl((sx * 3.6, 3.6, 0.9), 0.25, 1.8, M["Frame"], K, verts=8)
+        ball((sx * 3.6, 3.6, 1.9), 0.25, M["PumpGlow"], K, sub=1)
+    box((0, 0, 5.3), (7.6, 0.6, 0.4), M["Joint"], K)
+    sp = empty("DC_Spray", (0, 0, 5.0), K)
+    for k in range(6):
+        x = -2.9 + k * 1.16
+        cyl((x, 0, 0), 0.16, 0.3, M["PumpGlow"], sp, verts=8, r2=0.3)
+
+def build_isotope():
+    # IS-3 isotope rifle: a long rifle body with a glowing green isotope canister as its magazine and a vented shroud
+    K = kit("W_Isotope")
+    box((0, 0.1, 0), (0.34, 1.3, 0.36), M["Frame"], K, bevel=0.05)
+    box((0, -0.35, 0.22), (0.38, 0.6, 0.12), M["Armor2"], K)
+    cyl((0, 0.95, 0.02), 0.09, 0.9, M["Joint"], K, rot=ALONG_Y, verts=10)
+    cyl((0, 0.95, 0.02), 0.15, 0.45, M["Frame"], K, rot=ALONG_Y, verts=10)
+    for yy in (0.82, 0.95, 1.08):
+        torus((0, yy, 0.02), 0.16, 0.025, M["IsoGlow"], K, rot=ALONG_Y)
+    cyl((0, -0.05, -0.32), 0.17, 0.42, M["IsoGlow"], K, verts=12)
+    torus((0, -0.05, -0.14), 0.18, 0.04, M["Hazard"], K)
+    torus((0, -0.05, -0.5), 0.18, 0.04, M["Hazard"], K)
+    muzzle("Muzzle_Iso", (0, 1.42, 0.02), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb(); build_bloater(); build_coolant(); build_cooltower(); build_atomdome(); build_decon(); build_isotope()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
