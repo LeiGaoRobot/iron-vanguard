@@ -154,6 +154,7 @@ function dealDamage(ent, dmg, team, at, label) {
     if (team === 'P' && G.glad && !isAlly(label || G.curLabel) && !ent.isBarrel) { if (G.glad.h >= GLAD.frenzy) { G.gladBonus += dmg * (GLAD.fdmg - 1); dmg *= GLAD.fdmg; } G.glad.lastDmgT = G.time; G.glad.h = Math.min(100, G.glad.h + Math.min(dmg, 200) * (h.kind === 'boss' ? GLAD.bossK : GLAD.dmgK)); }   // a good show keeps them interested
     if (h && !ent.isBarrel) { h._lastLbl = label || G.curLabel || ''; h._lastTeam = team; } }
   ent.hit(dmg, at, label || G.curLabel);
+  if (dmg >= 4) hitFlash(ent.kind === 'cpart' ? ent.owner : ent);
   if (team === 'P' && !ent.isBarrel && G.lgroups.length && (label || G.curLabel) !== 'link') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.linkG && h.linkG.t > 0 && !isAlly(label || G.curLabel)) linkShare(h, dmg, h.linkG); }
   if (team === 'P' && !ent.isBarrel && !isAlly(label || G.curLabel)) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; if (G.od && !(G.od.t > 0) && !ent.isCore) G.od.k = Math.min(1, G.od.k + dmg / OD.fill * (G.odGain || 1)); }
 }
@@ -221,6 +222,44 @@ export function spawnShot(o) {
   if (s.team === 'E' && G.curShooter && G.curShooter.burnT > 0) s.dmg *= BURN_WEAK;   // burning enemies fire weakened shots
   G.shots.push(s);
   return s;
+}
+
+// hit flash: a hit swaps the target's meshes to a brightened clone of their material for a few frames.
+// clones keep the source's onBeforeCompile (wear) and cache key, so no new shader program is built.
+const _hfCache = new Map(), HF = [];
+function hfMat(m) {
+  let f = _hfCache.get(m);
+  if (!f) {
+    f = m.clone(); f.onBeforeCompile = m.onBeforeCompile; if (Object.prototype.hasOwnProperty.call(m, 'customProgramCacheKey')) f.customProgramCacheKey = m.customProgramCacheKey;
+    if (f.emissive) { f.emissive.setHex(0xffe2c0); f.emissiveIntensity = 0.4 + (m.emissiveIntensity || 0) * (m.emissive ? Math.max(m.emissive.r, m.emissive.g, m.emissive.b) : 0); }
+    f.userData.hfSrc = m; _hfCache.set(m, f);
+  }
+  return f;
+}
+function hitFlash(e) {
+  if (!e || e.isPlayer || e.isBarrel || e.isMine || e.isAlly || e.holo || e.hacked || e.cloaked || e._vm || e._hm) return;
+  const root = e.obj || (e.mech && e.mech.root); if (!root || !root.parent) return;
+  if (e._hf || (e._hfCd || 0) > G.time) return;
+  const list = [];
+  root.traverse((o) => { const m = o.material; if (o.isMesh && m && !Array.isArray(m) && m.isMeshStandardMaterial && !m.transparent && !m.userData.hfSrc && !o.isInstancedMesh) { list.push(o, m); o.material = hfMat(m); } });
+  if (list.length) { HF.push({ e, list, t: 0.055 }); e._hf = true; }
+  e._hfCd = G.time + 0.14;
+}
+function unflashAt(i) { const h = HF[i]; for (let j = 0; j < h.list.length; j += 2) { const o = h.list[j]; if (o.material.userData.hfSrc === h.list[j + 1]) o.material = h.list[j + 1]; } h.e._hf = false; HF.splice(i, 1); }
+function unflash(e) { for (let i = HF.length - 1; i >= 0; i--) if (HF[i].e === e) unflashAt(i); }
+function updateHitFlash(dt) { for (let i = HF.length - 1; i >= 0; i--) { HF[i].t -= dt; if (HF[i].t <= 0 || !HF[i].e.alive) unflashAt(i); } }
+// bullet strikes leave a mark on static walls and the floor (normal = the nearest box face)
+const MARK_KINDS = new Set(['building', 'wall', 'pillar']), _mn = new THREE.Vector3();
+function wallMark(p, sol) {
+  if (!G.fx || !G.fx.hole) return;
+  if (sol === 'floor') { if ((WATER.on && p.y < WATER.y + 0.2) || PLAT.R) return; _mn.set(0, 1, 0); }
+  else {
+    if (!sol || !MARK_KINDS.has(sol.kind) || (sol.kind === 'wall' && p.y > 13.6)) return;   // the perimeter wall's collider runs far above its 14 m visual
+    const d = [p.x - sol.min.x, sol.max.x - p.x, p.y - sol.min.y, sol.max.y - p.y, p.z - sol.min.z, sol.max.z - p.z];
+    let k = 0; for (let i = 1; i < 6; i++) if (d[i] < d[k]) k = i;
+    _mn.set(0, 0, 0); _mn.setComponent(k >> 1, k & 1 ? 1 : -1);
+  }
+  G.fx.hole(p, _mn);
 }
 
 function impact(s, at, ent) {
@@ -380,6 +419,7 @@ function updateShots(DT) {
       _c.copy(_a).addScaledVector(_d, w.t);
       if (s.bounce > 0 && w.solid.kind !== 'icewall' && w.solid.kind !== 'barrel') { ricochet(s, _c.clone(), w.solid); continue; }
       impact(s, _c.clone(), null);
+      if (s.kind === 'bullet' || s.kind === 'ebullet') wallMark(_c, w.solid);
       if (w.solid.isBarrel === undefined && w.solid.ref && w.solid.kind === 'barrel') hitBarrel(w.solid.ref, s.dmg);
       if (w.solid.kind === 'icewall') hitIceWall(w.solid.ref, s.dmg, _c);
       G.shots.splice(i, 1); continue;
@@ -6515,7 +6555,7 @@ function updateLane(dt) {
 // Shade: a hovering cloak projector. Enemies of the listed kinds within 24 m of a Shade are veiled (no lock-on, no radar, the
 // autopilot and your drones ignore them) unless they are within 16 m of you, fired in the last 1.2 s, or are sonar-marked.
 function veilMats(e, on) {   // veiled enemies swap to transparent copies of their materials
-  if (on && !e._vm) { e._vm = []; e.obj.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material)) { const m = o.material.clone(); m.transparent = true; m.depthWrite = false; if (m.emissive) { m.emissive.setHex(0x7040e0); m.emissiveIntensity = 0.7; } e._vm.push([o, o.material, m, o.castShadow]); } }); }
+  if (on && !e._vm) { unflash(e); e._vm = []; e.obj.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material)) { const m = o.material.clone(); m.transparent = true; m.depthWrite = false; if (m.emissive) { m.emissive.setHex(0x7040e0); m.emissiveIntensity = 0.7; } e._vm.push([o, o.material, m, o.castShadow]); } }); }
   if (!e._vm) return;
   for (const [o, m0, m1, cs] of e._vm) { o.material = on ? m1 : m0; o.castShadow = on ? false : cs; }
 }
@@ -7990,7 +8030,7 @@ function hackOn(h, dur) {
   const f = { isHackAlly: true, h, pos: h.pos, get vel() { return h.vel || ZV; }, get alive() { return h.alive && !h.dying && h.hacked; }, center: (o) => o.copy(h.c), foeW: 1.0, foeWAir: 1.0, foeWBoss: 1.1, hit: (dmg) => h.hit(dmg) };
   f._ent = { isAlly: true, isHack: true, c: new V3(), r: h.r || 2, get alive() { return f.alive; }, hit: (dmg, src, label) => h.hit(dmg, src) };
   h.hackF = f; G.friends.push(f);
-  h.obj.traverse((o) => { if (o.isMesh && !o.userData.hm) { o.userData.hm = o.material; const m = o.material.clone(); if (m.emissive) { m.emissive.setHex(0x30ff90); m.emissiveIntensity = 0.45; } else if (m.color) m.color.lerp(_hc.setHex(0x70ffb8), 0.4); o.material = m; } });
+  unflash(h); h.obj.traverse((o) => { if (o.isMesh && !o.userData.hm) { o.userData.hm = o.material; const m = o.material.clone(); if (m.emissive) { m.emissive.setHex(0x30ff90); m.emissiveIntensity = 0.45; } else if (m.color) m.color.lerp(_hc.setHex(0x70ffb8), 0.4); o.material = m; } });
   h.hackRing = new THREE.Mesh(hackRingGeo, new THREE.MeshBasicMaterial({ color: 0x70ffb8, transparent: true, opacity: 0.85, fog: false })); h.hackRing.rotation.x = -Math.PI / 2; G.scene.add(h.hackRing);
   for (const e of G.enemies) if (e !== h && e.alive && e.c && e.c.distanceTo(h.c) < 70) e.tgT = 0;
   G.hacked = (G.hacked || 0) + 1; G.onHacked && G.onHacked(h);
@@ -8773,7 +8813,7 @@ export class Marshal extends Enemy {
   die() { this.dropFx(); super.die(); }
   dropFx() { for (const o of [this.sh, this.zone, this.prog]) o.parent && o.parent.remove(o); }
   holo(on) {
-    if (on && !this._hm) { this._hm = []; this.obj.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material)) { const m = o.material.clone(); m.transparent = true; m.depthWrite = false; m.opacity = 0.4; if (m.emissive) { m.emissive.setHex(0xa060ff); m.emissiveIntensity = 1.2; } this._hm.push(m); o.material = m; o.castShadow = false; } }); }
+    if (on && !this._hm) { unflash(this); this._hm = []; this.obj.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material)) { const m = o.material.clone(); m.transparent = true; m.depthWrite = false; m.opacity = 0.4; if (m.emissive) { m.emissive.setHex(0xa060ff); m.emissiveIntensity = 1.2; } this._hm.push(m); o.material = m; o.castShadow = false; } }); }
   }
   update(dt) {
     if (this.st === 'fade') {
@@ -10213,6 +10253,7 @@ export function clearTBeams() {
 
 export function updateCombat(dt) {
   RAYF.skipIce = false;
+  updateHitFlash(dt);
   for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; if (q.sh && q.sh.hacked) G.curShooter = q.sh; q.fn(); G.curShooter = null; } }
   const hers = G.enemies.filter((e) => e.kind === 'herald' && e.alive && !e.dying && !(e.stunT > 0));
   for (const e of G.enemies) {

@@ -32,6 +32,8 @@ const flameGeo = new THREE.ConeGeometry(0.2, 1.6, 10, 1, true).rotateX(Math.PI).
 // thruster plume: soft view-facing falloff instead of a hard cone edge, scrolling turbulence, shock diamonds near the
 // nozzle; colour runs from the tint at the tip to a hot core at the nozzle (only the core crosses the bloom threshold)
 const FLAME_T = { value: 0 };
+export const MECHS = new Set();   // live mechs (heat haze); main prunes the ones whose root has left the scene
+const _hp = new THREE.Vector3();
 const flameMat = (c, core, kc, kk) => new THREE.ShaderMaterial({
   uniforms: { uC: { value: new THREE.Color(c).multiplyScalar(kc) }, uCore: { value: new THREE.Color(core).multiplyScalar(kk) }, uT: FLAME_T },
   vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vV;
@@ -80,6 +82,7 @@ export class Mech {
       this.flames.push({ f, holder, size, back: nm.startsWith('T_Back'), lv: 0 });
     }
     this.light = new THREE.PointLight(fc, 0, 14 * this.scale, 1.5); this.light.position.set(0, 3.2, 1.6); this.root.add(this.light);
+    MECHS.add(this);
     // state
     this.pos = this.root.position; this.vel = new THREE.Vector3();
     this.legYaw = opts.yaw || 0; this.aimYaw = this.legYaw; this.aimPitch = 0; this.torsoYaw = 0;
@@ -307,6 +310,15 @@ export class Mech {
       fl.f.scale.set(fl.size * (0.7 + lv * 0.5), fl.size * lv * j * 1.6, fl.size * (0.7 + lv * 0.5));
     }
     this.light.intensity = this.thrustLv * 6 + this.hoverLv * 3.5;
+  }
+
+  // heat-haze sources just past each lit nozzle's plume tip (matrixWorld is last frame's, close enough)
+  heat(out) {
+    for (const fl of this.flames) {
+      if (fl.lv < 0.08 || !fl.f.visible) continue;
+      _hp.set(0, -1.9, 0).applyMatrix4(fl.f.matrixWorld);
+      out.push({ x: _hp.x, y: _hp.y, z: _hp.z, r: (0.9 + fl.lv * 1.6) * fl.size * this.scale, s: 0.085 * fl.lv * fl.size * this.scale });
+    }
   }
 
   hit(dmg) {

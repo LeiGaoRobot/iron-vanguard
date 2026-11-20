@@ -64,6 +64,57 @@ const ringTex = canvasTex(128, (g, s) => {
   r.addColorStop(0, 'rgba(255,255,255,0)'); r.addColorStop(0.75, 'rgba(255,255,255,0.9)'); r.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = r; g.fillRect(0, 0, s, s);
 });
+// impact / footprint atlas, alpha-blended so a strike reads on both pale floors (dark core, scorch) and dark walls
+// (pale chipped rim). left tile: bullet strike; right tile: mech sole (white, tinted per ground) with tread bars and toe claws
+const markTex = (() => {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128; const g = c.getContext('2d');
+  let sd = 7; const r = () => { sd = (sd * 1664525 + 1013904223) >>> 0; return sd / 4294967296; };
+  const cx = 64, cy = 64;
+  let gr = g.createRadialGradient(cx, cy, 0, cx, cy, 44); gr.addColorStop(0, 'rgba(26,22,18,0.6)'); gr.addColorStop(0.45, 'rgba(34,30,26,0.32)'); gr.addColorStop(1, 'rgba(40,36,32,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 22; i++) {   // chipped-off fragments around the crater, pale exposed material
+    const a = r() * 6.283, d = 9 + r() * 15, s = 2 + r() * 5, x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d, v = 170 + Math.floor(r() * 50);
+    g.fillStyle = 'rgba(' + v + ',' + (v - 4) + ',' + (v - 12) + ',' + (0.55 + r() * 0.35) + ')'; g.beginPath();
+    for (let k = 0; k < 5; k++) { const b = a + k * 1.257 + (r() - 0.5) * 0.6, q = s * (0.5 + r() * 0.7); k ? g.lineTo(x + Math.cos(b) * q, y + Math.sin(b) * q) : g.moveTo(x + Math.cos(b) * q, y + Math.sin(b) * q); }
+    g.closePath(); g.fill();
+  }
+  g.strokeStyle = 'rgba(14,12,10,0.7)'; g.lineCap = 'round';
+  for (let i = 0; i < 9; i++) {
+    const a = r() * 6.283, L = 16 + r() * 26; let x = cx, y = cy; g.lineWidth = 1 + r() * 1.8; g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 4; k++) { const aa = a + (r() - 0.5) * 0.7; x += Math.cos(aa) * L / 4; y += Math.sin(aa) * L / 4; g.lineTo(x, y); }
+    g.stroke();
+  }
+  gr = g.createRadialGradient(cx, cy, 0, cx, cy, 12); gr.addColorStop(0, 'rgba(6,5,4,1)'); gr.addColorStop(0.7, 'rgba(10,8,7,0.92)'); gr.addColorStop(1, 'rgba(10,8,7,0)');
+  g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, 12, 0, 6.283); g.fill();
+  // sole: toe at the top (+v)
+  g.save(); g.translate(192, 64); g.filter = 'blur(1.5px)';
+  const rr = (x, y, w, h, q) => { g.beginPath(); g.moveTo(x + q, y); g.arcTo(x + w, y, x + w, y + h, q); g.arcTo(x + w, y + h, x, y + h, q); g.arcTo(x, y + h, x, y, q); g.arcTo(x, y, x + w, y, q); g.closePath(); };
+  g.fillStyle = 'rgba(255,255,255,0.72)'; rr(-24, -44, 48, 96, 14); g.fill();
+  g.fillStyle = 'rgba(150,150,150,0.5)'; for (let k = 0; k < 6; k++) { rr(-20, -34 + k * 14, 40, 6, 3); g.fill(); }
+  g.fillStyle = 'rgba(190,190,190,0.85)'; for (const x of [-17, 0, 17]) { g.beginPath(); g.moveTo(x - 6, -42); g.lineTo(x, -60); g.lineTo(x + 6, -42); g.closePath(); g.fill(); }
+  g.fillStyle = 'rgba(200,200,200,0.75)'; g.beginPath(); g.ellipse(0, 48, 16, 8, 0, 0, 6.283); g.fill();   // heel spur
+  g.restore();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+})();
+const _z0 = new THREE.Vector3(0, 0, 1);
+// uLum dims the (unlit) marks with the scene light so pale chips do not glow at night
+function makeMarks(cap) {
+  const geo = new THREE.PlaneGeometry(1, 1);
+  const aT = new THREE.InstancedBufferAttribute(new Float32Array(cap * 4), 4), aF = new THREE.InstancedBufferAttribute(new Float32Array(cap), 1);
+  geo.setAttribute('aT', aT); geo.setAttribute('aF', aF);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { map: { value: markTex }, uFogN: { value: 1e4 }, uFogF: { value: 2e4 }, uLum: { value: 1 } },
+    vertexShader: `attribute vec4 aT; attribute float aF; uniform float uFogN, uFogF; varying vec2 vUv; varying vec3 vTint; varying float vF;
+      void main(){ vUv = vec2((uv.x + aT.x) * 0.5, uv.y); vTint = aT.yzw; vec4 mv = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+        vF = aF * (1.0 - smoothstep(uFogN, uFogF, length(mv.xyz))); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform sampler2D map; uniform float uLum; varying vec2 vUv; varying vec3 vTint; varying float vF;
+      void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(t.rgb * vTint * uLum, t.a * vF); }`,
+    transparent: true, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4,
+  });
+  const mesh = new THREE.InstancedMesh(geo, mat, cap); mesh.count = 0; mesh.frustumCulled = false; mesh.renderOrder = 0;
+  return { mesh, aT, aF, cap, n: 0, age: new Float32Array(cap), life: new Float32Array(cap), str: new Float32Array(cap) };
+}
 export const TEX = { softTex, smokeTex, lineTex };
 
 // ------------------------------------------------------------------ particle system
@@ -217,6 +268,10 @@ export class FX {
     this.embers.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(this.decalCap * 3), 3);
     this.embers.instanceMatrix = this.decals.instanceMatrix;   // same placements
     scene.add(this.embers);
+    // bullet strikes on walls / floor and mech footprints (separate pools so a firefight does not wipe the trail)
+    this.holes = makeMarks(420); this.prints = makeMarks(260);
+    scene.add(this.holes.mesh, this.prints.mesh);
+    this.heat = [];   // heat-haze sources left by explosions (read by main for the post pass)
     // debris: lit, shadow-casting chunks that tumble, bounce and trail smoke
     this.debCap = 260;
     const dg = new THREE.DodecahedronGeometry(0.5, 0); dg.scale(1, 0.62, 0.85);
@@ -233,7 +288,7 @@ export class FX {
       this.lights.push({ l, t: 0, life: 1, i0: 0 });
     }
     this.trauma = 0;
-    this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._v = new THREE.Vector3(); this._s = new THREE.Vector3();
+    this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._q2 = new THREE.Quaternion(); this._v = new THREE.Vector3(); this._s = new THREE.Vector3();
   }
 
   // ---------------- particles
@@ -327,6 +382,7 @@ export class FX {
     if (s >= 0.5) this.debris(pos, Math.round(3 + 6 * s), Math.min(1.1, 0.4 + 0.25 * s), 11 + 6 * Math.sqrt(s));
     this.flash(pos, color, 28 * s, 30 * s, 0.3);
     this.ring(pos, null, 0.5 * s, 9 * s, 0.35, color);
+    if (this.heat.length < 24) this.heat.push({ x: pos.x, y: pos.y + 1.5 * s, z: pos.z, r: 6 * s + 2, s: 0.18 * Math.sqrt(s), sz: s, t: 0, life: 1.8 });
     this.trauma = Math.min(1, this.trauma + 0.12 * s);
   }
 
@@ -384,6 +440,31 @@ export class FX {
     this.decals.count = this.embers.count = Math.min(this.decalCap, this.decalN);
     this.decalAge[i] = 0;
     this.decals.instanceMatrix.needsUpdate = true;
+  }
+  // oriented multiply decal: n = surface normal, tile 0 = strike / 1 = footprint, yaw rolls it about n (null = random)
+  mark(M, pos, n, w, h, tile, tint, life, yaw = null, str = 1) {
+    const i = M.n % M.cap; M.n++;
+    this._q.setFromUnitVectors(_z0, n); this._q2.setFromAxisAngle(_z0, yaw ?? Math.random() * 6.283); this._q.multiply(this._q2);
+    const off = 0.025 + (i % 5) * 0.004;
+    this._m.compose(this._v.set(pos.x + n.x * off, pos.y + n.y * off, pos.z + n.z * off), this._q, this._s.set(w, h, 1));
+    M.mesh.setMatrixAt(i, this._m); M.mesh.instanceMatrix.needsUpdate = true;
+    M.aT.setXYZW(i, tile, tint.r, tint.g, tint.b); M.aT.needsUpdate = true;
+    M.age[i] = 0; M.life[i] = life; M.str[i] = str; M.mesh.count = Math.min(M.cap, M.n);
+  }
+  hole(pos, n, size = 0.7) {
+    const s = size * (0.8 + Math.random() * 0.45);
+    this.mark(this.holes, pos, n, s, s, 0, _c1.setRGB(1, 1, 1), 30);
+    this.emit('add', { x: pos.x + n.x * 0.08, y: pos.y + n.y * 0.08, z: pos.z + n.z * 0.08, life: 0.5, s0: s * 0.55, s1: s * 0.2, c0: 0xff9040, c1: 0x6a1000, a0: 0.8 });   // glowing hot for a moment
+    if (Math.random() < 0.5) this.emit('smoke', { x: pos.x + n.x * 0.3, y: pos.y + n.y * 0.3, z: pos.z + n.z * 0.3, vx: n.x * 1.2, vy: n.y * 1.2 + 0.4, vz: n.z * 1.2, life: 0.9, s0: s * 0.8, s1: s * 2.6, c0: 0x9a948a, c1: 0xb0aaa0, a0: 0.4, drag: 2.2 });
+  }
+  footprint(pos, yaw, size, tint, str = 1, life = 26) { this.mark(this.prints, pos, _up0, size * 0.62, size, 1, tint, life, yaw, str); }
+  // heat haze (explosion columns) and lens-dirt glints (bright flash lights), read by main for the post pass
+  heatOut(out) {
+    for (const h of this.heat) { const k = h.t / h.life; out.push({ x: h.x, y: h.y + k * 5 * h.sz, z: h.z, r: h.r * (0.7 + 0.6 * k), s: h.s * (1 - k) * (1 - k) }); }
+  }
+  glintOut(out) {
+    for (const L of this.lights) { const I = L.l.intensity; if (I > 18) out.push({ x: L.l.position.x, y: L.l.position.y, z: L.l.position.z, k: Math.min(1.1, (I - 18) / 100), c: L.l.color }); }
+    out.sort((a, b) => b.k - a.k);
   }
   flash(pos, color, intensity, dist, life) {
     let L = this.lights[0];
@@ -535,6 +616,16 @@ export class FX {
     if (any) this.decals.instanceColor.needsUpdate = true;
     this.embers.visible = hot;
     if (hot) { this.embers.instanceColor.needsUpdate = true; this.embers.material.uniforms.uT.value = this.time; }
+    for (let i = this.heat.length - 1; i >= 0; i--) { const h = this.heat[i]; h.t += dt; if (h.t >= h.life) this.heat.splice(i, 1); }
+    const fog = this.scene.fog;
+    for (const M of [this.holes, this.prints]) {
+      if (!M.mesh.count) continue;
+      const F = M.aF.array;
+      for (let i = 0; i < M.mesh.count; i++) { const a = (M.age[i] += dt); F[i] = M.str[i] * Math.min(1, a * 10) * (1 - Math.min(1, Math.max(0, (a - M.life[i]) / 6))); }
+      M.aF.needsUpdate = true;
+      const u = M.mesh.material.uniforms; if (fog) { u.uFogN.value = fog.near; u.uFogF.value = fog.far; }
+      const Lr = this.lightRefs; if (Lr) u.uLum.value = Math.min(1.15, Math.max(0.12, 0.35 * Lr.hemi.intensity / 0.6 + 0.65 * Lr.sun.intensity / 2.2));
+    }
     for (const L of this.lights) {
       if (L.l.intensity <= 0) continue;
       L.t += dt; const k = L.t / L.life;

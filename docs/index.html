@@ -564,6 +564,57 @@ const ringTex = canvasTex(128, (g, s) => {
   r.addColorStop(0, 'rgba(255,255,255,0)'); r.addColorStop(0.75, 'rgba(255,255,255,0.9)'); r.addColorStop(1, 'rgba(255,255,255,0)');
   g.fillStyle = r; g.fillRect(0, 0, s, s);
 });
+// impact / footprint atlas, alpha-blended so a strike reads on both pale floors (dark core, scorch) and dark walls
+// (pale chipped rim). left tile: bullet strike; right tile: mech sole (white, tinted per ground) with tread bars and toe claws
+const markTex = (() => {
+  const c = document.createElement('canvas'); c.width = 256; c.height = 128; const g = c.getContext('2d');
+  let sd = 7; const r = () => { sd = (sd * 1664525 + 1013904223) >>> 0; return sd / 4294967296; };
+  const cx = 64, cy = 64;
+  let gr = g.createRadialGradient(cx, cy, 0, cx, cy, 44); gr.addColorStop(0, 'rgba(26,22,18,0.6)'); gr.addColorStop(0.45, 'rgba(34,30,26,0.32)'); gr.addColorStop(1, 'rgba(40,36,32,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 128, 128);
+  for (let i = 0; i < 22; i++) {   // chipped-off fragments around the crater, pale exposed material
+    const a = r() * 6.283, d = 9 + r() * 15, s = 2 + r() * 5, x = cx + Math.cos(a) * d, y = cy + Math.sin(a) * d, v = 170 + Math.floor(r() * 50);
+    g.fillStyle = 'rgba(' + v + ',' + (v - 4) + ',' + (v - 12) + ',' + (0.55 + r() * 0.35) + ')'; g.beginPath();
+    for (let k = 0; k < 5; k++) { const b = a + k * 1.257 + (r() - 0.5) * 0.6, q = s * (0.5 + r() * 0.7); k ? g.lineTo(x + Math.cos(b) * q, y + Math.sin(b) * q) : g.moveTo(x + Math.cos(b) * q, y + Math.sin(b) * q); }
+    g.closePath(); g.fill();
+  }
+  g.strokeStyle = 'rgba(14,12,10,0.7)'; g.lineCap = 'round';
+  for (let i = 0; i < 9; i++) {
+    const a = r() * 6.283, L = 16 + r() * 26; let x = cx, y = cy; g.lineWidth = 1 + r() * 1.8; g.beginPath(); g.moveTo(x, y);
+    for (let k = 0; k < 4; k++) { const aa = a + (r() - 0.5) * 0.7; x += Math.cos(aa) * L / 4; y += Math.sin(aa) * L / 4; g.lineTo(x, y); }
+    g.stroke();
+  }
+  gr = g.createRadialGradient(cx, cy, 0, cx, cy, 12); gr.addColorStop(0, 'rgba(6,5,4,1)'); gr.addColorStop(0.7, 'rgba(10,8,7,0.92)'); gr.addColorStop(1, 'rgba(10,8,7,0)');
+  g.fillStyle = gr; g.beginPath(); g.arc(cx, cy, 12, 0, 6.283); g.fill();
+  // sole: toe at the top (+v)
+  g.save(); g.translate(192, 64); g.filter = 'blur(1.5px)';
+  const rr = (x, y, w, h, q) => { g.beginPath(); g.moveTo(x + q, y); g.arcTo(x + w, y, x + w, y + h, q); g.arcTo(x + w, y + h, x, y + h, q); g.arcTo(x, y + h, x, y, q); g.arcTo(x, y, x + w, y, q); g.closePath(); };
+  g.fillStyle = 'rgba(255,255,255,0.72)'; rr(-24, -44, 48, 96, 14); g.fill();
+  g.fillStyle = 'rgba(150,150,150,0.5)'; for (let k = 0; k < 6; k++) { rr(-20, -34 + k * 14, 40, 6, 3); g.fill(); }
+  g.fillStyle = 'rgba(190,190,190,0.85)'; for (const x of [-17, 0, 17]) { g.beginPath(); g.moveTo(x - 6, -42); g.lineTo(x, -60); g.lineTo(x + 6, -42); g.closePath(); g.fill(); }
+  g.fillStyle = 'rgba(200,200,200,0.75)'; g.beginPath(); g.ellipse(0, 48, 16, 8, 0, 0, 6.283); g.fill();   // heel spur
+  g.restore();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t;
+})();
+const _z0 = new THREE.Vector3(0, 0, 1);
+// uLum dims the (unlit) marks with the scene light so pale chips do not glow at night
+function makeMarks(cap) {
+  const geo = new THREE.PlaneGeometry(1, 1);
+  const aT = new THREE.InstancedBufferAttribute(new Float32Array(cap * 4), 4), aF = new THREE.InstancedBufferAttribute(new Float32Array(cap), 1);
+  geo.setAttribute('aT', aT); geo.setAttribute('aF', aF);
+  const mat = new THREE.ShaderMaterial({
+    uniforms: { map: { value: markTex }, uFogN: { value: 1e4 }, uFogF: { value: 2e4 }, uLum: { value: 1 } },
+    vertexShader: `attribute vec4 aT; attribute float aF; uniform float uFogN, uFogF; varying vec2 vUv; varying vec3 vTint; varying float vF;
+      void main(){ vUv = vec2((uv.x + aT.x) * 0.5, uv.y); vTint = aT.yzw; vec4 mv = modelViewMatrix * instanceMatrix * vec4(position, 1.0);
+        vF = aF * (1.0 - smoothstep(uFogN, uFogF, length(mv.xyz))); gl_Position = projectionMatrix * mv; }`,
+    fragmentShader: `uniform sampler2D map; uniform float uLum; varying vec2 vUv; varying vec3 vTint; varying float vF;
+      void main(){ vec4 t = texture2D(map, vUv); gl_FragColor = vec4(t.rgb * vTint * uLum, t.a * vF); }`,
+    transparent: true, depthWrite: false,
+    polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4,
+  });
+  const mesh = new THREE.InstancedMesh(geo, mat, cap); mesh.count = 0; mesh.frustumCulled = false; mesh.renderOrder = 0;
+  return { mesh, aT, aF, cap, n: 0, age: new Float32Array(cap), life: new Float32Array(cap), str: new Float32Array(cap) };
+}
 const TEX = { softTex, smokeTex, lineTex };
 
 // ------------------------------------------------------------------ particle system
@@ -717,6 +768,10 @@ class FX {
     this.embers.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(this.decalCap * 3), 3);
     this.embers.instanceMatrix = this.decals.instanceMatrix;   // same placements
     scene.add(this.embers);
+    // bullet strikes on walls / floor and mech footprints (separate pools so a firefight does not wipe the trail)
+    this.holes = makeMarks(420); this.prints = makeMarks(260);
+    scene.add(this.holes.mesh, this.prints.mesh);
+    this.heat = [];   // heat-haze sources left by explosions (read by main for the post pass)
     // debris: lit, shadow-casting chunks that tumble, bounce and trail smoke
     this.debCap = 260;
     const dg = new THREE.DodecahedronGeometry(0.5, 0); dg.scale(1, 0.62, 0.85);
@@ -733,7 +788,7 @@ class FX {
       this.lights.push({ l, t: 0, life: 1, i0: 0 });
     }
     this.trauma = 0;
-    this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._v = new THREE.Vector3(); this._s = new THREE.Vector3();
+    this._m = new THREE.Matrix4(); this._q = new THREE.Quaternion(); this._q2 = new THREE.Quaternion(); this._v = new THREE.Vector3(); this._s = new THREE.Vector3();
   }
 
   // ---------------- particles
@@ -827,6 +882,7 @@ class FX {
     if (s >= 0.5) this.debris(pos, Math.round(3 + 6 * s), Math.min(1.1, 0.4 + 0.25 * s), 11 + 6 * Math.sqrt(s));
     this.flash(pos, color, 28 * s, 30 * s, 0.3);
     this.ring(pos, null, 0.5 * s, 9 * s, 0.35, color);
+    if (this.heat.length < 24) this.heat.push({ x: pos.x, y: pos.y + 1.5 * s, z: pos.z, r: 6 * s + 2, s: 0.18 * Math.sqrt(s), sz: s, t: 0, life: 1.8 });
     this.trauma = Math.min(1, this.trauma + 0.12 * s);
   }
 
@@ -884,6 +940,31 @@ class FX {
     this.decals.count = this.embers.count = Math.min(this.decalCap, this.decalN);
     this.decalAge[i] = 0;
     this.decals.instanceMatrix.needsUpdate = true;
+  }
+  // oriented multiply decal: n = surface normal, tile 0 = strike / 1 = footprint, yaw rolls it about n (null = random)
+  mark(M, pos, n, w, h, tile, tint, life, yaw = null, str = 1) {
+    const i = M.n % M.cap; M.n++;
+    this._q.setFromUnitVectors(_z0, n); this._q2.setFromAxisAngle(_z0, yaw ?? Math.random() * 6.283); this._q.multiply(this._q2);
+    const off = 0.025 + (i % 5) * 0.004;
+    this._m.compose(this._v.set(pos.x + n.x * off, pos.y + n.y * off, pos.z + n.z * off), this._q, this._s.set(w, h, 1));
+    M.mesh.setMatrixAt(i, this._m); M.mesh.instanceMatrix.needsUpdate = true;
+    M.aT.setXYZW(i, tile, tint.r, tint.g, tint.b); M.aT.needsUpdate = true;
+    M.age[i] = 0; M.life[i] = life; M.str[i] = str; M.mesh.count = Math.min(M.cap, M.n);
+  }
+  hole(pos, n, size = 0.7) {
+    const s = size * (0.8 + Math.random() * 0.45);
+    this.mark(this.holes, pos, n, s, s, 0, _c1.setRGB(1, 1, 1), 30);
+    this.emit('add', { x: pos.x + n.x * 0.08, y: pos.y + n.y * 0.08, z: pos.z + n.z * 0.08, life: 0.5, s0: s * 0.55, s1: s * 0.2, c0: 0xff9040, c1: 0x6a1000, a0: 0.8 });   // glowing hot for a moment
+    if (Math.random() < 0.5) this.emit('smoke', { x: pos.x + n.x * 0.3, y: pos.y + n.y * 0.3, z: pos.z + n.z * 0.3, vx: n.x * 1.2, vy: n.y * 1.2 + 0.4, vz: n.z * 1.2, life: 0.9, s0: s * 0.8, s1: s * 2.6, c0: 0x9a948a, c1: 0xb0aaa0, a0: 0.4, drag: 2.2 });
+  }
+  footprint(pos, yaw, size, tint, str = 1, life = 26) { this.mark(this.prints, pos, _up0, size * 0.62, size, 1, tint, life, yaw, str); }
+  // heat haze (explosion columns) and lens-dirt glints (bright flash lights), read by main for the post pass
+  heatOut(out) {
+    for (const h of this.heat) { const k = h.t / h.life; out.push({ x: h.x, y: h.y + k * 5 * h.sz, z: h.z, r: h.r * (0.7 + 0.6 * k), s: h.s * (1 - k) * (1 - k) }); }
+  }
+  glintOut(out) {
+    for (const L of this.lights) { const I = L.l.intensity; if (I > 18) out.push({ x: L.l.position.x, y: L.l.position.y, z: L.l.position.z, k: Math.min(1.1, (I - 18) / 100), c: L.l.color }); }
+    out.sort((a, b) => b.k - a.k);
   }
   flash(pos, color, intensity, dist, life) {
     let L = this.lights[0];
@@ -1035,6 +1116,16 @@ class FX {
     if (any) this.decals.instanceColor.needsUpdate = true;
     this.embers.visible = hot;
     if (hot) { this.embers.instanceColor.needsUpdate = true; this.embers.material.uniforms.uT.value = this.time; }
+    for (let i = this.heat.length - 1; i >= 0; i--) { const h = this.heat[i]; h.t += dt; if (h.t >= h.life) this.heat.splice(i, 1); }
+    const fog = this.scene.fog;
+    for (const M of [this.holes, this.prints]) {
+      if (!M.mesh.count) continue;
+      const F = M.aF.array;
+      for (let i = 0; i < M.mesh.count; i++) { const a = (M.age[i] += dt); F[i] = M.str[i] * Math.min(1, a * 10) * (1 - Math.min(1, Math.max(0, (a - M.life[i]) / 6))); }
+      M.aF.needsUpdate = true;
+      const u = M.mesh.material.uniforms; if (fog) { u.uFogN.value = fog.near; u.uFogF.value = fog.far; }
+      const Lr = this.lightRefs; if (Lr) u.uLum.value = Math.min(1.15, Math.max(0.12, 0.35 * Lr.hemi.intensity / 0.6 + 0.65 * Lr.sun.intensity / 2.2));
+    }
     for (const L of this.lights) {
       if (L.l.intensity <= 0) continue;
       L.t += dt; const k = L.t / L.life;
@@ -1975,7 +2066,7 @@ function clearLine(a, b) {
 return { RAYF, WATER, PLAT, ARENA, STORM_RODS, solids, barrels, relaySites, LAVA, CREEP, GLADU, RADZ, GRID, lavaD, lavaAt, mulberry32, addSolid, buildArena, removeSolid, groundAt, collideCyl, pointInSolid, raySolids, clearLine };
 })();
 // ---------------- mech.js ----------------
-const { PALETTES, FRAMES, PHYS, angDiff, Mech } = (() => {
+const { PALETTES, FRAMES, PHYS, angDiff, MECHS, Mech } = (() => {
 // Mech: model assembly (paint + weapon mounts), movement physics, procedural animation, thrusters.
 
 
@@ -2009,6 +2100,8 @@ const flameGeo = new THREE.ConeGeometry(0.2, 1.6, 10, 1, true).rotateX(Math.PI).
 // thruster plume: soft view-facing falloff instead of a hard cone edge, scrolling turbulence, shock diamonds near the
 // nozzle; colour runs from the tint at the tip to a hot core at the nozzle (only the core crosses the bloom threshold)
 const FLAME_T = { value: 0 };
+const MECHS = new Set();   // live mechs (heat haze); main prunes the ones whose root has left the scene
+const _hp = new THREE.Vector3();
 const flameMat = (c, core, kc, kk) => new THREE.ShaderMaterial({
   uniforms: { uC: { value: new THREE.Color(c).multiplyScalar(kc) }, uCore: { value: new THREE.Color(core).multiplyScalar(kk) }, uT: FLAME_T },
   vertexShader: `varying vec2 vUv; varying vec3 vN; varying vec3 vV;
@@ -2057,6 +2150,7 @@ class Mech {
       this.flames.push({ f, holder, size, back: nm.startsWith('T_Back'), lv: 0 });
     }
     this.light = new THREE.PointLight(fc, 0, 14 * this.scale, 1.5); this.light.position.set(0, 3.2, 1.6); this.root.add(this.light);
+    MECHS.add(this);
     // state
     this.pos = this.root.position; this.vel = new THREE.Vector3();
     this.legYaw = opts.yaw || 0; this.aimYaw = this.legYaw; this.aimPitch = 0; this.torsoYaw = 0;
@@ -2286,6 +2380,15 @@ class Mech {
     this.light.intensity = this.thrustLv * 6 + this.hoverLv * 3.5;
   }
 
+  // heat-haze sources just past each lit nozzle's plume tip (matrixWorld is last frame's, close enough)
+  heat(out) {
+    for (const fl of this.flames) {
+      if (fl.lv < 0.08 || !fl.f.visible) continue;
+      _hp.set(0, -1.9, 0).applyMatrix4(fl.f.matrixWorld);
+      out.push({ x: _hp.x, y: _hp.y, z: _hp.z, r: (0.9 + fl.lv * 1.6) * fl.size * this.scale, s: 0.085 * fl.lv * fl.size * this.scale });
+    }
+  }
+
   hit(dmg) {
     if (!this.alive) return;
     this.hp -= dmg; this.flinch = Math.min(1, this.flinch + Math.min(0.6, dmg / 60));
@@ -2295,7 +2398,7 @@ class Mech {
   dispose() { this.root.parent && this.root.parent.remove(this.root); }
 }
 
-return { PALETTES, FRAMES, PHYS, angDiff, Mech };
+return { PALETTES, FRAMES, PHYS, angDiff, MECHS, Mech };
 })();
 // ---------------- combat.js ----------------
 const { G, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, rayEnts, enemyEnts, OD, hurtPlayer, explodeAt, spawnShot, weaponTick, Decoy, Sentry, smokeBlocks, clearSmokes, clearHooks, clearDiscs, clearStrikes, clearWells, updateDecoys, clearDecoys, clearMinis, shieldBlock, pickTarget, Turret, Drone, Walker, PRISM, Prism, Bulwark, Gunship, Relay, BOSSES, RAIDERS, setEcho, Boss, Colossus, TRAIN, Train, Stalker, Mender, Crawler, clearChill, Burrower, Sapper, clearMines, JAM_R, GRAP, Grappler, EEL, Eel, JET, Jet, SPLIT, Splitter, METEOR, clearMeteors, Skimmer, LEV, Leviathan, Jammer, Howitzer, domeAt, Warden, Dropship, FENCE, Fencer, stasisK, clearStasis, ACID, clearAcid, startAcid, HIVE, Hive, Swarm, GRIDZ, clearGrid, TWIST, clearTwisters, startTwisters, BLINK, Blinker, WATCH, Watchtower, clearBarrage, ICE, FROST, startIce, clearIce, addPChill, Frostcaster, WIND, startWind, clearWind, BLIMP, Airship, clearStickies, MIRAGE, HoloDrone, Mirage, MAGNET, clearCranes, startCranes, DEFL, Deflector, RAM, Rammer, QUAKE, startQuakes, clearQuakes, fissureDist, RICO, LEAP, Leaper, FLARE, startFlares, clearFlares, inShade, THUNDER, RODS_AT, startThunder, clearThunder, rodCover, Rod, clearRods, HERALD, Herald, TRAFFIC, startTraffic, clearTraffic, laneOf, truckAhead, LEECH, Leech, CORR, SUPPLY, startSupply, clearSupply, empower, nearestCrate, SNATCH, Snatcher, RIFT, startRifts, clearRifts, nearestRift, DEPOT, startDepots, clearDepots, depotTarget, plantCharge, nearestCharge, PLANT, Planter, SALV, FORT, FORT_PADS, HIJACK, startFort, clearFort, padAction, fortGoal, Bastion, Hijacker, clearRefl, LANE, SHADE, startLane, clearLane, laneEscorted, laneObjective, Shade, Tower, Citadel, Trooper, clearRBeam, startSalvage, clearSalvage, dropCores, nearestCore, takeCore, SCAV, Scav, FOG, startFog, clearFog, fogFar, fogSeen, LURK, Lurker, resetRewind, DISARM, jamPlayer, Disarmer, NEEDLE, resetNeedles, clearPMines, dropRepair, updateBurn, clearBurn, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, updateBeacon, ENG, Engineer, LANCE, Dish, startLance, clearLance, updateLance, ANCHOR, Anchor, updateGrav, SKY, Launcher, Cruise, startSky, clearSky, WEAVE, HACK, webAt, clearWebs, Weaver, hackable, clearHacks, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, COURIER, COURIER_PATH, Courier, startPursuit, clearPursuit, TORCH, Torcher, clearFires, clearNets, CAMO, camoHidden, clearCamo, REVIVE, noteWreck, clearWrecks, Reviver, SABOT, startSabot, clearSabot, sabTarget, DAZZ, Dazzler, DECAP, Marshal, startDecap, clearDecap, clearLinkB, MAZE, startMaze, clearMaze, PULSE, clearRings, Pulsar, clearBWalls, FACT, Fabricator, startFactory, clearFactory, TSU, TidePump, startTsunami, clearTsunami, tsuEta, inWave, SWAP, Swapper, clearNano, BIO, inCreep, BioNode, Tumor, startBio, clearBio, seedSpot, SEED, Seeder, clearPlOrbs, ATOM, radAt, startAtom, clearAtom, atomPuddle, BLOAT, Bloater, DECAY, decaySpread, FORK, Forklift, clearTBeams, updateCombat, GLAD, startGlad, clearGlad, gladGate, gladKill, gladVentAt, adaptCat, ADAPT, Adaptor, castSaws, clearSaws } = (() => {
@@ -2454,6 +2557,7 @@ function dealDamage(ent, dmg, team, at, label) {
     if (team === 'P' && G.glad && !isAlly(label || G.curLabel) && !ent.isBarrel) { if (G.glad.h >= GLAD.frenzy) { G.gladBonus += dmg * (GLAD.fdmg - 1); dmg *= GLAD.fdmg; } G.glad.lastDmgT = G.time; G.glad.h = Math.min(100, G.glad.h + Math.min(dmg, 200) * (h.kind === 'boss' ? GLAD.bossK : GLAD.dmgK)); }   // a good show keeps them interested
     if (h && !ent.isBarrel) { h._lastLbl = label || G.curLabel || ''; h._lastTeam = team; } }
   ent.hit(dmg, at, label || G.curLabel);
+  if (dmg >= 4) hitFlash(ent.kind === 'cpart' ? ent.owner : ent);
   if (team === 'P' && !ent.isBarrel && G.lgroups.length && (label || G.curLabel) !== 'link') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.linkG && h.linkG.t > 0 && !isAlly(label || G.curLabel)) linkShare(h, dmg, h.linkG); }
   if (team === 'P' && !ent.isBarrel && !isAlly(label || G.curLabel)) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; if (G.od && !(G.od.t > 0) && !ent.isCore) G.od.k = Math.min(1, G.od.k + dmg / OD.fill * (G.odGain || 1)); }
 }
@@ -2521,6 +2625,44 @@ function spawnShot(o) {
   if (s.team === 'E' && G.curShooter && G.curShooter.burnT > 0) s.dmg *= BURN_WEAK;   // burning enemies fire weakened shots
   G.shots.push(s);
   return s;
+}
+
+// hit flash: a hit swaps the target's meshes to a brightened clone of their material for a few frames.
+// clones keep the source's onBeforeCompile (wear) and cache key, so no new shader program is built.
+const _hfCache = new Map(), HF = [];
+function hfMat(m) {
+  let f = _hfCache.get(m);
+  if (!f) {
+    f = m.clone(); f.onBeforeCompile = m.onBeforeCompile; if (Object.prototype.hasOwnProperty.call(m, 'customProgramCacheKey')) f.customProgramCacheKey = m.customProgramCacheKey;
+    if (f.emissive) { f.emissive.setHex(0xffe2c0); f.emissiveIntensity = 0.4 + (m.emissiveIntensity || 0) * (m.emissive ? Math.max(m.emissive.r, m.emissive.g, m.emissive.b) : 0); }
+    f.userData.hfSrc = m; _hfCache.set(m, f);
+  }
+  return f;
+}
+function hitFlash(e) {
+  if (!e || e.isPlayer || e.isBarrel || e.isMine || e.isAlly || e.holo || e.hacked || e.cloaked || e._vm || e._hm) return;
+  const root = e.obj || (e.mech && e.mech.root); if (!root || !root.parent) return;
+  if (e._hf || (e._hfCd || 0) > G.time) return;
+  const list = [];
+  root.traverse((o) => { const m = o.material; if (o.isMesh && m && !Array.isArray(m) && m.isMeshStandardMaterial && !m.transparent && !m.userData.hfSrc && !o.isInstancedMesh) { list.push(o, m); o.material = hfMat(m); } });
+  if (list.length) { HF.push({ e, list, t: 0.055 }); e._hf = true; }
+  e._hfCd = G.time + 0.14;
+}
+function unflashAt(i) { const h = HF[i]; for (let j = 0; j < h.list.length; j += 2) { const o = h.list[j]; if (o.material.userData.hfSrc === h.list[j + 1]) o.material = h.list[j + 1]; } h.e._hf = false; HF.splice(i, 1); }
+function unflash(e) { for (let i = HF.length - 1; i >= 0; i--) if (HF[i].e === e) unflashAt(i); }
+function updateHitFlash(dt) { for (let i = HF.length - 1; i >= 0; i--) { HF[i].t -= dt; if (HF[i].t <= 0 || !HF[i].e.alive) unflashAt(i); } }
+// bullet strikes leave a mark on static walls and the floor (normal = the nearest box face)
+const MARK_KINDS = new Set(['building', 'wall', 'pillar']), _mn = new THREE.Vector3();
+function wallMark(p, sol) {
+  if (!G.fx || !G.fx.hole) return;
+  if (sol === 'floor') { if ((WATER.on && p.y < WATER.y + 0.2) || PLAT.R) return; _mn.set(0, 1, 0); }
+  else {
+    if (!sol || !MARK_KINDS.has(sol.kind) || (sol.kind === 'wall' && p.y > 13.6)) return;   // the perimeter wall's collider runs far above its 14 m visual
+    const d = [p.x - sol.min.x, sol.max.x - p.x, p.y - sol.min.y, sol.max.y - p.y, p.z - sol.min.z, sol.max.z - p.z];
+    let k = 0; for (let i = 1; i < 6; i++) if (d[i] < d[k]) k = i;
+    _mn.set(0, 0, 0); _mn.setComponent(k >> 1, k & 1 ? 1 : -1);
+  }
+  G.fx.hole(p, _mn);
 }
 
 function impact(s, at, ent) {
@@ -2680,6 +2822,7 @@ function updateShots(DT) {
       _c.copy(_a).addScaledVector(_d, w.t);
       if (s.bounce > 0 && w.solid.kind !== 'icewall' && w.solid.kind !== 'barrel') { ricochet(s, _c.clone(), w.solid); continue; }
       impact(s, _c.clone(), null);
+      if (s.kind === 'bullet' || s.kind === 'ebullet') wallMark(_c, w.solid);
       if (w.solid.isBarrel === undefined && w.solid.ref && w.solid.kind === 'barrel') hitBarrel(w.solid.ref, s.dmg);
       if (w.solid.kind === 'icewall') hitIceWall(w.solid.ref, s.dmg, _c);
       G.shots.splice(i, 1); continue;
@@ -8815,7 +8958,7 @@ function updateLane(dt) {
 // Shade: a hovering cloak projector. Enemies of the listed kinds within 24 m of a Shade are veiled (no lock-on, no radar, the
 // autopilot and your drones ignore them) unless they are within 16 m of you, fired in the last 1.2 s, or are sonar-marked.
 function veilMats(e, on) {   // veiled enemies swap to transparent copies of their materials
-  if (on && !e._vm) { e._vm = []; e.obj.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material)) { const m = o.material.clone(); m.transparent = true; m.depthWrite = false; if (m.emissive) { m.emissive.setHex(0x7040e0); m.emissiveIntensity = 0.7; } e._vm.push([o, o.material, m, o.castShadow]); } }); }
+  if (on && !e._vm) { unflash(e); e._vm = []; e.obj.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material)) { const m = o.material.clone(); m.transparent = true; m.depthWrite = false; if (m.emissive) { m.emissive.setHex(0x7040e0); m.emissiveIntensity = 0.7; } e._vm.push([o, o.material, m, o.castShadow]); } }); }
   if (!e._vm) return;
   for (const [o, m0, m1, cs] of e._vm) { o.material = on ? m1 : m0; o.castShadow = on ? false : cs; }
 }
@@ -10290,7 +10433,7 @@ function hackOn(h, dur) {
   const f = { isHackAlly: true, h, pos: h.pos, get vel() { return h.vel || ZV; }, get alive() { return h.alive && !h.dying && h.hacked; }, center: (o) => o.copy(h.c), foeW: 1.0, foeWAir: 1.0, foeWBoss: 1.1, hit: (dmg) => h.hit(dmg) };
   f._ent = { isAlly: true, isHack: true, c: new V3(), r: h.r || 2, get alive() { return f.alive; }, hit: (dmg, src, label) => h.hit(dmg, src) };
   h.hackF = f; G.friends.push(f);
-  h.obj.traverse((o) => { if (o.isMesh && !o.userData.hm) { o.userData.hm = o.material; const m = o.material.clone(); if (m.emissive) { m.emissive.setHex(0x30ff90); m.emissiveIntensity = 0.45; } else if (m.color) m.color.lerp(_hc.setHex(0x70ffb8), 0.4); o.material = m; } });
+  unflash(h); h.obj.traverse((o) => { if (o.isMesh && !o.userData.hm) { o.userData.hm = o.material; const m = o.material.clone(); if (m.emissive) { m.emissive.setHex(0x30ff90); m.emissiveIntensity = 0.45; } else if (m.color) m.color.lerp(_hc.setHex(0x70ffb8), 0.4); o.material = m; } });
   h.hackRing = new THREE.Mesh(hackRingGeo, new THREE.MeshBasicMaterial({ color: 0x70ffb8, transparent: true, opacity: 0.85, fog: false })); h.hackRing.rotation.x = -Math.PI / 2; G.scene.add(h.hackRing);
   for (const e of G.enemies) if (e !== h && e.alive && e.c && e.c.distanceTo(h.c) < 70) e.tgT = 0;
   G.hacked = (G.hacked || 0) + 1; G.onHacked && G.onHacked(h);
@@ -11073,7 +11216,7 @@ class Marshal extends Enemy {
   die() { this.dropFx(); super.die(); }
   dropFx() { for (const o of [this.sh, this.zone, this.prog]) o.parent && o.parent.remove(o); }
   holo(on) {
-    if (on && !this._hm) { this._hm = []; this.obj.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material)) { const m = o.material.clone(); m.transparent = true; m.depthWrite = false; m.opacity = 0.4; if (m.emissive) { m.emissive.setHex(0xa060ff); m.emissiveIntensity = 1.2; } this._hm.push(m); o.material = m; o.castShadow = false; } }); }
+    if (on && !this._hm) { unflash(this); this._hm = []; this.obj.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material)) { const m = o.material.clone(); m.transparent = true; m.depthWrite = false; m.opacity = 0.4; if (m.emissive) { m.emissive.setHex(0xa060ff); m.emissiveIntensity = 1.2; } this._hm.push(m); o.material = m; o.castShadow = false; } }); }
   }
   update(dt) {
     if (this.st === 'fade') {
@@ -12513,6 +12656,7 @@ function clearTBeams() {
 
 function updateCombat(dt) {
   RAYF.skipIce = false;
+  updateHitFlash(dt);
   for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; if (q.sh && q.sh.hacked) G.curShooter = q.sh; q.fn(); G.curShooter = null; } }
   const hers = G.enemies.filter((e) => e.kind === 'herald' && e.alive && !e.dying && !(e.stunT > 0));
   for (const e of G.enemies) {
@@ -13058,6 +13202,7 @@ const { AtmospherePass, makeRidge } = (() => {
 // and works in linear HDR (tone mapping happens later in OutputPass).
 
 
+const HZ_N = 12;
 const VS = 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }';
 
 // pass 1 (quarter res): bright sky pixels near the sun become the occluder mask
@@ -13115,12 +13260,39 @@ const AOBLUR_FS = `uniform sampler2D tAO; uniform vec2 res; varying vec2 vUv;
     }
     gl_FragColor = vec4(s / w, c.y, 0.0, 1.0);
   }`;
-// pass 3 (full res): ambient occlusion + aerial perspective + rays + grade
+// pass 3 (full res): heat haze + ambient occlusion + aerial perspective + rays + grade + lens flare / dirt.
+// heat haze: up to HZ_N screen-space sources (thruster exhaust, explosions, fires) wobble the pixels behind them with
+// rising value noise; the displaced fetch is rejected when it would pull a foreground object into the background.
 const COMP_FS = `uniform sampler2D tColor; uniform sampler2D tDepth; uniform sampler2D tRays; uniform sampler2D tAO; uniform float aoStr;
   uniform mat4 projInv; uniform mat4 camWorld; uniform vec3 sunDir; uniform vec3 sunCol; uniform vec3 hiTint; uniform vec3 loTint;
   uniform float aDen; uniform float aStr; uniform float rayStr; uniform float grade; uniform float vig; varying vec2 vUv;
+  uniform vec4 hz[${HZ_N}]; uniform float hzZ[${HZ_N}]; uniform int hzN; uniform float aspect; uniform float uT;
+  uniform vec2 sunUV; uniform float flareK; uniform sampler2D tDirt; uniform float dirtOn; uniform vec4 dl[4]; uniform vec3 dlC[4];
+  float h21(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+  float vh(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+    return mix(mix(h21(i), h21(i + vec2(1.0, 0.0)), f.x), mix(h21(i + vec2(0.0, 1.0)), h21(i + vec2(1.0, 1.0)), f.x), f.y); }
+  float vz(vec2 uv){ float d = texture2D(tDepth, uv).x; if (d > 0.99999) return 1e5; vec4 p = projInv * vec4(uv * 2.0 - 1.0, d * 2.0 - 1.0, 1.0); return -p.z / p.w; }
+  vec3 ghost(vec2 ax, float k, float r, vec3 col, float ring){
+    float d = length((vUv - sunUV - ax * k) * vec2(aspect, 1.0));
+    float disc = smoothstep(r, r * 0.55, d) * (0.55 + 0.45 * d / r);
+    float rg = exp(-pow((d - r) / (r * 0.1), 2.0));
+    return col * mix(disc, rg, ring);
+  }
   void main(){
-    vec3 c = texture2D(tColor, vUv).rgb; float d = texture2D(tDepth, vUv).x;
+    float d = texture2D(tDepth, vUv).x; vec2 uv = vUv;
+    if (hzN > 0) {
+      float pz = vz(vUv), zMin = 1e6; vec2 off = vec2(0.0);
+      for (int i = 0; i < ${HZ_N}; i++) {
+        if (i >= hzN) break;
+        vec4 h = hz[i]; vec2 q = (vUv - h.xy) * vec2(aspect, 1.0) / h.z; float r2 = dot(q, q);
+        if (r2 >= 1.0 || pz < hzZ[i]) continue;
+        float f = 1.0 - r2; f *= f; zMin = min(zMin, hzZ[i]);
+        vec2 nq = q * 3.2 + vec2(float(i) * 7.31, -uT * 2.8);
+        off += vec2(vh(nq) - vh(nq + vec2(5.2, 1.3)), vh(nq + vec2(2.7, 8.1)) - vh(nq + vec2(9.4, 3.6))) * f * h.w;
+      }
+      if (dot(off, off) > 1e-10) { vec2 u2 = clamp(vUv + off * vec2(1.0 / aspect, 1.0), 0.001, 0.999); if (vz(u2) >= zMin) uv = u2; }
+    }
+    vec3 c = texture2D(tColor, uv).rgb;
     if (aoStr > 0.0 && d < 0.99999) {   // bright emitters (glow strips, muzzle flashes) are not occluded
       float ao = texture2D(tAO, vUv).r, lc = dot(c, vec3(0.2126, 0.7152, 0.0722));
       c *= mix(1.0, ao, aoStr * (1.0 - smoothstep(1.2, 3.0, lc)));
@@ -13137,11 +13309,53 @@ const COMP_FS = `uniform sampler2D tColor; uniform sampler2D tDepth; uniform sam
     c *= mix(vec3(1.0), mix(loTint, hiTint, smoothstep(0.03, 0.8, l)), grade);   // split tone: cool shadows, warm highlights
     c = max(mix(vec3(l), c, 1.0 + 0.08 * grade), 0.0);
     c = 0.18 * pow(c / 0.18, vec3(1.0 + 0.1 * grade));   // a touch more contrast around mid grey
+    // lens: ghosts mirrored through the centre, a chromatic halo, an anamorphic streak and dirt lit by the sun / flashes
+    if (dirtOn > 0.5) {
+      vec3 dt = texture2D(tDirt, vUv * vec2(aspect, 1.0) * 0.75).rgb;
+      if (flareK > 0.002) {
+        float occ = 0.0;
+        for (int k = 0; k < 5; k++) {
+          vec2 s = sunUV + vec2(float(k - 2), float(k == 1 ? 2 : k == 3 ? -2 : 0)) * 0.007;
+          occ += (s.x > 0.0 && s.x < 1.0 && s.y > 0.0 && s.y < 1.0) ? step(0.99999, texture2D(tDepth, s).x) : 0.0;
+        }
+        float fk = flareK * occ * 0.2;
+        if (fk > 0.0) {
+          vec2 ax = (vec2(0.5) - sunUV) * 2.0, sv = (vUv - sunUV) * vec2(aspect, 1.0); float d0 = length(sv);
+          vec3 fl = ghost(ax, 0.3, 0.032, vec3(1.0, 0.62, 0.3), 0.0) + ghost(ax, 0.52, 0.07, vec3(0.35, 0.8, 1.0), 0.0) * 0.55
+                  + ghost(ax, 0.74, 0.018, vec3(0.6, 1.0, 0.5), 0.0) + ghost(ax, 1.0, 0.12, vec3(0.5, 0.62, 1.0), 1.0) * 0.8
+                  + ghost(ax, 1.2, 0.05, vec3(0.95, 0.5, 1.0), 0.0) * 0.65 + ghost(ax, -0.2, 0.045, vec3(1.0, 0.8, 0.5), 0.0) * 0.5;
+          vec3 halo = vec3(exp(-pow((d0 - 0.335) / 0.022, 2.0)), exp(-pow((d0 - 0.32) / 0.022, 2.0)), exp(-pow((d0 - 0.305) / 0.022, 2.0))) * 0.09;
+          float streak = exp(-abs(sv.y) * 110.0) * exp(-abs(sv.x) * 2.0);
+          c += sunCol * fk * (fl * 0.34 + halo * 1.3 + vec3(0.55, 0.72, 1.0) * streak * 0.35 + exp(-d0 * 9.0) * 0.35);
+          c += dt * sunCol * fk * (0.035 + 2.0 * exp(-d0 * 3.4));
+        }
+      }
+      for (int i = 0; i < 4; i++) {
+        vec4 g = dl[i]; if (g.w <= 0.0) continue;
+        float dd = length((vUv - g.xy) * vec2(aspect, 1.0));
+        c += dt * dlC[i] * g.w * exp(-dd / g.z);
+      }
+    }
     vec2 q = (vUv - 0.5) * vec2(1.0, 0.82); c *= 1.0 - vig * pow(length(q) * 1.32, 2.6);
     gl_FragColor = vec4(c, 1.0);
   }`;
 
 const _v = new THREE.Vector3(), _f = new THREE.Vector3();
+// lens dirt: soft dust specks, a few larger smears and wipe streaks (linear data, sampled additively)
+function dirtTex() {
+  const S = 512, c = document.createElement('canvas'); c.width = c.height = S; const g = c.getContext('2d');
+  g.fillStyle = '#000'; g.fillRect(0, 0, S, S);
+  let sd = 91; const r = () => { sd = (sd * 1664525 + 1013904223) >>> 0; return sd / 4294967296; };
+  const blob = (x, y, rad, a) => { for (const ox of [-S, 0, S]) for (const oy of [-S, 0, S]) { const X = x + ox, Y = y + oy; if (X < -rad || X > S + rad || Y < -rad || Y > S + rad) continue; const gr = g.createRadialGradient(X, Y, 0, X, Y, rad); gr.addColorStop(0, 'rgba(255,255,255,' + a + ')'); gr.addColorStop(0.6, 'rgba(255,255,255,' + a * 0.45 + ')'); gr.addColorStop(1, 'rgba(255,255,255,0)'); g.fillStyle = gr; g.fillRect(X - rad, Y - rad, rad * 2, rad * 2); } };
+  for (let i = 0; i < 26; i++) blob(r() * S, r() * S, 30 + r() * 70, 0.05 + r() * 0.07);    // broad smudges
+  for (let i = 0; i < 160; i++) blob(r() * S, r() * S, 2 + r() * 9, 0.12 + r() * 0.3);       // dust specks
+  for (let i = 0; i < 9; i++) {                                                            // wipe streaks
+    g.save(); g.translate(r() * S, r() * S); g.rotate(r() * 3.14); g.scale(1, 0.08 + r() * 0.1);
+    const L = 60 + r() * 120, gr = g.createRadialGradient(0, 0, 0, 0, 0, L); gr.addColorStop(0, 'rgba(255,255,255,0.12)'); gr.addColorStop(1, 'rgba(255,255,255,0)');
+    g.fillStyle = gr; g.fillRect(-L, -L, L * 2, L * 2); g.restore();
+  }
+  const t = new THREE.CanvasTexture(c); t.wrapS = t.wrapT = THREE.RepeatWrapping; return t;
+}
 const lumOf = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 
 class AtmospherePass extends Pass {
@@ -13153,7 +13367,10 @@ class AtmospherePass extends Pass {
     this.bU = { tMask: { value: this.rtA.texture }, sunUV: this.mU.sunUV, density: { value: 0.92 }, decay: { value: 0.965 } };
     this.cU = { tColor: { value: null }, tDepth: { value: null }, tRays: { value: this.rtB.texture }, projInv: { value: new THREE.Matrix4() }, camWorld: { value: new THREE.Matrix4() },
       sunDir: { value: new THREE.Vector3(0, 1, 0) }, sunCol: { value: new THREE.Color() }, hiTint: { value: new THREE.Color(1, 1, 1) }, loTint: { value: new THREE.Color(1, 1, 1) },
-      aDen: { value: 0.004 }, aStr: { value: 0.5 }, rayStr: { value: 0 }, grade: { value: 0.5 }, vig: { value: 0.22 }, tAO: { value: null }, aoStr: { value: 0 } };
+      aDen: { value: 0.004 }, aStr: { value: 0.5 }, rayStr: { value: 0 }, grade: { value: 0.5 }, vig: { value: 0.22 }, tAO: { value: null }, aoStr: { value: 0 },
+      hz: { value: Array.from({ length: HZ_N }, () => new THREE.Vector4()) }, hzZ: { value: new Array(HZ_N).fill(0) }, hzN: { value: 0 }, aspect: this.mU.aspect, uT: { value: 0 },
+      sunUV: this.mU.sunUV, flareK: { value: 0 }, tDirt: { value: dirtTex() }, dirtOn: { value: 0 },
+      dl: { value: Array.from({ length: 4 }, () => new THREE.Vector4()) }, dlC: { value: Array.from({ length: 4 }, () => new THREE.Color()) } };
     this.rtO = new THREE.WebGLRenderTarget(1, 1, opt); this.rtO2 = new THREE.WebGLRenderTarget(1, 1, opt);
     this.oU = { tDepth: { value: null }, projInv: this.cU.projInv, res: { value: new THREE.Vector2(1, 1) }, projY: { value: 1 }, radius: { value: 2.2 }, aoInt: { value: 4.0 } };
     this.obU = { tAO: { value: this.rtO.texture }, res: this.oU.res };
@@ -13161,7 +13378,8 @@ class AtmospherePass extends Pass {
     const mk = (u, fs) => new FullScreenQuad(new THREE.ShaderMaterial({ uniforms: u, vertexShader: VS, fragmentShader: fs, depthTest: false, depthWrite: false }));
     this.qMask = mk(this.mU, MASK_FS); this.qBlur = mk(this.bU, BLUR_FS); this.qComp = mk(this.cU, COMP_FS);
     this.qAO = mk(this.oU, AO_FS); this.qAOB = mk(this.obU, AOBLUR_FS);
-    this.env = { rays: 0.5, air: 0.5, ao: 0.7 }; this.rayK = 0; this.raysOn = true; this.aoOn = true;
+    this.env = { rays: 0.5, air: 0.5, ao: 0.7, flare: 0.5 }; this.rayK = 0; this.raysOn = true; this.aoOn = true; this.hazeOn = true; this.flareOn = true;
+    this.heat = []; this.glints = [];   // filled by main each frame: heat sources {x,y,z,r,s} (world) and bright flashes {x,y,z,k,c}
     this.setSize(w, h);
   }
   setSize(w, h) {
@@ -13181,6 +13399,7 @@ class AtmospherePass extends Pass {
     this.cU.hiTint.value.copy(norm(sunColor, 0.32)); this.cU.loTint.value.copy(norm(top, 0.28));
     this.cU.grade.value = E.grade ?? 0.55;
     this.env.ao = E.ao ?? 0.7;
+    this.env.flare = E.flare ?? (vacuum ? 0.7 : Math.min(1, disc) * 0.55);
   }
   // per frame: sun screen position + how visible it is
   update(camera, sunDir) {
@@ -13196,6 +13415,39 @@ class AtmospherePass extends Pass {
     this.cU.rayStr.value = this.rayK * 3.4; this.cU.aStr.value = this.env.air;
     this.oU.projY.value = camera.projectionMatrix.elements[5];
     this.cU.aoStr.value = this.aoOn ? this.env.ao : 0;
+    this.cU.uT.value = performance.now() / 1000;
+    const inView = su > -0.05 && su < 1.05 && sv > -0.05 && sv < 1.05;
+    this.cU.flareK.value = this.flareOn && inView ? facing * THREE.MathUtils.smoothstep(sunDir.y, -0.03, 0.08) * this.env.flare : 0;
+    this.packHeat(camera); this.packGlints(camera);
+  }
+  // heat shimmer: project the world-space sources, keep the HZ_N that cover the most screen
+  packHeat(camera) {
+    const U = this.cU, py = camera.projectionMatrix.elements[5], H = [];
+    if (this.hazeOn) for (const h of this.heat) {
+      _v.set(h.x, h.y, h.z).applyMatrix4(camera.matrixWorldInverse); const z = -_v.z;
+      if (z < 0.5 || z > 160) continue;
+      const r = h.r * py / (2 * z); if (r < 0.004) continue;
+      _v.set(h.x, h.y, h.z).project(camera); const u = _v.x * 0.5 + 0.5, v = _v.y * 0.5 + 0.5, ra = r / U.aspect.value;
+      if (u < -ra || u > 1 + ra || v < -r || v > 1 + r) continue;
+      H.push({ u, v, r, w: Math.min(0.014, h.s * py / (2 * z)), z: Math.max(0.3, z - h.r) });
+    }
+    H.sort((a, b) => b.r * b.w - a.r * a.w);
+    const n = Math.min(HZ_N, H.length); U.hzN.value = n;
+    for (let i = 0; i < n; i++) { U.hz.value[i].set(H[i].u, H[i].v, H[i].r, H[i].w); U.hzZ.value[i] = H[i].z; }
+    this.heat.length = 0;
+  }
+  // lens dirt lights up around bright on-screen flashes (explosions, muzzle blasts) as well as the sun
+  packGlints(camera) {
+    const U = this.cU; let n = 0;
+    if (this.flareOn) for (const g of this.glints) {
+      if (n >= 4) break;
+      _v.set(g.x, g.y, g.z).applyMatrix4(camera.matrixWorldInverse); if (-_v.z < 1) continue;
+      _v.set(g.x, g.y, g.z).project(camera); if (Math.abs(_v.x) > 1.3 || Math.abs(_v.y) > 1.3) continue;
+      U.dl.value[n].set(_v.x * 0.5 + 0.5, _v.y * 0.5 + 0.5, 0.35, g.k); U.dlC.value[n].copy(g.c); n++;
+    }
+    for (let i = n; i < 4; i++) U.dl.value[i].w = 0;
+    U.dirtOn.value = n > 0 || U.flareK.value > 0.002 ? 1 : 0;
+    this.glints.length = 0;
   }
   render(renderer, writeBuffer, readBuffer) {
     const dt = readBuffer.depthTexture;
@@ -13805,6 +14057,7 @@ const CLOUD = { day: 0.42, dusk: 0.52, snow: 0.85, desert: 0.28, ash: 0.7, storm
 const clOf = (E) => E.cl ?? CLOUD[Object.keys(ENVS).find((k) => ENVS[k] === E)] ?? 0.4;
 const lumOf = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 function applyEnv(key) {
+  if (typeof key === 'string') setFoot(key);
   const E = typeof key === 'object' ? key : ENVS[key] || ENVS.day, U = sky.material.uniforms;
   U.top.value.set(E.top); HORIZON.set(E.hor); scene.fog.color.copy(HORIZON); scene.fog.near = E.fog[0]; scene.fog.far = E.fog[1];
   SUN_DIR.set(...E.dir).normalize(); U.sun.value.copy(SUN_DIR); U.disc.value = E.disc;
@@ -13955,9 +14208,30 @@ addEventListener('resize', resize);
 G.scene = scene; G.camera = camera; G.renderer = renderer; G.composer = composer; G.bloom = bloom;
 const fx = new FX(scene); G.fx = fx; fx.lightRefs = { sun, hemi, dir: SUN_DIR };
 
+// footprints: [strength, r, g, b] - strong in snow / sand / dust, faint scuffs on hard ground; rgb is the print colour
+const FOOT = { snow: [1, 0.36, 0.44, 0.6], icelake: [0.55, 0.5, 0.6, 0.75], dune: [1, 0.6, 0.47, 0.34], desert: [0.9, 0.6, 0.48, 0.36], salt: [0.75, 0.62, 0.55, 0.5],
+  glad: [0.85, 0.6, 0.48, 0.36], lunar: [1, 0.45, 0.45, 0.47], meteor: [0.6, 0.5, 0.46, 0.5], abyss: [0.8, 0.5, 0.55, 0.55], ash: [0.8, 0.45, 0.43, 0.42],
+  jungle: [0.7, 0.45, 0.42, 0.32], toxic: [0.55, 0.5, 0.5, 0.36], creep: [0.5, 0.48, 0.36, 0.44], twister: [0.6, 0.55, 0.5, 0.4], gale: [0.5, 0.52, 0.5, 0.44],
+  autumn: [0.55, 0.52, 0.42, 0.34], forge: [0.55, 0.42, 0.36, 0.34], sky1: [0, 1, 1, 1], sky2: [0, 1, 1, 1], sky3: [0, 1, 1, 1], sky4: [0, 1, 1, 1], cyber: [0, 1, 1, 1] };
+const _fp1 = new THREE.Vector3(), _fp2 = new THREE.Vector3();
+function setFoot(key) { const f = FOOT[key] || [0.3, 0.3, 0.29, 0.28]; G.footK = f[0]; G.footTint = new THREE.Color(f[1], f[2], f[3]); }
+function stepPrint(m) {
+  if (!G.footK || !m.n || !m.n.M_FootL || !m.n.M_FootR) return;
+  if ((WATER.on && m.pos.y < WATER.y + 0.3) || (LAVA.on && lavaAt(m.pos.x, m.pos.z))) return;
+  const a = m.n.M_FootL.getWorldPosition(_fp1), b = m.n.M_FootR.getWorldPosition(_fp2), p = a.y < b.y ? a : b;
+  fx.footprint({ x: p.x, y: m.pos.y, z: p.z }, m.legYaw, 2.1 * m.scale, G.footTint, G.footK);
+}
+// heat haze sources (thrusters, explosions, burning ground) and lens-dirt glints for the atmosphere pass
+function feedPost() {
+  for (const m of MECHS) { if (!m.root.parent) { if (m._seen) MECHS.delete(m); continue; } m._seen = true; m.heat(atmo.heat); }
+  fx.heatOut(atmo.heat);
+  if (G.fires) for (const f of G.fires) atmo.heat.push({ x: f.x, y: (f.y || 0) + 1.4, z: f.z, r: f.R * 1.1, s: 0.04 });
+  fx.glintOut(atmo.glints);
+}
+
 // ------------------------------------------------------------------ mech callbacks (sounds, dust, shake)
 const mctx = {
-  onStep(m) { const d = m.pos.distanceTo(G.player ? G.player.pos : m.pos); sfx('step', d * (m === G.player ? 1 : 0.8)); if (m.scale > 1.2 || m === G.player) fx.dust(m.pos, 2, 1.6 * m.scale, 3); if (m === G.player) fx.trauma = Math.min(1, fx.trauma + 0.03); },
+  onStep(m) { const d = m.pos.distanceTo(G.player ? G.player.pos : m.pos); sfx('step', d * (m === G.player ? 1 : 0.8)); if (m.scale > 1.2 || m === G.player) fx.dust(m.pos, 2, 1.6 * m.scale, 3); if (m === G.player) fx.trauma = Math.min(1, fx.trauma + 0.03); stepPrint(m); },
   onLand(m, imp) { fx.dust(m.pos, 10, 2.6 * m.scale, 9); fx.ring(m.pos, null, 1, 5 * m.scale, 0.4, 0xd8d0c0); if (m === G.player) { sfx('land'); fx.trauma = Math.min(1, fx.trauma + imp / 60); } else sfx('step', m.pos.distanceTo(G.player.pos)); },
   onQuickBoost(m) {
     m.qbAt = G.time;
@@ -16642,7 +16916,7 @@ function frame(now) {
 }
 function render(dt) {
   if (state === 'play' || state === 'pause') drawHUD(dt);
-  sky.material.uniforms.cT.value += dt * 0.012; atmo.update(camera, SUN_DIR);
+  sky.material.uniforms.cT.value += dt * 0.012; feedPost(); atmo.update(camera, SUN_DIR);
   composer.render();
   if (G.afterRender) G.afterRender(dt);   // WeChat build draws its canvas HUD here
 }
@@ -16656,7 +16930,7 @@ window.__iv = {
   sim: (sec) => { auto.on = true; const n = Math.round(sec * 60); for (let i = 0; i < n && !run.over; i++) step(1 / 60); render(1 / 60); return { t: run.t.toFixed(1), wave: run.wave, hp: Math.round(G.player.hp), kills: G.stats.kills, alive: G.enemies.filter((e) => e.alive).length, over: run.over, state }; },
   capture: (name = 'shot.jpg', w = 1280, h = 720) => {
     renderer.setSize(w, h, false); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
-    atmo.update(camera, SUN_DIR); composer.render();
+    feedPost(); atmo.update(camera, SUN_DIR); composer.render();
     const data = canvas.toDataURL('image/jpeg', 0.88);
     resize();
     return fetch('http://127.0.0.1:8212/', { method: 'POST', body: JSON.stringify({ name, data }) }).then((r) => r.text()).catch((e) => 'ERR ' + e);

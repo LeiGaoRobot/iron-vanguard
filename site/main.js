@@ -10,7 +10,7 @@ import { buildArena, addSolid, ARENA, solids, raySolids, groundAt, pointInSolid,
 import { FX, TEX } from './fx.js';
 import { AtmospherePass, makeRidge } from './post.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
-import { Mech, PALETTES, FRAMES, angDiff, PHYS } from './mech.js';
+import { Mech, PALETTES, FRAMES, angDiff, PHYS, MECHS } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
 import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, Leaper, LEAP, FLARE, Herald, HERALD, Tower, Citadel, Trooper, Shade, SHADE, LANE, Marshal, DECAP, startDecap, clearDecap, Dazzler, DAZZ, clearLinkB, Pulsar, PULSE, MAZE, startMaze, clearMaze, clearRings, clearBWalls, Forklift, FACT, startFactory, clearFactory, clearTBeams, TSU, Swapper, SWAP, startTsunami, clearTsunami, clearNano, tsuEta, inWave, BIO, Seeder, SEED, startBio, clearBio, clearPlOrbs, inCreep, ATOM, Bloater, BLOAT, startAtom, clearAtom, decaySpread, GLAD, Adaptor, ADAPT, startGlad, clearGlad, gladGate, gladKill, gladVentAt, clearSaws, Reviver, REVIVE, noteWreck, CAMO, clearCamo, clearWrecks, SABOT, startSabot, clearSabot, sabTarget, Weaver, WEAVE, HACK, hackable, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, clearWebs, clearHacks, Launcher, Cruise, SKY, startSky, clearSky, Courier, COURIER, COURIER_PATH, startPursuit, clearPursuit, Torcher, TORCH, clearFires, clearNets, Dish, Anchor, ANCHOR, LANCE, startLance, clearLance, Engineer, ENG, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, clearBurn, startLane, clearLane, laneObjective, laneEscorted, clearRBeam, Bastion, Hijacker, HIJACK, FORT, FORT_PADS, startFort, clearFort, padAction, fortGoal, clearRefl, Scav, SCAV, SALV, startSalvage, clearSalvage, dropCores, nearestCore, Planter, PLANT, DEPOT, startDepots, clearDepots, nearestCharge, Lurker, LURK, FOG, startFog, clearFog, fogSeen, fogFar, resetRewind, Snatcher, SNATCH, SUPPLY, startSupply, clearSupply, nearestCrate, Disarmer, DISARM, RIFT, startRifts, clearRifts, Leech, LEECH, TRAFFIC, startTraffic, clearTraffic, truckAhead, THUNDER, startThunder, clearThunder, rodCover, clearRods, startFlares, clearFlares, inShade, resetNeedles, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
@@ -543,6 +543,7 @@ const CLOUD = { day: 0.42, dusk: 0.52, snow: 0.85, desert: 0.28, ash: 0.7, storm
 const clOf = (E) => E.cl ?? CLOUD[Object.keys(ENVS).find((k) => ENVS[k] === E)] ?? 0.4;
 const lumOf = (c) => 0.2126 * c.r + 0.7152 * c.g + 0.0722 * c.b;
 function applyEnv(key) {
+  if (typeof key === 'string') setFoot(key);
   const E = typeof key === 'object' ? key : ENVS[key] || ENVS.day, U = sky.material.uniforms;
   U.top.value.set(E.top); HORIZON.set(E.hor); scene.fog.color.copy(HORIZON); scene.fog.near = E.fog[0]; scene.fog.far = E.fog[1];
   SUN_DIR.set(...E.dir).normalize(); U.sun.value.copy(SUN_DIR); U.disc.value = E.disc;
@@ -693,9 +694,30 @@ addEventListener('resize', resize);
 G.scene = scene; G.camera = camera; G.renderer = renderer; G.composer = composer; G.bloom = bloom;
 const fx = new FX(scene); G.fx = fx; fx.lightRefs = { sun, hemi, dir: SUN_DIR };
 
+// footprints: [strength, r, g, b] - strong in snow / sand / dust, faint scuffs on hard ground; rgb is the print colour
+const FOOT = { snow: [1, 0.36, 0.44, 0.6], icelake: [0.55, 0.5, 0.6, 0.75], dune: [1, 0.6, 0.47, 0.34], desert: [0.9, 0.6, 0.48, 0.36], salt: [0.75, 0.62, 0.55, 0.5],
+  glad: [0.85, 0.6, 0.48, 0.36], lunar: [1, 0.45, 0.45, 0.47], meteor: [0.6, 0.5, 0.46, 0.5], abyss: [0.8, 0.5, 0.55, 0.55], ash: [0.8, 0.45, 0.43, 0.42],
+  jungle: [0.7, 0.45, 0.42, 0.32], toxic: [0.55, 0.5, 0.5, 0.36], creep: [0.5, 0.48, 0.36, 0.44], twister: [0.6, 0.55, 0.5, 0.4], gale: [0.5, 0.52, 0.5, 0.44],
+  autumn: [0.55, 0.52, 0.42, 0.34], forge: [0.55, 0.42, 0.36, 0.34], sky1: [0, 1, 1, 1], sky2: [0, 1, 1, 1], sky3: [0, 1, 1, 1], sky4: [0, 1, 1, 1], cyber: [0, 1, 1, 1] };
+const _fp1 = new THREE.Vector3(), _fp2 = new THREE.Vector3();
+function setFoot(key) { const f = FOOT[key] || [0.3, 0.3, 0.29, 0.28]; G.footK = f[0]; G.footTint = new THREE.Color(f[1], f[2], f[3]); }
+function stepPrint(m) {
+  if (!G.footK || !m.n || !m.n.M_FootL || !m.n.M_FootR) return;
+  if ((WATER.on && m.pos.y < WATER.y + 0.3) || (LAVA.on && lavaAt(m.pos.x, m.pos.z))) return;
+  const a = m.n.M_FootL.getWorldPosition(_fp1), b = m.n.M_FootR.getWorldPosition(_fp2), p = a.y < b.y ? a : b;
+  fx.footprint({ x: p.x, y: m.pos.y, z: p.z }, m.legYaw, 2.1 * m.scale, G.footTint, G.footK);
+}
+// heat haze sources (thrusters, explosions, burning ground) and lens-dirt glints for the atmosphere pass
+function feedPost() {
+  for (const m of MECHS) { if (!m.root.parent) { if (m._seen) MECHS.delete(m); continue; } m._seen = true; m.heat(atmo.heat); }
+  fx.heatOut(atmo.heat);
+  if (G.fires) for (const f of G.fires) atmo.heat.push({ x: f.x, y: (f.y || 0) + 1.4, z: f.z, r: f.R * 1.1, s: 0.04 });
+  fx.glintOut(atmo.glints);
+}
+
 // ------------------------------------------------------------------ mech callbacks (sounds, dust, shake)
 const mctx = {
-  onStep(m) { const d = m.pos.distanceTo(G.player ? G.player.pos : m.pos); sfx('step', d * (m === G.player ? 1 : 0.8)); if (m.scale > 1.2 || m === G.player) fx.dust(m.pos, 2, 1.6 * m.scale, 3); if (m === G.player) fx.trauma = Math.min(1, fx.trauma + 0.03); },
+  onStep(m) { const d = m.pos.distanceTo(G.player ? G.player.pos : m.pos); sfx('step', d * (m === G.player ? 1 : 0.8)); if (m.scale > 1.2 || m === G.player) fx.dust(m.pos, 2, 1.6 * m.scale, 3); if (m === G.player) fx.trauma = Math.min(1, fx.trauma + 0.03); stepPrint(m); },
   onLand(m, imp) { fx.dust(m.pos, 10, 2.6 * m.scale, 9); fx.ring(m.pos, null, 1, 5 * m.scale, 0.4, 0xd8d0c0); if (m === G.player) { sfx('land'); fx.trauma = Math.min(1, fx.trauma + imp / 60); } else sfx('step', m.pos.distanceTo(G.player.pos)); },
   onQuickBoost(m) {
     m.qbAt = G.time;
@@ -3380,7 +3402,7 @@ function frame(now) {
 }
 function render(dt) {
   if (state === 'play' || state === 'pause') drawHUD(dt);
-  sky.material.uniforms.cT.value += dt * 0.012; atmo.update(camera, SUN_DIR);
+  sky.material.uniforms.cT.value += dt * 0.012; feedPost(); atmo.update(camera, SUN_DIR);
   composer.render();
   if (G.afterRender) G.afterRender(dt);   // WeChat build draws its canvas HUD here
 }
@@ -3394,7 +3416,7 @@ window.__iv = {
   sim: (sec) => { auto.on = true; const n = Math.round(sec * 60); for (let i = 0; i < n && !run.over; i++) step(1 / 60); render(1 / 60); return { t: run.t.toFixed(1), wave: run.wave, hp: Math.round(G.player.hp), kills: G.stats.kills, alive: G.enemies.filter((e) => e.alive).length, over: run.over, state }; },
   capture: (name = 'shot.jpg', w = 1280, h = 720) => {
     renderer.setSize(w, h, false); composer.setSize(w, h); camera.aspect = w / h; camera.updateProjectionMatrix();
-    atmo.update(camera, SUN_DIR); composer.render();
+    feedPost(); atmo.update(camera, SUN_DIR); composer.render();
     const data = canvas.toDataURL('image/jpeg', 0.88);
     resize();
     return fetch('http://127.0.0.1:8212/', { method: 'POST', body: JSON.stringify({ name, data }) }).then((r) => r.text()).catch((e) => 'ERR ' + e);
