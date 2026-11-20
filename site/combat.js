@@ -1,6 +1,6 @@
 // Weapons, projectiles, enemies, damage.  Shared state lives in G.
 import * as THREE from 'three';
-import { RAYF, barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD, GRID, CREEP, RADZ } from './world.js';
+import { RAYF, barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD, GRID, CREEP, RADZ, GLADU } from './world.js';
 import { cloneKit, nodes, find, recolor } from './kit.js';
 import { Mech, angDiff, PALETTES, PHYS } from './mech.js';
 import { sfx } from './audio.js';
@@ -67,6 +67,7 @@ export const WEAPONS = {
   pound: { slot: 'shoulder', name: 'GP-2 俯冲重击', en: 'GP-2 Ground Pound', desc: '空中按下：以 70 m/s 垂直砸向地面 · 落地冲击波的伤害和半径随下落高度增长（20 m 高约 190 伤害 / 11 m），震慑 0.6 秒并击退 · 下砸中受伤减半 · 在地面按下先跃起再砸', type: 'pound', cd: 6, base: 70, per: 6, r0: 6, rPer: 0.25, hMax: 40, hop: 30, hopT: 0.5, dive: 70, stun: 0.6, knock: 18 },
   rod: { slot: 'shoulder', name: 'LR-1 避雷针', en: 'LR-1 Lightning Rod', desc: '在前方 6 m 插下避雷针 14 秒 · 每 0.9 秒放电打 22 m 内最近的敌机（36，再连锁 1 个）· 雷暴里 14 m 内不会被雷劈 · 同时只能有 1 根', type: 'rod', dur: 14, zap: 0.9, dmg: 36, R: 22, chains: 2, cover: 14, cd: 18, sfx: 'sentry' },
   sentry: { slot: 'shoulder', name: 'TR-3 哨戒炮塔', en: 'TR-3 Sentry Turret', desc: '在前方架设自动炮塔 15 秒 · 双管速射 75 m 内敌机 · 吸引部分火力 · 耐久 400 · 同时只能有 1 座', type: 'sentry', hp: 400, dur: 15, dmg: 10, rate: 0.11, range: 75, cd: 22, sfx: 'sentry' },
+  saws: { slot: 'shoulder', name: 'SB-4 环绕锯刃', en: 'SB-4 Orbit Saws', desc: '放出 4 片锯刃绕着机体高速旋转 8 秒，半径在 4–13 m 之间来回伸缩 · 每片切中 30 伤害（头目一半），同一目标 0.3 秒一次 · 碰到的敌方子弹 / 导弹 / 炮弹直接切碎', type: 'saws', n: 4, dur: 8, rMin: 3.5, rMax: 11, period: 2.2, spin: 4.4, dmg: 45, bossK: 0.5, hitCd: 0.3, cutR: 1.8, cd: 13, sfx: 'blade' },
   nanocloud: { slot: 'shoulder', name: 'NC-2 纳米云', en: 'NC-2 Nanite Cloud', desc: '在机体周围放出 10 m 纳米虫群 8 秒，跟着你走 · 云里的敌机每秒受 45 伤害（头目一半）· 飞进云里的敌方子弹 / 导弹 / 炮弹有一半被吃掉', type: 'nanocloud', R: 10, dur: 8, dps: 45, bossK: 0.5, eat: 0.5, cd: 15, sfx: 'stasis' },
   stasis: { slot: 'shoulder', name: 'TS-1 时滞场', en: 'TS-1 Stasis Field', desc: '在准星处展开 14 m 时滞球 5 秒 · 球内敌机动作放慢到三成、敌弹几乎停在空中 · 头目只放慢一半', type: 'stasis', range: 60, R: 14, dur: 5, k: 0.3, bossK: 0.6, shotK: 0.12, cd: 17, sfx: 'stasis' },
   bwall: { slot: 'shoulder', name: 'BP-4 推进屏障', en: 'BP-4 Barrier Ram', desc: '在身前立起 11 m 宽的能量墙并以 16 m/s 向前推进 35 m · 挡下迎面的敌方子弹、炮弹与导弹 · 撞上的敌机（头目除外）被推着走，撞上墙壁再受重击并瘫痪 0.8 秒 · 冷却 11 秒', type: 'bwall', W: 11, H: 7, speed: 16, dur: 2.2, dmg: 70, slam: 90, bossDmg: 40, stun: 0.8, cd: 11, sfx: 'shield' },
@@ -80,7 +81,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['saws', 'nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -148,6 +149,10 @@ function dealDamage(ent, dmg, team, at, label) {
     const w = domeAt(ent.c);
     if (w && G.player.pos.distanceTo(w.pos) > w.R) { w.absorb(dmg, domeEntry(w, G.player.center(_c), ent.c, new V3())); if (team === 'P' && !isAlly(label || G.curLabel)) G.stats.hits++; return; }
   }
+  { const h = ent.kind === 'cpart' ? ent.owner : ent;
+    if (team === 'P' && h.adapt) dmg = h.adaptHit(label || G.curLabel, dmg);   // adaptor: resists the damage type it adapted to
+    if (team === 'P' && G.glad && !isAlly(label || G.curLabel) && !ent.isBarrel) { if (G.glad.h >= GLAD.frenzy) { G.gladBonus += dmg * (GLAD.fdmg - 1); dmg *= GLAD.fdmg; } G.glad.lastDmgT = G.time; G.glad.h = Math.min(100, G.glad.h + Math.min(dmg, 200) * (h.kind === 'boss' ? GLAD.bossK : GLAD.dmgK)); }   // a good show keeps them interested
+    if (h && !ent.isBarrel) { h._lastLbl = label || G.curLabel || ''; h._lastTeam = team; } }
   ent.hit(dmg, at, label || G.curLabel);
   if (team === 'P' && !ent.isBarrel && G.lgroups.length && (label || G.curLabel) !== 'link') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.linkG && h.linkG.t > 0 && !isAlly(label || G.curLabel)) linkShare(h, dmg, h.linkG); }
   if (team === 'P' && !ent.isBarrel && !isAlly(label || G.curLabel)) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; if (G.od && !(G.od.t > 0) && !ent.isCore) G.od.k = Math.min(1, G.od.k + dmg / OD.fill * (G.odGain || 1)); }
@@ -163,6 +168,7 @@ function damagePlayer(dmg, src, label) {
   if (blk) { G.stats.blocked = (G.stats.blocked || 0) + dmg * blk; if (Math.random() < 0.3) sfx('shield', 0); }
   if (G.curShooter && G.curShooter.rally) { dmg *= HERALD.dmg; G.rallyHits = (G.rallyHits || 0) + 1; }   // rallied by a herald
   if (G.curShooter && G.curShooter.emp) dmg *= SUPPLY.empDmg;   // empowered by a supply crate
+  if (G.glad) dmg *= G.glad.h <= GLAD.booed ? GLAD.booDmg : GLAD.arenaDmg;   // the crowd is cheering the other side
   if (G.pound && G.pound.st === 'dive') dmg *= 0.5;
   if (G.atom && G.atom.dose > 0) { const k = Math.min(G.atom.dose, ATOM.vulnCap) / ATOM.vulnK; G.atomBonus = (G.atomBonus || 0) + dmg * k; dmg *= 1 + k; }   // irradiated armour
   if (G.refl && G.refl.t > 0) dmg *= 1 - G.refl.d.cut;
@@ -210,6 +216,7 @@ export function spawnShot(o) {
   if (s.team === 'E' && G.curShooter) G.curShooter.pingT = FOG.ping;   // fog harbour: firing shows you on the radar
   if (s.team === 'E' && G.curShooter && G.curShooter.rally) s.dmg *= HERALD.dmg;
   if (s.team === 'E' && s.label === 'marshal') s.dmg *= DECAP.gunK;
+  if (s.team === 'E' && s.label === 'adaptor') s.dmg *= ADAPT.gunK;
   if (s.team === 'E' && G.curShooter && G.curShooter.emp) s.dmg *= SUPPLY.empDmg;
   if (s.team === 'E' && G.curShooter && G.curShooter.burnT > 0) s.dmg *= BURN_WEAK;   // burning enemies fire weakened shots
   G.shots.push(s);
@@ -676,6 +683,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; popChaff(owner, slot, d); if (me) G.stats.shots++; }
   } else if (d.type === 'cluster') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; fireCluster(owner, slot, d, aim, dmgMul, team); if (me) G.stats.shots++; }
+  } else if (d.type === 'saws') {
+    if (pressed && ws.cd <= 0 && isP && owner.alive) { ws.cd = d.cd; castSaws(owner, d, dmgMul, me); if (me) G.stats.shots++; }
   } else if (d.type === 'nanocloud') {
     if (pressed && ws.cd <= 0 && isP && owner.alive) { ws.cd = d.cd; castNano(owner, d, dmgMul, me); if (me) G.stats.shots++; }
   } else if (d.type === 'stasis') {
@@ -1957,7 +1966,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -10259,7 +10268,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
-  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt);
+  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateGlad(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
@@ -10274,3 +10283,230 @@ export function updateCombat(dt) {
     }
   }
 }
+
+
+// ------------------------------------------------------------------ v57 Coliseum: the crowd's HYPE (0-100) rises with kills
+// (more for switching weapons, killing in the air, multi-kills and luring enemies into the flame vents) and drains while
+// you fight; at 80+ the crowd is in a frenzy (damage x1.25, they throw repair kits), at 25 or less they boo and throw
+// junk at you, and 7 s at zero gets you thrown out. Thirteen flame vents in the sand erupt on their own cycles
+export const GLAD = { R: 116, gateR: 115.5, gateA: [0, Math.PI / 2, Math.PI, -Math.PI / 2],
+  vents: [[0, 0], [46, 0], [-46, 0], [0, 46], [0, -46], [57, 57], [-57, 57], [57, -57], [-57, -57], [86, 0], [-86, 0], [0, 86], [0, -86]],
+  ventR: 5.2, ventH: 11, warn: 1.6, fire: 2.6, idle: [5, 9], pDps: 30, eDps: 70, bDps: 12,
+  h0: 55, decay: 1.6, bored: 2.0, boredT: 2.5, kill: 4, small: 0.5, big: 2.5, vary: 0.5, air: 0.4, airH: 5, multi: 0.25, highK: 0.7, multiT: 2.5, trap: 8, bossK: 0.006, dmgK: 0.003, other: 1.5,
+  frenzy: 80, booed: 25, fdmg: 1.25, dropT: 20, junkT: 3.4, junkDmg: 20, arenaDmg: 1.15, booDmg: 1.35, zeroT: 7, calmK: 0.2 };
+G.glad = null; G.gladBonus = 0;
+const ventRingGeo = new THREE.RingGeometry(GLAD.ventR - 0.6, GLAD.ventR, 40);
+export function startGlad() {
+  clearGlad();
+  const A = G.glad = { h: GLAD.h0, peak: GLAD.h0, low: GLAD.h0, vents: [], gates: [], lastDmgT: G.time, zeroAcc: 0, dropT: GLAD.dropT, junkT: GLAD.junkT, multiN: 0, multiT: -9, lastKey: null, calm: true, lost: false, booedEver: false, frenzyOn: false, booOn: false, accP: 0, eT: 0 };
+  GLAD.vents.forEach(([x, z], i) => {
+    const obj = cloneKit('P_FireVent'); obj.position.set(x, 0.02, z); obj.rotation.y = i * 0.7; G.scene.add(obj);
+    const n = nodes(obj), gm = []; if (n.FV_Glow) n.FV_Glow.traverse((o) => { if (o.isMesh) { o.material = o.material.clone(); gm.push(o.material); } });
+    const ring = new THREE.Mesh(ventRingGeo, new THREE.MeshBasicMaterial({ color: 0xff5020, transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false, fog: false }));
+    ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.25, z); G.scene.add(ring);
+    A.vents.push({ x, z, obj, n, gm, ring, st: 'idle', t: 3 + Math.random() * 6 + (i === 0 ? 4 : 0) });
+  });
+  GLAD.gateA.forEach((a, i) => {
+    const x = Math.cos(a) * GLAD.gateR, z = Math.sin(a) * GLAD.gateR, obj = cloneKit('P_ArenaGate');
+    obj.position.set(x, 0, z); obj.rotation.y = Math.atan2(x, z); G.scene.add(obj);
+    A.gates.push({ i, a, x, z, obj, n: nodes(obj), open: 0 });
+  });
+  G.gladBonus = 0; G.gladTraps = 0; G.gladDrops = 0; G.gladJunk = 0; G.gladVentHits = 0; G.adaptN = 0; G.adaptRes = 0; G.adaptWeak = 0; G.sawDmg = 0; G.sawCut = 0; G.sawN = 0;
+}
+export function clearGlad() {
+  const A = G.glad; GLADU.uH.value = 0; if (!A) return;
+  for (const V of A.vents) { V.obj.parent && V.obj.parent.remove(V.obj); V.ring.parent && V.ring.parent.remove(V.ring); }
+  for (const g of A.gates) g.obj.parent && g.obj.parent.remove(g.obj);
+  G.glad = null;
+}
+// the arena floor point in front of gate i (and raise its portcullis for a few seconds)
+export function gladGate(i, air) {
+  const A = G.glad, g = A && A.gates[i % 4]; if (!g) return new V3(0, air ? 14 : 0, 0);
+  g.open = 4.5;
+  const r = 100 + Math.random() * 6, a = g.a + (Math.random() - 0.5) * 0.12;
+  return new V3(Math.cos(a) * r, air ? 12 + Math.random() * 6 : 0, Math.sin(a) * r);
+}
+function hypeAdd(v, why) {
+  const A = G.glad; if (!A || v <= 0) return;
+  A.h = Math.min(100, A.h + v); A.peak = Math.max(A.peak, A.h);
+  G.onHype && G.onHype(v, why);
+}
+// called from G.onKill: score the kill for the crowd
+export function gladKill(e) {
+  const A = G.glad; if (!A || !e || e.hacked || e.holo) return;
+  const lbl = e._lastLbl || '', team = e._lastTeam;
+  const small = e.kind === 'crawler' || e.kind === 'drone' || e.kind === 'swarm', big = e.kind === 'boss' || e.kind === 'adaptor' || e.kind === 'bulwark' || e.kind === 'rammer';
+  if (lbl === 'vent') { G.gladTraps++; hypeAdd(GLAD.trap, 'trap'); return; }
+  if (team !== 'P' || lbl.startsWith('ally')) { hypeAdd(GLAD.other, ''); return; }
+  const key = lbl.replace(/^p-/, '').replace(/^hack-.*/, 'hack');
+  const base = GLAD.kill * (small ? GLAD.small : big ? GLAD.big : 1); let k = 1, why = '';   // bonuses scale the kill, not flat points
+  if (A.lastKey && key !== A.lastKey) { k += GLAD.vary; why = 'vary'; }
+  A.lastKey = key;
+  const P = G.player;
+  if (P && P.alive && P.pos.y - groundAt(P.pos.x, P.pos.z, P.pos.y + 1) > GLAD.airH) { k += GLAD.air; why = why || 'air'; }
+  if (G.time - A.multiT < GLAD.multiT) { A.multiN++; k += GLAD.multi * Math.min(A.multiN, 3); why = 'multi'; } else A.multiN = 0;
+  A.multiT = G.time;
+  hypeAdd(base * k * (A.h > 70 ? GLAD.highK : 1), why);   // a crowd that is already roaring is harder to impress
+}
+function gladJunk() {   // the booing crowd lobs junk from the stands at you
+  const P = G.player; if (!P || !P.alive) return;
+  const a = Math.random() * Math.PI * 2, r = GLAD.R + 8, from = new V3(Math.cos(a) * r, 18 + Math.random() * 6, Math.sin(a) * r);
+  const T = 1.7 + Math.random() * 0.4, g = 18, to = P.center(new V3()).addScaledVector(P.vel, T * 0.6); to.y = groundAt(to.x, to.z, to.y + 1);
+  const v = new V3((to.x - from.x) / T, (to.y - from.y) / T + 0.5 * g * T, (to.z - from.z) / T);
+  G.curShooter = null; spawnShot({ p: from, v, dmg: GLAD.junkDmg, team: 'E', kind: 'grenade', splash: 3.5, grav: g, life: 4, color: 0xd8c8a0, label: 'crowd-junk' });
+  G.gladJunk++;
+}
+function updateGlad(dt) {
+  const A = G.glad, P = G.player; if (!A) return;
+  // hype drains; faster when you are not hurting anybody; barely during the breaks between rounds
+  const P0 = G.player; let near = false, any = false;   // the crowd only gets bored if there is someone to fight
+  for (const e of G.enemies) { if (!e.alive || e.dying || e.holo) continue; any = true; if (P0 && Math.hypot(e.c.x - P0.pos.x, e.c.z - P0.pos.z) < 70) { near = true; break; } }
+  let rate = GLAD.decay + (near && G.time - A.lastDmgT > GLAD.boredT ? GLAD.bored : 0); if (A.calm || !any) rate *= GLAD.calmK;
+  A.h = Math.max(0, A.h - rate * dt); A.low = Math.min(A.low, A.h);
+  GLADU.uH.value += (A.h / 100 - GLADU.uH.value) * Math.min(1, dt * 2);
+  const fr = A.h >= GLAD.frenzy, bo = A.h <= GLAD.booed;
+  if (fr && !A.frenzyOn) G.onFrenzy && G.onFrenzy(); A.frenzyOn = fr;
+  if (bo && !A.booOn && !A.calm) { A.booedEver = true; G.onBooed && G.onBooed(); } A.booOn = bo;
+  if (fr && !A.calm && P && P.alive) {
+    A.dropT -= dt;
+    if (A.dropT <= 0) { A.dropT = GLAD.dropT; for (let k = 0; k < 20; k++) { const a = Math.random() * 6.28, r = 7 + Math.random() * 9, x = P.pos.x + Math.cos(a) * r, z = P.pos.z + Math.sin(a) * r; if (Math.hypot(x, z) > GLAD.R - 8 || pointInSolid(new V3(x, 1, z), 2)) continue; dropRepair(new V3(x, 0, z)); G.fx.flash(new V3(x, 3, z), 0x60ff90, 30, 20, 0.3); G.gladDrops++; G.onCrowdDrop && G.onCrowdDrop(); break; } }
+  }
+  if (bo && !A.calm) { A.junkT -= dt; if (A.junkT <= 0) { A.junkT = GLAD.junkT * (0.8 + Math.random() * 0.4); gladJunk(); } }
+  if (A.h <= 0.01 && !A.calm && any) { A.zeroAcc += dt; if (A.zeroAcc >= GLAD.zeroT && !A.lost) { A.lost = true; G.onHypeLost && G.onHypeLost(); } }
+  else if (A.h > 3) A.zeroAcc = Math.max(0, A.zeroAcc - dt * 2);
+  // portcullises
+  for (const g of A.gates) { g.open = Math.max(0, g.open - dt); const tgt = g.open > 0 ? 8.5 : 0; if (g.n.AG_Bars) g.n.AG_Bars.position.y += (tgt - g.n.AG_Bars.position.y) * Math.min(1, dt * 3); }
+  // flame vents
+  A.eT += dt; const tick = A.eT >= 0.25; if (tick) A.eT = 0;
+  const gy = P ? groundAt(P.pos.x, P.pos.z, P.pos.y + 1) : 0;
+  for (const V of A.vents) {
+    V.t -= dt;
+    if (V.st === 'idle') { if (V.t <= 0 && !A.calm) { V.st = 'warn'; V.t = GLAD.warn; V.dodge = Math.random() < 0.7; } }
+    else if (V.st === 'warn') { if (V.t <= 0) { V.st = 'fire'; V.t = GLAD.fire; sfx('flame', P ? P.pos.distanceTo(_a.set(V.x, 0, V.z)) : 50); G.fx.ring(_a.set(V.x, 0.5, V.z), null, 1, GLAD.ventR * 1.6, 0.35, 0xff8030); } }
+    else if (V.t <= 0) { V.st = 'idle'; V.t = GLAD.idle[0] + Math.random() * (GLAD.idle[1] - GLAD.idle[0]); }
+    const w = V.st === 'warn' ? 1 - V.t / GLAD.warn : 0, f = V.st === 'fire';
+    V.ring.material.opacity = V.st === 'warn' ? 0.35 + 0.4 * Math.abs(Math.sin(G.time * (6 + 10 * w))) : f ? 0.5 : 0;
+    if (V.n.FV_Glow) V.n.FV_Glow.scale.setScalar(f ? 1.05 : 0.6 + 0.4 * w);
+    for (const m of V.gm) m.emissiveIntensity = f ? 4 : 0.4 + 2.5 * w;
+    if (V.st === 'warn' && Math.random() < 0.4 + w) G.fx.sparks(_a.set(V.x + (Math.random() - 0.5) * 6, 0.4, V.z + (Math.random() - 0.5) * 6), _b.set(0, 1, 0), 2, 0xffa040, 8, 0.6, 0.3, 0.15);
+    if (!f) continue;
+    for (let k = 0; k < 4; k++) { const a = Math.random() * 6.28, r = Math.sqrt(Math.random()) * GLAD.ventR * 0.75; G.fx.emit('add', { x: V.x + Math.cos(a) * r, y: 0.6, z: V.z + Math.sin(a) * r, vx: (Math.random() - 0.5) * 2, vy: 14 + Math.random() * 7, vz: (Math.random() - 0.5) * 2, life: 0.75, s0: 2.2, s1: 4.6, c0: 0xff8a2a, c1: 0xa02006, a0: 0.6 }); }
+    G.fx.emit('add', { x: V.x + (Math.random() - 0.5) * 2, y: 0.8, z: V.z + (Math.random() - 0.5) * 2, vy: 18 + Math.random() * 6, life: 0.45, s0: 1.6, s1: 2.6, c0: 0xffe0a0, c1: 0xff7a20, a0: 0.7 });   // hot core
+    if (Math.random() < 0.35) G.fx.emit('smoke', { x: V.x + (Math.random() - 0.5) * 4, y: 9, z: V.z + (Math.random() - 0.5) * 4, vy: 4, life: 1.6, s0: 2, s1: 5, c0: 0x3a3430, c1: 0x22201e, a0: 0.4, drag: 1 });
+    if (P && P.alive && Math.hypot(P.pos.x - V.x, P.pos.z - V.z) < GLAD.ventR + 0.8 && P.pos.y - gy < GLAD.ventH) {
+      A.accP += GLAD.pDps * dt;
+      if (A.accP >= 7) { G.curShooter = null; G.curSrc = null; damagePlayer(A.accP, null, 'vent'); G.gladVentHits += A.accP; A.accP = 0; }
+    }
+    if (!tick) continue;
+    G.curLabel = 'vent'; G.curShooter = null;
+    for (const e of G.enemies) {
+      if (!e.alive || e.dying || !e.pos || e.isObjective) continue;
+      if (Math.hypot(e.pos.x - V.x, e.pos.z - V.z) > GLAD.ventR + (e.r || 2) * 0.4) continue;
+      if ((e.c ? e.c.y : e.pos.y) - groundAt(e.pos.x, e.pos.z, e.pos.y + 1) > GLAD.ventH) continue;
+      const big = e.kind === 'boss' || e.maxHp > 3000;
+      dealDamage(e.parts ? e.parts[0] : e, (big ? GLAD.bDps : GLAD.eDps) * 0.25, 'X', e.c || e.pos, 'vent');
+    }
+    G.curLabel = null;
+  }
+}
+export function gladVentAt(x, z, pad = 0) {   // a warning / erupting vent covers this point (autopilot avoidance)
+  const A = G.glad; if (!A) return null;
+  for (const V of A.vents) if (V.st !== 'idle' && Math.hypot(x - V.x, z - V.z) < GLAD.ventR + pad) return V;
+  return null;
+}
+
+// adaptor: a heavy four-legged gladiator whose armour adapts. Damage it takes is sorted into kinetic / explosive / energy;
+// once one type dominates the last few seconds it re-tunes its armour to it (0.9 s, plates flicker): that type then does
+// 25 % and the other two 120 %, until another type takes over (at most every 2.5 s). Each re-tune throws a shock ring
+const ADAPT_CAT = {};
+for (const k of ['missile', 'grenade', 'cannon', 'rockets', 'cluster', 'sticky', 'pmines', 'orbital', 'pound', 'blink', 'decoy', 'grav', 'rewind', 'plorb', 'frag', 'bwall', 'drones', 'sentry-boom']) ADAPT_CAT[k] = 'exp';
+for (const k of ['laser', 'melter', 'flamer', 'blade', 'pile', 'sonic', 'cryo', 'acid', 'emp', 'rod', 'nanocloud', 'burner', 'chainb', 'isotope', 'link', 'siphon', 'repair', 'stasis']) ADAPT_CAT[k] = 'eng';
+export function adaptCat(label) { const k = (label || '').replace(/^p-/, ''); return ADAPT_CAT[k] || 'kin'; }
+export const ADAPT = { hp: 1500, scale: 1.3, res: 0.4, weak: 1.2, win: 2.2, need: 70, tune: 0.9, minT: 2.5, gunK: 0.7, pulseR: 12, pulseDmg: 24,
+  col: { kin: 0x5ab0ff, exp: 0xff8a2a, eng: 0xc060ff }, cn: { kin: '动能', exp: '爆炸', eng: '能量' } };
+export class Adaptor extends Enemy {
+  constructor(pos) {
+    super('adaptor', 'E_Adaptor', pos, ADAPT.hp, 3.4); this.boom = 2; this.obj.scale.setScalar(ADAPT.scale); this.adapt = true;
+    this.vel = new V3(); this.ph = Math.random() * 6; this.strafe = Math.random() < 0.5 ? 1 : -1; this.stT = 3; this.yaw = Math.random() * 6.28;
+    for (const [a, b] of [['E_WBody', 'AP_Body'], ['E_WGun', 'AP_Gun'], ['Muzzle_Walker', 'Muzzle_Adapt']]) this.n[a] = this.n[b];
+    for (let i = 1; i <= 4; i++) { this.n['E_Leg' + i] = this.n['AP_Leg' + i]; this.n['E_Knee' + i] = this.n['AP_Knee' + i]; }
+    this.acc = { kin: 0, exp: 0, eng: 0 }; this.res = null; this.pend = null; this.pendT = 0; this.lastAd = -9;
+    this.gm = null; this.obj.traverse((o) => { if (o.isMesh && o.material && o.material.name === 'AdaptGlow') { if (!this.gm) this.gm = o.material.clone(); o.material = this.gm; } });
+    this.c.set(pos.x, pos.y + 3.2, pos.z);
+  }
+  adaptHit(label, dmg) {
+    const cat = adaptCat(label); this.acc[cat] += dmg;
+    if (!this.res) return dmg;
+    if (cat === this.res) { G.adaptRes += dmg * (1 - ADAPT.res); return dmg * ADAPT.res; }
+    G.adaptWeak += dmg * (ADAPT.weak - 1); return dmg * ADAPT.weak;
+  }
+  update(dt) {
+    Walker.prototype.update.call(this, dt);
+    this.c.set(this.pos.x, this.pos.y + 3.2, this.pos.z);
+    const k = Math.exp(-dt / ADAPT.win); for (const c in this.acc) this.acc[c] *= k;
+    let best = null, bv = 0; for (const c in this.acc) if (this.acc[c] > bv) { bv = this.acc[c]; best = c; }
+    if (!this.pend && best && best !== this.res && bv > ADAPT.need && G.time - this.lastAd > ADAPT.minT) { this.pend = best; this.pendT = ADAPT.tune; }
+    if (this.pend) {
+      this.pendT -= dt;
+      if (this.pendT <= 0) {
+        this.res = this.pend; this.pend = null; this.lastAd = G.time; G.adaptN++;
+        G.fx.ring(this.c, null, 1, ADAPT.pulseR * 1.3, 0.4, ADAPT.col[this.res]); G.fx.flash(this.c, ADAPT.col[this.res], 40, 24, 0.25); sfx('shield', G.player ? G.player.pos.distanceTo(this.pos) : 40);
+        G.curLabel = 'adaptor-pulse'; G.curShooter = this; explodeAt(this.c.clone(), ADAPT.pulseR, ADAPT.pulseDmg, 'E', 0.6, ADAPT.col[this.res]); G.curShooter = null; G.curLabel = 'adaptor';
+        G.onAdapt && G.onAdapt(this);
+      }
+    }
+    const ring = this.n.AP_Ring; if (ring) ring.rotation.z += dt * (this.pend ? 9 : this.res ? 1.4 : 0.5);
+    if (this.gm) {
+      const col = this.pend ? (Math.sin(G.time * 40) > 0 ? ADAPT.col[this.pend] : 0xffffff) : this.res ? ADAPT.col[this.res] : 0xd8ecff;
+      this.gm.emissive.setHex(col); this.gm.color.setHex(col); this.gm.emissiveIntensity = this.pend ? 3.5 : 2.2;
+    }
+  }
+}
+
+// SB-4 orbit saws: four blades circle you for 8 s, the orbit breathing between 4 and 13 m; each blade cuts what it touches
+// (per-target cooldown) and shreds enemy projectiles it passes through
+G.saws = [];
+export function castSaws(owner, d, mul, me) {
+  G.saws = G.saws.filter((S) => { if (S.owner === owner) { for (const o of S.discs) o.parent && o.parent.remove(o); return false; } return true; });
+  const discs = [];
+  for (let k = 0; k < d.n; k++) { const o = cloneKit('P_SawDisc'); o.scale.setScalar(1.5); G.scene.add(o); discs.push(o); }
+  G.saws.push({ owner, d, mul, me, t: d.dur, age: 0, ang: Math.random() * 6.28, discs, cds: new Map(), sndT: 0 });
+  G.sawN = (G.sawN || 0) + 1; sfx(d.sfx || 'blade', 0); G.fx.ring(owner.center(new V3()), null, 1, d.rMin * 2.2, 0.35, 0xffe0a0);
+}
+const _sw = new V3(), _sc = new V3();
+function updateSaws(dt) {
+  for (let i = G.saws.length - 1; i >= 0; i--) {
+    const S = G.saws[i], d = S.d; S.t -= dt; S.age += dt;
+    if (S.t <= 0 || !S.owner.alive) { for (const o of S.discs) { G.fx.sparks(o.position, null, 6, 0xffe0a0, 8, 0.6, 0.25, 0.15); o.parent && o.parent.remove(o); } G.saws.splice(i, 1); continue; }
+    const c = S.owner.center(_sc), grow = Math.min(1, S.age * 3) * Math.min(1, S.t * 3);
+    const r = (d.rMin + (d.rMax - d.rMin) * (0.5 - 0.5 * Math.cos(S.age * Math.PI * 2 / d.period))) * grow;
+    S.ang += d.spin * dt;
+    const ents = entsFor('P');
+    S.discs.forEach((o, k) => {
+      const a = S.ang + k * Math.PI * 2 / d.n;
+      const ox = c.x + Math.cos(a) * r, oz = c.z + Math.sin(a) * r, gy = groundAt(ox, oz, c.y) + 1.6;   // blades sag toward the ground so a hovering mech still mows
+      o.position.set(ox, Math.max(gy, c.y - 0.6 - Math.max(0, c.y - 0.6 - gy) * 0.45 + Math.sin(S.age * 3 + k) * 0.5), oz);
+      o.rotation.y += dt * 28; o.rotation.z = Math.sin(a) * 0.15;
+      if (Math.random() < 0.5) G.fx.emit('add', { x: o.position.x, y: o.position.y, z: o.position.z, life: 0.12, s0: 0.9, s1: 0.2, c0: 0xffe8b0 });
+      for (let j = G.shots.length - 1; j >= 0; j--) {
+        const sh = G.shots[j]; if (sh.team !== 'E') continue;
+        if (Math.abs(sh.x - o.position.x) > d.cutR || Math.abs(sh.z - o.position.z) > d.cutR || Math.abs(sh.y - o.position.y) > d.cutR) continue;
+        G.shots.splice(j, 1); G.sawCut++; G.fx.sparks(_sw.set(sh.x, sh.y, sh.z), null, 5, 0xffd080, 10, 0.8, 0.25, 0.15);
+      }
+      for (const e of ents) {
+        if (!e.alive || e.holo || !e.c || e.isBarrel || e.isMine) continue;   // barrels would go off in your face
+        const host = e.kind === 'cpart' ? e.owner : e; if (host.hacked || host.cloaked) continue;
+        const er = e.r || 1; if (Math.hypot(e.c.x - o.position.x, e.c.z - o.position.z) > 2.1 + er * 0.6 || Math.abs(e.c.y - o.position.y) > 2.4 + er) continue;   // cylinder test: tall mechs get cut at the shins
+        if ((S.cds.get(e) || 0) > G.time) continue;
+        S.cds.set(e, G.time + d.hitCd);
+        const big = host.kind === 'boss' || host.kind === 'raider' || host.maxHp > 3000 || host.isColossus || host.isTrain || host.isLev;
+        const dm = d.dmg * S.mul * (big ? d.bossK : 1);
+        G.curLabel = 'p-saws'; G.curSrc = S.owner.pos; dealDamage(e, dm, 'P', e.c, 'p-saws'); G.curLabel = null;
+        G.sawDmg += dm; G.fx.sparks(e.c, _sw.subVectors(e.c, c).normalize(), 10, 0xffe0a0, 16, 0.8, 0.3, 0.2);
+        S.sndT -= 1; if (S.sndT <= 0) { S.sndT = 3; sfx('bladehit', S.me ? 0 : 40); }
+      }
+    });
+    if (S.me && Math.random() < dt * 4) sfx('spin', 0);
+  }
+}
+export function clearSaws() { for (const S of G.saws) for (const o of S.discs) o.parent && o.parent.remove(o); G.saws.length = 0; }

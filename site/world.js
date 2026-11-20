@@ -16,6 +16,7 @@ export const LAVA = { on: false, W: 5, uT: { value: 0 } };
 // hive creep: up to 10 spreading biomass circles (x, z, radius, 1 = live) painted on the floor
 export const CREEP = { on: false, uC: { value: Array.from({ length: 10 }, () => new THREE.Vector4()) } };
 // meltdown: up to 8 radiation zones (x, z, radius, strength 0-1) glowing on the floor
+export const GLADU = { uH: { value: 0 } };   // coliseum crowd excitement 0..1 (drives the crowd shader)
 export const RADZ = { on: false, uR: { value: Array.from({ length: 8 }, () => new THREE.Vector4()) } };
 export const GRID = { on: false, uZ: { value: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] } };   // power plant: live floor sectors (x, z, state 1 warn / 2 live, time left)
 export function lavaD(x, z) {
@@ -43,6 +44,63 @@ const SAND_H = `float surfH(vec2 p, float fd){
   float r2 = fract(ph2 / 6.2832), rip2 = smoothstep(0.0, 0.75, r2) * (1.0 - smoothstep(0.75, 1.0, r2));
   float big = sin(p.x * 0.045 + sin(p.y * 0.03) * 2.0) * 1.6 + sin(p.y * 0.031 + p.x * 0.012) * 1.2;
   return rip * 0.5 * (0.4 + 0.6 * fd) + rip2 * 0.09 * fd + big; }`;
+// coliseum (v57): inner wall, a lathe of stepped stone tiers, a colonnade on the rim, banners, and ~4000 instanced spectators
+// who jump in their seats as the crowd's excitement (GLADU.uH) rises
+function buildStands(group, R) {
+  const stoneM = panelMaterial(0xb6a07e, { rough: 0.9, metal: 0.02, frag: `
+      float sa = atan(vWP.z, vWP.x) * length(vWP.xz);
+      float sc = gridLine(vWP.y, 1.1, 0.05), sv = gridLine(sa + step(0.5, fract(vWP.y / 2.2)) * 1.2, 2.4, 0.05);
+      diffuseColor.rgb *= (0.82 + 0.18 * h21(vec2(floor(sa / 2.4), floor(vWP.y / 1.1)))) * (1.0 - 0.25 * max(sc, sv)) * (0.9 + 0.12 * vn2(vec2(sa, vWP.y) / 4.0));
+      diffuseColor.rgb *= 1.0 - 0.3 * smoothstep(3.0, 0.0, vWP.y);` });
+  stoneM.side = THREE.DoubleSide;
+  const W = R + 0.5, H0 = 11, N = 12, dr = 3.4, dh = 2.2, seg = 160;
+  const wall = new THREE.Mesh(new THREE.CylinderGeometry(W, W, H0, seg, 1, true).translate(0, H0 / 2, 0), stoneM); wall.receiveShadow = true; group.add(wall);
+  const pts = [new THREE.Vector2(W, H0), new THREE.Vector2(W + 1.2, H0 + 0.9), new THREE.Vector2(W + 1.2, H0)];
+  for (let i = 0; i < N; i++) { const r0 = W + 1.2 + i * dr, y = H0 + i * dh; pts.push(new THREE.Vector2(r0 + dr, y), new THREE.Vector2(r0 + dr, y + dh)); }
+  const Ro = W + 1.2 + N * dr, Ht = H0 + N * dh;
+  pts.push(new THREE.Vector2(Ro, Ht + 9), new THREE.Vector2(Ro + 2, Ht + 9), new THREE.Vector2(Ro + 2, -2));
+  const tiers = new THREE.Mesh(new THREE.LatheGeometry(pts, seg), stoneM); tiers.receiveShadow = true; tiers.castShadow = true; group.add(tiers);
+  const cg = [], fg = [], fl = [];
+  for (let k = 0; k < 72; k++) { const a = k / 72 * Math.PI * 2; cg.push(new THREE.BoxGeometry(1.1, 9, 1.1).translate(Math.cos(a) * (Ro - 0.8), Ht + 4.5, Math.sin(a) * (Ro - 0.8))); }
+  cg.push(new THREE.CylinderGeometry(Ro + 0.4, Ro + 0.4, 1.4, seg, 1, true).translate(0, Ht + 9.6, 0));
+  const col = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(cg), stoneM); col.castShadow = true; group.add(col);
+  for (let k = 0; k < 32; k++) {   // banners on the inner wall, alternating crimson and gold, plus masts with pennants on the rim
+    const a = (k + 0.5) / 32 * Math.PI * 2, x = Math.cos(a) * (W - 0.15), z = Math.sin(a) * (W - 0.15);
+    if (k % 8 === 3 || k % 8 === 4) continue;   // leave the gates clear
+    const g = new THREE.PlaneGeometry(2.6, 6.5).translate(0, 6.6, 0).rotateY(-a - Math.PI / 2).translate(x, 0, z);
+    (k % 2 ? fg : fl).push(g);
+  }
+  const bm1 = new THREE.MeshStandardMaterial({ color: 0x8e1e1a, roughness: 0.8, side: THREE.DoubleSide }), bm2 = new THREE.MeshStandardMaterial({ color: 0xc89a3a, roughness: 0.7, metalness: 0.3, side: THREE.DoubleSide });
+  if (fl.length) group.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(fl), bm1));
+  if (fg.length) group.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(fg), bm2));
+  const mast = [], pen = [];
+  for (let k = 0; k < 16; k++) { const a = k / 16 * Math.PI * 2, x = Math.cos(a) * (Ro + 0.5), z = Math.sin(a) * (Ro + 0.5); mast.push(new THREE.CylinderGeometry(0.15, 0.2, 14, 6).translate(x, Ht + 17, z)); pen.push(new THREE.PlaneGeometry(4, 1.6).translate(2, 0, 0).rotateY(-a).translate(x, Ht + 22.5, z)); }
+  group.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(mast), new THREE.MeshStandardMaterial({ color: 0x4a3a2c, roughness: 0.8 })));
+  group.add(new THREE.Mesh(BufferGeometryUtils.mergeGeometries(pen), bm1));
+  // spectators: body + head boxes, one instance each, coloured shirts; they face the arena
+  const body = new THREE.BoxGeometry(0.62, 1.0, 0.42).translate(0, 0.5, 0), head = new THREE.BoxGeometry(0.34, 0.34, 0.34).translate(0, 1.2, 0);
+  const pg = BufferGeometryUtils.mergeGeometries([body.toNonIndexed(), head.toNonIndexed()]);
+  const pal = [0xc83c32, 0xe0b040, 0x3a6ab0, 0xe8e4d8, 0x3a8a50, 0x8a3aa0, 0x2a2a2e, 0xd07030, 0x6a4a30, 0xb0c8d8];
+  const rr = mulberry32(57), spots = [];
+  for (let i = 0; i < N; i++) { const r = W + 1.2 + i * dr + dr * 0.55, y = H0 + i * dh, n = Math.floor(r * Math.PI * 2 / 1.5); for (let j = 0; j < n; j++) { if (rr() < 0.22) continue; spots.push([(j + rr() * 0.4) / n * Math.PI * 2, r + (rr() - 0.5) * 0.5, y]); } }
+  const crowdM = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  crowdM.customProgramCacheKey = () => 'glad-crowd';
+  crowdM.onBeforeCompile = (sh) => {
+    sh.uniforms.uT = LAVA.uT; sh.uniforms.uH = GLADU.uH;
+    sh.vertexShader = sh.vertexShader.replace('#include <common>', '#include <common>\nuniform float uT; uniform float uH;')
+      .replace('#include <begin_vertex>', `#include <begin_vertex>
+      #ifdef USE_INSTANCING
+      float cph = instanceMatrix[3].x * 0.37 + instanceMatrix[3].z * 0.23;
+      float cjp = max(0.0, sin(uT * (4.0 + 4.0 * fract(cph * 3.1)) + cph * 6.0));
+      transformed.y += cjp * (0.06 + 0.7 * uH * uH) * step(0.25 + 0.5 * (1.0 - uH), fract(cph * 7.7));
+      transformed.x *= 1.0 + 0.25 * uH * cjp * step(0.9, position.y);
+      #endif`);
+  };
+  const im = new THREE.InstancedMesh(pg, crowdM, spots.length), m4 = new THREE.Matrix4(), q = new THREE.Quaternion(), sc = new THREE.Vector3(1, 1, 1), ps = new THREE.Vector3(), up = new THREE.Vector3(0, 1, 0), cc = new THREE.Color();
+  spots.forEach(([a, r, y], i) => { ps.set(Math.cos(a) * r, y, Math.sin(a) * r); q.setFromAxisAngle(up, -a - Math.PI / 2); sc.setScalar(0.9 + rr() * 0.25); m4.compose(ps, q, sc); im.setMatrixAt(i, m4); im.setColorAt(i, cc.setHex(pal[Math.floor(rr() * pal.length)]).multiplyScalar(0.75 + rr() * 0.3)); });
+  im.frustumCulled = false; group.add(im);
+}
+
 // world-space panel shader for buildings / floor
 function panelMaterial(color, opts) {
   const m = new THREE.MeshStandardMaterial({ color, roughness: opts.rough ?? 0.85, metalness: opts.metal ?? 0.1 });
@@ -76,7 +134,7 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', gale = env === 'gale', salt = env === 'salt', scrap = env === 'scrap' || env === 'wreck', wreck = env === 'wreck', quake = env === 'quake', snow = env === 'snow', storm = env === 'storm' || env === 'thunder', thunder = env === 'thunder', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister', creep = env === 'creep', atom = env === 'atom';
+  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', gale = env === 'gale', salt = env === 'salt', scrap = env === 'scrap' || env === 'wreck', wreck = env === 'wreck', quake = env === 'quake', snow = env === 'snow', storm = env === 'storm' || env === 'thunder', thunder = env === 'thunder', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister', creep = env === 'creep', atom = env === 'atom', glad = env === 'glad';
   LAVA.on = forge; GRID.on = grid; CREEP.on = creep; for (const v of CREEP.uC.value) v.set(0, 0, 0, 0); RADZ.on = atom; for (const v of RADZ.uR.value) v.set(0, 0, 0, 0); const PR = PLAT.R;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
@@ -118,7 +176,15 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float drip = 0.5 + 0.5 * sin(vWP.x * 0.55 + vWP.z * 0.2 + sin(vWP.z * 0.08 + vWP.x * 0.03) * 4.0);
       float dbig = 0.5 + 0.5 * sin(vWP.x * 0.045 + sin(vWP.z * 0.03) * 2.0);
       vec3 dsand = vec3(0.78, 0.6, 0.4) * (0.8 + 0.1 * drip + 0.12 * dbig + 0.05 * h21(floor(vWP.xz / 0.5)));
-      diffuseColor.rgb = mix(dsand, diffuseColor.rgb, 0.12 + 0.75 * stripe);` : ''}${ash ? `
+      diffuseColor.rgb = mix(dsand, diffuseColor.rgb, 0.12 + 0.75 * stripe);` : ''}${glad ? `
+      float grr = length(vWP.xz), gan = atan(vWP.z, vWP.x);
+      float grake = 0.5 + 0.5 * sin(grr * 2.4 + sin(gan * 7.0 + grr * 0.05) * 0.8);
+      vec3 gsand = vec3(0.66, 0.52, 0.36) * (0.88 + 0.06 * grake + 0.1 * vn2(vWP.xz / 6.0) + 0.05 * h21(floor(vWP.xz / 0.35)));
+      float gband = (1.0 - smoothstep(0.0, 0.6, abs(grr - 30.0))) + (1.0 - smoothstep(0.0, 0.5, abs(grr - 104.0))) + (1.0 - smoothstep(0.0, 0.35, abs(grr - 8.0)));
+      gsand = mix(gsand, vec3(0.5, 0.32, 0.2), gband * 0.55);
+      float gblood = smoothstep(0.78, 0.9, vn2(vWP.xz / 4.0 + 17.0)) * smoothstep(0.4, 0.7, vn2(vWP.xz / 0.8));
+      gsand *= 1.0 - 0.18 * gblood;
+      diffuseColor.rgb = gsand * (0.92 + 0.08 * fwm);` : ''}${ash ? `
       diffuseColor.rgb *= vec3(0.62, 0.55, 0.52) * (0.85 + 0.25 * h21(floor(vWP.xz / 6.0)));` : ''}${autumn ? `
       float lfk = smoothstep(0.55, 0.85, h21(floor(vWP.xz / 7.0)) * 0.65 + h21(floor(vWP.xz / 2.3)) * 0.35);
       vec2 lc = floor(vWP.xz / 0.5);
@@ -266,7 +332,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   });
   const floor = new THREE.Mesh(PR ? new THREE.CircleGeometry(PR, 180).rotateX(-Math.PI / 2) : new THREE.PlaneGeometry(1400, 1400).rotateX(-Math.PI / 2), floorMat);
   floor.receiveShadow = true; group.add(floor);
-  if (PR) {
+  if (PR && !glad) {
     const skirtM = new THREE.MeshStandardMaterial({ color: 0x3a3f48, roughness: 0.6, metalness: 0.6 });
     group.add(new THREE.Mesh(new THREE.CylinderGeometry(PR, PR * 0.9, 9, 120, 1, true).translate(0, -4.5, 0), skirtM));
     group.add(new THREE.Mesh(new THREE.CylinderGeometry(PR * 0.9, PR * 0.35, 26, 120, 1, true).translate(0, -22, 0), skirtM));
@@ -318,7 +384,11 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       if (vWN.y > 0.5) diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.18, 0.32, 0.12), 0.75);
       else diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.2, 0.32, 0.14), max(smoothstep(4.0, 0.0, vWP.y) * 0.8, mo * 0.4));` : ''}${snow ? `
       if (vWN.y > 0.5) diffuseColor.rgb = vec3(0.84, 0.88, 0.93) * (0.92 + 0.08 * h21(floor(vWP.xz / 2.0)));
-      else diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.85, 0.9), step(0.5, fract(vWP.y / 3.5 + 0.38)) * step(fract(vWP.y / 3.5 + 0.38), 0.53) * 0.75);` : ''}`,
+      else diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.8, 0.85, 0.9), step(0.5, fract(vWP.y / 3.5 + 0.38)) * step(fract(vWP.y / 3.5 + 0.38), 0.53) * 0.75);` : ''}${glad ? `
+      bwin = 0.0; bwet = 0.0;
+      float gcs = gridLine(vWP.y, 1.25, 0.05), gcv = gridLine(vWP.x + vWP.z + step(0.5, fract(vWP.y / 2.5)) * 0.9, 1.8, 0.05);
+      diffuseColor.rgb = vec3(0.68, 0.59, 0.46) * (0.8 + 0.2 * h21(vec2(floor((vWP.x + vWP.z) / 1.8), floor(vWP.y / 1.25)))) * (1.0 - 0.3 * max(gcs, gcv));
+      diffuseColor.rgb *= 1.0 - 0.3 * smoothstep(2.5, 0.0, vWP.y);` : ''}`,
     emit: night ? `
       if (abs(vWN.y) < 0.5) {
         float fy = fract(vWP.y / 3.5); float wn = step(0.62, fy) * step(fy, 0.82);
@@ -347,8 +417,14 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
     }
     return true;
   };
+  if (glad) {   // coliseum: two rings of stone pillars and four low altar blocks for cover (all collidable)
+    for (let k = 0; k < 8; k++) { const a = (k + 0.5) * Math.PI / 4, x = Math.round(Math.cos(a) * 70), z = Math.round(Math.sin(a) * 70); boxes.push([x, z, 5, 5, 10]); addSolid(x, z, 5, 5, 10, 0, 'building'); }
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4, x = Math.round(Math.cos(a) * 100), z = Math.round(Math.sin(a) * 100); boxes.push([x, z, 6, 6, 12]); addSolid(x, z, 6, 6, 12, 0, 'building'); }
+    for (let k = 0; k < 4; k++) { const a = k * Math.PI / 2 + Math.PI / 4, x = Math.round(Math.cos(a) * 28), z = Math.round(Math.sin(a) * 28); boxes.push([x, z, 9, 9, 3.2]); addSolid(x, z, 9, 9, 3.2, 0, 'building'); }
+    buildStands(group, PR);
+  }
   let tries = 0;
-  while (boxes.length < 30 && tries++ < 2000) {
+  while (boxes.length < (glad ? 0 : 30) && tries++ < 2000) {
     const w = 10 + Math.floor(rnd() * 4) * 4, d = 10 + Math.floor(rnd() * 4) * 4;
     const h = 7 + Math.floor(rnd() * 6) * 3.5;
     const x = Math.round(((rnd() * 2 - 1) * (ARENA - 25)) / 4) * 4, z = Math.round(((rnd() * 2 - 1) * (ARENA - 25)) / 4) * 4;
@@ -469,13 +545,13 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       fn(x, z); k++;
     }
   };
-  scatter(16, 2, (x, z) => { place.push({ kit: 'P_Pillar', matrix: M4(x, 0, z) }); addSolid(x, z, 2, 2, 8, 0, 'pillar'); });
-  scatter(18, 4, (x, z) => {
+  if (!glad) scatter(16, 2, (x, z) => { place.push({ kit: 'P_Pillar', matrix: M4(x, 0, z) }); addSolid(x, z, 2, 2, 8, 0, 'pillar'); });
+  if (!glad) scatter(18, 4, (x, z) => {
     const rot = rnd() < 0.5 ? 0 : Math.PI / 2, w = rot ? 2.5 : 5, d = rot ? 5 : 2.5;
     place.push({ kit: 'P_Crate', matrix: M4(x, 0, z, rot) }); addSolid(x, z, w, d, 2.5, 0, 'crate');
     if (rnd() < 0.4) { place.push({ kit: 'P_Crate', matrix: M4(x, 2.5, z, rot) }); addSolid(x, z, w, d, 2.5, 2.5, 'crate'); }
   });
-  scatter(22, 2.5, (x, z) => {
+  if (!glad) scatter(22, 2.5, (x, z) => {
     const rot = rnd() < 0.5 ? 0 : Math.PI / 2;
     place.push({ kit: 'P_Barrier', matrix: M4(x, 0, z, rot) }); addSolid(x, z, rot ? 0.9 : 3, rot ? 3 : 0.9, 1.1, 0, 'barrier');
   });
@@ -523,7 +599,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
     scatter(70, 1.5, (x, z) => { place.push({ kit: 'P_Fern', matrix: M4(x, 0, z, rnd() * 6.28, 0.8 + rnd() * 0.8) }); });
   }
   // a few set pieces round the centre plaza (the original's yellow-striped blocks)
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < (glad ? 0 : 6); i++) {   // not in the coliseum: it has its own stone cover
     const a = i / 6 * Math.PI * 2 + 0.3;
     const x = Math.cos(a) * 34, z = Math.sin(a) * 34;
     place.push({ kit: 'P_Pillar', matrix: M4(x, 0, z, a) }); addSolid(x, z, 2.4, 2.4, 8, 0, 'pillar');

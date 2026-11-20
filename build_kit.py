@@ -158,6 +158,9 @@ M = dict(
     ReviverPaint=mat("ReviverPaint", "#d4d8cc", 0.4, metal=0.35), Nanite=mat("Nanite", "#c8ffd0", 0.2, emit="#30ff78", strength=2.4),
     PylonPaint=mat("PylonPaint", "#3a3440", 0.5, metal=0.4), PylonGlow=mat("PylonGlow", "#ffd0c0", 0.2, emit="#ff4a2a", strength=2.6),
     CamoLens=mat("CamoLens", "#c8f4ff", 0.1, emit="#60d8ff", strength=1.6),
+    AdaptGlow=mat("AdaptGlow", "#d8ecff", 0.25, emit="#6fb8ff", strength=2.4), AdaptPaint=mat("AdaptPaint", "#5a5e6a", 0.45, metal=0.55),
+    VentGlow=mat("VentGlow", "#ffd8a0", 0.3, emit="#ff7a20", strength=2.6), SawSteel=mat("SawSteel", "#c8ccd2", 0.22, metal=0.95),
+    ArenaStone=mat("ArenaStone", "#b09a7a", 0.88),
     RadGlow=mat("RadGlow", "#e8ffc8", 0.3, emit="#8cff30", strength=2.2), BloatPaint=mat("BloatPaint", "#c8b030", 0.45, metal=0.3),
     TowerConc=mat("TowerConc", "#a8a8a2", 0.85), IsoGlow=mat("IsoGlow", "#eaffd0", 0.2, emit="#a8ff40", strength=2.0),
     BioFlesh=mat("BioFlesh", "#4c2c3c", 0.5), BioGlow=mat("BioGlow", "#eaffb8", 0.3, emit="#9cff3a", strength=2.0),
@@ -3561,7 +3564,112 @@ def build_isotope():
     torus((0, -0.05, -0.5), 0.18, 0.04, M["Hazard"], K)
     muzzle("Muzzle_Iso", (0, 1.42, 0.02), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb(); build_bloater(); build_coolant(); build_cooltower(); build_atomdome(); build_decon(); build_isotope()
+
+def build_adaptor():
+    # adaptor: a heavy four-legged gladiator on the walker's joint layout (AP_ names, scaled x1.3 in game). a ring of six
+    # armour plates AP_Ring circles the torso (spins about Z); the plates and the chest core use AdaptGlow, whose colour
+    # the game swaps to show which damage type the armour has adapted to. twin cannon AP_Gun with Muzzle_Adapt
+    K = kit("E_Adaptor")
+    body = empty("AP_Body", (0, 0, 2.2), K)
+    box((0, 0, 0), (1.8, 2.2, 0.95), M["AdaptPaint"], body, bevel=0.12)
+    wedge((0, 0.9, 0.1), (1.4, 0.7, 0.8), M["EArmor2"], body, bevel=0.06, taper=0.55)
+    box((0, 1.24, 0.18), (0.8, 0.08, 0.14), M["EEye"], body)
+    ball((0, 0.55, 0.25), 0.42, M["AdaptGlow"], body, sub=2)
+    torus((0, 0.55, 0.25), 0.46, 0.07, M["Frame"], body, rot=ALONG_Y)
+    for sx in (-1, 1):
+        box((sx * 1.0, 0.1, 0.25), (0.35, 1.6, 0.7), M["EArmor2"], body, bevel=0.06)
+        cyl((sx * 1.05, -0.6, 0.7), 0.16, 0.5, M["Frame"], body, verts=8)
+    box((0, -0.9, 0.55), (1.0, 0.5, 0.4), M["Frame"], body, bevel=0.04)
+    ring = empty("AP_Ring", (0, 0, 0.05), body)
+    torus((0, 0, 0), 1.55, 0.06, M["Joint"], ring)
+    for k in range(6):
+        a = k * math.pi / 3
+        pl = empty("AP_Plate%d" % (k + 1), (math.cos(a) * 1.6, math.sin(a) * 1.6, 0), ring, rot=(0, 0, a))
+        box((0, 0, 0), (0.16, 0.85, 0.8), M["AdaptPaint"], pl, bevel=0.04)
+        box((0.09, 0, 0), (0.04, 0.6, 0.55), M["AdaptGlow"], pl)
+    gun = empty("AP_Gun", (0, 0, 0.75), body)
+    box((0, 0.1, 0.2), (1.0, 1.0, 0.5), M["EArmor2"], gun, bevel=0.05)
+    for s_ in (-1, 1):
+        cyl((s_ * 0.3, 1.0, 0.22), 0.13, 1.5, M["Frame"], gun, rot=ALONG_Y, verts=10)
+        torus((s_ * 0.3, 1.55, 0.22), 0.15, 0.04, M["AdaptGlow"], gun, rot=ALONG_Y)
+    muzzle("Muzzle_Adapt", (0, 1.85, 0.22), gun)
+    for i, (x, y) in enumerate(((1, 1), (-1, 1), (1, -1), (-1, -1))):
+        leg = empty(f"AP_Leg{i + 1}", (x * 0.85, y * 0.95, -0.15), body, rot=(0, 0, math.atan2(y, x)))
+        ball((0, 0, 0), 0.3, M["Joint"], leg)
+        box((0.65, 0, 0.25), (1.3, 0.36, 0.36), M["AdaptPaint"], leg, rot=(0, math.radians(-25), 0), bevel=0.04)
+        kn = empty(f"AP_Knee{i + 1}", (1.25, 0, 0.55), leg)
+        ball((0, 0, 0), 0.23, M["AdaptGlow"], kn)
+        box((0.15, 0, -1.2), (0.32, 0.32, 2.4), M["Frame"], kn, rot=(0, math.radians(-8), 0), bevel=0.03)
+        box((0.32, 0, -2.45), (0.6, 0.6, 0.2), M["EArmor2"], kn, bevel=0.03)
+
+def build_saws():
+    # SB-4 orbit saws: a low shoulder drum with a sawblade SWP_Disc on top (spins about Z) and a hazard-striped lid
+    K = kit("S_Saws")
+    cyl((0, 0, 0.25), 0.44, 0.5, M["Armor2"], K, verts=16)
+    torus((0, 0, 0.5), 0.44, 0.05, M["Hazard"], K)
+    box((0, 0.42, 0.22), (0.55, 0.14, 0.32), M["Frame"], K, bevel=0.02)
+    d = empty("SWP_Disc", (0, 0, 0.6), K)
+    cyl((0, 0, 0), 0.4, 0.05, M["SawSteel"], d, verts=20)
+    for k in range(10):
+        a = k * math.pi / 5
+        box((math.cos(a) * 0.43, math.sin(a) * 0.43, 0), (0.12, 0.06, 0.04), M["SawSteel"], d, rot=(0, 0, a + 0.5))
+    cyl((0, 0, 0.03), 0.1, 0.06, M["Hazard"], d, verts=8)
+    muzzle("Muzzle_Saws", (0, 0, 0.7), K)
+
+def build_sawdisc():
+    # one orbiting sawblade (spawned four times by the SB-4): a steel disc with 16 hooked teeth, a hazard hub and a dark
+    # inner ring. flat in the XY plane, origin at the hub
+    K = kit("P_SawDisc")
+    cyl((0, 0, 0), 0.85, 0.07, M["SawSteel"], K, verts=32)
+    torus((0, 0, 0), 0.6, 0.04, M["Frame"], K)
+    for k in range(16):
+        a = k * math.pi / 8
+        wedge((math.cos(a) * 0.92, math.sin(a) * 0.92, 0), (0.22, 0.14, 0.06), M["SawSteel"], K, rot=(0, 0, a + 1.2), taper=0.2)
+    cyl((0, 0, 0), 0.2, 0.12, M["Hazard"], K, verts=10)
+    for k in range(3):
+        a = k * 2 * math.pi / 3
+        cyl((math.cos(a) * 0.38, math.sin(a) * 0.38, 0), 0.09, 0.09, M["Black"], K, verts=8)
+
+def build_arenagate():
+    # coliseum gate (placed on the arena wall facing the centre, front +Y): two stone piers with bronze bands, a lintel
+    # with a crest, a dark tunnel behind and a portcullis AG_Bars that the game raises while a round's fighters walk out
+    K = kit("P_ArenaGate")
+    for sx in (-1, 1):
+        box((sx * 7.0, 0, 7.0), (3.6, 4.0, 14.0), M["ArenaStone"], K, bevel=0.1)
+        for z in (2.0, 12.0):
+            box((sx * 7.0, 0.05, z), (3.8, 4.1, 0.5), M["CommandGold"], K)
+        cyl((sx * 7.0, 1.6, 14.9), 0.9, 1.4, M["Frame"], K, verts=12, r2=1.2)
+        ball((sx * 7.0, 1.6, 15.8), 0.65, M["VentGlow"], K, sub=1)
+    box((0, 0, 12.5), (17.6, 4.0, 3.0), M["ArenaStone"], K, bevel=0.08)
+    box((0, 2.05, 12.5), (6.0, 0.12, 1.6), M["CommandGold"], K)
+    ball((0, 2.1, 12.5), 0.55, M["EEye"], K, sub=1)
+    box((0, -2.6, 5.5), (10.4, 1.2, 11.0), M["Black"], K)
+    bars = empty("AG_Bars", (0, 0.9, 0), K)
+    for k in range(7):
+        x = -4.5 + k * 1.5
+        box((x, 0, 5.4), (0.28, 0.28, 10.8), M["Frame"], bars)
+        wedge((x, 0, 0.1), (0.3, 0.3, 0.4), M["Joint"], bars, rot=(math.pi, 0, 0), taper=0.1)
+    for z in (2.5, 6.0, 9.5):
+        box((0, 0, z), (10.0, 0.22, 0.3), M["Frame"], bars)
+
+def build_firevent():
+    # arena floor flame vent (radius ~3 m): a bronze rim, a cross-barred iron grate and a glowing pit underneath FV_Glow
+    # (scaled up and brightened in game while it warns and erupts)
+    K = kit("P_FireVent")
+    cyl((0, 0, 0.06), 3.1, 0.12, M["CommandGold"], K, verts=32)
+    cyl((0, 0, 0.0), 2.75, 0.1, M["Black"], K, verts=32)
+    g = empty("FV_Glow", (0, 0, 0.02), K)
+    cyl((0, 0, 0), 2.6, 0.04, M["VentGlow"], g, verts=28)
+    for k in range(7):
+        x = -2.4 + k * 0.8
+        h = 2 * math.sqrt(max(0.0, 2.7 ** 2 - x ** 2))
+        box((x, 0, 0.12), (0.14, h, 0.12), M["Frame"], K)
+        box((0, x, 0.14), (h, 0.14, 0.1), M["Frame"], K)
+    for k in range(8):
+        a = k * math.pi / 4
+        box((math.cos(a) * 2.95, math.sin(a) * 2.95, 0.16), (0.3, 0.3, 0.12), M["Joint"], K, rot=(0, 0, a))
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb(); build_bloater(); build_coolant(); build_cooltower(); build_atomdome(); build_decon(); build_isotope(); build_adaptor(); build_saws(); build_sawdisc(); build_arenagate(); build_firevent()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
