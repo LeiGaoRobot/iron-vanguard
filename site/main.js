@@ -669,7 +669,7 @@ function resize() {
 addEventListener('resize', resize);
 
 G.scene = scene; G.camera = camera; G.renderer = renderer; G.composer = composer; G.bloom = bloom;
-const fx = new FX(scene); G.fx = fx;
+const fx = new FX(scene); G.fx = fx; fx.lightRefs = { sun, hemi, dir: SUN_DIR };
 
 // ------------------------------------------------------------------ mech callbacks (sounds, dust, shake)
 const mctx = {
