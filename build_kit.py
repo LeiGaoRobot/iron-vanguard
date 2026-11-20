@@ -158,6 +158,8 @@ M = dict(
     ReviverPaint=mat("ReviverPaint", "#d4d8cc", 0.4, metal=0.35), Nanite=mat("Nanite", "#c8ffd0", 0.2, emit="#30ff78", strength=2.4),
     PylonPaint=mat("PylonPaint", "#3a3440", 0.5, metal=0.4), PylonGlow=mat("PylonGlow", "#ffd0c0", 0.2, emit="#ff4a2a", strength=2.6),
     CamoLens=mat("CamoLens", "#c8f4ff", 0.1, emit="#60d8ff", strength=1.6),
+    BioFlesh=mat("BioFlesh", "#4c2c3c", 0.5), BioGlow=mat("BioGlow", "#eaffb8", 0.3, emit="#9cff3a", strength=2.0),
+    Chitin=mat("Chitin", "#2a2432", 0.32, metal=0.2), PlasmaGlow=mat("PlasmaGlow", "#e2f0ff", 0.2, emit="#5c9cff", strength=2.2),
     PumpGlow=mat("PumpGlow", "#d0f4ff", 0.2, emit="#30b8ff", strength=2.2), SwapCore=mat("SwapCore", "#f0d8ff", 0.15, emit="#b040ff", strength=2.4),
     NanoGlow=mat("NanoGlow", "#e0fff8", 0.2, emit="#7cf0e0", strength=1.8), SwapPaint=mat("SwapPaint", "#3a3448", 0.35, metal=0.6), PumpPaint=mat("PumpPaint", "#4a5a60", 0.55, metal=0.4),
     PressGlow=mat("PressGlow", "#ffd0c0", 0.3, emit="#ff3a20", strength=2.0), FabGlow=mat("FabGlow", "#fff0c8", 0.2, emit="#ffb040", strength=2.2),
@@ -3359,7 +3361,79 @@ def build_nanocloud():
     box((0, 0.42, 0.25), (0.5, 0.12, 0.3), M["Frame"], K, bevel=0.02)
     muzzle("Muzzle_NanoCloud", (0, 0, 0.8), K)
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud()
+
+def build_bionode():
+    # hive node: a lumpy flesh mound (collision box 8 x 8 x 5 m in game) with a glowing sac BN_Core on a stalk above it,
+    # chitin petals around the sac (BN_Petals, they flex while it pulses) and tendrils creeping out along the ground
+    K = kit("E_BioNode")
+    ball((0, 0, 1.5), 4.4, M["BioFlesh"], K, scale=(1, 1, 0.55))
+    for (x, y, z, r) in ((2.3, 1.4, 2.5, 2.0), (-1.9, -2.0, 2.3, 2.2), (-1.6, 2.2, 2.0, 1.6), (1.8, -2.2, 1.8, 1.5)):
+        ball((x, y, z), r, M["BioFlesh"], K, scale=(1, 1, 0.8))
+    cyl((0, 0, 4.0), 1.45, 3.2, M["BioFlesh"], K, verts=14, r2=1.0)
+    for k in range(8):
+        a = k * math.pi / 4 + 0.2
+        cyl((math.cos(a) * 5.2, math.sin(a) * 5.2, 0.35), 0.38, 4.2, M["BioFlesh"], K, rot=(0, 1.45, a), verts=8, r2=0.12)
+        ball((math.cos(a) * 3.4, math.sin(a) * 3.4, 2.2 + 0.4 * math.sin(k * 2.1)), 0.35, M["BioGlow"], K, sub=1)
+    for k in range(6):
+        a = k * math.pi / 3
+        cyl((math.cos(a) * 2.6, math.sin(a) * 2.6, 3.4), 0.22, 1.8, M["Chitin"], K, rot=(0, 0.55, a), verts=6, r2=0.02)
+    core = empty("BN_Core", (0, 0, 6.6), K)
+    ball((0, 0, 0), 1.7, M["BioGlow"], core, sub=2)
+    torus((0, 0, -0.6), 1.5, 0.16, M["BioFlesh"], core)
+    pet = empty("BN_Petals", (0, 0, 5.6), K)
+    for k in range(5):
+        a = k * 2 * math.pi / 5
+        box((math.cos(a) * 1.7, math.sin(a) * 1.7, 0.9), (0.9, 0.18, 2.4), M["Chitin"], pet, rot=(0, -0.45, a))
+
+def build_seeder():
+    # seeder: a six-legged bug carrying a glowing creep sac SD_Sac on its back. legs hang from hip empties SD_L1-6
+    # (odd = left side -X, even = right); mouth gun Muzzle_Seed at the front (+Y)
+    K = kit("E_Seeder")
+    ball((0, 0, 1.6), 1.0, M["BioFlesh"], K, scale=(0.95, 1.55, 0.62))
+    box((0, 0.2, 2.15), (1.3, 1.9, 0.22), M["Chitin"], K, bevel=0.05)
+    box((0, -0.9, 2.0), (1.1, 0.8, 0.2), M["Chitin"], K, bevel=0.05)
+    ball((0, 1.55, 1.5), 0.58, M["Chitin"], K, scale=(1, 1.1, 0.85))
+    for sx in (-1, 1):
+        ball((sx * 0.3, 1.95, 1.7), 0.11, M["BioGlow"], K, sub=1)
+        cyl((sx * 0.22, 2.1, 1.25), 0.07, 0.55, M["Chitin"], K, rot=(1.2, 0, sx * 0.4), verts=6, r2=0.02)
+    sac = empty("SD_Sac", (0, -0.75, 2.35), K)
+    ball((0, 0, 0), 0.78, M["BioGlow"], sac, scale=(1, 1.2, 0.9), sub=2)
+    torus((0, 0, -0.1), 0.72, 0.08, M["BioFlesh"], sac)
+    i = 0
+    for yy in (0.7, 0.0, -0.7):
+        for sx in (-1, 1):
+            i += 1
+            L = empty("SD_L%d" % i, (sx * 0.75, yy, 1.5), K)
+            cyl((sx * 0.48, 0, 0.27), 0.13, 1.1, M["Chitin"], L, rot=(0, sx * 1.05, 0), verts=8)
+            ball((sx * 0.95, 0, 0.55), 0.15, M["BioFlesh"], L, sub=1)
+            cyl((sx * 1.13, 0, -0.47), 0.1, 2.08, M["Chitin"], L, rot=(0, sx * 2.97, 0), verts=8, r2=0.03)
+    muzzle("Muzzle_Seed", (0, 2.1, 1.4), K)
+
+def build_tumor():
+    # creep tumour: a small pulsing bulb with a glowing top TU_Core and a ring of chitin spikes, ~1.8 m tall
+    K = kit("E_Tumor")
+    ball((0, 0, 0.6), 1.15, M["BioFlesh"], K, scale=(1, 1, 0.7))
+    for k in range(6):
+        a = k * math.pi / 3 + 0.3
+        cyl((math.cos(a) * 0.95, math.sin(a) * 0.95, 0.75), 0.13, 1.0, M["Chitin"], K, rot=(0, 0.75, a), verts=6, r2=0.02)
+        cyl((math.cos(a) * 1.6, math.sin(a) * 1.6, 0.12), 0.16, 1.4, M["BioFlesh"], K, rot=(0, 1.5, a), verts=6, r2=0.05)
+    core = empty("TU_Core", (0, 0, 1.25), K)
+    ball((0, 0, 0), 0.55, M["BioGlow"], core, sub=2)
+
+def build_plorb():
+    # PL-3 plasma orb gun: a squat emitter with three glowing field coils around the barrel and the orb forming at the tip
+    K = kit("W_PlOrb")
+    box((0, 0, 0.05), (0.46, 0.8, 0.44), M["Frame"], K, bevel=0.06)
+    box((0, -0.15, 0.3), (0.5, 0.45, 0.1), M["Armor2"], K)
+    cyl((0, 0.6, 0.05), 0.17, 0.62, M["Joint"], K, rot=ALONG_Y, verts=12)
+    for yy in (0.42, 0.62, 0.82):
+        torus((0, yy, 0.05), 0.25, 0.045, M["PlasmaGlow"], K, rot=ALONG_Y)
+    for sx in (-1, 1):
+        box((sx * 0.22, 0.85, 0.05), (0.06, 0.45, 0.16), M["Armor2"], K)
+    ball((0, 1.0, 0.05), 0.15, M["PlasmaGlow"], K, sub=1)
+    muzzle("Muzzle_PlOrb", (0, 1.15, 0.05), K)
+
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()

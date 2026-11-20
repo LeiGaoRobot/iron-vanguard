@@ -1,6 +1,6 @@
 // Weapons, projectiles, enemies, damage.  Shared state lives in G.
 import * as THREE from 'three';
-import { RAYF, barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD, GRID } from './world.js';
+import { RAYF, barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD, GRID, CREEP } from './world.js';
 import { cloneKit, nodes, find, recolor } from './kit.js';
 import { Mech, angDiff, PALETTES, PHYS } from './mech.js';
 import { sfx } from './audio.js';
@@ -26,6 +26,7 @@ export const WEAPONS = {
   needler: { slot: 'arm', name: 'NX-8 针刺枪', en: 'NX-8 Needler', desc: '追踪锁定目标的钢针 · 扎在敌机上 · 同一目标扎满 8 根一起引爆（100 / 4.5 m）· 3 秒没补针就脱落', type: 'bullet', needle: true, rate: 0.085, dmg: 5, speed: 150, spread: 0.02, mag: 48, reload: 2.2, color: 0xff70e0, w: 0.16, len: 3, life: 1.6, sfx: 'rifle', recoil: 0.08 },
   ricochet: { slot: 'arm', name: 'RB-4 跳弹枪', en: 'RB-4 Ricochet', desc: '撞墙反弹 3 次 · 反弹后转向附近敌机 · 每弹一次 +25%', type: 'bullet', rate: 0.11, dmg: 14, speed: 240, spread: 0.008, mag: 36, reload: 2.0, color: 0x80ffd0, w: 0.22, len: 6, life: 1.8, bounce: 3, sfx: 'rifle', recoil: 0.15 },
   drill: { slot: 'arm', name: 'DR-2 钻地弹', en: 'DR-2 Drill Gun', desc: '慢速钻头弹 · 可钻透 18 m 内的墙体与掩体 · 命中后爆炸 3.5 m · 隔着墙打躲在后面的敌机（看雷达）', type: 'bullet', drill: 18, rate: 0.36, dmg: 58, splash: 3.5, speed: 110, spread: 0.004, mag: 10, reload: 2.2, life: 1.8, color: 0xffa040, w: 0.45, len: 3, sfx: 'cannon', recoil: 0.4 },
+  plorb: { slot: 'arm', name: 'PL-3 等离子球', en: 'PL-3 Plasma Orb', desc: '发射缓慢飞行的等离子球 · 飞行中每 0.25 秒电击身边 8 m 内最多 2 台敌机（对菌巢 / 菌瘤 / 播种者 ×1.5）· 撞上敌机、墙体或飞满 2.8 秒后炸开', type: 'plorb', rate: 0.5, dmg: 60, splash: 5, zap: 13, zapR: 8, zapN: 2, bio: 1.5, speed: 22, life: 2.8, mag: 8, reload: 2.2, sfx: 'coil', recoil: 0.35 },
   rifle: { slot: 'arm', name: 'AR-77 突击步枪', en: 'AR-77 Rifle', desc: '全自动 · 精准 · 均衡', type: 'bullet', rate: 0.1, dmg: 17, speed: 320, spread: 0.005, mag: 40, reload: 1.7, color: 0xffd27a, w: 0.22, len: 7, sfx: 'rifle', recoil: 0.18 },
   gatling: { slot: 'arm', name: 'GX-6 加特林', en: 'GX-6 Gatling', desc: '需预转 · 高射速 · 散布大', type: 'bullet', rate: 0.042, spinUp: 0.45, dmg: 8.5, speed: 290, spread: 0.022, mag: 200, reload: 3.0, color: 0xffb860, w: 0.18, len: 6, sfx: 'gatling', recoil: 0.08 },
   coil: { slot: 'arm', name: 'LC-3 闪电线圈', en: 'LC-3 Arc Coil', desc: '自动索敌 · 连锁 3 个目标', type: 'chain', rate: 0.5, dmg: 44, range: 60, chains: 3, chainR: 18, mag: 14, reload: 2.2, sfx: 'coil', recoil: 0.3 },
@@ -77,7 +78,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -705,6 +706,9 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     const out = G.hooks.some((h) => h.owner === owner && h.slot === slot);
     if (held && ws.cd <= 0 && !out && isP && owner.alive) { ws.cd = d.rate; fireHook(owner, slot, d, dmgMul, aim); if (me) G.stats.shots++; mslot.recoil = 1; }
     for (const m of mslot.models) { const hk = m._hook || (m._hook = find(m, 'HK_Head')); if (hk) hk.visible = !out; }
+  } else if (d.type === 'plorb') {
+    if (held && ws.reloadT <= 0 && ws.cd <= 0 && ws.ammo > 0 && isP) { ws.cd = d.rate; ws.ammo--; firePlOrb(owner, slot, d, dmgMul, aim, me); if (me) { G.stats.shots++; sfx(d.sfx, 0); } mslot.recoil = 1; }
+    if (ws.ammo <= 0) startReload();
   } else if (d.type === 'disc') {
     if (held && ws.cd <= 0 && ws.ammo > 0 && isP) { ws.cd = d.rate; ws.ammo--; throwDisc(owner, slot, ws, d, dmgMul, aim); if (me) G.stats.shots++; mslot.recoil = 1; }
     for (const m of mslot.models) { const dk = m._disc || (m._disc = find(m, 'DS_Disc')); if (dk) { dk.visible = ws.ammo > 0; dk.rotation.y += dt * 8; } }
@@ -1943,7 +1947,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -9578,6 +9582,248 @@ function updateNano(dt) {
 }
 export function clearNano() { for (const N of G.nanos) N.o.parent && N.o.parent.remove(N.o); G.nanos.length = 0; G.nanoEat = 0; G.nanoDmg = 0; G.nanoN = 0; }
 
+
+// ------------------------------------------------------------------ v55 Hive Creep: three hive nodes spread living creep
+// (circles painted on the floor through CREEP.uC). Creep slows and hurts mechs standing in it, heals enemies on it, and
+// eats the purifier at the centre while it touches it. Nodes on their own only reach 80 m; seeders carry it further by
+// planting tumours on the creep's front edge. Destroy a node and its creep (and its tumours' support) recedes
+export const BIO = { nodeHp: 3600, nodes: [[-125, -75], [125, -80], [5, 140]], r0: 18, grow: 0.35, rMax: 80, shrink: 5, coreDps: 26, coreR: 10,
+  pDps: 8, pSlow: 0.7, regen: 0.012, tumorHp: 320, tumorR: 20, tumorGrow: 1.5, maxC: 10, spitCd: [4, 5.5], spitR: 45, spitDmg: 14 };
+G.bio = null;
+export function inCreep(pos, pad = 1) {
+  const B = G.bio; if (!B) return false;
+  for (const c of B.circles) if (c.r > 1 && Math.hypot(pos.x - c.x, pos.z - c.z) < c.r - pad) return true;
+  return false;
+}
+export class BioNode extends Enemy {
+  constructor(x, z, i) {
+    super('bionode', 'E_BioNode', new V3(x, 0, z), BIO.nodeHp, 3.2); this.boom = 2.4; this.isObjective = true; this.i = i;
+    this.obj.rotation.y = i * 2.1 + 0.4;
+    this.solids = [addSolid(x, z, 8, 8, 5.0, 0, 'bionode')];
+    this.c.set(x, 6.8, z); this.ph = Math.random() * 6;
+  }
+  die() {
+    for (const so of this.solids) removeSolid(so);
+    this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this);
+    explodeAt(this.c, 11, 40, 'P', 2.6, 0x9cff3a); G.fx.flash(this.c, 0x9cff3a, 60, 30, 0.5);
+    for (let k = 0; k < 5; k++) G.queue.push({ label: 'bionode', t: 0.2 + k * 0.28, fn: () => explodeAt(new V3(this.pos.x + (Math.random() - 0.5) * 8, 1 + Math.random() * 4, this.pos.z + (Math.random() - 0.5) * 8), 0, 0, 'P', 1.3, 0x9cff3a) });
+    const B = G.bio; if (B) { B.down++; G.onNodeDown && G.onNodeDown(this, B); }
+    this.remove();
+  }
+  update(dt) {
+    const n = this.n; this.ph += dt;
+    const pulse = 0.5 + 0.5 * Math.sin(this.ph * 2.4);
+    if (n.BN_Core) n.BN_Core.scale.setScalar(1 + 0.12 * pulse + (this.flash > 0 ? 0.1 : 0));
+    if (n.BN_Petals) { n.BN_Petals.rotation.z += dt * 0.25; n.BN_Petals.scale.set(1 + 0.08 * pulse, 1 + 0.08 * pulse, 1); }
+    if (Math.random() < 0.15) G.fx.emit('add', { x: this.pos.x + (Math.random() - 0.5) * 6, y: 2 + Math.random() * 5, z: this.pos.z + (Math.random() - 0.5) * 6, vy: 1.5, life: 1.2, s0: 0.5, s1: 0.1, c0: 0xb8ff60 });
+  }
+}
+export class Tumor extends Enemy {
+  constructor(pos) {
+    super('tumor', 'E_Tumor', pos, BIO.tumorHp, 1.6); this.boom = 0.9;
+    this.pos.y = groundAt(pos.x, pos.z, 30); this.age = 0; this.obj.scale.setScalar(0.2); this.obj.rotation.y = Math.random() * 6;
+    this.c.set(this.pos.x, this.pos.y + 1.3, this.pos.z); this.spitT = 2 + Math.random() * 2;
+    const B = G.bio; if (B && B.circles.length < BIO.maxC) B.circles.push({ x: pos.x, z: pos.z, r: 0, rT: BIO.tumorR, src: this });
+    G.tumors = (G.tumors || 0) + 1; G.onTumor && G.onTumor(this);
+  }
+  die() {
+    this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this);
+    explodeAt(this.c, 3, 10, 'P', 0.9, 0x9cff3a); G.fx.sparks(this.c, null, 14, 0xb8ff60, 12, 1, 0.5, 0.3);
+    this.remove();
+  }
+  update(dt) {
+    this.age += dt; const k = Math.min(1, 0.2 + this.age / 1.5);
+    this.obj.scale.setScalar(k * (1 + 0.05 * Math.sin(this.age * 5)));
+    if (this.n.TU_Core) this.n.TU_Core.scale.setScalar(1 + 0.2 * Math.sin(this.age * 6));
+    this.spitT -= dt;
+    if (this.spitT <= 0 && this.age > 1.5) {
+      this.spitT = BIO.spitCd[0] + Math.random() * (BIO.spitCd[1] - BIO.spitCd[0]);
+      const t = this.tg(), tc = t.center ? t.center(playerC) : t.pos;
+      if (this.c.distanceTo(tc) < BIO.spitR && this.checkLos(dt)) bioLob(this, this.c.clone().setY(this.c.y + 0.5), t, tc, BIO.spitDmg, 'tumor-spore');
+    }
+  }
+}
+function bioLob(e, mp, t, tc, dmg, label) {   // green spore blob lobbed onto the target's predicted spot
+  const D = Math.hypot(tc.x - mp.x, tc.z - mp.z), Tf = 0.9 + D / 40, g = 22;
+  const aim = new V3().copy(tc).addScaledVector(t.vel || _c.set(0, 0, 0), Tf * 0.6);
+  const gy = groundAt(aim.x, aim.z, aim.y + 1), low = aim.y - gy < 4; if (low) aim.y = gy;
+  const v = new V3((aim.x - mp.x) / Tf, (aim.y - mp.y + 0.5 * g * Tf * Tf) / Tf, (aim.z - mp.z) / Tf);
+  G.curShooter = e; spawnShot({ p: mp, v, dmg, team: 'E', kind: 'shell', splash: 3.5, life: Tf + 1, grav: g, label, color: 0x9cff3a, size: 1.3 }); G.curShooter = null;
+  if (low) G.fx.warn(aim, 3.5, Tf);
+  sfx('eshell', G.player ? G.player.pos.distanceTo(mp) : 50);
+}
+export function startBio() {
+  clearBio();
+  const nodes = BIO.nodes.map(([x, z], i) => new BioNode(x, z, i));
+  G.bio = { nodes, circles: nodes.map((nd) => ({ x: nd.pos.x, z: nd.pos.z, r: BIO.r0, rT: BIO.rMax, src: nd, node: true })), down: 0, acc: 0, cAcc: 0, eT: 0, pT: 0, coreT: 0, touch: 0 };
+  G.tumors = 0; G.seedPlants = 0; G.seedBreaks = 0; G.creepDmgP = 0; G.creepCore = 0; G.creepHeal = 0;
+}
+export function clearBio() { G.bio = null; for (const v of CREEP.uC.value) v.set(0, 0, 0, 0); if (G.player) G.player.creepMul = 1; }
+// a seeder's next planting spot: the point just inside the creep front that lies closest to the purifier (or the
+// player when there is no core), away from other tumours
+export function seedSpot(from) {
+  const B = G.bio; if (!B || B.circles.length >= BIO.maxC) return null;
+  const goal = G.core && G.core.alive ? G.core.pos : G.player ? G.player.pos : null; if (!goal) return null;
+  let best = null, bd = 1e9;
+  for (const c of B.circles) {
+    if (c.r < 8 || !c.src.alive) continue;
+    const dx = goal.x - c.x, dz = goal.z - c.z, L = Math.hypot(dx, dz) || 1;
+    if (L < c.r) continue;   // already over the goal
+    const q = new V3(c.x + dx / L * (c.r - 3), 0, c.z + dz / L * (c.r - 3));
+    if (pointInSolid(new V3(q.x, 1, q.z), 1.5)) continue;
+    if (G.enemies.some((e) => e.kind === 'tumor' && e.alive && Math.hypot(e.pos.x - q.x, e.pos.z - q.z) < 9)) continue;
+    const sc = Math.hypot(goal.x - q.x, goal.z - q.z) + Math.hypot(from.x - q.x, from.z - q.z) * 0.25;
+    if (sc < bd) { bd = sc; best = q; }
+  }
+  return best;
+}
+function updateBio(dt) {
+  const B = G.bio; if (!B) return;
+  const P = G.player, all = B.down >= B.nodes.length;
+  for (let i = B.circles.length - 1; i >= 0; i--) {
+    const c = B.circles[i];
+    if (c.src.alive && !all) c.r = Math.min(c.rT, c.r + (c.node ? BIO.grow : BIO.tumorGrow) * dt);
+    else { c.r -= BIO.shrink * dt; if (c.r <= 0) { B.circles.splice(i, 1); continue; } }
+  }
+  if (all) for (const e of G.enemies) if (e.kind === 'tumor' && e.alive && !e.dying) { G.curLabel = 'wither'; e.hit(e.hp + 1); G.curLabel = null; }
+  for (let k = 0; k < 10; k++) { const c = B.circles[k], v = CREEP.uC.value[k]; if (c) v.set(c.x, c.z, Math.max(0, c.r), 1); else v.set(0, 0, 0, 0); }
+  // the purifier: every circle touching it eats into it
+  if (G.core && G.core.alive) {
+    let n = 0; for (const c of B.circles) if (c.r > 2 && Math.hypot(G.core.pos.x - c.x, G.core.pos.z - c.z) < c.r + BIO.coreR) n++;
+    B.touch = n;
+    if (n) {
+      B.cAcc += BIO.coreDps * n * dt;
+      if (Math.random() < 0.3 * n) G.fx.sparks(_a.set(G.core.pos.x + (Math.random() - 0.5) * 14, 1 + Math.random() * 3, G.core.pos.z + (Math.random() - 0.5) * 14), null, 3, 0xb8ff60, 6, 1, 0.4, 0.2);
+      if (B.cAcc >= 10) { G.curLabel = 'creep'; G.core.damage(B.cAcc); G.curLabel = null; G.creepCore += B.cAcc; B.cAcc = 0; if (!B.coreSaid) { B.coreSaid = true; G.onCreepCore && G.onCreepCore(); } }
+    }
+  }
+  // mechs standing in creep are slowed and eaten
+  if (P) {
+    const on = P.alive && P.pos.y - groundAt(P.pos.x, P.pos.z, P.pos.y + 1) < 1.3 && inCreep(P.pos);
+    P.creepMul = on ? BIO.pSlow : 1;
+    if (on) {
+      B.acc += BIO.pDps * dt; B.pT += dt;
+      if (Math.random() < 0.3) G.fx.emit('add', { x: P.pos.x + (Math.random() - 0.5) * 3, y: 0.3, z: P.pos.z + (Math.random() - 0.5) * 3, vy: 1.2, life: 0.6, s0: 0.5, s1: 0.1, c0: 0xb8ff60 });
+      if (B.acc >= 4) { G.curSrc = P.pos.clone(); damagePlayer(B.acc, G.curSrc, 'creep'); G.creepDmgP += B.acc; B.acc = 0; if (!B.pSaid) { B.pSaid = true; G.onCreepP && G.onCreepP(); } }
+    }
+  }
+  // enemies on creep regenerate
+  B.eT += dt; if (B.eT >= 0.5) {
+    const tk = B.eT; B.eT = 0;
+    for (const e of G.enemies) {
+      if (!e.alive || e.dying || e.isObjective || e.kind === 'tumor' || e.kind === 'boss' || e.kind === 'raider' || e.hacked || !e.pos || e.hp >= e.maxHp || e.maxHp > 3000) continue;
+      if (!inCreep(e.pos)) continue;
+      const h = Math.min(e.maxHp - e.hp, e.maxHp * BIO.regen * tk); e.hp += h; G.creepHeal += h;
+      if (Math.random() < 0.3) G.fx.sparks(e.c || e.pos, null, 3, 0xb8ff60, 5, 1, 0.4, 0.2);
+    }
+  }
+}
+
+// seeder: a six-legged bug that walks to the creep front nearest the purifier, digs in for 3 s (180 damage interrupts)
+// and plants a creep tumour there; up to three each. It spits spore blobs while it walks
+export const SEED = { hp: 650, r: 2.0, speed: 7.5, dig: 3.0, brk: 180, cd: 7, max: 3, keep: [24, 36], spitCd: [3.2, 4.5], spitR: 45, dmg: 12 };
+export class Seeder extends Enemy {
+  constructor(pos) {
+    super('seeder', 'E_Seeder', pos, SEED.hp, SEED.r); this.boom = 1.0;
+    this.pos.y = groundAt(pos.x, pos.z, 40); this.yaw = Math.random() * 6; this.vel = new V3(); this.st = 'go'; this.t = 0; this.ph = Math.random() * 6;
+    this.stuckT = 0; this.sideT = 0; this.side = Math.random() < 0.5 ? 1 : -1; this.last = this.pos.clone(); this.spot = null; this.spotT = 0; this.planted = 0; this.digDmg = 0;
+    this.spitT = 2 + Math.random() * 2; this.c.set(this.pos.x, this.pos.y + 1.6, this.pos.z);
+  }
+  drive(tx, tz, spd, dt) { return Engineer.prototype.drive.call(this, tx, tz, spd, dt); }
+  hit(dmg) { if (this.st === 'dig') this.digDmg += dmg; super.hit(dmg); }
+  update(dt) {
+    const t = this.tg(), n = this.n, tc = t.center ? t.center(playerC) : t.pos; this.ph += dt; this.t -= dt;
+    const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, dl = Math.hypot(dx, dz) || 1;
+    let moving = 0;
+    if (this.st === 'go') {
+      this.spotT -= dt;
+      if (this.spotT <= 0) { this.spotT = 2; this.spot = this.planted < SEED.max ? seedSpot(this.pos) : null; }
+      if (this.spot) {
+        const d = this.drive(this.spot.x, this.spot.z, SEED.speed, dt); moving = 1;
+        if (d < 3.5) { this.st = 'dig'; this.t = SEED.dig; this.digDmg = 0; this.vel.set(0, 0, 0); G.onSeedDig && G.onSeedDig(this); }
+      } else { this.st = 'roam'; this.t = 4; }
+    } else if (this.st === 'roam' || this.st === 'rest') {
+      if (dl > SEED.keep[1]) { this.drive(t.pos.x, t.pos.z, SEED.speed, dt); moving = 1; }
+      else if (dl < SEED.keep[0]) { this.drive(this.pos.x - dx / dl * 12, this.pos.z - dz / dl * 12, SEED.speed * 0.8, dt); moving = 1; }
+      else { this.drive(this.pos.x - dz / dl * this.side * 8, this.pos.z + dx / dl * this.side * 8, SEED.speed * 0.45, dt); moving = 0.5; }
+      if (this.t <= 0) { this.st = 'go'; this.spotT = 0; }
+    } else if (this.st === 'dig') {
+      this.vel.multiplyScalar(0.8);
+      if (Math.random() < 0.5) G.fx.emit('add', { x: this.pos.x + (Math.random() - 0.5) * 2.5, y: 0.3, z: this.pos.z + (Math.random() - 0.5) * 2.5, vy: 2, life: 0.6, s0: 0.6, s1: 0.2, c0: 0xb8ff60 });
+      if ((this.ringT = (this.ringT || 0) - dt) <= 0) { this.ringT = 0.5; G.fx.ring(new V3(this.pos.x, this.pos.y + 0.3, this.pos.z), null, 1, 6, 0.4, 0x9cff3a); }
+      if (this.digDmg >= SEED.brk) { this.st = 'rest'; this.t = 4; G.seedBreaks = (G.seedBreaks || 0) + 1; G.fx.sparks(this.c, null, 12, 0xb8ff60, 10, 1, 0.4, 0.25); G.onSeedBreak && G.onSeedBreak(this); }
+      else if (this.t <= 0) {
+        const sp = this.spot || this.pos; new Tumor(new V3(sp.x + Math.sin(this.yaw) * 1.5, 0, sp.z + Math.cos(this.yaw) * 1.5));
+        this.planted++; G.seedPlants = (G.seedPlants || 0) + 1; this.st = 'rest'; this.t = SEED.cd; this.spot = null; sfx('repair', dl);
+      }
+    }
+    this.pos.y += (groundAt(this.pos.x, this.pos.z, this.pos.y + 2) - this.pos.y) * Math.min(1, dt * 8);
+    const sp = Math.hypot(this.vel.x, this.vel.z), want = sp > 1 && this.st !== 'dig' ? Math.atan2(-this.vel.x, -this.vel.z) : Math.atan2(-dx, -dz);
+    this.yaw2 = (this.yaw2 ?? want) + angDiff(want, this.yaw2 ?? want) * Math.min(1, dt * 5);
+    this.obj.rotation.set(this.st === 'dig' ? 0.18 : 0, this.yaw2, 0, 'YXZ');
+    for (let i = 1; i <= 6; i++) { const L = n['SD_L' + i]; if (!L) continue; const g = (i % 2 ? 1 : -1) * ((i - 1 >> 1) % 2 ? -1 : 1); L.rotation.x = Math.sin(this.ph * 11) * 0.4 * g * Math.min(1, sp / 4); L.rotation.y = this.st === 'dig' ? Math.sin(this.ph * 20 + i) * 0.15 : 0; }
+    if (n.SD_Sac) n.SD_Sac.scale.setScalar(this.st === 'dig' ? 1 + 0.35 * (1 - Math.max(0, this.t) / SEED.dig) + 0.08 * Math.sin(this.ph * 18) : 1 + 0.05 * Math.sin(this.ph * 3));
+    this.c.set(this.pos.x, this.pos.y + 1.6, this.pos.z);
+    this.spitT -= dt;
+    if (this.st !== 'dig' && this.spitT <= 0 && dl < SEED.spitR && this.checkLos(dt)) {
+      this.spitT = SEED.spitCd[0] + Math.random() * (SEED.spitCd[1] - SEED.spitCd[0]);
+      const mp = n.Muzzle_Seed ? n.Muzzle_Seed.getWorldPosition(new V3()) : this.c.clone();
+      bioLob(this, mp, t, tc, SEED.dmg, 'seeder-spit');
+    }
+  }
+}
+
+// PL-3 plasma orb: a slow orb that zaps up to two enemies around it every 0.25 s (biomass ×1.5) and bursts on contact
+G.plorbs = [];
+const plorbGeo = new THREE.IcosahedronGeometry(0.62, 2);
+const plorbMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x8cc0ff).multiplyScalar(2.6), toneMapped: false });
+const plorbHalo = new THREE.MeshBasicMaterial({ color: 0x5c9cff, transparent: true, opacity: 0.25, blending: THREE.AdditiveBlending, depthWrite: false });
+const isBio = (e) => e.kind === 'bionode' || e.kind === 'tumor' || e.kind === 'seeder';
+function firePlOrb(owner, slot, d, mul, aim, me) {
+  const mp = owner.muzzlePos(slot, new V3());
+  const dir = new V3().subVectors(aim, mp).normalize();
+  if (!Number.isFinite(dir.x + dir.y + dir.z) || !Number.isFinite(mp.x + mp.y + mp.z)) return;
+  const o = new THREE.Mesh(plorbGeo, plorbMat); o.position.copy(mp);
+  const h = new THREE.Mesh(plorbGeo, plorbHalo); h.scale.setScalar(2.1); o.add(h); G.scene.add(o);
+  G.plorbs.push({ o, p: mp.clone(), v: dir.multiplyScalar(d.speed), t: d.life, tick: 0.12, d, mul, me });
+  G.plorbN = (G.plorbN || 0) + 1;
+  G.fx.muzzle(mp, dir.clone().normalize(), 0x8cc0ff, 1.3);
+}
+function popOrb(O) {
+  G.curLabel = 'plorb'; explodeAt(O.p.clone(), O.d.splash, O.d.dmg * O.mul, 'P', 1.1, 0x8cc0ff); G.curLabel = null;
+  G.fx.flash(O.p, 0x8cc0ff, 22, 14, 0.25); O.o.parent && O.o.parent.remove(O.o);
+}
+function updatePlOrbs(dt) {
+  for (let i = G.plorbs.length - 1; i >= 0; i--) {
+    const O = G.plorbs[i], d = O.d; O.t -= dt;
+    const np = (O.np || (O.np = new V3())).copy(O.p).addScaledVector(O.v, dt);
+    let pop = O.t <= 0 || !Number.isFinite(np.x + np.y + np.z) || np.y < groundAt(np.x, np.z, np.y + 1) + 0.3 || !clearLine(O.p, np);
+    if (!pop) for (const e of G.enemies) { if (!e.alive || e.dying || e.holo || e.hacked || !e.c) continue; if (e.c.distanceTo(np) < (e.r || 1.5) + 0.5) { pop = true; break; } }
+    if (pop) { popOrb(O); G.plorbs.splice(i, 1); continue; }
+    O.p.copy(np); O.o.position.copy(np); O.o.rotation.y += dt * 6; O.o.scale.setScalar(1 + 0.15 * Math.sin(G.time * 30 + i));
+    if (Math.random() < 0.6) G.fx.emit('add', { x: np.x, y: np.y, z: np.z, life: 0.25, s0: 0.5, s1: 0.1, c0: 0x8cc0ff });
+    O.tick -= dt; if (O.tick > 0) continue; O.tick = 0.25;
+    const near = [];
+    for (const e of G.enemies) {
+      if (!e.alive || e.dying || e.holo || e.hacked || e.isMine || e.cloaked || !e.c) continue;
+      const L = e.c.distanceTo(np); if (!(L <= d.zapR + (e.r || 1.5) * 0.5)) continue;
+      near.push([L, e]);
+    }
+    near.sort((a, b) => a[0] - b[0]);
+    let z = 0;
+    for (const [, e] of near) {
+      if (z >= d.zapN) break;
+      if (!clearLine(np, e.c)) continue;
+      z++; const dm = d.zap * O.mul * (isBio(e) ? d.bio : 1);
+      G.curLabel = 'plorb-zap'; dealDamage(e, dm, 'P', e.c, 'plorb-zap'); G.curLabel = null;
+      if (O.me) G.stats.shots++;
+      G.plorbZap = (G.plorbZap || 0) + dm;
+      G.fx.streak(np.clone(), e.c.clone(), 0.1, 0x9cc8ff); G.fx.sparks(e.c, null, 4, 0x9cc8ff, 8, 1, 0.25, 0.15);
+    }
+  }
+}
+export function clearPlOrbs() { for (const O of G.plorbs) O.o.parent && O.o.parent.remove(O.o); G.plorbs.length = 0; G.plorbN = 0; G.plorbZap = 0; }
+
 // forklift: lobs explosive barrels from its forks. While a barrel sits on the forks the forklift takes x1.5 damage, and
 // 150 damage dealt in that window sets the barrel off on the forklift itself
 export const FORK = { hp: 1100, r: 2.4, speed: 6, keep: [25, 45], reload: 1.2, load: 3, aim: 0.8, dmg: 45, splash: 7, vuln: 1.5, pop: 150, popDmg: 320, popR: 7, popE: 45, range: 70 };
@@ -9788,7 +10034,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
-  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt);
+  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

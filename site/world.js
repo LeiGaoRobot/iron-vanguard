@@ -13,6 +13,8 @@ export const barrels = [];         // explosive props {obj, pos, hp, solid}
 export const relaySites = [];      // objective tower spots (snowfield)
 // magma forge: two winding lava rivers (same formula in JS and in the floor shader)
 export const LAVA = { on: false, W: 5, uT: { value: 0 } };
+// hive creep: up to 10 spreading biomass circles (x, z, radius, 1 = live) painted on the floor
+export const CREEP = { on: false, uC: { value: Array.from({ length: 10 }, () => new THREE.Vector4()) } };
 export const GRID = { on: false, uZ: { value: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] } };   // power plant: live floor sectors (x, z, state 1 warn / 2 live, time left)
 export function lavaD(x, z) {
   const fa = 55 * Math.sin(x / 62 + 0.6) - 60, da = Math.abs(z - fa) / Math.sqrt(1 + (55 / 62 * Math.cos(x / 62 + 0.6)) ** 2);
@@ -44,12 +46,12 @@ function panelMaterial(color, opts) {
   const m = new THREE.MeshStandardMaterial({ color, roughness: opts.rough ?? 0.85, metalness: opts.metal ?? 0.1 });
   m.customProgramCacheKey = () => 'panel|' + opts.frag + '|' + (opts.emit || '') + '|' + (opts.nrm || '') + '|' + (opts.rgh || '');   // day / night variants must not share a program
   m.onBeforeCompile = (sh) => {
-    sh.uniforms.uT = LAVA.uT; sh.uniforms.uZ = GRID.uZ;
+    sh.uniforms.uT = LAVA.uT; sh.uniforms.uZ = GRID.uZ; sh.uniforms.uC = CREEP.uC;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;')
       .replace('#include <project_vertex>', '#include <project_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vWP; varying vec3 vWN; uniform float uT; uniform vec4 uZ[4];
+      .replace('#include <common>', `#include <common>\nvarying vec3 vWP; varying vec3 vWN; uniform float uT; uniform vec4 uZ[4]; uniform vec4 uC[10];
         float lavaD(vec2 p){ float fa = 55.0 * sin(p.x / 62.0 + 0.6) - 60.0; float da = abs(p.y - fa) / sqrt(1.0 + pow(55.0 / 62.0 * cos(p.x / 62.0 + 0.6), 2.0));
           float fb = 40.0 * sin(p.y / 50.0 + 1.8) + 60.0; float db = abs(p.x - fb) / sqrt(1.0 + pow(40.0 / 50.0 * cos(p.y / 50.0 + 1.8), 2.0)); return min(da, db); }
         float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -72,8 +74,8 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', gale = env === 'gale', salt = env === 'salt', scrap = env === 'scrap' || env === 'wreck', wreck = env === 'wreck', quake = env === 'quake', snow = env === 'snow', storm = env === 'storm' || env === 'thunder', thunder = env === 'thunder', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister';
-  LAVA.on = forge; GRID.on = grid; const PR = PLAT.R;
+  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', gale = env === 'gale', salt = env === 'salt', scrap = env === 'scrap' || env === 'wreck', wreck = env === 'wreck', quake = env === 'quake', snow = env === 'snow', storm = env === 'storm' || env === 'thunder', thunder = env === 'thunder', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister', creep = env === 'creep';
+  LAVA.on = forge; GRID.on = grid; CREEP.on = creep; for (const v of CREEP.uC.value) v.set(0, 0, 0, 0); const PR = PLAT.R;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
     for (let i = 0; road && i < road.length - 1; i++) {
@@ -134,7 +136,20 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float pv = vn2(vWP.xz / 11.0 + 3.7) * 0.75 + vn2(vWP.xz / 3.0) * 0.25;
       float pud = smoothstep(0.69, 0.74, pv);
       slab = mix(slab, vec3(0.2, 0.22, 0.08), smoothstep(0.58, 0.69, pv) * 0.55);
-      diffuseColor.rgb = mix(slab, vec3(0.36, 0.5, 0.1), pud * 0.9);` : ''}${quake ? `
+      diffuseColor.rgb = mix(slab, vec3(0.36, 0.5, 0.1), pud * 0.9);` : ''}${creep ? `
+      diffuseColor.rgb *= vec3(0.62, 0.58, 0.6) * (0.88 + 0.18 * vn2(vWP.xz / 6.0));
+      float cdm = 1e5;
+      for (int k = 0; k < 10; k++) { vec4 cc = uC[k]; if (cc.w < 0.5 || cc.z < 0.1) continue;
+        float wob = (vn2(vWP.xz / 5.0 + float(k) * 3.1) - 0.5) * 5.0 + (vn2(vWP.xz / 1.2) - 0.5) * 1.4;
+        cdm = min(cdm, length(vWP.xz - cc.xy) - cc.z + wob * min(1.0, cc.z / 6.0)); }
+      float cv = smoothstep(1.0, -1.0, cdm), cedge = smoothstep(2.6, 0.0, abs(cdm));
+      float cvn = vn2(vWP.xz / 2.4) * 0.6 + vn2(vWP.xz / 0.7) * 0.4;
+      float cvein = 1.0 - smoothstep(0.0, 0.06, abs(vn2(vWP.xz / 3.2 + 9.0) - 0.5));
+      float cvein2 = 1.0 - smoothstep(0.0, 0.05, abs(vn2(vWP.xz / 1.1 + 4.0) - 0.5));
+      vec3 flesh = mix(vec3(0.16, 0.06, 0.11), vec3(0.36, 0.15, 0.24), cvn) * (0.85 + 0.25 * h21(floor(vWP.xz / 0.6)));
+      flesh = mix(flesh, vec3(0.07, 0.03, 0.05), max(cvein, cvein2 * 0.6) * 0.6);
+      diffuseColor.rgb = mix(diffuseColor.rgb, flesh, cv);
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.2, 0.1, 0.14), cedge * (1.0 - cv) * 0.6);` : ''}${quake ? `
       float qn = vn2(vWP.xz / 6.0) * 0.6 + vn2(vWP.xz / 1.4) * 0.4;
       vec3 asph = mix(vec3(0.2, 0.19, 0.18), vec3(0.32, 0.29, 0.25), smoothstep(0.25, 0.8, qn)) * (0.9 + 0.12 * vn2(vWP.xz / 0.4));
       float ck = abs(vn2(vWP.xz / 9.0) - 0.5) + abs(vn2(vWP.xz / 3.5 + 7.0) - 0.5) * 0.5;
@@ -201,7 +216,9 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
       float drift = smoothstep(0.25, 0.75, sin(vWP.x * 0.045 + sin(vWP.z * 0.03) * 2.0) * 0.5 + 0.5);
       float cover = clamp(0.8 + 0.17 * drift - 0.35 * stripe, 0.0, 0.97);
       diffuseColor.rgb = mix(diffuseColor.rgb, mix(vec3(0.74, 0.8, 0.88), vec3(0.88, 0.91, 0.95), drift) * (0.93 + 0.07 * sn), cover);` : ''}`,
-    emit: night ? `
+    emit: creep ? `
+      float cpl = 0.5 + 0.5 * sin(uT * 2.2 + vWP.x * 0.09 + vWP.z * 0.07);
+      totalEmissiveRadiance += vec3(0.42, 1.0, 0.14) * (cvein * cv * (0.12 + 0.3 * cpl) + cvein2 * cv * 0.06 + cedge * (0.18 + 0.12 * cpl));` : night ? `
       float ed2 = max(abs(vWP.x), abs(vWP.z));
       float st2 = step(${ARENA.toFixed(1)} - 3.0, ed2) * step(ed2, ${ARENA.toFixed(1)} - 1.6) * step(0.5, fract((vWP.x + vWP.z) / 4.0));
       float ln = max(gridLine(vWP.x, 32.0, 0.25), gridLine(vWP.z, 32.0, 0.25));
