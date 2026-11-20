@@ -16,7 +16,11 @@ export const LAVA = { on: false, W: 5, uT: { value: 0 } };
 // hive creep: up to 10 spreading biomass circles (x, z, radius, 1 = live) painted on the floor
 export const CREEP = { on: false, uC: { value: Array.from({ length: 10 }, () => new THREE.Vector4()) } };
 // meltdown: up to 8 radiation zones (x, z, radius, strength 0-1) glowing on the floor
-export const GLADU = { uH: { value: 0 } };   // coliseum crowd excitement 0..1 (drives the crowd shader)
+export const GLADU = { uH: { value: 0 } };
+// turf war: floor paint coverage, N x N cells over the arena; texel r = yours (cyan), g = theirs (magenta)
+export const PAINT = (() => { const N = 200, data = new Uint8Array(N * N * 4); const tex = new THREE.DataTexture(data, N, N, THREE.RGBAFormat);
+  tex.magFilter = THREE.LinearFilter; tex.minFilter = THREE.LinearFilter; tex.wrapS = tex.wrapT = THREE.ClampToEdgeWrapping; tex.needsUpdate = true;
+  return { on: false, N, data, tex, uP: { value: tex } }; })();   // coliseum crowd excitement 0..1 (drives the crowd shader)
 export const RADZ = { on: false, uR: { value: Array.from({ length: 8 }, () => new THREE.Vector4()) } };
 export const GRID = { on: false, uZ: { value: [new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4(), new THREE.Vector4()] } };   // power plant: live floor sectors (x, z, state 1 warn / 2 live, time left)
 export function lavaD(x, z) {
@@ -106,12 +110,12 @@ function panelMaterial(color, opts) {
   const m = new THREE.MeshStandardMaterial({ color, roughness: opts.rough ?? 0.85, metalness: opts.metal ?? 0.1 });
   m.customProgramCacheKey = () => 'panel|' + opts.frag + '|' + (opts.emit || '') + '|' + (opts.nrm || '') + '|' + (opts.rgh || '');   // day / night variants must not share a program
   m.onBeforeCompile = (sh) => {
-    sh.uniforms.uT = LAVA.uT; sh.uniforms.uZ = GRID.uZ; sh.uniforms.uC = CREEP.uC; sh.uniforms.uR = RADZ.uR;
+    sh.uniforms.uT = LAVA.uT; sh.uniforms.uZ = GRID.uZ; sh.uniforms.uC = CREEP.uC; sh.uniforms.uR = RADZ.uR; sh.uniforms.uP = PAINT.uP;
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vWP; varying vec3 vWN;')
       .replace('#include <project_vertex>', '#include <project_vertex>\nvWP = (modelMatrix * vec4(transformed, 1.0)).xyz; vWN = normalize(mat3(modelMatrix) * objectNormal);');
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', `#include <common>\nvarying vec3 vWP; varying vec3 vWN; uniform float uT; uniform vec4 uZ[4]; uniform vec4 uC[10]; uniform vec4 uR[8];
+      .replace('#include <common>', `#include <common>\nvarying vec3 vWP; varying vec3 vWN; uniform float uT; uniform vec4 uZ[4]; uniform vec4 uC[10]; uniform vec4 uR[8]; uniform sampler2D uP;
         float lavaD(vec2 p){ float fa = 55.0 * sin(p.x / 62.0 + 0.6) - 60.0; float da = abs(p.y - fa) / sqrt(1.0 + pow(55.0 / 62.0 * cos(p.x / 62.0 + 0.6), 2.0));
           float fb = 40.0 * sin(p.y / 50.0 + 1.8) + 60.0; float db = abs(p.x - fb) / sqrt(1.0 + pow(40.0 / 50.0 * cos(p.y / 50.0 + 1.8), 2.0)); return min(da, db); }
         float h21(vec2 p){ return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
@@ -134,8 +138,8 @@ function panelMaterial(color, opts) {
 }
 
 export function buildArena(scene, seed = 3, env = 'day', road = null, sites = null) {
-  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', gale = env === 'gale', salt = env === 'salt', scrap = env === 'scrap' || env === 'wreck', wreck = env === 'wreck', quake = env === 'quake', snow = env === 'snow', storm = env === 'storm' || env === 'thunder', thunder = env === 'thunder', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister', creep = env === 'creep', atom = env === 'atom', glad = env === 'glad';
-  LAVA.on = forge; GRID.on = grid; CREEP.on = creep; for (const v of CREEP.uC.value) v.set(0, 0, 0, 0); RADZ.on = atom; for (const v of RADZ.uR.value) v.set(0, 0, 0, 0); const PR = PLAT.R;
+  const rnd = mulberry32(seed), night = env === 'night' || env === 'lockdown', icelake = env === 'icelake', gale = env === 'gale', salt = env === 'salt', scrap = env === 'scrap' || env === 'wreck', wreck = env === 'wreck', quake = env === 'quake', snow = env === 'snow', storm = env === 'storm' || env === 'thunder', thunder = env === 'thunder', desert = env === 'desert' || env === 'dune', dune = env === 'dune', ash = env === 'ash', lunar = env === 'lunar', forge = env === 'forge', autumn = env === 'autumn', cyber = env === 'cyber', abyss = env === 'abyss', jungle = env === 'jungle', toxic = env === 'toxic', grid = env === 'grid', twister = env === 'twister', creep = env === 'creep', atom = env === 'atom', glad = env === 'glad', paint = env === 'paint';
+  LAVA.on = forge; GRID.on = grid; CREEP.on = creep; for (const v of CREEP.uC.value) v.set(0, 0, 0, 0); RADZ.on = atom; for (const v of RADZ.uR.value) v.set(0, 0, 0, 0); PAINT.on = paint; PAINT.data.fill(0); PAINT.tex.needsUpdate = true; const PR = PLAT.R;
   const roadD = (x, z) => {   // distance to the escort road polyline
     let best = 1e9;
     for (let i = 0; road && i < road.length - 1; i++) {
@@ -154,7 +158,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   // ---- floor: 4 m concrete tiles with per-tile tone + seams, 16 m darker lane lines
   const floorMat = panelMaterial(0x80848a, {
     rough: storm ? 0.5 : icelake ? 0.45 : 0.92, metal: storm || icelake ? 0.25 : 0.1, nrm: dune ? SAND_H : '',
-    rgh: `roughnessFactor = clamp(roughnessFactor * (1.06 - 0.12 * fwm) - 0.35 * fst * roughnessFactor, 0.05, 1.0);`, frag: `
+    rgh: `roughnessFactor = clamp(roughnessFactor * (1.06 - 0.12 * fwm) - 0.35 * fst * roughnessFactor, 0.05, 1.0);${paint ? ' roughnessFactor = mix(roughnessFactor, 0.3, pmx);' : ''}`, frag: `
       vec2 cell = floor(vWP.xz / 4.0);
       float tone = 0.9 + 0.12 * h21(cell) + 0.03 * h21(floor(vWP.xz / 1.0));
       diffuseColor.rgb *= tone;
@@ -225,7 +229,17 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
         rv = max(rv, smoothstep(1.5, -3.0, dd) * rr.w);
         redge = max(redge, smoothstep(1.3, 0.0, abs(dd)) * rr.w); }
       float rspk = step(0.93, h21(floor(vWP.xz / 0.22))) * smoothstep(0.35, 0.8, vn2(vWP.xz / 2.5 + uT * 0.05));
-      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.34, 0.38, 0.15) * (0.8 + 0.3 * vn2(vWP.xz / 2.0)), rv * 0.75);` : ''}${quake ? `
+      diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.34, 0.38, 0.15) * (0.8 + 0.3 * vn2(vWP.xz / 2.0)), rv * 0.75);` : ''}${paint ? `
+      diffuseColor.rgb *= vec3(1.1, 1.08, 1.04);
+      vec2 pj = vec2(vn2(vWP.xz / 2.2), vn2(vWP.xz / 2.2 + 5.3)) - 0.5 + (vec2(vn2(vWP.xz / 0.6 + 2.0), vn2(vWP.xz / 0.6 + 8.0)) - 0.5) * 0.35;
+      vec4 pp = texture2D(uP, (vWP.xz + pj * 2.2) / ${(2 * ARENA).toFixed(1)} + 0.5);
+      float ppa = smoothstep(0.4, 0.56, pp.r), ppb = smoothstep(0.4, 0.56, pp.g), pmx = max(ppa, ppb);
+      float prim = smoothstep(0.22, 0.42, max(pp.r, pp.g)) * (1.0 - pmx);
+      float psp = vn2(vWP.xz / 0.9) * 0.6 + vn2(vWP.xz / 0.25) * 0.4;
+      vec3 pcy = mix(vec3(0.02, 0.5, 0.82), vec3(0.08, 0.72, 1.0), psp), pmg = mix(vec3(0.78, 0.06, 0.42), vec3(1.0, 0.2, 0.62), psp);
+      diffuseColor.rgb = mix(diffuseColor.rgb, pcy, ppa);
+      diffuseColor.rgb = mix(diffuseColor.rgb, pmg, ppb * (1.0 - ppa * 0.6));
+      diffuseColor.rgb *= 1.0 - 0.3 * prim;` : ''}${quake ? `
       float qn = vn2(vWP.xz / 6.0) * 0.6 + vn2(vWP.xz / 1.4) * 0.4;
       vec3 asph = mix(vec3(0.2, 0.19, 0.18), vec3(0.32, 0.29, 0.25), smoothstep(0.25, 0.8, qn)) * (0.9 + 0.12 * vn2(vWP.xz / 0.4));
       float ck = abs(vn2(vWP.xz / 9.0) - 0.5) + abs(vn2(vWP.xz / 3.5 + 7.0) - 0.5) * 0.5;
@@ -592,6 +606,15 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   if (toxic) {   // chemical works: storage tanks (solid) and drum stacks
     scatter(16, 5, (x, z) => { place.push({ kit: 'P_Tank', matrix: M4(x, 0, z, rnd() * 6.28, 0.9 + rnd() * 0.25) }); addSolid(x, z, 6.2, 6.2, 8, 0, 'tank'); });
     scatter(30, 2, (x, z) => { place.push({ kit: 'P_Drums', matrix: M4(x, 0, z, rnd() * 6.28, 1) }); addSolid(x, z, 2.2, 2.2, 1.2, 0, 'drums'); });
+  }
+  if (paint) {   // turf war: giant paint buckets
+    const mg = new THREE.MeshStandardMaterial({ color: 0xff9ad0, emissive: 0xff2a9a, emissiveIntensity: 0.5, roughness: 0.3 });
+    scatter(18, 3, (x, z) => {
+      const o = cloneKit('P_PaintCan'); o.position.set(x, 0, z); o.rotation.y = rnd() * 6.28; o.scale.setScalar(0.9 + rnd() * 0.35); group.add(o);
+      if (rnd() < 0.5) { const b = o.getObjectByName('PB_Band'); if (b) b.traverse((m) => { if (m.isMesh) m.material = mg; }); }
+      o.traverse((m) => { if (m.isMesh) { m.castShadow = true; m.receiveShadow = true; } });
+      addSolid(x, z, 2.8, 2.8, 2.6, 0, 'can');
+    });
   }
   if (jungle) {   // rainforest: big trees (solid trunks), ferns underneath
     scatter(44, 3, (x, z) => { place.push({ kit: 'P_JTree', matrix: M4(x, 0, z, rnd() * 6.28, 1.0 + rnd() * 0.35) }); addSolid(x, z, 2.6, 2.6, 15, 0, 'tree'); });

@@ -1,6 +1,6 @@
 // Weapons, projectiles, enemies, damage.  Shared state lives in G.
 import * as THREE from 'three';
-import { RAYF, barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD, GRID, CREEP, RADZ, GLADU } from './world.js';
+import { RAYF, barrels, raySolids, clearLine, collideCyl, groundAt, removeSolid, pointInSolid, addSolid, ARENA, PLAT, WATER, LAVA, lavaAt, lavaD, GRID, CREEP, RADZ, GLADU, PAINT } from './world.js';
 import { cloneKit, nodes, find, recolor } from './kit.js';
 import { Mech, angDiff, PALETTES, PHYS } from './mech.js';
 import { sfx } from './audio.js';
@@ -26,6 +26,7 @@ export const WEAPONS = {
   needler: { slot: 'arm', name: 'NX-8 针刺枪', en: 'NX-8 Needler', desc: '追踪锁定目标的钢针 · 扎在敌机上 · 同一目标扎满 8 根一起引爆（100 / 4.5 m）· 3 秒没补针就脱落', type: 'bullet', needle: true, rate: 0.085, dmg: 5, speed: 150, spread: 0.02, mag: 48, reload: 2.2, color: 0xff70e0, w: 0.16, len: 3, life: 1.6, sfx: 'rifle', recoil: 0.08 },
   ricochet: { slot: 'arm', name: 'RB-4 跳弹枪', en: 'RB-4 Ricochet', desc: '撞墙反弹 3 次 · 反弹后转向附近敌机 · 每弹一次 +25%', type: 'bullet', rate: 0.11, dmg: 14, speed: 240, spread: 0.008, mag: 36, reload: 2.0, color: 0x80ffd0, w: 0.22, len: 6, life: 1.8, bounce: 3, sfx: 'rifle', recoil: 0.15 },
   drill: { slot: 'arm', name: 'DR-2 钻地弹', en: 'DR-2 Drill Gun', desc: '慢速钻头弹 · 可钻透 18 m 内的墙体与掩体 · 命中后爆炸 3.5 m · 隔着墙打躲在后面的敌机（看雷达）', type: 'bullet', drill: 18, rate: 0.36, dmg: 58, splash: 3.5, speed: 110, spread: 0.004, mag: 10, reload: 2.2, life: 1.8, color: 0xffa040, w: 0.45, len: 3, sfx: 'cannon', recoil: 0.4 },
+  splat: { slot: 'arm', name: 'SP-4 泼溅炮', en: 'SP-4 Splat Cannon', desc: '抛射大团青色涂料（有下坠）· 溅射 3.5 m · 被溅中的敌机 3 秒糊住镜头：射击大幅偏离（头目减半）、近身攻击伤害 −30% · 在「领地争夺」里一发涂出 4.5 m 青色', type: 'bullet', grenade: true, goo: true, rate: 0.45, dmg: 46, splash: 3.5, speed: 62, grav: 16, spread: 0.004, mag: 12, reload: 2.4, color: 0x40d8ff, sfx: 'grenade', recoil: 0.45 },
   plorb: { slot: 'arm', name: 'PL-3 等离子球', en: 'PL-3 Plasma Orb', desc: '发射缓慢飞行的等离子球 · 飞行中每 0.25 秒电击身边 8 m 内最多 2 台敌机（对菌巢 / 菌瘤 / 播种者 ×1.5）· 撞上敌机、墙体或飞满 2.8 秒后炸开', type: 'plorb', rate: 0.5, dmg: 60, splash: 5, zap: 13, zapR: 8, zapN: 2, bio: 1.5, speed: 22, life: 2.8, mag: 8, reload: 2.2, sfx: 'coil', recoil: 0.35 },
   isotope: { slot: 'arm', name: 'IS-3 衰变枪', en: 'IS-3 Isotope Rifle', desc: '绿色衰变弹 · 每发命中给敌机叠一层衰变（最多 6 层，每层每秒 5 伤害，4 秒不补就消退）· 带 2 层以上衰变的敌机被击毁时，衰变扩散到 12 m 内所有敌机', type: 'bullet', decay: true, rate: 0.12, dmg: 11, speed: 300, spread: 0.007, mag: 36, reload: 1.9, color: 0x9cff40, w: 0.24, len: 5, sfx: 'rifle', recoil: 0.14 },
   rifle: { slot: 'arm', name: 'AR-77 突击步枪', en: 'AR-77 Rifle', desc: '全自动 · 精准 · 均衡', type: 'bullet', rate: 0.1, dmg: 17, speed: 320, spread: 0.005, mag: 40, reload: 1.7, color: 0xffd27a, w: 0.22, len: 7, sfx: 'rifle', recoil: 0.18 },
@@ -80,7 +81,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['splat', 'isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['saws', 'nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -171,6 +172,7 @@ function damagePlayer(dmg, src, label) {
   if (G.curShooter && G.curShooter.emp) dmg *= SUPPLY.empDmg;   // empowered by a supply crate
   if (G.glad) dmg *= G.glad.h <= GLAD.booed ? GLAD.booDmg : GLAD.arenaDmg;   // the crowd is cheering the other side
   if (G.pound && G.pound.st === 'dive') dmg *= 0.5;
+  if (G.curShooter && G.curShooter.gooT > 0) dmg *= TURF.gooHit;   // goo-blinded: its direct hits land poorly
   if (G.atom && G.atom.dose > 0) { const k = Math.min(G.atom.dose, ATOM.vulnCap) / ATOM.vulnK; G.atomBonus = (G.atomBonus || 0) + dmg * k; dmg *= 1 + k; }   // irradiated armour
   if (G.refl && G.refl.t > 0) dmg *= 1 - G.refl.d.cut;
   if (G.burn && G.burn.t > 0) dmg *= 1 - G.burn.d.cut;   // afterburner   // reflector: what it can't bounce, it softens
@@ -213,6 +215,7 @@ export function spawnShot(o) {
     burn: o.burn || 0, burnT: o.burnT || 0, chill: o.chill || 0, label: o.label || G.curLabel || o.kind, color: o.color ?? 0xffd27a, w: o.w ?? 0.2, len: o.len ?? 6, target: o.target || null, aim: o.aim ? o.aim.clone() : null, age: 0, speed: o.v.length(), maxSpeed: o.maxSpeed || 0, size: o.size || 1, turn: o.turn || 5.5, grav: o.grav ?? 6 };
   if (o.flak) s.flak = o.flak; if (o.sticky) s.sticky = true;
   if (o.web) s.web = true;
+  if (o.goo) s.goo = true; if (o.pglob) s.pglob = true;
   if (s.team === 'E' && G.curShooter && G.curShooter.hacked) { s.team = 'P'; s.dmg *= HACK.dmg; s.label = 'hack-' + G.curShooter.kind; s.target = null; G.hackShots = (G.hackShots || 0) + 1; G.shots.push(s); return s; }
   if (s.team === 'E' && G.curShooter) G.curShooter.pingT = FOG.ping;   // fog harbour: firing shows you on the radar
   if (s.team === 'E' && G.curShooter && G.curShooter.rally) s.dmg *= HERALD.dmg;
@@ -220,6 +223,12 @@ export function spawnShot(o) {
   if (s.team === 'E' && s.label === 'adaptor') s.dmg *= ADAPT.gunK;
   if (s.team === 'E' && G.curShooter && G.curShooter.emp) s.dmg *= SUPPLY.empDmg;
   if (s.team === 'E' && G.curShooter && G.curShooter.burnT > 0) s.dmg *= BURN_WEAK;   // burning enemies fire weakened shots
+  if (s.team === 'E' && G.curShooter && G.curShooter.gooT > 0) {   // splat goo on its optics: the shot flies wide
+    const k = TURF.gooDev * (G.curShooter.maxHp > 3000 ? 0.5 : 1) * s.speed;
+    s.v.x += (Math.random() - 0.5) * 2 * k; s.v.y += (Math.random() - 0.5) * 1.2 * k; s.v.z += (Math.random() - 0.5) * 2 * k; s.v.setLength(s.speed);
+    if (s.target) s.target = null; if (s.aim) { s.aim.x += (Math.random() - 0.5) * 16; s.aim.z += (Math.random() - 0.5) * 16; }
+    G.gooMiss = (G.gooMiss || 0) + 1;
+  }
   G.shots.push(s);
   return s;
 }
@@ -264,6 +273,9 @@ function wallMark(p, sol) {
 
 function impact(s, at, ent) {
   const fx = G.fx; G.curLabel = s.label;
+  if (G.turf) turfShot(s, at);
+  if (s.goo) { gooSplash(s, at); return; }
+  if (s.pglob) { explodeAt(at, s.splash, s.dmg, s.team, 0.6, 0xff2a9a); paintSplash(at, 0xff2a9a); return; }
   if (s.web) { webSplat(s, at, ent); return; }
   if (s.sticky) { stickAt(s, at, ent); return; }
   if (s.cluster) { splitCluster(s, at.clone().setY(at.y + 2)); return; }
@@ -476,7 +488,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
           const th = disc > 0 ? Math.atan((v * v - Math.sqrt(disc)) / (g * h)) : Math.PI / 4;
           _d.set(hx / h * Math.cos(th), Math.sin(th), hz / h * Math.cos(th));
           _d.x += (Math.random() - 0.5) * d.spread; _d.z += (Math.random() - 0.5) * d.spread;
-          spawnShot({ p: mp, v: _d.clone().normalize().multiplyScalar(v), dmg: d.dmg * dmgMul, team, kind: 'grenade', splash: d.splash, grav: g, life: 5, color: d.color, sticky: d.sticky && team === 'P' });
+          spawnShot({ p: mp, v: _d.clone().normalize().multiplyScalar(v), dmg: d.dmg * dmgMul, team, kind: 'grenade', splash: d.splash, grav: g, life: 5, color: d.color, sticky: d.sticky && team === 'P', goo: d.goo && team === 'P' });
           fx.muzzle(mp, _d, 0xffb060, 1.5); mslot.recoil = Math.min(0.6, (mslot.recoil || 0) + d.recoil);
           if (me) { G.stats.shots++; fx.trauma = Math.min(1, fx.trauma + 0.08); }
           sfx(d.sfx, dist); continue;
@@ -2006,7 +2018,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -10254,7 +10266,7 @@ export function clearTBeams() {
 export function updateCombat(dt) {
   RAYF.skipIce = false;
   updateHitFlash(dt);
-  for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; if (q.sh && q.sh.hacked) G.curShooter = q.sh; q.fn(); G.curShooter = null; } }
+  for (let i = G.queue.length - 1; i >= 0; i--) { const q = G.queue[i]; q.t -= dt; if (q.t <= 0) { G.queue.splice(i, 1); G.curLabel = q.label; if (q.sh && (q.sh.hacked || q.sh.gooT > 0)) G.curShooter = q.sh; q.fn(); G.curShooter = null; } }
   const hers = G.enemies.filter((e) => e.kind === 'herald' && e.alive && !e.dying && !(e.stunT > 0));
   for (const e of G.enemies) {
     G.curLabel = e.kind; if (e.pingT > 0) e.pingT -= dt;
@@ -10309,7 +10321,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
-  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateGlad(dt);
+  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateGlad(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
@@ -10551,3 +10563,157 @@ function updateSaws(dt) {
   }
 }
 export function clearSaws() { for (const S of G.saws) for (const o of S.discs) o.parent && o.parent.remove(o); G.saws.length = 0; }
+
+
+// ------------------------------------------------------------------ v58 Turf War: paint the floor. A 200 x 200 grid of 1.7 m
+// cells over the arena (cells inside solids don't count); your feet, shots and kills paint cyan, enemy feet, shots and
+// sprayer trails paint magenta. Standing on your colour: speed x1.2 and energy regen x1.6; on theirs: speed x0.72 and the
+// paint eats 6 AP/s. Whoever covers more floor when the clock runs out wins
+export const TURF = { N: 200, dur: 240, bossAt: 165, last: 30, lastK: 1.5, pTrail: 2.4, eTrail: 1.3, bossTrail: 2.2, bullet: 1.5, splashK: 0.8, missile: 3, goo: 4.5, glob: 4.5,
+  kill: 6, killBig: 10, bossKill: 24, ownSpd: 1.2, ownEn: 1.6, foeSpd: 0.72, foeDps: 6, gooT: 3, gooDev: 0.28, gooHit: 0.7 };
+const TURF_BIG = new Set(['walker', 'bulwark', 'prism', 'rammer', 'adaptor', 'marshal', 'forklift', 'herald', 'torcher', 'leaper', 'anchor', 'sprayer', 'raider']);
+export function startTurf() {
+  const N = TURF.N, cs = 2 * ARENA / N, own = new Uint8Array(N * N), ok = new Uint8Array(N * N), q = new V3(); let n = 0;
+  for (let j = 0; j < N; j++) for (let i = 0; i < N; i++) {
+    q.set(-ARENA + (i + 0.5) * cs, 0.6, -ARENA + (j + 0.5) * cs);
+    if (Math.abs(q.x) < ARENA - 3 && Math.abs(q.z) < ARENA - 3 && !pointInSolid(q, 0.2)) { ok[j * N + i] = 1; n++; }
+  }
+  PAINT.data.fill(0); PAINT.tex.needsUpdate = true;
+  G.turf = { own, ok, n: [n, 0, 0], total: n, mul: 1, dirty: false, upT: 0, eT: 0, foeT: 0, ownT: 0, peak: 0, low: 1 };
+}
+export function clearTurf() { G.turf = null; if (G.player) { G.player.turfMul = 1; G.player.turfEn = 1; } }
+export function turfShare() { const T = G.turf; return T ? [T.n[1] / T.total, T.n[2] / T.total] : [0, 0]; }
+export function turfAt(x, z) {
+  const T = G.turf; if (!T) return 0; const N = TURF.N, cs = 2 * ARENA / N;
+  const i = Math.floor((x + ARENA) / cs), j = Math.floor((z + ARENA) / cs);
+  return i < 0 || j < 0 || i >= N || j >= N ? 0 : T.own[j * N + i];
+}
+export function paintAt(x, z, r, team, soft = false) {
+  const T = G.turf; if (!T || !team || !Number.isFinite(x + z)) return 0;
+  const N = TURF.N, cs = 2 * ARENA / N, D = PAINT.data; r = Math.max(r * (team === 1 ? T.mul : 1), cs * 0.6);   // the last-30-s boost is yours alone
+  const i0 = Math.max(0, Math.floor((x - r + ARENA) / cs)), i1 = Math.min(N - 1, Math.floor((x + r + ARENA) / cs));
+  const j0 = Math.max(0, Math.floor((z - r + ARENA) / cs)), j1 = Math.min(N - 1, Math.floor((z + r + ARENA) / cs));
+  let ch = 0; const r2 = r * r;
+  for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
+    const dx = -ARENA + (i + 0.5) * cs - x, dz = -ARENA + (j + 0.5) * cs - z; if (dx * dx + dz * dz > r2) continue;
+    const k = j * N + i; if (!T.ok[k] || T.own[k] === team || (soft && T.own[k])) continue;
+    T.n[T.own[k]]--; T.n[team]++; T.own[k] = team; D[k * 4] = team === 1 ? 255 : 0; D[k * 4 + 1] = team === 2 ? 255 : 0; ch++;
+  }
+  if (ch) T.dirty = true;
+  return ch;
+}
+function paintSplash(at, col) {
+  for (let k = 0; k < 10; k++) { const a = Math.random() * 6.283, v = 3 + Math.random() * 5; G.fx.emit('add', { x: at.x, y: at.y + 0.3, z: at.z, vx: Math.cos(a) * v, vy: 3 + Math.random() * 4, vz: Math.sin(a) * v, grav: 14, life: 0.55, s0: 0.6, s1: 0.25, c0: col }); }
+}
+function turfShot(s, at) {   // a shot that lands on the floor paints it
+  if (!(at.y < 3)) return; const team = s.team === 'P' ? 1 : s.team === 'E' ? 2 : 0; if (!team) return;
+  const r = s.goo ? TURF.goo : s.pglob ? TURF.glob : s.splash > 0 ? s.splash * TURF.splashK : s.kind === 'missile' ? TURF.missile : TURF.bullet;
+  paintAt(at.x, at.z, r, team);
+}
+export function turfKill(e) {   // a wreck bursts into your colour
+  if (!G.turf) return; const P = e.mech ? e.mech.pos : (e.pos || e.c); if (!P) return;
+  const r = e.kind === 'boss' ? TURF.bossKill : TURF_BIG.has(e.kind) ? TURF.killBig : TURF.kill;
+  paintAt(P.x, P.z, r, 1); G.fx.ring(new V3(P.x, 0.3, P.z), null, 1, r, 0.5, 0x18c8ff); paintSplash(new V3(P.x, 0.5, P.z), 0x40d8ff);
+}
+export function updateTurf(dt) {
+  const T = G.turf; if (!T) return; const p = G.player;
+  if (p && p.alive) {
+    const on = p.grounded ? turfAt(p.pos.x, p.pos.z) : 0;
+    if (p.grounded && Math.hypot(p.vel.x, p.vel.z) > 1.5) paintAt(p.pos.x, p.pos.z, TURF.pTrail, 1, true);
+    p.turfMul = on === 1 ? TURF.ownSpd : on === 2 ? TURF.foeSpd : 1; p.turfEn = on === 1 ? TURF.ownEn : 1;
+    if (on === 2) { hurtPlayer(TURF.foeDps * dt, 'paint'); T.foeT += dt; } else if (on === 1) T.ownT += dt;
+  }
+  T.eT -= dt;
+  if (T.eT <= 0) {
+    T.eT = 0.2;
+    for (const e of G.enemies) {
+      if (!e.alive || e.dying || e.hacked || e.kind === 'turret' || e.kind === 'sprayer' || e.isMine) continue;
+      const P = e.mech ? e.mech.pos : e.pos; if (!P || P.y > 1.5) continue;
+      paintAt(P.x, P.z, e.mech ? TURF.bossTrail : TURF.eTrail, 2, !e.mech);
+    }
+  }
+  T.upT -= dt; if (T.dirty && T.upT <= 0) { T.upT = 0.08; T.dirty = false; PAINT.tex.needsUpdate = true; }
+  const sh = turfShare(); T.peak = Math.max(T.peak, sh[0]);
+}
+
+// SP-4 splat cannon: cyan goo gums up the optics of everything in the splash for 3 s
+function gooSplash(s, at) {
+  explodeAt(at, s.splash, s.dmg, s.team, 0.7, 0x18c8ff); paintSplash(at, 0x40d8ff);
+  let n = 0;
+  for (const e of G.enemies) {
+    if (!e.alive || e.dying || e.hacked || e.isMine || !e.c) continue; const h = e.kind === 'cpart' ? e.owner : e;
+    if (e.c.distanceTo(at) - (e.r || 1.5) * 0.6 < s.splash + 1) { h.gooT = TURF.gooT * ((h.maxHp || 0) > 3000 ? 0.5 : 1); n++; }
+  }
+  G.gooHits = (G.gooHits || 0) + n;
+}
+function updateGoo(dt) {
+  for (const e of G.enemies) if (e.gooT > 0) {
+    e.gooT -= dt;
+    if (e.c && Math.random() < 0.35) G.fx.emit('add', { x: e.c.x + (Math.random() - 0.5) * 1.6, y: e.c.y + 0.6, z: e.c.z + (Math.random() - 0.5) * 1.6, vy: -2.5, grav: 6, life: 0.5, s0: 0.35, s1: 0.15, c0: 0x40d8ff });
+  }
+}
+
+// Sprayer: a four-wheeled paint truck that hunts for unpainted and cyan floor, laying a 2.6 m magenta trail; it runs from
+// you inside 22 m, lobs paint globs (18 damage, 3.5 m) every 2.5-3.5 s and takes x1.6 on the paint tank at its rear
+export const SPRAY = { hp: 560, r: 2.2, speed: 13, flee: 20, fleeSpd: 13, cd: [2.5, 3.5], dmg: 18, splash: 3.5, R: 48, trail: 1.8, back: 2.0, goalR: 90 };
+export class Sprayer extends Enemy {
+  constructor(pos) {
+    super('sprayer', 'E_Sprayer', pos, SPRAY.hp, SPRAY.r); this.boom = 1.1;
+    this.pos.y = groundAt(pos.x, pos.z, 40); this.yaw = Math.random() * 6; this.yaw2 = this.yaw; this.vel = new V3(); this.ph = Math.random() * 6;
+    this.stuckT = 0; this.sideT = 0; this.side = Math.random() < 0.5 ? 1 : -1; this.last = this.pos.clone(); this.goal = null; this.goalT = 0;
+    this.lobT = 1.5 + Math.random() * 1.5; this.c.set(this.pos.x, this.pos.y + 1.3, this.pos.z);
+  }
+  drive(tx, tz, spd, dt) { return Engineer.prototype.drive.call(this, tx, tz, spd, dt); }
+  hit(dmg, at) {
+    if (at && this.alive) { const fx = -Math.sin(this.yaw2), fz = -Math.cos(this.yaw2); if ((at.x - this.pos.x) * fx + (at.z - this.pos.z) * fz < -0.4) { dmg *= SPRAY.back; G.sprayBack = (G.sprayBack || 0) + 1; } }
+    super.hit(dmg);
+  }
+  pickGoal() {
+    const p = G.player, q = new V3(); let best = null, bs = -1e9;
+    for (let k = 0; k < 10; k++) {
+      const a = Math.random() * 6.283, r = 25 + Math.random() * SPRAY.goalR;
+      const x = Math.max(-150, Math.min(150, this.pos.x + Math.cos(a) * r)), z = Math.max(-150, Math.min(150, this.pos.z + Math.sin(a) * r));
+      q.set(x, 0.6, z); if (pointInSolid(q, 1.5)) continue;
+      const o = turfAt(x, z); let sc = o === 1 ? 3 : o === 0 ? 2 : 0;
+      if (p) { const d = Math.hypot(x - p.pos.x, z - p.pos.z); sc += Math.min(1.5, d / 60) - (d < 30 ? 2 : 0); }
+      sc += Math.random() * 0.5;
+      if (sc > bs) { bs = sc; best = new V3(x, 0, z); }
+    }
+    this.goal = best; this.goalT = 6 + Math.random() * 4;
+  }
+  update(dt) {
+    const t = this.tg(), n = this.n, tc = t.center ? t.center(playerC) : t.pos; this.ph += dt; this.goalT -= dt;
+    const dx = t.pos.x - this.pos.x, dz = t.pos.z - this.pos.z, dl = Math.hypot(dx, dz) || 1;
+    if (dl < SPRAY.flee) { this.fleeing = true; this.drive(this.pos.x - dx / dl * 14 - dz / dl * this.side * 6, this.pos.z - dz / dl * 14 + dx / dl * this.side * 6, SPRAY.fleeSpd, dt); }
+    else {
+      this.fleeing = false;
+      if (!this.goal || this.goalT <= 0 || Math.hypot(this.goal.x - this.pos.x, this.goal.z - this.pos.z) < 5) this.pickGoal();
+      if (this.goal) this.drive(this.goal.x, this.goal.z, SPRAY.speed, dt);
+    }
+    this.pos.y += (groundAt(this.pos.x, this.pos.z, this.pos.y + 2) - this.pos.y) * Math.min(1, dt * 8);
+    const sp = Math.hypot(this.vel.x, this.vel.z), want = sp > 1 ? Math.atan2(-this.vel.x, -this.vel.z) : this.yaw2;
+    this.yaw2 += angDiff(want, this.yaw2) * Math.min(1, dt * 5);
+    this.obj.rotation.set(0, this.yaw2, 0, 'YXZ');
+    const bx = this.pos.x + Math.sin(this.yaw2) * 1.7, bz = this.pos.z + Math.cos(this.yaw2) * 1.7;
+    if (sp > 2) {
+      paintAt(bx, bz, SPRAY.trail, 2);
+      if (Math.random() < 0.7) G.fx.emit('add', { x: bx + (Math.random() - 0.5) * 1.6, y: 0.35, z: bz + (Math.random() - 0.5) * 1.6, vx: this.vel.x * 0.2, vy: 0.8, vz: this.vel.z * 0.2, life: 0.4, s0: 0.7, s1: 0.2, c0: 0xff2a9a });
+    }
+    for (let i = 1; i <= 4; i++) { const w = n['SR_Wheel' + i]; if (w) w.rotation.x -= sp * dt / 0.45; }
+    if (n.SR_Turret) n.SR_Turret.rotation.y = angDiff(Math.atan2(-dx, -dz), this.yaw2);
+    if (n.SR_Tank) n.SR_Tank.scale.setScalar(1 + 0.04 * Math.sin(this.ph * 7));
+    this.c.set(this.pos.x, this.pos.y + 1.3, this.pos.z);
+    this.lobT -= dt;
+    if (this.lobT <= 0 && dl < SPRAY.R && this.checkLos(dt)) {
+      this.lobT = SPRAY.cd[0] + Math.random() * (SPRAY.cd[1] - SPRAY.cd[0]);
+      const mp = n.Muzzle_Spray ? n.Muzzle_Spray.getWorldPosition(new V3()) : this.c.clone();
+      const D = Math.hypot(tc.x - mp.x, tc.z - mp.z), Tf = 0.8 + D / 45, g = 22;
+      const aim = new V3().copy(tc).addScaledVector(t.vel || _c.set(0, 0, 0), Tf * 0.6);
+      const gy = groundAt(aim.x, aim.z, aim.y + 1), low = aim.y - gy < 4; if (low) aim.y = gy;
+      const v = new V3((aim.x - mp.x) / Tf, (aim.y - mp.y + 0.5 * g * Tf * Tf) / Tf, (aim.z - mp.z) / Tf);
+      G.curShooter = this; spawnShot({ p: mp, v, dmg: SPRAY.dmg, team: 'E', kind: 'shell', pglob: true, splash: SPRAY.splash, life: Tf + 1, grav: g, label: 'sprayer', color: 0xff2a9a, size: 1.4 }); G.curShooter = null;
+      if (low) G.fx.warn(aim, SPRAY.splash, Tf);
+      sfx('eshell', G.player ? G.player.pos.distanceTo(mp) : 50);
+    }
+  }
+}

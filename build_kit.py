@@ -158,6 +158,8 @@ M = dict(
     ReviverPaint=mat("ReviverPaint", "#d4d8cc", 0.4, metal=0.35), Nanite=mat("Nanite", "#c8ffd0", 0.2, emit="#30ff78", strength=2.4),
     PylonPaint=mat("PylonPaint", "#3a3440", 0.5, metal=0.4), PylonGlow=mat("PylonGlow", "#ffd0c0", 0.2, emit="#ff4a2a", strength=2.6),
     CamoLens=mat("CamoLens", "#c8f4ff", 0.1, emit="#60d8ff", strength=1.6),
+    PaintCyan=mat("PaintCyan", "#7fe8ff", 0.2, emit="#18c8ff", strength=1.6), PaintPink=mat("PaintPink", "#ff9ad0", 0.2, emit="#ff2a9a", strength=1.6),
+    SprayBody=mat("SprayBody", "#f2f0ea", 0.35, metal=0.2),
     AdaptGlow=mat("AdaptGlow", "#d8ecff", 0.25, emit="#6fb8ff", strength=2.4), AdaptPaint=mat("AdaptPaint", "#5a5e6a", 0.45, metal=0.55),
     VentGlow=mat("VentGlow", "#ffd8a0", 0.3, emit="#ff7a20", strength=2.6), SawSteel=mat("SawSteel", "#c8ccd2", 0.22, metal=0.95),
     ArenaStone=mat("ArenaStone", "#b09a7a", 0.88),
@@ -3669,7 +3671,62 @@ def build_firevent():
         a = k * math.pi / 4
         box((math.cos(a) * 2.95, math.sin(a) * 2.95, 0.16), (0.3, 0.3, 0.12), M["Joint"], K, rot=(0, 0, a))
 
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb(); build_bloater(); build_coolant(); build_cooltower(); build_atomdome(); build_decon(); build_isotope(); build_adaptor(); build_saws(); build_sawdisc(); build_arenagate(); build_firevent()
+
+def build_sprayer():
+    # Sprayer: a squat four-wheeled paint truck (about 3.4 m long, front +Y). a white body with magenta stripes, a big
+    # glowing magenta paint tank on the back SR_Tank (its weak point), a turret SR_Turret (turns about Z) carrying a
+    # long spray nozzle SR_Nozzle with Muzzle_Spray, and a wide spray bar under the rear bumper that lays the trail.
+    # wheels SR_Wheel1-4 spin about X
+    K = kit("E_Sprayer")
+    box((0, 0.2, 0.75), (1.7, 3.0, 0.6), M["SprayBody"], K, bevel=0.12)
+    for sx in (-1, 1):
+        box((sx * 0.86, 0.2, 0.78), (0.04, 2.6, 0.18), M["PaintPink"], K)
+    wedge((0, 1.45, 1.1), (1.5, 0.9, 0.5), M["SprayBody"], K, bevel=0.05, taper=0.6)
+    box((0, 1.85, 1.15), (1.0, 0.06, 0.16), M["EEye"], K)
+    box((0, -1.35, 0.42), (1.9, 0.3, 0.16), M["Frame"], K, bevel=0.03)
+    for k in range(6):
+        cyl((-0.8 + k * 0.32, -1.48, 0.32), 0.06, 0.12, M["PaintPink"], K, verts=8)
+    t = empty("SR_Tank", (0, -0.75, 1.55), K)
+    cyl((0, 0, 0), 0.62, 1.3, M["PaintPink"], t, rot=(1.5708, 0, 0), verts=18)
+    for y in (-0.55, 0.0, 0.55):
+        torus((0, y, 0), 0.64, 0.05, M["Frame"], t, rot=ALONG_Y)
+    box((0, 0, -0.62), (0.9, 1.3, 0.12), M["Frame"], t)
+    tur = empty("SR_Turret", (0, 0.75, 1.15), K)
+    cyl((0, 0, 0.15), 0.42, 0.3, M["Joint"], tur, verts=14)
+    box((0, 0.1, 0.42), (0.6, 0.7, 0.3), M["SprayBody"], tur, bevel=0.06)
+    nz = empty("SR_Nozzle", (0, 0.35, 0.45), tur)
+    cyl((0, 0.55, 0), 0.09, 1.1, M["Frame"], nz, rot=ALONG_Y, verts=10)
+    cyl((0, 1.15, 0), 0.17, 0.25, M["PaintPink"], nz, rot=ALONG_Y, verts=12, r2=0.1)
+    muzzle("Muzzle_Spray", (0, 1.3, 0), nz)
+    for i, (x, y) in enumerate(((0.95, 1.05), (-0.95, 1.05), (0.95, -0.85), (-0.95, -0.85))):
+        w = empty("SR_Wheel%d" % (i + 1), (x, y, 0.45), K)
+        cyl((0, 0, 0), 0.45, 0.4, M["Black"], w, rot=(0, 1.5708, 0), verts=16)
+        cyl((0, 0, 0), 0.22, 0.42, M["PaintPink"], w, rot=(0, 1.5708, 0), verts=10)
+
+def build_splat():
+    # SP-4 splatter cannon: a fat stubby barrel fed by a glowing cyan paint canister on top, with a flared splash muzzle
+    K = kit("W_Splat")
+    box((0, 0.05, 0), (0.42, 1.0, 0.42), M["Frame"], K, bevel=0.06)
+    cyl((0, 0.75, 0.0), 0.2, 0.7, M["Armor2"], K, rot=ALONG_Y, verts=14)
+    cyl((0, 1.15, 0.0), 0.3, 0.2, M["PaintCyan"], K, rot=ALONG_Y, verts=16, r2=0.2)
+    torus((0, 0.5, 0.0), 0.22, 0.04, M["Hazard"], K, rot=ALONG_Y)
+    cyl((0, -0.1, 0.38), 0.19, 0.6, M["PaintCyan"], K, rot=ALONG_Y, verts=14)
+    for y in (-0.36, 0.16):
+        torus((0, y, 0.38), 0.2, 0.035, M["Frame"], K, rot=ALONG_Y)
+    muzzle("Muzzle_Splat", (0, 1.3, 0.0), K)
+
+def build_paintcan():
+    # turf war decor: a giant paint bucket (2.4 m) with a wire handle, a lid leaning on it and a spill skirt round the base.
+    # the band PB_Band uses PaintCyan; the game recolours each placed bucket cyan or magenta
+    K = kit("P_PaintCan")
+    cyl((0, 0, 1.2), 1.2, 2.4, M["SprayBody"], K, verts=24)
+    b = empty("PB_Band", (0, 0, 0), K)
+    cyl((0, 0, 1.3), 1.22, 0.9, M["PaintCyan"], b, verts=24)
+    cyl((0, 0, 2.38), 1.05, 0.08, M["PaintCyan"], b, verts=24)
+    torus((0, 0, 2.42), 1.2, 0.06, M["Frame"], K)
+    torus((0, 0, 2.6), 1.0, 0.04, M["Frame"], K, rot=(0, 1.5708, 0))
+    cyl((1.6, 0.4, 1.0), 1.2, 0.08, M["SprayBody"], K, rot=(0, 1.15, 0.3), verts=24)
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb(); build_bloater(); build_coolant(); build_cooltower(); build_atomdome(); build_decon(); build_isotope(); build_adaptor(); build_saws(); build_sawdisc(); build_arenagate(); build_firevent(); build_sprayer(); build_splat(); build_paintcan()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
