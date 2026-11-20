@@ -88,6 +88,7 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 #banner small { display: block; font-family: var(--cn); font-size: 16px; letter-spacing: 3px; color: var(--dim); font-weight: 400; margin-top: 4px; }
 #banner.show { opacity: 1; }
 #banner.warn { color: #ff7a5a; text-shadow: 0 0 18px rgba(255, 80, 40, 0.7); }
+#scram { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: repeating-linear-gradient(0deg, rgba(124, 255, 42, 0.12) 0 2px, transparent 2px 6px), radial-gradient(circle at 50% 50%, transparent 50%, rgba(70, 210, 30, 0.4) 100%); mix-blend-mode: screen; }
 #dazzle { position: absolute; inset: 0; pointer-events: none; opacity: 0; background: radial-gradient(circle at 50% 45%, #ffffff 0%, #f6f9ff 45%, #dbe6ff 100%); }
 #glare { position: absolute; inset: 0; pointer-events: none; opacity: 0; mix-blend-mode: screen; }
 #windTag { position: absolute; top: 118px; right: 24px; pointer-events: none; padding: 4px 12px; border: 1px solid rgba(220, 210, 180, 0.6); background: rgba(40, 36, 28, 0.5); color: #efe6cc; font-size: 13px; letter-spacing: 1px; display: none; }
@@ -231,6 +232,7 @@ body.touchmode #mAlert { top: 30%; }
   <div id="acidVig"></div>
   <div id="frostVig"></div>
   <div id="glare"></div>
+  <div id="scram"></div>
   <div id="dazzle"></div>
   <div id="windTag">风向 WIND <b>&uarr;</b></div>
   <div id="flareTag"></div>

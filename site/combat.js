@@ -26,6 +26,7 @@ export const WEAPONS = {
   needler: { slot: 'arm', name: 'NX-8 针刺枪', en: 'NX-8 Needler', desc: '追踪锁定目标的钢针 · 扎在敌机上 · 同一目标扎满 8 根一起引爆（100 / 4.5 m）· 3 秒没补针就脱落', type: 'bullet', needle: true, rate: 0.085, dmg: 5, speed: 150, spread: 0.02, mag: 48, reload: 2.2, color: 0xff70e0, w: 0.16, len: 3, life: 1.6, sfx: 'rifle', recoil: 0.08 },
   ricochet: { slot: 'arm', name: 'RB-4 跳弹枪', en: 'RB-4 Ricochet', desc: '撞墙反弹 3 次 · 反弹后转向附近敌机 · 每弹一次 +25%', type: 'bullet', rate: 0.11, dmg: 14, speed: 240, spread: 0.008, mag: 36, reload: 2.0, color: 0x80ffd0, w: 0.22, len: 6, life: 1.8, bounce: 3, sfx: 'rifle', recoil: 0.15 },
   drill: { slot: 'arm', name: 'DR-2 钻地弹', en: 'DR-2 Drill Gun', desc: '慢速钻头弹 · 可钻透 18 m 内的墙体与掩体 · 命中后爆炸 3.5 m · 隔着墙打躲在后面的敌机（看雷达）', type: 'bullet', drill: 18, rate: 0.36, dmg: 58, splash: 3.5, speed: 110, spread: 0.004, mag: 10, reload: 2.2, life: 1.8, color: 0xffa040, w: 0.45, len: 3, sfx: 'cannon', recoil: 0.4 },
+  bubble: { slot: 'arm', name: 'BU-6 泡泡枪', en: 'BU-6 Bubble Gun', desc: '慢速大泡泡（轻微下坠）· 罩住 2000 血以下的普通敌机：被泡泡托起 8 m、瘫痪 2.8 秒（期间受伤 +30%），泡泡破了地面单位摔下来再吃 90 · 重型和头目只会被黏住减速 · 在「定时炸弹」里，被泡住的敌人没法把炸弹传回给你', type: 'bullet', grenade: true, bub: true, rate: 0.55, dmg: 24, splash: 2.2, speed: 58, grav: 5, spread: 0.004, mag: 8, reload: 2.2, color: 0xa8e8ff, sfx: 'spit', recoil: 0.3 },
   splat: { slot: 'arm', name: 'SP-4 泼溅炮', en: 'SP-4 Splat Cannon', desc: '抛射大团青色涂料（有下坠）· 溅射 3.5 m · 被溅中的敌机 3 秒糊住镜头：射击大幅偏离（头目减半）、近身攻击伤害 −30% · 在「领地争夺」里一发涂出 4.5 m 青色', type: 'bullet', grenade: true, goo: true, rate: 0.45, dmg: 46, splash: 3.5, speed: 62, grav: 16, spread: 0.004, mag: 12, reload: 2.4, color: 0x40d8ff, sfx: 'grenade', recoil: 0.45 },
   plorb: { slot: 'arm', name: 'PL-3 等离子球', en: 'PL-3 Plasma Orb', desc: '发射缓慢飞行的等离子球 · 飞行中每 0.25 秒电击身边 8 m 内最多 2 台敌机（对菌巢 / 菌瘤 / 播种者 ×1.5）· 撞上敌机、墙体或飞满 2.8 秒后炸开', type: 'plorb', rate: 0.5, dmg: 60, splash: 5, zap: 13, zapR: 8, zapN: 2, bio: 1.5, speed: 22, life: 2.8, mag: 8, reload: 2.2, sfx: 'coil', recoil: 0.35 },
   isotope: { slot: 'arm', name: 'IS-3 衰变枪', en: 'IS-3 Isotope Rifle', desc: '绿色衰变弹 · 每发命中给敌机叠一层衰变（最多 6 层，每层每秒 5 伤害，4 秒不补就消退）· 带 2 层以上衰变的敌机被击毁时，衰变扩散到 12 m 内所有敌机', type: 'bullet', decay: true, rate: 0.12, dmg: 11, speed: 300, spread: 0.007, mag: 36, reload: 1.9, color: 0x9cff40, w: 0.24, len: 5, sfx: 'rifle', recoil: 0.14 },
@@ -81,7 +82,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['splat', 'isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['bubble', 'splat', 'isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['saws', 'nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -151,7 +152,8 @@ function dealDamage(ent, dmg, team, at, label) {
     if (w && G.player.pos.distanceTo(w.pos) > w.R) { w.absorb(dmg, domeEntry(w, G.player.center(_c), ent.c, new V3())); if (team === 'P' && !isAlly(label || G.curLabel)) G.stats.hits++; return; }
   }
   { const h = ent.kind === 'cpart' ? ent.owner : ent;
-    if (team === 'P' && h.adapt) dmg = h.adaptHit(label || G.curLabel, dmg);   // adaptor: resists the damage type it adapted to
+    if (team === 'P' && h.adapt) dmg = h.adaptHit(label || G.curLabel, dmg);
+    if (team === 'P' && G.hf && G.hf.h === h && h.kind !== 'boss' && h.kind !== 'raider' && (label || G.curLabel) !== 'p-fuse') { dmg *= FUSE.carrierK; G.hf.shielded = (G.hf.shielded || 0) + dmg; }   // the bomb's field shields its carrier   // adaptor: resists the damage type it adapted to
     if (team === 'P' && G.glad && !isAlly(label || G.curLabel) && !ent.isBarrel) { if (G.glad.h >= GLAD.frenzy) { G.gladBonus += dmg * (GLAD.fdmg - 1); dmg *= GLAD.fdmg; } G.glad.lastDmgT = G.time; G.glad.h = Math.min(100, G.glad.h + Math.min(dmg, 200) * (h.kind === 'boss' ? GLAD.bossK : GLAD.dmgK)); }   // a good show keeps them interested
     if (h && !ent.isBarrel) { h._lastLbl = label || G.curLabel || ''; h._lastTeam = team; } }
   ent.hit(dmg, at, label || G.curLabel);
@@ -215,7 +217,7 @@ export function spawnShot(o) {
     burn: o.burn || 0, burnT: o.burnT || 0, chill: o.chill || 0, label: o.label || G.curLabel || o.kind, color: o.color ?? 0xffd27a, w: o.w ?? 0.2, len: o.len ?? 6, target: o.target || null, aim: o.aim ? o.aim.clone() : null, age: 0, speed: o.v.length(), maxSpeed: o.maxSpeed || 0, size: o.size || 1, turn: o.turn || 5.5, grav: o.grav ?? 6 };
   if (o.flak) s.flak = o.flak; if (o.sticky) s.sticky = true;
   if (o.web) s.web = true;
-  if (o.goo) s.goo = true; if (o.pglob) s.pglob = true;
+  if (o.goo) s.goo = true; if (o.pglob) s.pglob = true; if (o.bub) s.bub = true;
   if (s.team === 'E' && G.curShooter && G.curShooter.hacked) { s.team = 'P'; s.dmg *= HACK.dmg; s.label = 'hack-' + G.curShooter.kind; s.target = null; G.hackShots = (G.hackShots || 0) + 1; G.shots.push(s); return s; }
   if (s.team === 'E' && G.curShooter) G.curShooter.pingT = FOG.ping;   // fog harbour: firing shows you on the radar
   if (s.team === 'E' && G.curShooter && G.curShooter.rally) s.dmg *= HERALD.dmg;
@@ -275,6 +277,7 @@ function impact(s, at, ent) {
   const fx = G.fx; G.curLabel = s.label;
   if (G.turf) turfShot(s, at);
   if (s.goo) { gooSplash(s, at); return; }
+  if (s.bub) { bubbleHit(s, at, ent); return; }
   if (s.pglob) { explodeAt(at, s.splash, s.dmg, s.team, 0.6, 0xff2a9a); paintSplash(at, 0xff2a9a); return; }
   if (s.web) { webSplat(s, at, ent); return; }
   if (s.sticky) { stickAt(s, at, ent); return; }
@@ -488,7 +491,7 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
           const th = disc > 0 ? Math.atan((v * v - Math.sqrt(disc)) / (g * h)) : Math.PI / 4;
           _d.set(hx / h * Math.cos(th), Math.sin(th), hz / h * Math.cos(th));
           _d.x += (Math.random() - 0.5) * d.spread; _d.z += (Math.random() - 0.5) * d.spread;
-          spawnShot({ p: mp, v: _d.clone().normalize().multiplyScalar(v), dmg: d.dmg * dmgMul, team, kind: 'grenade', splash: d.splash, grav: g, life: 5, color: d.color, sticky: d.sticky && team === 'P', goo: d.goo && team === 'P' });
+          spawnShot({ p: mp, v: _d.clone().normalize().multiplyScalar(v), dmg: d.dmg * dmgMul, team, kind: 'grenade', splash: d.splash, grav: g, life: 5, color: d.color, sticky: d.sticky && team === 'P', goo: d.goo && team === 'P', bub: d.bub && team === 'P' });
           fx.muzzle(mp, _d, 0xffb060, 1.5); mslot.recoil = Math.min(0.6, (mslot.recoil || 0) + d.recoil);
           if (me) { G.stats.shots++; fx.trauma = Math.min(1, fx.trauma + 0.08); }
           sfx(d.sfx, dist); continue;
@@ -2018,7 +2021,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -10284,7 +10287,10 @@ export function updateCombat(dt) {
     const sp = G.stasis.length && (e.c || e.pos), sk = sp ? stasisK(sp, e.maxHp > 1500 || e.isColossus || e.isTrain || e.isLev) : 1;
     if (sk < 1) G.stasisSlow = (G.stasisSlow || 0) + dt;
     const netted = e.netT > 0 && !e.isCourier, netBig = netted && (e.maxHp > 3000 || e.kind === 'boss' || e.kind === 'raider'), nx = e.pos ? e.pos.x : 0, nz = e.pos ? e.pos.z : 0;
-    G.curShooter = e; e.update((e.chill > 0 ? dt * (1 - 0.4 * e.chill / 100) : dt) * sk * (e.rally ? HERALD.spd : 1) * (netBig ? 0.6 : 1)); G.curShooter = null;
+    if (e.bubSlow > 0) e.bubSlow -= dt;
+    const fzD = G.hf && G.hf.h === e && fuseDrives(e), fx0 = fzD ? e.pos.x : 0, fy0 = fzD ? e.pos.y : 0, fz0 = fzD ? e.pos.z : 0;
+    G.curShooter = e; e.update((e.chill > 0 ? dt * (1 - 0.4 * e.chill / 100) : dt) * sk * (e.rally ? HERALD.spd : 1) * (netBig ? 0.6 : 1) * (e.bubSlow > 0 ? BUB.slow : 1)); G.curShooter = null;
+    if (fzD && e.alive && !e.dying) fuseDrive(e, dt, fx0, fy0, fz0);
     if (e.netT > 0) { e.netT -= dt; if (netted && !netBig && e.pos && e.alive) { e.pos.x = nx; e.pos.z = nz; } netVisual(e); } else if (e.netMesh) netVisual(e);
     if (e.flash > 0) e.flash -= dt;
   }
@@ -10321,7 +10327,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
-  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateGlad(dt);
+  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updateGlad(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
@@ -10717,3 +10723,257 @@ export class Sprayer extends Enemy {
     }
   }
 }
+
+
+// ------------------------------------------------------------------ v59 Hot Fuse: a countdown bomb clamps onto someone and
+// has to be passed on. hold it and get within 7 m of an enemy for a moment to stick it on them; an enemy carrying it hunts
+// you to pass it back. it goes off when the clock runs out: on you 110 damage, on an enemy an instant kill (bosses lose
+// 10 %) and a 12 m blast that hurts every enemy round it. every other bomb starts on an enemy near you
+export const FUSE = { carrierK: 0.25, first: 8, gap: 6, tP: 14, tE: 12, minT: 4, passR: 7, passT: 0.35, cool: 1.5, pull: 11, dmgP: 110, dmgE: 160, R: 12, bossK: 0.1, nearR: 8, nearDmg: 40 };
+const HF_NO = new Set(['turret', 'relay', 'cruise', 'swarm', 'tumor', 'civ', 'cpart', 'tower', 'citadel', 'dish', 'pump', 'fab', 'bionode']);
+function hfOk(e, init) {
+  if (!e || !e.alive || e.dying || e.gone || e.hacked || e.isMine || e.isObjective || e.isBarrel || e.holo || e.cloaked || !e.c || HF_NO.has(e.kind)) return false;
+  if (init && (e.kind === 'boss' || e.kind === 'raider' || e.maxHp > 3000)) return false;
+  return true;
+}
+const hfMesh = (() => {
+  const g = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.IcosahedronGeometry(0.7, 2), new THREE.MeshStandardMaterial({ color: 0x24242a, roughness: 0.35, metalness: 0.7, emissive: 0xff2a10, emissiveIntensity: 0.3 }));
+  const band = new THREE.Mesh(new THREE.TorusGeometry(0.74, 0.09, 8, 28), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff3a18).multiplyScalar(2.6), toneMapped: false }));
+  band.rotation.x = Math.PI / 2;
+  const band2 = new THREE.Mesh(new THREE.TorusGeometry(0.74, 0.06, 8, 28), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xffc040).multiplyScalar(2), toneMapped: false }));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(1.4, 0.05, 6, 40), new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff8030).multiplyScalar(2), transparent: true, opacity: 0.8, toneMapped: false, depthWrite: false }));
+  ring.rotation.x = Math.PI / 2;
+  const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 70, 8, 1, true).translate(0, 36, 0), new THREE.MeshBasicMaterial({ color: 0xff3a18, transparent: true, opacity: 0.3, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
+  g.add(core, band, band2, ring, beam); g.visible = false; g.userData = { core, band, band2, ring, beam };
+  return g;
+})();
+export function startFuse() {
+  G.hf = { h: null, t: 0, next: FUSE.first, n: 0, kills: 0, onP: 0, bossHits: 0, passes: 0, backs: 0, passK: 0, cool: 0, beepT: 0, flashK: 0, pause: false, lastC: new V3(), bubbledHolder: 0 };
+  G.scene.add(hfMesh); hfMesh.visible = false;
+}
+export function clearFuse() { G.hf = null; hfMesh.visible = false; }
+export function fuseNear(pc, r) {   // the nearest enemy you could hand the bomb to
+  let best = null, bd = r;
+  for (const e of G.enemies) { if (!hfOk(e)) continue; const d = e.c.distanceTo(pc) - (e.r || 2) * 0.5; if (d < bd) { bd = d; best = e; } }
+  return best;
+}
+// the bomb takes over its carrier's legs: after its own update (animation, guns) its position is put back and it rushes
+// you in a straight line at 11 m/s; fliers drop to your height. crawlers and bosses keep their own movement
+const FUSE_SELF = new Set(['crawler', 'eel', 'leech', 'burrower', 'swarm']);
+export function fuseDrives(e) { return !!(e.pos && !e.mech && !e.bubbled && !(e.stunT > 0) && !e.isTrain && !e.solids && !FUSE_SELF.has(e.kind)); }
+function fuseDrive(e, dt, x0, y0, z0) {
+  const P = G.player; if (!P || !P.alive) return; const pc = P.center(_c);
+  const ax = e.pos.x, ay = e.pos.y, az = e.pos.z;
+  const dx = pc.x - x0, dz = pc.z - z0, dl = Math.hypot(dx, dz) || 1, sp = FUSE.pull;
+  e.pos.x = x0; e.pos.z = z0;
+  if (dl > 2.5) { e.pos.x += dx / dl * sp * dt; e.pos.z += dz / dl * sp * dt; }
+  collideCyl(e.pos, Math.min(2, e.r || 1.5), 2.4);
+  const g = groundAt(e.pos.x, e.pos.z, y0 + 2);
+  if (y0 - g > 2.5) { const ty = Math.max(g + 2.5, pc.y - 0.5); e.pos.y = y0 + Math.max(-7 * dt, Math.min(7 * dt, ty - y0)); }
+  if (e.c !== e.pos) { e.c.x += e.pos.x - ax; e.c.y += e.pos.y - ay; e.c.z += e.pos.z - az; }
+  if (e.vel) { e.vel.x = dx / dl * sp; e.vel.z = dz / dl * sp; }
+}
+function hfArm() {
+  const F = G.hf, p = G.player; F.n++;
+  let h = 'P';
+  if (F.n % 2 === 0) {
+    let best = null, bd = 1e9;
+    for (const e of G.enemies) { if (!hfOk(e, true)) continue; const d = e.c.distanceTo(p.pos); if (d > 22 && d < 95 && d < bd) { bd = d; best = e; } }
+    if (best) h = best;
+  }
+  F.h = h; F.t = h === 'P' ? FUSE.tP : FUSE.tE; F.cool = 1; F.passK = 0; F.beepT = 0;
+  const at = h === 'P' ? p.center(new V3()) : h.c;
+  G.fx.ring(at, null, 1, 6, 0.4, 0xff5020); G.fx.flash(at, 0xff6030, 20, 14, 0.25); sfx('warn', 0);
+  G.onFuse && G.onFuse(h === 'P' ? 'armP' : 'armE', h);
+}
+function hfGive(to) {
+  const F = G.hf, p = G.player, from = F.h === 'P' ? p.center(new V3()) : F.h.c.clone(), dest = to === 'P' ? p.center(new V3()) : to.c;
+  F.h = to; F.t = Math.max(F.t, FUSE.minT); F.cool = FUSE.cool; F.passK = 0;
+  if (to === 'P') F.backs++; else F.passes++;
+  G.fx.streak(from, dest, 0.6, 0xff6030); G.fx.ring(dest, null, 1, 5, 0.3, 0xff8030); sfx('catch', 0);
+  G.onFuse && G.onFuse(to === 'P' ? 'back' : 'pass', to);
+}
+function hfBoom(at, h) {
+  const F = G.hf, p = G.player, prev = G.curLabel; G.curLabel = 'p-fuse';
+  const near = G.enemies.filter((e) => e.alive && !e.dying && e.c && e.c.distanceTo(at) < FUSE.R + 3 && e.kind !== 'boss' && e.kind !== 'raider');
+  if (h === 'P') { hurtPlayer(FUSE.dmgP, 'fuse'); if (p.vel) p.vel.y = Math.max(p.vel.y, 9); F.onP++; }
+  else if (h && h.alive) {
+    if (h.kind === 'boss' || h.kind === 'raider' || h.maxHp > 3000) { dealDamage(h, h.maxHp * FUSE.bossK, 'P', at, 'p-fuse'); F.bossHits++; }
+    else dealDamage(h, h.hp + 10, 'P', at, 'p-fuse');
+  }
+  explodeAt(at, FUSE.R, FUSE.dmgE, 'P', 2.6, 0xff5020);
+  let kn = 0; for (const e of near) if (!e.alive) kn++; F.kills += kn; F.lastKn = kn;
+  if (h !== 'P' && p.center(_c).distanceTo(at) < FUSE.nearR) hurtPlayer(FUSE.nearDmg, 'fuse-near');
+  G.fx.flash(at, 0xff6030, 90, 50, 0.45); G.fx.ring(at, null, 1, FUSE.R, 0.5, 0xff5020); G.fx.trauma = Math.min(1, G.fx.trauma + (h === 'P' ? 0.8 : 0.35));
+  sfx('bigboom', p.pos.distanceTo(at) * 0.3);
+  G.curLabel = prev;
+  F.h = null; F.next = FUSE.gap; hfMesh.visible = false;
+  G.onFuse && G.onFuse(h === 'P' ? 'boomP' : 'boomE', h);
+}
+export function updateFuse(dt) {
+  const F = G.hf; if (!F) return; const p = G.player;
+  if (!p || !p.alive) { hfMesh.visible = false; return; }
+  const anyone = G.enemies.some((e) => hfOk(e));
+  if (!F.h) { hfMesh.visible = false; if (!F.pause) { F.next -= dt; if (F.next <= 0 && anyone) hfArm(); } return; }
+  if (F.h === 'P' && !anyone) { F.h = null; F.next = FUSE.gap; hfMesh.visible = false; G.fx.ring(p.center(new V3()), null, 1, 4, 0.3, 0x80ff80); sfx('repair', 0); G.onFuse && G.onFuse('safe', null); return; }
+  if (F.h !== 'P' && !hfOk(F.h)) {   // the carrier died first: the bomb goes off where it fell
+    hfBoom(F.lastC.clone(), null); return;
+  }
+  F.t -= dt; F.cool -= dt;
+  const pc = p.center(new V3());
+  if (F.h === 'P') {
+    const best = fuseNear(pc, FUSE.passR);
+    if (best && F.cool <= 0) { F.passK += dt; if (F.passK >= FUSE.passT) hfGive(best); } else F.passK = Math.max(0, F.passK - dt * 2);
+  } else {
+    const e = F.h, d = e.c.distanceTo(pc) - (e.r || 2) * 0.5, held = e.bubbled || e.stunT > 0;
+    if (e.bubbled) F.bubbledHolder += dt;
+    if (d < FUSE.passR && F.cool <= 0 && !held) { F.passK += dt; if (F.passK >= FUSE.passT) hfGive('P'); } else F.passK = Math.max(0, F.passK - dt * 2);
+  }
+  const hc = F.h === 'P' ? pc : F.h.c; F.lastC.copy(hc);
+  if (F.t <= 0) { hfBoom(hc.clone(), F.h); return; }
+  // beeps speed up as the fuse burns down
+  F.beepT -= dt;
+  if (F.beepT <= 0) { F.beepT = Math.max(0.12, Math.min(1, F.t / 7)); F.flashK = 1; sfx('minebeep', p.pos.distanceTo(hc) * 0.5); }
+  F.flashK = Math.max(0, F.flashK - dt * 6);
+  const U = hfMesh.userData, up = F.h === 'P' ? 2.6 : (F.h.r || 2) * 0.8 + 1.6;
+  hfMesh.visible = true; hfMesh.position.set(hc.x, hc.y + up, hc.z);
+  hfMesh.rotation.y += dt * 2.5; U.band2.rotation.y += dt * 4;
+  U.core.material.emissiveIntensity = 0.3 + F.flashK * 4;
+  U.ring.scale.setScalar(1 + (1 - F.flashK) * 0.9); U.ring.material.opacity = 0.8 * F.flashK;
+  U.beam.material.opacity = F.t < 4 ? 0.2 + 0.3 * F.flashK : 0.22;
+  if (Math.random() < 0.5) G.fx.emit('add', { x: hfMesh.position.x, y: hfMesh.position.y + 0.8, z: hfMesh.position.z, vx: (Math.random() - 0.5) * 2, vy: 2 + Math.random() * 2, vz: (Math.random() - 0.5) * 2, life: 0.3, s0: 0.35, s1: 0.1, c0: 0xffa040 });
+}
+
+// BU-6 bubble gun: wobbly soap bubbles that trap a light enemy and float it up 8 m, stunned; when the bubble pops a ground
+// unit falls and takes 90. heavies and bosses only get stuck in the film and slow down
+export const BUB = { t: 2.8, rise: 3.6, maxH: 8, fall: 90, fallStun: 0.8, slow: 0.55, slowT: 2.2, bigHp: 2000, catchR: 3.4 };
+G.bubbles = [];
+const bubGeo = new THREE.SphereGeometry(1, 24, 16);
+const bubMat = new THREE.MeshPhysicalMaterial({ color: 0xe8f8ff, transparent: true, opacity: 0.3, roughness: 0.04, metalness: 0, iridescence: 1, iridescenceIOR: 1.35, iridescenceThicknessRange: [120, 480],
+  emissive: 0x2a4a60, emissiveIntensity: 0.5, depthWrite: false, side: THREE.DoubleSide, envMapIntensity: 2 });
+function bubbleOk(e) { return e.alive && !e.dying && !e.gone && e.obj && e.pos && !e.mech && !e.isObjective && !e.solids && !e.parts && !e.isMine && !e.isBarrel && !e.bubbled && !e.tbHeld && !e.hacked && e.kind !== 'cpart' && e.kind !== 'civ'; }
+function bubbleHit(s, at, ent) {
+  explodeAt(at, s.splash, s.dmg, 'P', 0.45, 0xa8e8ff);
+  for (let k = 0; k < 8; k++) G.fx.emit('add', { x: at.x, y: at.y, z: at.z, vx: (Math.random() - 0.5) * 6, vy: Math.random() * 4, vz: (Math.random() - 0.5) * 6, grav: 4, life: 0.5, s0: 0.5, s1: 0.15, c0: 0xc8f0ff });
+  let e = ent && ent.kind === 'cpart' ? ent.owner : ent;
+  if (!e || !e.alive || e.isPlayer || e.isAlly || e.isBarrel) {
+    e = null; let bd = BUB.catchR;
+    for (const q of G.enemies) { if (!q.alive || q.dying || !q.c || q.hacked || q.isMine) continue; const d = q.c.distanceTo(at) - (q.r || 1.5) * 0.6; if (d < bd) { bd = d; e = q; } }
+  }
+  if (!e) return;
+  if (e.maxHp > BUB.bigHp * G.diff.hp || e.mech || !bubbleOk(e)) {   // too big to lift: stuck in the film
+    if (!e.bubbled) { e.bubSlow = BUB.slowT * (e.kind === 'boss' ? 0.6 : 1); G.bubSlows = (G.bubSlows || 0) + 1; G.fx.ring(e.c, null, 1, (e.r || 2) * 1.4, 0.35, 0xa8e8ff); }
+    return;
+  }
+  const gy = groundAt(e.pos.x, e.pos.z, e.pos.y + 1.5), m = new THREE.Mesh(bubGeo, bubMat); m.renderOrder = 6; G.scene.add(m);
+  const B = { e, t: BUB.t, y0: e.pos.y, top: e.pos.y + BUB.maxH, gy, ground: e.pos.y - gy < 1.5, st: 'up', vy: 0, off: new V3().subVectors(e.c, e.pos), m, R: (e.r || 1.5) * 1.15 + 0.7, ph: Math.random() * 6 };
+  e.bubbled = true; e.stunT = Math.max(e.stunT || 0, 0.4); e.stunMax = e.stunT; if (e.vel) e.vel.set(0, 0, 0);
+  G.bubbles.push(B); G.bubbled = (G.bubbled || 0) + 1; sfx('catch', 0);
+  G.onBubble && G.onBubble(e);
+}
+function bubbleEnd(B, i) { B.e.bubbled = false; B.m.parent && B.m.parent.remove(B.m); G.bubbles.splice(i, 1); }
+function updateBubbles(dt) {
+  for (let i = G.bubbles.length - 1; i >= 0; i--) {
+    const B = G.bubbles[i], e = B.e; B.ph += dt;
+    if (!e.alive || e.dying || e.gone) { popFx(B.m.position, B.R); bubbleEnd(B, i); continue; }
+    e.stunT = Math.max(e.stunT || 0, 0.3); e.stunMax = Math.max(e.stunMax || 0, e.stunT); if (e.vel) e.vel.set(0, 0, 0);
+    if (B.st === 'up') {
+      B.t -= dt;
+      const ny = Math.min(B.top, e.pos.y + BUB.rise * dt) + Math.sin(B.ph * 2.2) * 0.02;
+      e.pos.y = ny; e.c.copy(e.pos).add(B.off); e.obj.rotation.y += dt * 0.9;
+      B.m.position.copy(e.c); const w = 1 + 0.05 * Math.sin(B.ph * 7); B.m.scale.set(B.R * w, B.R / w, B.R * w);
+      if (B.t <= 0) {
+        popFx(B.m.position, B.R); B.m.visible = false; sfx('snap', G.player ? G.player.pos.distanceTo(e.c) : 40);
+        if (B.ground) { B.st = 'fall'; B.vy = 0; } else bubbleEnd(B, i);
+      }
+    } else {
+      B.vy -= 30 * dt; e.pos.y += B.vy * dt;
+      if (e.pos.y <= B.gy) {
+        e.pos.y = B.gy; e.c.copy(e.pos).add(B.off);
+        dealDamage(e, BUB.fall, 'P', e.c, 'p-bubble'); G.bubDrops = (G.bubDrops || 0) + 1;
+        if (e.alive) { e.stunT = BUB.fallStun; e.stunMax = e.stunT; }
+        G.fx.dust(e.pos, 10, 2.6, 8); sfx('land', G.player ? G.player.pos.distanceTo(e.pos) : 40);
+        bubbleEnd(B, i);
+      } else e.c.copy(e.pos).add(B.off);
+    }
+  }
+}
+function popFx(at, R) {
+  for (let k = 0; k < 16; k++) { const a = Math.random() * 6.283, b = Math.random() * 3.14; G.fx.emit('add', { x: at.x + Math.cos(a) * Math.sin(b) * R, y: at.y + Math.cos(b) * R, z: at.z + Math.sin(a) * Math.sin(b) * R, vx: Math.cos(a) * 3, vy: 1, vz: Math.sin(a) * 3, grav: 6, life: 0.45, s0: 0.3, s1: 0.08, c0: 0xd8f4ff }); }
+  G.fx.ring(at, null, 0.6, R * 1.3, 0.25, 0xc8f0ff);
+}
+export function clearBubbles() { for (const B of G.bubbles) { B.e.bubbled = false; B.m.parent && B.m.parent.remove(B.m); } G.bubbles.length = 0; }
+
+// Scrambler: a hover drone with a signal dish. it keeps 26-42 m away and every 6-8 s charges for 0.9 s (the dish glows
+// green, its rings spin up) then fires a scramble pulse: if you are within 42 m with a clear line your movement is
+// mirrored for 3.5 s (forward is back, left is right). break the line, get out of range, or hit it for 140 while it
+// charges to cancel. a twin gun pecks at you in between
+export const SCRAM = { hp: 640, r: 2.3, hover: 10, keep: [26, 42], speed: 10, cd: [6, 8], charge: 0.9, range: 42, t: 3.5, brk: 140, gunCd: 2.9, gunR: 70, dmg: 7, gunN: 3 };
+G.scramT = 0;
+export class Scrambler extends Enemy {
+  constructor(pos) {
+    super('scrambler', 'E_Scrambler', pos, SCRAM.hp, SCRAM.r); this.boom = 1.0;
+    this.vel = new V3(); this.yaw = Math.random() * 6.28; this.st = 'idle'; this.cdT = 3 + Math.random() * 3; this.chT = 0; this.gunT = 1.5 + Math.random(); this.chHp = 0;
+    this.side = Math.random() < 0.5 ? 1 : -1; this.goalV = new V3(); this.bank = 0; this.climbT = 0; this.spin = 1;
+    this.pos.y = groundAt(pos.x, pos.z, 40) + SCRAM.hover; this.c.copy(this.pos);
+    this.glow = null; this.obj.traverse((o) => { if (o.isMesh && o.material && o.material.name === 'ScramGlow') { if (!this.glow) this.glow = o.material.clone(); o.material = this.glow; } });
+  }
+  hornPos(out) { return this.n.SQ_Horn ? this.n.SQ_Horn.getWorldPosition(out) : out.copy(this.c); }
+  update(dt) {
+    const tg = this.tg(), pc = tg.center(playerC), P = G.player;
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1;
+    const los = this.checkLos(dt);
+    this.cdT -= dt;
+    if (this.st === 'idle' && this.cdT <= 0) {
+      if (P && P.alive && tg === P && this.c.distanceTo(pc) < SCRAM.range * 0.95 && los) { this.st = 'charge'; this.chT = SCRAM.charge; this.chHp = this.hp; this.autoR = Math.random() < 0.55; sfx('charge', dist * 0.5); G.scramCharges = (G.scramCharges || 0) + 1; }
+      else this.cdT = 0.6;
+    }
+    if (this.st === 'charge') {
+      this.chT -= dt; const k = 1 - Math.max(0, this.chT) / SCRAM.charge;
+      if (this.glow && this.glow.emissive) this.glow.emissiveIntensity = 1 + k * 7;
+      if (Math.random() < 0.5) { const hp = this.hornPos(_a); G.fx.emit('add', { x: hp.x, y: hp.y, z: hp.z, life: 0.15, s0: 1 + k * 2.5, s1: 0.3, c0: 0x9cff4a }); }
+      if (this.chHp - this.hp >= SCRAM.brk * G.diff.hp) {   // knocked off its aim
+        this.st = 'idle'; this.cdT = 3; G.scramBreak = (G.scramBreak || 0) + 1; G.fx.sparks(this.c, null, 14, 0x9cff4a, 12, 1, 0.4, 0.25); sfx('snap', dist * 0.5);
+      } else if (this.chT <= 0) {
+        const hp = this.hornPos(new V3());
+        G.fx.ring(hp, null, 0.5, 14, 0.3, 0x7cff2a); G.fx.flash(hp, 0x9cff4a, 40, 30, 0.2); sfx('jam', dist * 0.4);
+        if (P && P.alive && hp.distanceTo(P.center(_c)) < SCRAM.range && clearLine(P.center(_c), hp) && !smokeBlocks(hp, P.center(_c))) {
+          G.scramT = SCRAM.t; G.scrams = (G.scrams || 0) + 1; G.fx.streak(hp, P.center(_c), 0.5, 0x7cff2a); G.fx.ring(P.center(_c), null, 1, 6, 0.35, 0x7cff2a);
+          G.onScramble && G.onScramble(this);
+        } else G.scramDodge = (G.scramDodge || 0) + 1;
+        this.st = 'idle'; this.cdT = SCRAM.cd[0] + Math.random() * (SCRAM.cd[1] - SCRAM.cd[0]);
+      }
+    } else if (this.glow && this.glow.emissive) this.glow.emissiveIntensity += (1 - this.glow.emissiveIntensity) * Math.min(1, dt * 4);
+    this.spin += ((this.st === 'charge' ? 9 : 1.2) - this.spin) * Math.min(1, dt * 4);
+    if (this.n.SQ_Ring1) this.n.SQ_Ring1.rotation.z += dt * this.spin;
+    if (this.n.SQ_Ring2) this.n.SQ_Ring2.rotation.z -= dt * this.spin * 0.7;
+    if (this.n.SQ_Dish) this.n.SQ_Dish.rotation.x = Math.max(-0.6, Math.min(0.6, Math.atan2(pc.y - this.pos.y, dist))) * 0.8;
+    // orbit the target at 26-42 m
+    const want = Math.max(SCRAM.keep[0], Math.min(SCRAM.keep[1], dist)), a = Math.atan2(-dz, -dx) + this.side * 0.4;
+    const goal = this.goalV.set(pc.x + Math.cos(a) * want, 0, pc.z + Math.sin(a) * want);
+    const gx = goal.x - this.pos.x, gz = goal.z - this.pos.z, gl = Math.hypot(gx, gz) || 1;
+    const sp = SCRAM.speed * Math.min(1, gl / 6 + 0.15) * (this.st === 'charge' ? 0.2 : 1), kk = 1 - Math.exp(-2.2 * dt);
+    this.vel.x += (gx / gl * sp - this.vel.x) * kk; this.vel.z += (gz / gl * sp - this.vel.z) * kk;
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    if (collideCyl(this.pos, 2, 2.4)) { this.vel.multiplyScalar(-0.3); this.side *= -1; this.climbT = 2.5; }
+    if (this.climbT > 0) this.climbT -= dt;
+    const gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 1.5) + SCRAM.hover + (this.climbT > 0 ? 14 : 0) + Math.sin(G.time * 1.7 + this.side) * 0.5;
+    this.pos.y += (gy - this.pos.y) * (1 - Math.exp(-2.5 * dt));
+    const ny = Math.atan2(-(pc.x - this.pos.x), -(pc.z - this.pos.z)), turn = angDiff(ny, this.yaw); this.yaw += turn * Math.min(1, dt * 3);
+    this.bank += (Math.max(-0.3, Math.min(0.3, -turn * 1.5)) - this.bank) * Math.min(1, dt * 3);
+    this.obj.rotation.set(0, this.yaw, this.bank, 'YXZ');
+    this.c.copy(this.pos);
+    this.gunT -= dt;
+    if (this.st === 'idle' && this.gunT <= 0 && dist < SCRAM.gunR && los) {
+      this.gunT = SCRAM.gunCd;
+      for (let i = 0; i < SCRAM.gunN; i++) G.queue.push({ t: i * 0.12, label: 'scrambler-gun', fn: () => {
+        if (!this.alive) return;
+        const mp = this.n.Muzzle_Scram ? this.n.Muzzle_Scram.getWorldPosition(new V3()) : this.c.clone();
+        const aim = lead(mp, 120, _b, this.tg()); _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.y += (Math.random() - 0.5) * 0.04; _d.z += (Math.random() - 0.5) * 0.05; _d.normalize();
+        spawnShot({ p: mp, v: _d.clone().multiplyScalar(120), dmg: SCRAM.dmg, team: 'E', kind: 'ebullet', color: 0xb8ff70, w: 0.22, len: 3, life: 0.7, label: 'scrambler-gun' });
+      } });
+    }
+  }
+}
+function updateScram(dt) { if (G.scramT > 0) { G.scramT -= dt; G.scramTime = (G.scramTime || 0) + dt; } }
