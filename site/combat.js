@@ -63,6 +63,7 @@ export const WEAPONS = {
   icewall: { slot: 'shoulder', name: 'IW-1 冰墙', en: 'IW-1 Ice Wall', desc: '在身前 9 m 立起一排冰柱 · 挡住敌方子弹与视线，你的射击可以穿过 · 700 耐久 · 10 秒', type: 'icewall', hp: 700, dur: 10, cd: 15, sfx: 'freeze' },
   chaff: { slot: 'shoulder', name: 'CF-3 干扰弹', en: 'CF-3 Chaff', desc: '抛出一圈热焰弹 · 80 m 内来袭导弹全部转向 · 4 秒内探照灯看不见你', type: 'chaff', R: 80, dur: 4, cd: 11, sfx: 'decoy' },
   cluster: { slot: 'shoulder', name: 'CM-6 集束迫击炮', en: 'CM-6 Cluster Mortar', desc: '高抛弹道 · 下落时分裂成 10 枚子弹药 · 覆盖 11 m · 可越过掩体', type: 'cluster', range: 130, speed: 62, grav: 30, n: 10, R: 11, dmg: 42, splash: 4, cd: 9, sfx: 'grenade' },
+  antigrav: { slot: 'shoulder', name: 'AG-2 反重力弹', en: 'AG-2 Anti-Grav', desc: '射出反重力弹 · 落点 12 m 内的敌机被托到 10 m 高空悬浮 3 秒（不能移动和开火，受伤 ×1.3），然后摔下 70 伤害 · 飞行敌机也会被摔到地上 · 头目和重型只受 120 伤害', type: 'antigrav', speed: 70, range: 90, R: 12, up: 10, dur: 3, fall: 70, heavy: 120, cd: 12, sfx: 'grav' },
   grav: { slot: 'shoulder', name: 'GW-1 重力井', en: 'GW-1 Gravity Well', desc: '发射奇点 · 3 秒内把周围敌机拖向中心并吞掉敌弹 · 结束时坍缩爆炸', type: 'grav', speed: 75, range: 95, R: 20, pull: 15, dur: 3, dps: 26, burst: 150, burstR: 11, cd: 14, sfx: 'grav' },
   blink: { slot: 'shoulder', name: 'BL-2 跃迁推进器', en: 'BL-2 Blink Drive', desc: '向移动方向瞬移 22 m · 0.35 秒无敌 · 挣断钩锁 · 原地残影 0.3 秒后爆裂 · 2 次充能（各 5.5 秒）', type: 'blink', dist: 22, inv: 0.35, burst: 110, burstR: 9, mag: 2, rech: 5.5, sfx: 'blink' },
   decoy: { slot: 'shoulder', name: 'HD-1 全息诱饵', en: 'HD-1 Holo Decoy', desc: '投射机体全息影像 6 秒 · 吸引敌方火力（头目不易上当）· 被打碎时放出电磁冲击', type: 'decoy', hp: 380, dur: 6, cd: 20, burst: 70, burstR: 11, sfx: 'decoy' },
@@ -86,7 +87,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['ecan', 'arc', 'javelin', 'bubble', 'splat', 'isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['saws', 'nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['antigrav', 'saws', 'nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -773,6 +774,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Sentry(owner, slot, d, dmgMul); sfx('sentry', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'decoy') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Decoy(owner, slot, d, dmgMul); sfx('decoy', dist); if (me) G.stats.shots++; }
+  } else if (d.type === 'antigrav') {
+    if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; launchAG(owner, slot, d, dmgMul, aim); sfx('grenade', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'grav') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; launchWell(owner, slot, d, dmgMul, aim); sfx('cannon', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'tractor') {
@@ -1385,6 +1388,68 @@ export function clearSmokes() { G.smokes.length = 0; }
 export function clearHooks() { for (const H of G.hooks) H.o.parent && H.o.parent.remove(H.o); G.hooks.length = 0; }
 export function clearDiscs() { for (const D of G.discs) D.o.parent && D.o.parent.remove(D.o); G.discs.length = 0; }
 export function clearStrikes() { for (const S of G.strikes) S.o.parent && S.o.parent.remove(S.o); G.strikes.length = 0; }
+// ---- AG-2 anti-gravity grenade: a teal ball flies to the aim point and opens a 12 m field. Ordinary enemies in it are
+// lifted 10 m (kept stunned, so their own update does not snap them back down) and bob for 3 s, then drop and take 70
+// on landing; flyers fall to the ground too. Heavies just take 120
+const agCore = new THREE.MeshBasicMaterial({ color: 0x9affea, fog: false });
+const agGlow = new THREE.MeshBasicMaterial({ color: 0x40ffd8, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+const agHeavy = (e) => e.kind === 'boss' || e.kind === 'raider' || e.isColossus || e.isTrain || e.isLev || e.isObjective || e.maxHp > 3000 * G.diff.hp;
+function launchAG(owner, slot, d, dmgMul, aim) {
+  G.agBalls = G.agBalls || [];
+  const mp = owner.muzzlePos(slot, new V3(), 0).clone(); _d.subVectors(aim, mp);
+  if (!Number.isFinite(_d.x + _d.y + _d.z + mp.x + mp.y + mp.z) || _d.lengthSq() < 1e-6) return;
+  let L = Math.min(d.range, _d.length()); _d.normalize();
+  const w = raySolids(mp, _d, L); if (w.t < L) L = Math.max(2, w.t - 1);
+  const end = mp.clone().addScaledVector(_d, L);
+  const o = new THREE.Group(); o.add(new THREE.Mesh(new THREE.SphereGeometry(0.45, 12, 8), agCore)); const halo = new THREE.Mesh(new THREE.SphereGeometry(0.85, 12, 8), agGlow.clone()); o.add(halo);
+  o.position.copy(mp); G.scene.add(o);
+  G.agBalls.push({ o, from: mp, end, fly: Math.max(0.05, L / d.speed), t: 0, d, mul: dmgMul });
+}
+function updateAG(dt) {
+  const fx = G.fx; G.agBalls = G.agBalls || []; G.lifts = G.lifts || [];
+  for (let i = G.agBalls.length - 1; i >= 0; i--) {
+    const b = G.agBalls[i], d = b.d; b.t += dt;
+    b.o.position.lerpVectors(b.from, b.end, Math.min(1, b.t / b.fly));
+    fx.emit('add', { x: b.o.position.x, y: b.o.position.y, z: b.o.position.z, life: 0.18, s0: 1.1, s1: 0.2, c0: 0x40ffd8 });
+    if (b.t < b.fly) continue;
+    const P = b.end; b.o.parent && b.o.parent.remove(b.o); G.agBalls.splice(i, 1);
+    fx.flash(P, 0x40ffd8, 30, 26, 0.3); fx.ring(P.clone(), new V3(0, 1, 0), 1, d.R * 1.3, 0.5, 0x60ffe0); fx.ring(P.clone(), null, 1, d.R, 0.4, 0x60ffe0); sfx('grav', G.player.pos.distanceTo(P));
+    let n = 0; const prev = G.curLabel; G.curLabel = 'p-antigrav';
+    for (const e of G.enemies) {
+      if (!e.alive || e.dying || !e.pos || !e.c || e.isMine || e.kind === 'cpart' || NO_PULL.has(e.kind) || e.agT > 0) continue;
+      if (Math.hypot(e.c.x - P.x, e.c.z - P.z) > d.R || Math.abs(e.c.y - P.y) > 14) continue;
+      if (agHeavy(e)) { if (!e.isObjective) dealDamage(e, d.heavy * b.mul, 'P', e.c, 'p-antigrav'); continue; }
+      e.agT = d.dur; n++;
+      G.lifts.push({ e, base: e.pos.y, up: d.up, t: d.dur, age: 0, vy: 0, fall: false, d, mul: b.mul, rx: e.obj ? e.obj.rotation.x : 0, rz: e.obj ? e.obj.rotation.z : 0 });
+    }
+    G.curLabel = prev; G.agLifted = (G.agLifted || 0) + n;
+  }
+  for (let i = G.lifts.length - 1; i >= 0; i--) {
+    const L = G.lifts[i], e = L.e;
+    if (!e.alive || e.dying) { e.agT = 0; G.lifts.splice(i, 1); continue; }
+    e.stunT = Math.max(e.stunT || 0, 0.2); L.age += dt;
+    const y0 = e.pos.y;
+    if (!L.fall) {
+      L.t -= dt; e.agT = Math.max(0.01, L.t);
+      const k = Math.min(1, L.age / 0.6), ease = 1 - (1 - k) * (1 - k);
+      e.pos.y = L.base + L.up * ease + Math.sin(L.age * 4) * 0.4;
+      if (e.obj) { e.obj.rotation.x = L.rx + Math.sin(L.age * 2.3) * 0.25; e.obj.rotation.z = L.rz + Math.cos(L.age * 1.9) * 0.25; }
+      if (Math.random() < 0.5) G.fx.emit('add', { x: e.pos.x + (Math.random() - 0.5) * 3, y: e.pos.y - 0.5, z: e.pos.z + (Math.random() - 0.5) * 3, vy: -3, life: 0.4, s0: 0.6, s1: 0.1, c0: 0x40ffd8 });
+      if (L.t <= 0) L.fall = true;
+    } else {
+      L.vy -= 32 * dt; e.pos.y += L.vy * dt;
+      const g = groundAt(e.pos.x, e.pos.z, y0 + 0.5, 1);
+      if (e.pos.y <= g) {
+        e.pos.y = g; e.agT = 0; e.stunT = Math.max(e.stunT || 0, 0.4); if (e.obj) { e.obj.rotation.x = L.rx; e.obj.rotation.z = L.rz; }
+        G.fx.dust(_c.set(e.pos.x, g + 0.3, e.pos.z), 10); G.fx.ring(_c.clone(), new V3(0, 1, 0), 0.5, 5, 0.3, 0xc0fff0);
+        const prev = G.curLabel; G.curLabel = 'p-antigrav'; dealDamage(e, L.d.fall * L.mul, 'P', e.c, 'p-antigrav'); G.curLabel = prev; G.agDrops = (G.agDrops || 0) + 1;
+        G.lifts.splice(i, 1);
+      }
+    }
+    if (e.c) e.c.y += e.pos.y - y0;
+  }
+}
+export function clearAG() { for (const b of G.agBalls || []) b.o.parent && b.o.parent.remove(b.o); G.agBalls = []; for (const L of G.lifts || []) L.e.agT = 0; G.lifts = []; }
 export function clearWells() { for (const w of G.wells) { w.o.parent && w.o.parent.remove(w.o); w.area.parent && w.area.parent.remove(w.area); } G.wells.length = 0; }
 export function updateDecoys(dt) { for (const f of G.friends.slice()) if (f instanceof Decoy || f instanceof Sentry) f.update(dt); }
 export function clearDecoys() { for (const f of G.friends.slice()) if (f instanceof Decoy || f instanceof Sentry) { f.alive = false; f.obj.parent && f.obj.parent.remove(f.obj); G.friends.splice(G.friends.indexOf(f), 1); } }
@@ -1613,7 +1678,7 @@ export class Turret extends Enemy {
     const Y = this.n.E_TYaw; Y.rotation.y += angDiff(yaw, Y.rotation.y) * Math.min(1, dt * 2.4);
     const pitch = Math.atan2(pc.y - this.c.y, dist);
     this.n.E_TPitch.rotation.x = pitch;
-    if (dist < 125 && this.checkLos(dt)) {
+    if (dist < (this.range || 125) && this.checkLos(dt)) {
       this.fireT -= dt;
       if (this.fireT <= 0) { this.burst = 5; this.burstT = 0; this.fireT = 2.2 + Math.random(); }
     }
@@ -2044,7 +2109,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { ecan: 'rifle', arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { antigrav: 'missile', ecan: 'rifle', arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -5597,6 +5662,180 @@ function updateCTF(dt) {
     if (f.st === 'carried') f.pos.set(o.position.x, groundAt(o.position.x, o.position.z, o.position.y), o.position.z);
     if (f.cloth) f.cloth.rotation.y = Math.sin(G.time * 3.2 + (f.team === 'P' ? 0 : 1.7)) * 0.28 + (f.st === 'carried' ? 0.5 : 0);
     if (f.ring) { const away = f.st !== 'home'; f.ring.scale.setScalar(away ? 1 + 0.06 * Math.sin(G.time * 8) : 1); f.ring.visible = !away || Math.sin(G.time * 6) > -0.4; }
+  }
+}
+
+// ---- v63 aerie: four armoured decks float 24-45 m up, each held by a lift engine (AeroGen) with a turret beside it.
+// A jump pad on the ground next to each deck throws you onto it (a scripted 1.7 s arc). Destroying an engine drops its
+// deck: it falls and crashes, crushing whatever is below (220 to enemies, 60 to you)
+export const AER = { decks: [{ x: 92, z: 36, h: 24 }, { x: -92, z: -36, h: 31 }, { x: 36, z: -96, h: 38 }, { x: -36, z: 96, h: 45 }], W: 26, T: 2, padD: 30, padR: 3.4, rideT: 1.7, arc: 12, genHp: 4200, crashR: 16, crashDmg: 220, crashP: 60 };
+export function aerPads() { return AER.decks.map((D) => { const L = Math.hypot(D.x, D.z), ux = -D.x / L, uz = -D.z / L; return [D.x + ux * AER.padD, D.z + uz * AER.padD]; }); }
+const deckMat = new THREE.MeshStandardMaterial({ color: 0x5a6270, metalness: 0.3, roughness: 0.78 });
+const deckMat2 = new THREE.MeshStandardMaterial({ color: 0x2e333c, metalness: 0.5, roughness: 0.6 });
+const aerGlow = new THREE.MeshBasicMaterial({ color: 0x9ae6ff });
+const aerBeam = new THREE.MeshBasicMaterial({ color: 0x58c8ff, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+const padMat = new THREE.MeshBasicMaterial({ color: 0x58ffc8 });
+function makeDeck(D) {
+  const g = new THREE.Group(), W = AER.W, T = AER.T;
+  const top = new THREE.Mesh(new THREE.BoxGeometry(W, T, W), deckMat); top.position.y = -T / 2; top.castShadow = true; top.receiveShadow = true; g.add(top);
+  const under = new THREE.Mesh(new THREE.BoxGeometry(W * 0.7, 2.4, W * 0.7), deckMat2); under.position.y = -T - 1.2; under.castShadow = true; g.add(under);
+  for (const [sx, sz, w, d] of [[0, W / 2, W, 0.4], [0, -W / 2, W, 0.4], [W / 2, 0, 0.4, W], [-W / 2, 0, 0.4, W]]) { const b = new THREE.Mesh(new THREE.BoxGeometry(w, 0.25, d), aerGlow); b.position.set(sx, 0.05, sz); g.add(b); }
+  const beams = [];
+  for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+    const th = new THREE.Mesh(new THREE.CylinderGeometry(1.6, 2.0, 2.4, 12), deckMat2); th.position.set(sx * W * 0.32, -T - 1.6, sz * W * 0.32); g.add(th);
+    const disc = new THREE.Mesh(new THREE.CircleGeometry(1.5, 16), aerGlow); disc.rotation.x = Math.PI / 2; disc.position.set(sx * W * 0.32, -T - 2.85, sz * W * 0.32); g.add(disc);
+    const cone = new THREE.Mesh(new THREE.CylinderGeometry(1.4, 4.0, 14, 16, 1, true), aerBeam); cone.position.set(sx * W * 0.32, -T - 9.9, sz * W * 0.32); g.add(cone); beams.push(cone);
+  }
+  g.position.set(D.x, D.h, D.z); G.scene.add(g);
+  return { g, beams };
+}
+function makePad(x, z) {
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(AER.padR + 0.6, AER.padR + 1.0, 0.5, 24), deckMat2); base.position.y = 0.25; base.receiveShadow = true; g.add(base);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(AER.padR, 0.18, 6, 32), padMat); ring.rotation.x = Math.PI / 2; ring.position.y = 0.55; g.add(ring);
+  const ring2 = new THREE.Mesh(new THREE.TorusGeometry(AER.padR * 0.55, 0.12, 6, 24), padMat); ring2.rotation.x = Math.PI / 2; ring2.position.y = 0.55; g.add(ring2);
+  g.position.set(x, 0, z); G.scene.add(g); return { g, ring, x, z };
+}
+export class AeroGen extends Enemy {
+  constructor(D) {
+    super('aerogen', 'E_AeroGen', new V3(D.x, D.h, D.z), AER.genHp, 3.0); this.boom = 2.2; this.isObjective = true; this.deck = D;
+    this.solids = [addSolid(D.x, D.z, 6, 6, 1.8, D.h, 'aerogen')];
+    this.c.set(D.x, D.h + 6.2, D.z);
+  }
+  die() {
+    for (const so of this.solids) removeSolid(so);
+    this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this);
+    explodeAt(this.c.clone(), 9, 40, 'P', 2.4, 0x58c8ff); G.fx.flash(this.c, 0x9ae6ff, 60, 30, 0.5);
+    const D = this.deck; D.dead = true;
+    if (D.solid) { removeSolid(D.solid); D.solid = null; }
+    D.vy = 0; D.fallT = 0; D.falling = true;
+    for (const e of G.enemies) if (e.alive && !e.dying && e.onDeck === D && e !== this) dealDamage(e, 1e6, 'P', e.c, 'aer-fall');
+    G.onAER && G.onAER('gen', D);
+    this.remove();
+  }
+  update(dt) {
+    const n = this.n; this.ph = (this.ph || 0) + dt;
+    if (n.AE_Ring) n.AE_Ring.rotation.y += dt * 2.2;
+    if (n.AE_Core) { n.AE_Core.getWorldPosition(this.c); n.AE_Core.scale.setScalar(1 + 0.12 * Math.sin(this.ph * 6)); }
+  }
+}
+export function startAerie() {
+  clearAerie();
+  const S = G.aer = { decks: [], pads: [], ride: null, padCd: 0, rides: 0, dropped: 0, crushed: 0, slams: 0 };
+  const pads = aerPads();
+  AER.decks.forEach((D0, i) => {
+    const D = { ...D0, i, dead: false, falling: false };
+    D.solid = addSolid(D.x, D.z, AER.W, AER.W, AER.T, D.h - AER.T, 'deck');
+    D.mesh = makeDeck(D); D.gen = new AeroGen(D);
+    { const L = Math.hypot(D.x, D.z), t = new Turret(new V3(D.x + D.x / L * 8.5, D.h, D.z + D.z / L * 8.5)); t.onDeck = D; t.range = 60; }   // one turret, on the far side from the pad
+    S.decks.push(D);
+    const [px, pz] = pads[i]; const pad = makePad(px, pz); pad.D = D; S.pads.push(pad);
+  });
+}
+export function clearAerie() {
+  const S = G.aer; if (!S) return;
+  for (const D of S.decks) { if (D.solid) removeSolid(D.solid); D.mesh.g.parent && D.mesh.g.parent.remove(D.mesh.g); }
+  for (const p of S.pads) p.g.parent && p.g.parent.remove(p.g);
+  G.aer = null;
+}
+function updateAerie(dt) {
+  const S = G.aer; if (!S) return;
+  const P = G.player, fx = G.fx, t = G.time;
+  for (const D of S.decks) {
+    const M = D.mesh;
+    if (!D.falling) { for (const b of M.beams) b.material.opacity = 0.1 + 0.04 * Math.sin(t * 9 + D.i); if (D.dead) continue; continue; }
+    if (D.crashed) { D.fallT += dt; if (D.fallT > 2.5 && M.g.parent) M.g.parent.remove(M.g); continue; }
+    D.vy -= 22 * dt; M.g.position.y += D.vy * dt; M.g.rotation.x += dt * 0.12 * (D.i % 2 ? 1 : -1); M.g.rotation.z += dt * 0.08;
+    for (const b of M.beams) b.visible = false;
+    if (Math.random() < 0.6) fx.emit('smoke', { x: D.x + (Math.random() - 0.5) * 20, y: M.g.position.y - 2, z: D.z + (Math.random() - 0.5) * 20, vy: 4, life: 0.8, s0: 2.4, s1: 3.5, c0: 0x50555c });
+    if (M.g.position.y <= 3) {
+      D.crashed = true; D.fallT = 0; M.g.position.y = 2.5;
+      const at = new V3(D.x, 1.5, D.z);
+      const before = G.enemies.filter((e) => e.alive && !e.dying && !e.isObjective && Math.hypot(e.pos.x - D.x, e.pos.z - D.z) < AER.crashR && e.pos.y < 14);
+      G.curLabel = 'aer-crash'; explodeAt(at, AER.crashR, AER.crashDmg, 'P', 4.2, 0xffa050); fx.dust(at, 40); fx.trauma = Math.min(1, fx.trauma + 0.7); sfx('bigboom', P ? P.pos.distanceTo(at) : 0);
+      const n = before.filter((e) => !e.alive || e.dying).length; S.crushed += n; S.dropped++;
+      if (P && P.alive && Math.hypot(P.pos.x - D.x, P.pos.z - D.z) < AER.crashR && P.pos.y < 10) { hurtPlayer(AER.crashP, 'aer-crash'); }
+      G.onAER && G.onAER('crash', D, n);
+    }
+  }
+  // jump pads: step on one (on the ground) and get thrown onto its deck in a scripted arc
+  S.padCd -= dt;
+  for (const pad of S.pads) { pad.ring.material = padMat; pad.ring.scale.setScalar(1 + 0.06 * Math.sin(t * 6)); if (!pad.D.dead && Math.random() < 0.25) fx.emit('add', { x: pad.x + (Math.random() - 0.5) * 4, y: 0.6, z: pad.z + (Math.random() - 0.5) * 4, vy: 9, life: 0.5, s0: 0.5, s1: 0.1, c0: 0x58ffc8 }); }
+  if (P && P.alive) {
+    if (S.ride) {
+      const R = S.ride; R.t += dt; const k = Math.min(1, R.t / AER.rideT);
+      P.pos.lerpVectors(R.from, R.to, k); P.pos.y += AER.arc * 4 * k * (1 - k) + (R.to.y - R.from.y) * (Math.sin(k * Math.PI / 2) - k);
+      P.vel.set(0, 0, 0); P.grounded = false;
+      if (Math.random() < 0.8) fx.emit('add', { x: P.pos.x, y: P.pos.y + 0.5, z: P.pos.z, life: 0.35, s0: 1.2, s1: 0.2, c0: 0x58ffc8 });
+      if (k >= 1) { S.ride = null; S.padCd = 1.5; P.vel.set(0, -2, 0); }
+    } else if (S.padCd <= 0 && P.pos.y < 1.5) {
+      for (const pad of S.pads) {
+        if (pad.D.dead || Math.hypot(P.pos.x - pad.x, P.pos.z - pad.z) > AER.padR) continue;
+        const D = pad.D, L = Math.hypot(pad.x - D.x, pad.z - D.z) || 1;
+        S.ride = { t: 0, from: P.pos.clone(), to: new V3(D.x + (pad.x - D.x) / L * 7, D.h + 0.2, D.z + (pad.z - D.z) / L * 7) }; S.rides++;
+        fx.ring(new V3(pad.x, 0.6, pad.z), new V3(0, 1, 0), 1, 7, 0.4, 0x58ffc8); sfx('qboost', 0); G.onAER && G.onAER('pad', D);
+        break;
+      }
+    }
+  }
+}
+
+// ---- v63 Swatter: a hammerhead drone that hunts anything flying. It cruises 14 m above its target (never below 26 m);
+// when the target is airborne (5 m+ off the ground) within 24 m it parks overhead, glows and drops a red cone for 0.85 s,
+// then slams: inside the 10 m cone that is 30 damage, a 34 m/s shove to the ground and no boost / hover for 1.6 s.
+// Against grounded targets it fires four-round bursts
+export const SWAT = { hp: 700, r: 2.8, speed: 15, alt: 14, minY: 26, reach: 24, wind: 0.85, coneR: 10, dmg: 30, down: 34, lockT: 1.6, cd: [4.5, 6.5], airH: 5, gunCd: 3.2, gunN: 3, gunDmg: 5 };
+const swatConeGeo = new THREE.CylinderGeometry(1.2, SWAT.coneR, 1, 24, 1, true).translate(0, -0.5, 0);
+export class Swatter extends Enemy {
+  constructor(pos) {
+    super('swatter', 'E_Swatter', pos, SWAT.hp, SWAT.r); this.boom = 1.4; this.flying = true;
+    this.pos.y = Math.max(this.pos.y, SWAT.minY); this.st = 'hunt'; this.slamT = 2 + Math.random() * 2; this.gunT = 1.5; this.burst = 0; this.burstT = 0; this.windT = 0; this.ph = Math.random() * 6;
+    this.cone = new THREE.Mesh(swatConeGeo, new THREE.MeshBasicMaterial({ color: 0xff3a20, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false })); this.cone.visible = false; G.scene.add(this.cone);
+    this.c.set(this.pos.x, this.pos.y, this.pos.z);
+  }
+  remove() { this.cone.parent && this.cone.parent.remove(this.cone); super.remove(); }
+  die() { this.cone.visible = false; super.die(); }
+  update(dt) {
+    const tg = this.tg(), pc = tg.center(playerC), fx = G.fx, P = G.player;
+    this.ph += dt; this.slamT -= dt;
+    const gy = groundAt(tg.pos.x, tg.pos.z, tg.pos.y + 0.5, 1), air = tg.pos.y - gy > SWAT.airH;
+    const dx = tg.pos.x - this.pos.x, dz = tg.pos.z - this.pos.z, hd = Math.hypot(dx, dz) || 1;
+    let wx = tg.pos.x, wz = tg.pos.z, spd = SWAT.speed;
+    if (this.st === 'wind') {
+      this.windT -= dt; spd = 3;
+      const k = 1 - this.windT / SWAT.wind, gH = Math.max(0, this.pos.y - groundAt(this.pos.x, this.pos.z, this.pos.y - 1, 1));
+      this.cone.visible = true; this.cone.position.set(this.pos.x, this.pos.y - 0.8, this.pos.z); this.cone.scale.set(1, gH, 1); this.cone.material.opacity = 0.08 + 0.14 * k + 0.06 * Math.sin(this.ph * 40);
+      if (this.n.HX_Plate) this.n.HX_Plate.position.y = -0.55 - 0.35 * k;
+      if (this.windT <= 0) {
+        this.st = 'hunt'; this.cone.visible = false; this.slamT = SWAT.cd[0] + Math.random() * (SWAT.cd[1] - SWAT.cd[0]); G.swatSlams = (G.swatSlams || 0) + 1;
+        if (this.n.HX_Plate) this.n.HX_Plate.position.y = -0.55;
+        fx.ring(_c.set(this.pos.x, this.pos.y - 1.5, this.pos.z), new V3(0, 1, 0), 2, SWAT.coneR * 1.2, 0.35, 0xff6040);
+        for (let k2 = 0; k2 < 6; k2++) fx.emit('add', { x: this.pos.x + (Math.random() - 0.5) * 6, y: this.pos.y - 2, z: this.pos.z + (Math.random() - 0.5) * 6, vy: -40, life: 0.4, s0: 1.4, s1: 0.4, c0: 0xff6a40 });
+        sfx('pilehit', P ? P.pos.distanceTo(this.pos) : 0);
+        for (const f of [P, ...G.friends]) {
+          if (!f || !f.alive || !f.pos) continue;
+          if (Math.hypot(f.pos.x - this.pos.x, f.pos.z - this.pos.z) > SWAT.coneR || f.pos.y > this.pos.y - 1) continue;
+          if (f === P) { damagePlayer(SWAT.dmg, this, 'swatter'); P.vel.y = -SWAT.down; P.slamT = SWAT.lockT; P.grounded = false; G.swatHits = (G.swatHits || 0) + 1; if (G.aer) G.aer.slams++; fx.trauma = Math.min(1, fx.trauma + 0.4); G.onHint && !G.swatSaid && (G.swatSaid = true, G.onHint('被拍击机拍下来了 · 1.6 秒内不能推进和悬停 · 它充能时（红色光锥）横向闪出光锥', 3.2)); }
+          else if (f._ent) f._ent.hit(SWAT.dmg, this, 'swatter');
+        }
+      }
+    } else {
+      this.cone.visible = false;
+      if (!air) { const a = this.ph * 0.4; wx = tg.pos.x + Math.cos(a) * 18; wz = tg.pos.z + Math.sin(a) * 18; }
+      if (air && this.slamT <= 0 && hd < SWAT.reach && tg.pos.y < this.pos.y - 3) { this.st = 'wind'; this.windT = SWAT.wind; this.dodge = Math.random(); sfx('warn', P ? P.pos.distanceTo(this.pos) : 0); }
+      // guns against grounded targets
+      this.gunT -= dt;
+      if (!air && this.gunT <= 0 && this.checkLos(dt)) { this.gunT = SWAT.gunCd; this.burst = SWAT.gunN; this.burstT = 0; }
+      if (this.burst > 0) { this.burstT -= dt; if (this.burstT <= 0) { this.burst--; this.burstT = 0.1; const mp = _a.set(this.pos.x, this.pos.y - 0.6, this.pos.z).clone(), aim = lead(mp, 110, _b, tg); _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.z += (Math.random() - 0.5) * 0.05; spawnShot({ p: mp, v: _d.normalize().multiplyScalar(110), dmg: SWAT.gunDmg, team: 'E', kind: 'ebullet', color: 0xff8050, w: 0.22, len: 2.4, life: 1.1, label: 'swatter' }); sfx('eshot', P ? P.pos.distanceTo(mp) : 0); } }
+    }
+    // fly: toward the waypoint, cruising above the target
+    const wy = Math.max(SWAT.minY, tg.pos.y + SWAT.alt), mx = wx - this.pos.x, mz = wz - this.pos.z, ml = Math.hypot(mx, mz);
+    if (ml > 0.5) { const v = Math.min(spd, ml * 2); this.pos.x += mx / ml * v * dt; this.pos.z += mz / ml * v * dt; }
+    if (this.st !== 'wind') this.pos.y += (wy - this.pos.y) * Math.min(1, dt * 1.5);
+    collideCyl(this.pos, 3, 1.2);
+    this.obj.rotation.y += angDiff(Math.atan2(-dx, -dz), this.obj.rotation.y) * Math.min(1, dt * 3);
+    this.obj.rotation.z = Math.sin(this.ph * 1.7) * 0.06; this.obj.rotation.x = this.st === 'wind' ? 0.12 : Math.sin(this.ph * 1.3) * 0.05;
+    this.c.set(this.pos.x, this.pos.y, this.pos.z);
   }
 }
 
@@ -10775,7 +11014,7 @@ export function updateCombat(dt) {
   G.curLabel = null;
   updateMinis(dt);
   updateDecoys(dt);
-  updateWells(dt);
+  updateWells(dt); updateAG(dt);
   updateStrikes(dt);
   updateDiscs(dt);
   updateHooks(dt);
@@ -10786,7 +11025,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
-  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updatePolar(dt); updateJavs(dt); updateCTF(dt); updateBH(dt); updateGlad(dt);
+  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updatePolar(dt); updateJavs(dt); updateCTF(dt); updateBH(dt); updateAerie(dt); updateGlad(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
