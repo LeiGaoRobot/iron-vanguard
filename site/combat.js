@@ -63,6 +63,7 @@ export const WEAPONS = {
   icewall: { slot: 'shoulder', name: 'IW-1 冰墙', en: 'IW-1 Ice Wall', desc: '在身前 9 m 立起一排冰柱 · 挡住敌方子弹与视线，你的射击可以穿过 · 700 耐久 · 10 秒', type: 'icewall', hp: 700, dur: 10, cd: 15, sfx: 'freeze' },
   chaff: { slot: 'shoulder', name: 'CF-3 干扰弹', en: 'CF-3 Chaff', desc: '抛出一圈热焰弹 · 80 m 内来袭导弹全部转向 · 4 秒内探照灯看不见你', type: 'chaff', R: 80, dur: 4, cd: 11, sfx: 'decoy' },
   cluster: { slot: 'shoulder', name: 'CM-6 集束迫击炮', en: 'CM-6 Cluster Mortar', desc: '高抛弹道 · 下落时分裂成 10 枚子弹药 · 覆盖 11 m · 可越过掩体', type: 'cluster', range: 130, speed: 62, grav: 30, n: 10, R: 11, dmg: 42, splash: 4, cd: 9, sfx: 'grenade' },
+  xswap: { slot: 'shoulder', name: 'XS-1 置换器', en: 'XS-1 Transposer', desc: '与准星附近 75 m 内一台敌机瞬间互换位置 · 被换的敌机眩晕 1.5 秒（重型不眩晕）· 换位后 0.35 秒无敌 · 能把追兵甩给它的同伴，也能一步跨进敌阵 · 9 秒冷却', type: 'xswap', range: 75, cone: 0.21, stun: 1.5, inv: 0.35, cd: 9, sfx: 'blink' },
   antigrav: { slot: 'shoulder', name: 'AG-2 反重力弹', en: 'AG-2 Anti-Grav', desc: '射出反重力弹 · 落点 12 m 内的敌机被托到 10 m 高空悬浮 3 秒（不能移动和开火，受伤 ×1.3），然后摔下 70 伤害 · 飞行敌机也会被摔到地上 · 头目和重型只受 120 伤害', type: 'antigrav', speed: 70, range: 90, R: 12, up: 10, dur: 3, fall: 70, heavy: 120, cd: 12, sfx: 'grav' },
   grav: { slot: 'shoulder', name: 'GW-1 重力井', en: 'GW-1 Gravity Well', desc: '发射奇点 · 3 秒内把周围敌机拖向中心并吞掉敌弹 · 结束时坍缩爆炸', type: 'grav', speed: 75, range: 95, R: 20, pull: 15, dur: 3, dps: 26, burst: 150, burstR: 11, cd: 14, sfx: 'grav' },
   blink: { slot: 'shoulder', name: 'BL-2 跃迁推进器', en: 'BL-2 Blink Drive', desc: '向移动方向瞬移 22 m · 0.35 秒无敌 · 挣断钩锁 · 原地残影 0.3 秒后爆裂 · 2 次充能（各 5.5 秒）', type: 'blink', dist: 22, inv: 0.35, burst: 110, burstR: 9, mag: 2, rech: 5.5, sfx: 'blink' },
@@ -87,7 +88,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['ecan', 'arc', 'javelin', 'bubble', 'splat', 'isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['antigrav', 'saws', 'nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['xswap', 'antigrav', 'saws', 'nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -774,6 +775,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Sentry(owner, slot, d, dmgMul); sfx('sentry', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'decoy') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Decoy(owner, slot, d, dmgMul); sfx('decoy', dist); if (me) G.stats.shots++; }
+  } else if (d.type === 'xswap') {
+    if (pressed && ws.cd <= 0 && isP && owner.alive && xSwap(owner, d, aim)) { ws.cd = d.cd; if (me) G.stats.shots++; }
   } else if (d.type === 'antigrav') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; launchAG(owner, slot, d, dmgMul, aim); sfx('grenade', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'grav') {
@@ -1449,6 +1452,35 @@ function updateAG(dt) {
     if (e.c) e.c.y += e.pos.y - y0;
   }
 }
+// ---- XS-1 transposer: swap places with the enemy nearest the crosshair (within 12 deg, 75 m, line of sight). The enemy
+// lands where you stood (on the ground under you if it walks) and is stunned for 1.5 s unless it is heavy; you get a
+// moment of invulnerability. Bosses, raiders, multi-part targets and objectives cannot be swapped
+const xsNo = (e) => !e.obj || e.isObjective || e.kind === 'cpart' || e.isMine || e.kind === 'boss' || e.kind === 'raider' || e.isColossus || e.isTrain || e.isLev || e.holo || e.cloaked || NO_PULL.has(e.kind) || e.agT > 0 || e.tbHeld;
+function xSwap(owner, d, aim) {
+  const mp = owner.center(new V3()), dir = new V3().subVectors(aim, mp);
+  if (!Number.isFinite(dir.x + dir.y + dir.z) || dir.lengthSq() < 1e-6) return false;
+  dir.normalize(); let best = null, bs = d.cone;
+  for (const e of G.enemies) {
+    if (!e.alive || e.dying || !e.c || !e.pos || xsNo(e)) continue;
+    _a.subVectors(e.c, mp); const L = _a.length(); if (L > d.range || L < 5) continue;
+    const ang = Math.acos(Math.max(-1, Math.min(1, _a.dot(dir) / L)));
+    if (ang < bs && clearLine(mp, e.c)) { bs = ang; best = e; }
+  }
+  if (!best) return false;
+  const e = best, from = owner.pos.clone(), to = e.pos.clone(), dc = e.c.y - e.pos.y, fx = G.fx;
+  owner.pos.copy(to); if (!e.flying) owner.pos.y = Math.max(to.y, groundAt(to.x, to.z, to.y + 1, 1));
+  owner.vel.set(0, Math.max(0, owner.vel.y), 0);
+  e.pos.x = from.x; e.pos.z = from.z; e.pos.y = e.flying ? Math.max(from.y + 3, to.y > from.y ? from.y + 6 : from.y + 3) : groundAt(from.x, from.z, from.y + 1, 1);
+  e.c.set(e.pos.x, e.pos.y + dc, e.pos.z); if (e.vel) e.vel.set(0, 0, 0);
+  if (!agHeavy(e)) e.stunT = Math.max(e.stunT || 0, d.stun);
+  G.blinkInv = Math.max(G.blinkInv || 0, d.inv); G.xswaps = (G.xswaps || 0) + 1; if (e.kind === 'nemesis' && G.nem) G.nem.swaps++;
+  const a = from.clone().setY(from.y + 2.5), b = owner.pos.clone().setY(owner.pos.y + 2.5);
+  fx.streak(a, b, 2.0, 0xb070ff, 0.22); fx.streak(a, b, 0.6, 0xf0e4ff, 0.22);
+  fx.flash(a, 0xb070ff, 30, 24, 0.3); fx.flash(b, 0xb070ff, 30, 24, 0.3);
+  fx.ring(from.clone(), null, 1, 6, 0.35, 0xb070ff); fx.ring(owner.pos.clone(), null, 1, 6, 0.35, 0xd0b0ff);
+  sfx('blink', 0);
+  return true;
+}
 export function clearAG() { for (const b of G.agBalls || []) b.o.parent && b.o.parent.remove(b.o); G.agBalls = []; for (const L of G.lifts || []) L.e.agT = 0; G.lifts = []; }
 export function clearWells() { for (const w of G.wells) { w.o.parent && w.o.parent.remove(w.o); w.area.parent && w.area.parent.remove(w.area); } G.wells.length = 0; }
 export function updateDecoys(dt) { for (const f of G.friends.slice()) if (f instanceof Decoy || f instanceof Sentry) f.update(dt); }
@@ -2107,9 +2139,20 @@ export const RAIDERS = {
   raider: { name: '掠夺者 RAIDER', palette: 'raider', pattern: 'splinter', frame: 'std', parts: { head: 'mono', arms: 'brace', legs: 'tread' }, scale: 1.0, hp: 900, want: [36, 36], phases: [{ R: 'rifle', L: 'shotgun', S: 'missile' }], mul: { rifle: 0.1, shotgun: 0.15, missile: 0.14 } },
   lancer: { name: '枪骑兵 LANCER', palette: 'lancer', pattern: 'digital', frame: 'light', parts: { head: 'hawk', legs: 'hover', pack: 'jumpjet' }, scale: 0.96, hp: 700, want: [24, 24], agile: true, phases: [{ R: 'blade', L: 'gatling', S: 'cannon' }], mul: { blade: 0.13, gatling: 0.1, cannon: 0.2 } },
 };
+// Ace pilots (王牌机师): named enemy mechs that may drop into a mission once per run (main.js aceLogic). Raider brain,
+// their own parts / camo / paint; the first kill of each unlocks its paint for the player.
+export const ACES = {
+  ace_fox: { ace: true, name: '王牌 · 赤狐 RED FOX', short: '赤狐', en: 'Red Fox', trait: '轻型高机动 · 光束剑冲刺 · 霰弹贴身', palette: 'ace_fox', pattern: 'tiger', frame: 'light', parts: { head: 'crest', core: 'sleek', arms: 'fist', legs: 'rev', pack: 'sprint' }, scale: 1.0, hp: 1500, want: [18, 18], agile: true, phases: [{ R: 'blade', L: 'shotgun', S: 'missile' }], mul: { blade: 0.17, shotgun: 0.18, missile: 0.16 } },
+  ace_bastion: { ace: true, name: '王牌 · 铁壁 BASTION', short: '铁壁', en: 'Bastion', trait: '重装履带 · 能量护盾挡正面 · 加特林压制', palette: 'ace_bastion', pattern: 'digital', frame: 'heavy', parts: { head: 'mono', core: 'bulwark', arms: 'guard', legs: 'tread', pack: 'tank' }, scale: 1.12, hp: 2400, want: [32, 28], phases: [{ R: 'gatling', L: 'grenade', S: 'shield' }], mul: { gatling: 0.13, grenade: 0.22, shield: 0 } },
+  ace_white: { ace: true, name: '王牌 · 白夜 WHITE NIGHT', short: '白夜', en: 'White Night', trait: '远程狙击 · 磁轨炮 + 激光 · 拉开距离', palette: 'ace_white', pattern: 'hex', frame: 'std', parts: { head: 'hawk', arms: 'stab', legs: 'quad', pack: 'glide' }, scale: 1.0, hp: 1700, want: [58, 46], phases: [{ R: 'rail', L: 'rifle', S: 'laser' }], mul: { rail: 0.16, rifle: 0.13, laser: 0.2 } },
+  ace_viper: { ace: true, name: '王牌 · 毒蛇 VIPER', short: '毒蛇', en: 'Viper', trait: '悬浮游走 · 冷冻枪减速 · 放出无人机', palette: 'ace_viper', pattern: 'digital', frame: 'light', parts: { head: 'crest', core: 'sleek', legs: 'hover', pack: 'jumpjet' }, scale: 0.98, hp: 1500, want: [26, 24], agile: true, phases: [{ R: 'cryo', L: 'grenade', S: 'drones' }], mul: { cryo: 0.16, grenade: 0.2, drones: 0.2 } },
+  ace_meteor: { ace: true, name: '王牌 · 流星 METEOR', short: '流星', en: 'Meteor', trait: '空中强袭 · 线圈炮 + 加特林 · 飞弹齐射', palette: 'ace_meteor', pattern: 'none', frame: 'std', parts: { head: 'crest', core: 'reactor', arms: 'pod', legs: 'rev', pack: 'jumpjet' }, scale: 1.02, hp: 1800, want: [30, 26], agile: true, phases: [{ R: 'coil', L: 'gatling', S: 'missile' }], mul: { coil: 0.16, gatling: 0.12, missile: 0.17 } },
+  ace_thunder: { ace: true, name: '王牌 · 雷鸣 THUNDER', short: '雷鸣', en: 'Thunder', trait: '四足重炮 · 榴弹 + 加农炮 · 正面硬', palette: 'ace_thunder', pattern: 'splinter', frame: 'heavy', parts: { head: 'radar', core: 'reactor', arms: 'pod', legs: 'quad', pack: 'tank' }, scale: 1.15, hp: 2300, want: [40, 34], phases: [{ R: 'grenade', L: 'coil', S: 'cannon' }], mul: { grenade: 0.2, coil: 0.15, cannon: 0.24 } },
+};
+Object.assign(RAIDERS, ACES);
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { antigrav: 'missile', ecan: 'rifle', arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { xswap: 'missile', antigrav: 'missile', ecan: 'rifle', arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -2123,6 +2166,7 @@ export class Boss {
     this.kind = 'boss'; this.type = type; this.r = 2.5 * B.scale; this.c = new V3(); this.alive = true; this.dying = false; this.flash = 0;
     this.mech = new Mech(G.scene, ctx, { palette: B.palette, pattern: B.pattern, frame: B.frame, parts: B.parts, cosmetic: true, scale: B.scale, isBoss: true, loadout: B.phases[0], yaw: Math.PI });
     if (RAIDERS[type]) { this.kind = 'raider'; this.r = 2.2 * B.scale; }
+    if (B.ace) this.isAce = true;
     this.mech.pos.copy(pos);
     this.maxHp = B.hp * G.diff.hp * hpMul; this.hp = this.maxHp; this.phase = 1;
     this.ws = { R: weaponState(B.phases[0].R), L: weaponState(B.phases[0].L), S: weaponState(B.phases[0].S) };
@@ -5662,6 +5706,188 @@ function updateCTF(dt) {
     if (f.st === 'carried') f.pos.set(o.position.x, groundAt(o.position.x, o.position.z, o.position.y), o.position.z);
     if (f.cloth) f.cloth.rotation.y = Math.sin(G.time * 3.2 + (f.team === 'P' ? 0 : 1.7)) * 0.28 + (f.st === 'carried' ? 0.5 : 0);
     if (f.ring) { const away = f.st !== 'home'; f.ring.scale.setScalar(away ? 1 + 0.06 * Math.sin(G.time * 8) : 1); f.ring.visible = !away || Math.sin(G.time * 6) > -0.4; }
+  }
+}
+
+// ---- v64 hunted: a Nemesis hunts you all mission. While its shield holds it only takes 3 % damage, but enough damage
+// in a burst staggers it. Five power cells lie around the city; each one you touch lights a snare pylon around the trap
+// ring in the middle. With all five lit, the first time the Nemesis steps into the ring the trap fires: the shield
+// breaks for good and it is pinned for 7 s taking x1.5. Then it is an ordinary (angry) fight
+export const NEM = { hp: 9000, cellT: 2.5, r: 2.6, run: 13.5, rage: 1.12, shieldMul: 0.03, stag: 320, stagT: 1.1, stagCd: 2.5, leapCd: [5, 7], crouch: 0.5, T: 1.1, apex: 11, leapR: 7, leapDmg: 32, clawR: 7.2, clawWind: 0.38, clawDmg: 42, clawCd: 1.5, knock: 15, gunCd: [2.6, 3.4], pel: 6, pdmg: 5, spread: 0.08, gunMin: 12, gunMax: 42, trapT: 7, trapMul: 1.5, trapR: 12, pyR: 19, cellR: 4.5, spawnT: 10 };
+NEM.cells = [0, 1, 2, 3, 4].map((k) => { const a = 0.31 + k * 1.2566; return [Math.round(Math.sin(a) * 118), Math.round(Math.cos(a) * 118)]; });
+export function nemPylons() { return [0, 1, 2, 3, 4].map((k) => { const a = k * 1.2566 + 0.63; return [Math.sin(a) * NEM.pyR, Math.cos(a) * NEM.pyR]; }); }
+const nemShellGeo = new THREE.IcosahedronGeometry(1, 2);
+const nemShellMat = new THREE.MeshBasicMaterial({ color: 0xff3040, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending, depthWrite: false, wireframe: true, fog: false });
+const cellBeamGeo = new THREE.CylinderGeometry(0.5, 0.9, 40, 10, 1, true);
+const cellBeamMat = new THREE.MeshBasicMaterial({ color: 0xc8ff30, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+const trapMat = new THREE.MeshBasicMaterial({ color: 0xff40c8, transparent: true, opacity: 0.22, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide, fog: false });
+const trapBeamMat = new THREE.MeshBasicMaterial({ color: 0xff70d8, transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+export class Nemesis extends Enemy {
+  constructor(pos, hpMul = 1) {
+    super('nemesis', 'E_Nemesis', pos, NEM.hp * hpMul, NEM.r); this.boom = 2.6; this.B = { name: '追猎者 NEMESIS' };
+    this.vel = new V3(); this.yaw = 0; this.st = 'run'; this.stT = 0; this.shield = true; this.stagAcc = 0; this.stagCd = 0;
+    this.leapT = 4; this.clawT = 0; this.gunT = 2; this.A = new V3(); this.Bp = new V3(); this.ft = 0; this.ph = 0; this.shellK = 0;
+    this.shell = new THREE.Mesh(nemShellGeo, nemShellMat.clone()); G.scene.add(this.shell);
+    this.c.set(pos.x, pos.y + 5, pos.z);
+  }
+  remove() { this.shell.parent && this.shell.parent.remove(this.shell); super.remove(); }
+  explode() { G.curLabel = 'p-nemesis'; explodeAt(this.c, 9, 60, 'P', 2.6, 0xff4050); G.fx.trauma = Math.min(1, G.fx.trauma + 0.6); this.remove(); }
+  hit(dmg, at, label) {
+    if (!this.alive || this.dying) return;
+    if (this.shield) {
+      this.shellK = 1;
+      if (this.stagCd <= 0 && this.st !== 'stag' && this.st !== 'air' && this.st !== 'trap') {
+        this.stagAcc += dmg;
+        if (this.stagAcc >= NEM.stag * (G.diff.hp || 1)) {
+          this.stagAcc = 0; this.st = 'stag'; this.stT = NEM.stagT; G.nem && G.nem.stags++;
+          const P = G.player, dx = this.pos.x - P.pos.x, dz = this.pos.z - P.pos.z, l = Math.hypot(dx, dz) || 1; this.vel.set(dx / l * 7, 0, dz / l * 7);
+          G.fx.sparks(this.c, null, 18, 0xff6070, 14, 1, 0.3, 0.25); sfx('shieldbreak', P.pos.distanceTo(this.pos)); G.onNEM && G.onNEM('stag');
+        }
+      }
+      dmg *= NEM.shieldMul;
+    } else if (this.st === 'trap') dmg *= NEM.trapMul;
+    super.hit(dmg);
+  }
+  update(dt) {
+    const P = G.player, tg = this.tg(), pc = tg.center(playerC), fx = G.fx, n = this.n;
+    this.ph += dt; this.stagCd -= dt; this.clawT -= dt; this.leapT -= dt; this.gunT -= dt; this.shellK = Math.max(0, this.shellK - dt * 3);
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1, up = tg.pos.y - this.pos.y;
+    const spd = NEM.run * (this.shield ? 1 : NEM.rage);
+    let legA = 0, armL = 0, armR = 0, lean = 0.12, face = true;
+    if (this.st === 'stag' || this.st === 'trap') {
+      this.stT -= dt; this.vel.multiplyScalar(Math.exp(-5 * dt)); this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt; collideCyl(this.pos, 2.4, 5);
+      lean = this.st === 'trap' ? 0.45 : 0.3; armL = armR = this.st === 'trap' ? 1.1 + 0.15 * Math.sin(this.ph * 20) : -0.5; legA = this.st === 'trap' ? 0.5 : 0; face = false;
+      if (this.st === 'trap' && Math.random() < 0.7) fx.sparks(_d.set(this.pos.x + (Math.random() - 0.5) * 3, this.pos.y + 1 + Math.random() * 5, this.pos.z + (Math.random() - 0.5) * 3), null, 2, 0xff60d0, 10, 0.8, 0.3, 0.2);
+      if (this.stT <= 0) { if (this.st === 'trap') G.onNEM && G.onNEM('free'); this.st = 'run'; this.stagCd = NEM.stagCd; this.stagAcc = 0; }
+    } else if (this.st === 'crouch') {
+      this.stT -= dt; lean = 0.4; legA = 0.6; armL = armR = -0.6; this.vel.multiplyScalar(Math.exp(-8 * dt));
+      if (this.stT <= 0) {
+        const tv = tg === P ? P.vel : (tg.vel || _c.set(0, 0, 0)), T = NEM.T;
+        let bx = pc.x + tv.x * T * 0.8, bz = pc.z + tv.z * T * 0.8;
+        bx = Math.max(-ARENA + 6, Math.min(ARENA - 6, bx)); bz = Math.max(-ARENA + 6, Math.min(ARENA - 6, bz));
+        this.Bp.set(bx, 0, bz); if (pointInSolid(_d.set(bx, 1, bz), 2)) this.Bp.set(tg.pos.x, 0, tg.pos.z);
+        this.Bp.y = groundAt(this.Bp.x, this.Bp.z, 99);
+        this.A.copy(this.pos); this.st = 'air'; this.ft = 0; G.nem && G.nem.leaps++;
+        fx.warn(this.Bp.clone(), NEM.leapR, T); sfx('jetdive', dist * 0.5);
+        for (let k = 0; k < 8; k++) fx.dust(_d.set(this.pos.x, this.pos.y + 0.3, this.pos.z), 1, 2.4, 6);
+      }
+    } else if (this.st === 'air') {
+      this.ft += dt; const k = Math.min(1, this.ft / NEM.T); legA = -0.5; armL = armR = 1.4; lean = 0.25;
+      this.pos.x = this.A.x + (this.Bp.x - this.A.x) * k; this.pos.z = this.A.z + (this.Bp.z - this.A.z) * k;
+      this.pos.y = this.A.y + (this.Bp.y - this.A.y) * k + 4 * NEM.apex * k * (1 - k);
+      this.yaw += angDiff(Math.atan2(-(this.Bp.x - this.A.x), -(this.Bp.z - this.A.z)), this.yaw) * Math.min(1, dt * 6); face = false;
+      if (Math.random() < 0.8) fx.emit('add', { x: this.pos.x, y: this.pos.y + 4, z: this.pos.z, vy: -6, life: 0.22, s0: 1.5, s1: 0.4, c0: 0xff5060, c1: 0xff2010 });
+      if (k >= 1) {
+        G.curLabel = 'nem-leap'; explodeAt(this.Bp.clone().setY(this.Bp.y + 0.6), NEM.leapR, NEM.leapDmg, 'E', 1.2, 0xff6070);
+        fx.ring(this.Bp.clone().setY(this.Bp.y + 0.3), new V3(0, 1, 0), 1, NEM.leapR, 0.35, 0xff8090);
+        if (P.alive && Math.hypot(P.pos.x - this.Bp.x, P.pos.z - this.Bp.z) < NEM.leapR && P.pos.y - this.Bp.y >= 4 && P.pos.y - this.Bp.y < 12) hurtPlayer(NEM.leapDmg * 0.7, 'nem-leap');
+        fx.trauma = Math.min(1, fx.trauma + 0.45 * Math.max(0, 1 - this.pos.distanceTo(P.pos) / 50));
+        for (let q = 0; q < 10; q++) fx.dust(_d.set(this.Bp.x, this.Bp.y + 0.3, this.Bp.z), 1, 3, 9);
+        this.st = 'land'; this.stT = 0.45; this.vel.set(0, 0, 0); this.leapT = NEM.leapCd[0] + Math.random() * (NEM.leapCd[1] - NEM.leapCd[0]);
+      }
+    } else if (this.st === 'land') {
+      this.stT -= dt; lean = 0.4; legA = 0.5; if (this.stT <= 0) this.st = 'run';
+    } else if (this.st === 'claw') {
+      this.stT -= dt; const k = 1 - Math.max(0, this.stT) / NEM.clawWind; armR = 0.4 + 1.8 * k; armL = 0.2 + 1.2 * k; lean = 0.2 - 0.15 * k;
+      this.vel.multiplyScalar(Math.exp(-6 * dt)); this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt; collideCyl(this.pos, 2.4, 5);
+      if (this.stT <= 0) {
+        this.st = 'run'; this.clawT = NEM.clawCd; this.swing = 0.25;
+        const fwx = -Math.sin(this.yaw), fwz = -Math.cos(this.yaw);
+        fx.ring(_d.set(this.pos.x + fwx * 3, this.pos.y + 3.5, this.pos.z + fwz * 3), null, 1, 6, 0.25, 0xff4050);
+        for (let q = 0; q < 8; q++) fx.emit('add', { x: this.pos.x + fwx * 4 + (Math.random() - 0.5) * 4, y: this.pos.y + 2 + Math.random() * 4, z: this.pos.z + fwz * 4 + (Math.random() - 0.5) * 4, life: 0.2, s0: 1.2, s1: 0.2, c0: 0xff5060 });
+        sfx('blade', P.pos.distanceTo(this.pos));
+        for (const f of [P, ...G.friends]) {
+          if (!f || !f.alive || !f.pos) continue;
+          const fx2 = f.pos.x - this.pos.x, fz2 = f.pos.z - this.pos.z, fl = Math.hypot(fx2, fz2) || 1;
+          if (fl > NEM.clawR || Math.abs(f.pos.y - this.pos.y) > 5 || (fx2 * fwx + fz2 * fwz) / fl < -0.2) continue;
+          if (f === P) { damagePlayer(NEM.clawDmg, this, 'nem-claw'); P.vel.x += fx2 / fl * NEM.knock; P.vel.z += fz2 / fl * NEM.knock; P.vel.y = Math.max(P.vel.y, 6); P.grounded = false; if (G.nem) G.nem.claws++; fx.trauma = Math.min(1, fx.trauma + 0.5); }
+          else if (f._ent) f._ent.hit(NEM.clawDmg * 2, this, 'nem-claw');
+        }
+      }
+    } else {   // run it down
+      const want = dist > 4 ? spd : 0;
+      const tx = dx / dist * want, tz = dz / dist * want;
+      this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-4 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-4 * dt));
+      this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+      if (collideCyl(this.pos, 2.4, 5)) blockedSlide(this);
+      const gy = groundAt(this.pos.x, this.pos.z, this.pos.y + 2, 1); this.pos.y += (gy - this.pos.y) * Math.min(1, dt * 10);
+      legA = Math.sin(this.ph * 9) * 0.7 * Math.min(1, Math.hypot(this.vel.x, this.vel.z) / 8); armL = -legA * 0.6; armR = legA * 0.6; lean = 0.22;
+      if (dist < NEM.clawR - 1 && Math.abs(up) < 5 && this.clawT <= 0) { this.st = 'claw'; this.stT = NEM.clawWind; sfx('warn', P.pos.distanceTo(this.pos)); }
+      else if (this.leapT <= 0 && (up > 6 || dist > 48) && dist < 95) { this.st = 'crouch'; this.stT = NEM.crouch; }
+      else if (dist > NEM.gunMin && dist < NEM.gunMax && this.gunT <= 0 && this.checkLos(dt)) {
+        this.gunT = NEM.gunCd[0] + Math.random() * (NEM.gunCd[1] - NEM.gunCd[0]);
+        const m = n.Muzzle_NM, mp = m ? m.getWorldPosition(new V3()) : this.c.clone(), aim = lead(mp, 150, _b, tg);
+        for (let k = 0; k < NEM.pel; k++) {
+          _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * NEM.spread; _d.y += (Math.random() - 0.5) * NEM.spread * 0.6; _d.z += (Math.random() - 0.5) * NEM.spread;
+          spawnShot({ p: mp, v: _d.normalize().multiplyScalar(150), dmg: NEM.pdmg, team: 'E', kind: 'ebullet', color: 0xff5060, w: 0.24, len: 4, life: 0.6, label: 'nem-gun' });
+        }
+        fx.muzzle(mp, _d, 0xff6070, 1.3); sfx('eshell', dist);
+      }
+    }
+    if (face) this.yaw += angDiff(Math.atan2(-dx, -dz), this.yaw) * Math.min(1, dt * 6);
+    this.obj.rotation.y = this.yaw; this.obj.rotation.x = 0;
+    if (n.NM_LegL) { n.NM_LegL.rotation.x = legA; n.NM_LegR.rotation.x = -legA; }
+    if (n.NM_ArmL) { n.NM_ArmL.rotation.x += (armL - n.NM_ArmL.rotation.x) * Math.min(1, dt * 14); n.NM_ArmR.rotation.x += (armR - n.NM_ArmR.rotation.x) * Math.min(1, dt * 14); }
+    if (n.NM_Head) n.NM_Head.rotation.x = -lean * 0.6;
+    this.c.set(this.pos.x, this.pos.y + 5 - lean * 1.5, this.pos.z);
+    const sh = this.shell; sh.visible = this.shield && this.st !== 'trap';
+    if (sh.visible) { sh.position.set(this.pos.x, this.pos.y + 4, this.pos.z); sh.scale.set(3.4, 4.6, 3.4); sh.rotation.y = this.ph * 0.4; sh.material.opacity = 0.07 + 0.05 * Math.sin(this.ph * 5) + 0.35 * this.shellK; }
+  }
+}
+export function startHunted() {
+  clearHunted();
+  const S = G.nem = { cells: [], pylons: [], got: 0, armed: false, fired: false, claws: 0, stags: 0, leaps: 0, swaps: 0, ent: null, ring: null, disc: null };
+  for (const [x, z] of NEM.cells) {
+    const o = cloneKit('P_PowerCell'); o.position.set(x, groundAt(x, z, 99), z); G.scene.add(o);
+    const beam = new THREE.Mesh(cellBeamGeo, cellBeamMat); beam.position.set(x, o.position.y + 21, z); G.scene.add(beam);
+    S.cells.push({ x, z, o, beam, got: false, core: nodes(o).PC_Core });
+  }
+  for (const [x, z] of nemPylons()) {
+    const o = cloneKit('P_Snare'); o.position.set(x, 0, z); o.rotation.y = Math.atan2(x, z); G.scene.add(o);
+    const lamp = nodes(o).NS_Lamp; if (lamp) lamp.visible = false;
+    const beam = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 1, 8, 1, true).rotateX(Math.PI / 2), trapBeamMat.clone());
+    const L = Math.hypot(x, z); beam.position.set(x / 2, 5.4, z / 2); beam.scale.set(1, 1, L); beam.lookAt(0, 5.4, 0); G.scene.add(beam);
+    S.pylons.push({ x, z, o, lamp, beam, lit: false, solid: addSolid(x, z, 2.4, 2.4, 6.2, 0, 'snare') });
+  }
+  S.ring = new THREE.Mesh(new THREE.RingGeometry(NEM.trapR - 0.7, NEM.trapR, 72).rotateX(-Math.PI / 2), trapMat.clone()); S.ring.position.set(0, 0.09, 0); G.scene.add(S.ring);
+  S.disc = new THREE.Mesh(new THREE.CircleGeometry(NEM.trapR - 0.7, 72).rotateX(-Math.PI / 2), trapMat.clone()); S.disc.material.opacity = 0.04; S.disc.position.set(0, 0.07, 0); G.scene.add(S.disc);
+}
+export function clearHunted() {
+  const S = G.nem; if (!S) return;
+  for (const c of S.cells) { c.o.parent && c.o.parent.remove(c.o); c.beam.parent && c.beam.parent.remove(c.beam); }
+  for (const q of S.pylons) { q.o.parent && q.o.parent.remove(q.o); q.beam.parent && q.beam.parent.remove(q.beam); if (q.solid) removeSolid(q.solid); }
+  for (const m of [S.ring, S.disc]) m && m.parent && m.parent.remove(m);
+  G.nem = null;
+}
+function updateHunted(dt) {
+  const S = G.nem; if (!S) return;
+  const P = G.player, fx = G.fx, t = G.time, N = S.ent;
+  for (const c of S.cells) {
+    if (c.got) continue;
+    if (c.core) c.core.rotation.y += dt * 2.5;
+    c.beam.material.opacity = 0.16 + 0.08 * Math.sin(t * 4 + c.x);
+    const on = P && P.alive && Math.hypot(P.pos.x - c.x, P.pos.z - c.z) < NEM.cellR && P.pos.y - c.o.position.y < 3;
+    c.k = Math.max(0, (c.k || 0) + (on ? dt : -dt * 0.5)); S.ext = on ? c : S.ext === c ? null : S.ext;
+    if (on && Math.random() < 0.6) fx.emit('add', { x: c.x + (Math.random() - 0.5) * 2, y: c.o.position.y + 1 + Math.random() * 2, z: c.z + (Math.random() - 0.5) * 2, vy: 6, life: 0.4, s0: 0.7, s1: 0.1, c0: 0xc8ff30 });
+    if (c.core) c.core.position.y = 1.3 + Math.min(1, c.k / NEM.cellT) * 1.2;
+    if (c.k >= NEM.cellT) {
+      c.got = true; S.ext = null; c.o.parent && c.o.parent.remove(c.o); c.beam.parent && c.beam.parent.remove(c.beam);
+      const q = S.pylons[S.got]; S.got++;
+      if (q) { q.lit = true; if (q.lamp) q.lamp.visible = true; fx.flash(new V3(q.x, 6.3, q.z), 0xff40c8, 30, 20, 0.4); }
+      fx.flash(new V3(c.x, c.o.position.y + 1.5, c.z), 0xc8ff30, 40, 26, 0.4); fx.ring(new V3(c.x, c.o.position.y + 0.4, c.z), null, 1, 8, 0.4, 0xc8ff30); sfx('repair', 0);
+      if (S.got >= S.cells.length) S.armed = true;
+      G.onNEM && G.onNEM(S.armed ? 'armed' : 'cell', S.got);
+    }
+  }
+  const armedK = S.fired ? 0.15 : S.armed ? 0.55 + 0.25 * Math.sin(t * 6) : 0.12 + 0.05 * S.got;
+  S.ring.material.opacity = armedK; S.disc.material.opacity = S.armed && !S.fired ? 0.08 + 0.04 * Math.sin(t * 6) : 0.03;
+  for (const q of S.pylons) { if (q.lamp && q.lit) q.lamp.scale.setScalar(1 + 0.15 * Math.sin(t * 7 + q.x)); q.beam.material.opacity = S.armed && !S.fired ? 0.35 + 0.2 * Math.sin(t * 10 + q.z) : Math.max(0, q.beam.material.opacity - dt * 0.6); }
+  if (S.armed && !S.fired && N && N.alive && !N.dying && N.st !== 'air' && N.st !== 'crouch' && Math.hypot(N.pos.x, N.pos.z) < NEM.trapR) {
+    S.fired = true; N.shield = false; N.st = 'trap'; N.stT = NEM.trapT; N.vel.set(0, 0, 0);
+    for (const q of S.pylons) { q.beam.material.opacity = 1; fx.streak(new V3(q.x, 6.3, q.z), N.c.clone(), 1.6, 0xff40c8, 0.5); }
+    fx.flash(N.c, 0xff40c8, 90, 40, 0.6); fx.ring(new V3(N.pos.x, 0.5, N.pos.z), new V3(0, 1, 0), 2, NEM.trapR * 1.6, 0.6, 0xff70d8); fx.trauma = Math.min(1, fx.trauma + 0.6);
+    sfx('shieldbreak', 0); sfx('bigboom', P ? P.pos.distanceTo(N.pos) : 0);
+    G.onNEM && G.onNEM('trap');
   }
 }
 
@@ -11025,7 +11251,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
-  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updatePolar(dt); updateJavs(dt); updateCTF(dt); updateBH(dt); updateAerie(dt); updateGlad(dt);
+  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updatePolar(dt); updateJavs(dt); updateCTF(dt); updateBH(dt); updateAerie(dt); updateHunted(dt); updateGlad(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
