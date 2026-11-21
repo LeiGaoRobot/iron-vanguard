@@ -27,6 +27,7 @@ export const WEAPONS = {
   ricochet: { slot: 'arm', name: 'RB-4 跳弹枪', en: 'RB-4 Ricochet', desc: '撞墙反弹 3 次 · 反弹后转向附近敌机 · 每弹一次 +25%', type: 'bullet', rate: 0.11, dmg: 14, speed: 240, spread: 0.008, mag: 36, reload: 2.0, color: 0x80ffd0, w: 0.22, len: 6, life: 1.8, bounce: 3, sfx: 'rifle', recoil: 0.15 },
   drill: { slot: 'arm', name: 'DR-2 钻地弹', en: 'DR-2 Drill Gun', desc: '慢速钻头弹 · 可钻透 18 m 内的墙体与掩体 · 命中后爆炸 3.5 m · 隔着墙打躲在后面的敌机（看雷达）', type: 'bullet', drill: 18, rate: 0.36, dmg: 58, splash: 3.5, speed: 110, spread: 0.004, mag: 10, reload: 2.2, life: 1.8, color: 0xffa040, w: 0.45, len: 3, sfx: 'cannon', recoil: 0.4 },
   bubble: { slot: 'arm', name: 'BU-6 泡泡枪', en: 'BU-6 Bubble Gun', desc: '慢速大泡泡（轻微下坠）· 罩住 2000 血以下的普通敌机：被泡泡托起 8 m、瘫痪 2.8 秒（期间受伤 +30%），泡泡破了地面单位摔下来再吃 90 · 重型和头目只会被黏住减速 · 在「定时炸弹」里，被泡住的敌人没法把炸弹传回给你', type: 'bullet', grenade: true, bub: true, rate: 0.55, dmg: 24, splash: 2.2, speed: 58, grav: 5, spread: 0.004, mag: 8, reload: 2.2, color: 0xa8e8ff, sfx: 'spit', recoil: 0.3 },
+  arc: { slot: 'arm', name: 'AR-7 电弧枪', en: 'AR-7 Arc Caster', desc: '42 m 内瞬发电弧 · 自动打准星附近、有视线的敌机 · 再跳到 10 m 内最多 3 台敌机（每跳 ×0.7）· 不用瞄准，适合打迅猛机这种会闪避的快速目标', type: 'arc', rate: 0.15, dmg: 25, range: 42, chain: 3, chainR: 10, chainK: 0.7, mag: 28, reload: 1.8, sfx: 'coil', recoil: 0.15 },
   javelin: { slot: 'arm', name: 'JV-3 穿甲标枪', en: 'JV-3 Javelin', desc: '高速重标枪（轻微下坠）130 伤害 · 贯穿最多 4 台敌机，每穿一台伤害 ×0.8 · 命中的第一台轻型敌机被钉住瘫痪 1.2 秒并击退 4 m · 扎进墙里会留一会儿', type: 'javelin', rate: 0.75, dmg: 130, speed: 95, grav: 4, pierce: 4, pierceK: 0.8, pin: 1.2, knock: 4, life: 2.2, range: 120, mag: 4, reload: 2.4, color: 0xffb060, sfx: 'rail', recoil: 0.7 },
   splat: { slot: 'arm', name: 'SP-4 泼溅炮', en: 'SP-4 Splat Cannon', desc: '抛射大团青色涂料（有下坠）· 溅射 3.5 m · 被溅中的敌机 3 秒糊住镜头：射击大幅偏离（头目减半）、近身攻击伤害 −30% · 在「领地争夺」里一发涂出 4.5 m 青色', type: 'bullet', grenade: true, goo: true, rate: 0.45, dmg: 46, splash: 3.5, speed: 62, grav: 16, spread: 0.004, mag: 12, reload: 2.4, color: 0x40d8ff, sfx: 'grenade', recoil: 0.45 },
   plorb: { slot: 'arm', name: 'PL-3 等离子球', en: 'PL-3 Plasma Orb', desc: '发射缓慢飞行的等离子球 · 飞行中每 0.25 秒电击身边 8 m 内最多 2 台敌机（对菌巢 / 菌瘤 / 播种者 ×1.5）· 撞上敌机、墙体或飞满 2.8 秒后炸开', type: 'plorb', rate: 0.5, dmg: 60, splash: 5, zap: 13, zapR: 8, zapN: 2, bio: 1.5, speed: 22, life: 2.8, mag: 8, reload: 2.2, sfx: 'coil', recoil: 0.35 },
@@ -83,7 +84,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['javelin', 'bubble', 'splat', 'isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['arc', 'javelin', 'bubble', 'splat', 'isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['saws', 'nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -788,6 +789,10 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
   } else if (d.type === 'plorb') {
     if (held && ws.reloadT <= 0 && ws.cd <= 0 && ws.ammo > 0 && isP) { ws.cd = d.rate; ws.ammo--; firePlOrb(owner, slot, d, dmgMul, aim, me); if (me) { G.stats.shots++; sfx(d.sfx, 0); } mslot.recoil = 1; }
     if (ws.ammo <= 0) startReload();
+  } else if (d.type === 'arc') {
+    if (held && ws.reloadT <= 0 && ws.cd <= 0 && ws.ammo > 0 && isP) { ws.cd = d.rate; ws.ammo--; fireArc(owner, slot, d, dmgMul, aim, me); if (me) { G.stats.shots++; sfx(d.sfx, 0); } mslot.recoil = 1; }
+    if (ws.ammo <= 0) startReload();
+    for (const m of mslot.models) { const c = m._ac || (m._ac = find(m, 'AC_Coil')); if (c) c.rotation.z += dt * (ws.cd > 0 ? 22 : 3); }
   } else if (d.type === 'javelin') {
     if (held && ws.reloadT <= 0 && ws.cd <= 0 && ws.ammo > 0 && isP) { ws.cd = d.rate; ws.ammo--; fireJav(owner, slot, d, dmgMul, aim); if (me) { G.stats.shots++; sfx(d.sfx, 0); } mslot.recoil = 1; }
     if (ws.ammo <= 0) startReload();
@@ -2030,7 +2035,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -5398,6 +5403,227 @@ export class Leaper extends Enemy {
   }
   fwdX() { return -Math.sin(this.yaw); }
   fwdZ() { return -Math.cos(this.yaw); }
+}
+
+// ---- v61 Raptor: a fast flag-runner. Raiders run the lanes to your flag and carry it home (slower); the rest hunt you
+// at 12-20 m with a five-pellet scattergun and bite when close. When your aim ray sweeps within 2.5 m of one it hops 8 m aside
+export const RAPT = { hp: 480, r: 2.0, run: 15, carry: 11, hunt: 12, keep: [12, 20], gunCd: [1.6, 2.2], pel: 5, pdmg: 6, spread: 0.12, gunR: 45, bite: 28, biteR: 7, biteCd: 3, hopCd: [2.6, 3.6], hop: 8, hopT: 0.4, hopR: 2.5, hopP: 0.6, grab: 3.5 };
+export const CTF_LANE_X = [-80, 0, 80];
+const _rh = new V3(), _ra = new V3();
+export class Raptor extends Enemy {
+  constructor(pos, raid) {
+    super('raptor', 'E_Raptor', pos, RAPT.hp, RAPT.r); this.boom = 1.0;
+    this.raid = !!raid; this.vel = new V3(); this.yaw = Math.random() * 6.28; this.st = 'run'; this.gunT = 1 + Math.random(); this.biteT = 1; this.hopT = 1 + Math.random();
+    this.strafe = Math.random() < 0.5 ? 1 : -1; this.swT = 2; this.wp = []; this.wpI = 0; this.goal = null; this.A = new V3(); this.B = new V3(); this.ft = 0; this.ph = Math.random() * 6;
+    this.lane = CTF_LANE_X[Math.floor(Math.random() * 3)]; this.mode = 'hunt';
+    this.c.set(pos.x, pos.y + 3, pos.z);
+  }
+  plan(gx, gz) {   // run along one of the three lanes (kept clear of buildings) when the goal is far up or down the map
+    this.wp.length = 0; this.wpI = 0; this.goal = [gx, gz];
+    const dz = gz - this.pos.z;
+    if (Math.abs(dz) > 50) {
+      const s = Math.sign(dz), L = Math.abs(this.pos.z) > 122 ? this.lane : CTF_LANE_X.reduce((a, b) => Math.abs(b - this.pos.x) < Math.abs(a - this.pos.x) ? b : a);
+      this.wp.push([L, this.pos.z + s * 6], [L, Math.abs(gz) > 122 ? gz - s * 2 : gz - s * 12]);
+    }
+    this.wp.push([gx, gz]);
+  }
+  hit(dmg, at, label) { if (this.st === 'hop') dmg *= 0.8; super.hit(dmg); }
+  update(dt) {
+    const P = G.player, tg = this.tg(), pc = tg.center(playerC), S = G.ctf, FP = S && S.flags.P;
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1;
+    this.gunT -= dt; this.biteT -= dt; this.hopT -= dt;
+    let mode = 'hunt', gx = 0, gz = 0;
+    if (FP && FP.carrier === this) { mode = 'carry'; [gx, gz] = CTF.bases.E; }
+    else if (FP && this.raid && FP.st !== 'carried') { mode = 'raid'; gx = FP.pos.x; gz = FP.pos.z; }
+    this.mode = mode;
+    let spd = 0;
+    if (this.st === 'hop') {
+      this.ft += dt; const k = Math.min(1, this.ft / RAPT.hopT);
+      this.pos.x = this.A.x + (this.B.x - this.A.x) * k; this.pos.z = this.A.z + (this.B.z - this.A.z) * k;
+      this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.8, 2) + 2.2 * 4 * k * (1 - k);
+      if (collideCyl(this.pos, 1.8, 3.5)) this.ft = RAPT.hopT;
+      if (Math.random() < 0.7) G.fx.emit('add', { x: this.pos.x, y: this.pos.y + 0.6, z: this.pos.z, vy: -2, life: 0.18, s0: 1.1, s1: 0.3, c0: 0xffb060, c1: 0xff5020 });
+      if (this.ft >= RAPT.hopT) { this.st = 'run'; this.vel.set((this.B.x - this.A.x) / RAPT.hopT * 0.3, 0, (this.B.z - this.A.z) / RAPT.hopT * 0.3); G.fx.dust(_rh.set(this.pos.x, this.pos.y + 0.3, this.pos.z), 3, 2, 5); }
+    } else {
+      let tx = 0, tz = 0;
+      if (mode === 'hunt') {
+        this.swT -= dt; if (this.swT <= 0) { this.swT = 1 + Math.random() * 1.5; this.strafe *= -1; }
+        this.slideT = Math.max(0, (this.slideT || 0) - dt);
+        let toward = dist > RAPT.keep[1] ? 1 : dist < RAPT.keep[0] ? -0.6 : 0; if (this.slideT > 0) toward *= 0.15;
+        const sw = this.slideT > 0 ? 1.1 : 0.85;
+        tx = (dx / dist * toward - dz / dist * this.strafe * sw) * RAPT.hunt; tz = (dz / dist * toward + dx / dist * this.strafe * sw) * RAPT.hunt;
+        this.yaw += angDiff(Math.atan2(-dx, -dz), this.yaw) * Math.min(1, dt * 6);
+      } else {
+        if (!this.goal || Math.hypot(this.goal[0] - gx, this.goal[1] - gz) > 8 || this.lastMode !== mode) this.plan(gx, gz);
+        let w = this.wp[Math.min(this.wpI, this.wp.length - 1)];
+        while (this.wpI < this.wp.length - 1 && Math.hypot(w[0] - this.pos.x, w[1] - this.pos.z) < 5) w = this.wp[++this.wpI];
+        const wx = w[0] - this.pos.x, wz = w[1] - this.pos.z, wl = Math.hypot(wx, wz) || 1, sp = mode === 'carry' ? RAPT.carry : RAPT.run;
+        this.slideT = Math.max(0, (this.slideT || 0) - dt);
+        const sl = this.slideT > 0 ? 0.9 : 0;
+        tx = (wx / wl * (1 - sl * 0.7) - wz / wl * this.strafe * sl) * sp; tz = (wz / wl * (1 - sl * 0.7) + wx / wl * this.strafe * sl) * sp;
+        this.yaw += angDiff(Math.atan2(-tx, -tz), this.yaw) * Math.min(1, dt * 7);
+        if (mode === 'raid' && Math.hypot(FP.pos.x - this.pos.x, FP.pos.z - this.pos.z) < RAPT.grab) { FP.st = 'carried'; FP.carrier = this; FP.dropT = 0; S.steals++; G.onCTF && G.onCTF('stolen', FP); }
+        if (mode === 'carry' && Math.hypot(gx - this.pos.x, gz - this.pos.z) < CTF.capR) { S.lost++; ctfHome(FP); this.raid = false; G.onCTF && G.onCTF('lost', FP); }
+      }
+      this.lastMode = mode;
+      this.vel.x += (tx - this.vel.x) * (1 - Math.exp(-4 * dt)); this.vel.z += (tz - this.vel.z) * (1 - Math.exp(-4 * dt));
+      this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+      if (collideCyl(this.pos, 1.8, 3.5)) blockedSlide(this);
+      this.pos.x = Math.max(-ARENA + 4, Math.min(ARENA - 4, this.pos.x)); this.pos.z = Math.max(-ARENA + 4, Math.min(ARENA - 4, this.pos.z));
+      this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.8, 2);
+      spd = Math.hypot(this.vel.x, this.vel.z);
+      // dodge-hop: your aim ray passing close makes it jump aside
+      if (this.hopT <= 0 && P.alive && G.aimPoint && this.c.distanceTo(P.pos) < 60) {
+        P.center(_ra); _rh.subVectors(G.aimPoint, _ra); const L = _rh.length();
+        if (L > 1) {
+          _rh.multiplyScalar(1 / L); _d.subVectors(this.c, _ra); const al = _d.dot(_rh);
+          if (al > 0) {
+            const off = Math.sqrt(Math.max(0, _d.lengthSq() - al * al));
+            if (off < RAPT.hopR) {
+              this.hopT = RAPT.hopCd[0] + Math.random() * (RAPT.hopCd[1] - RAPT.hopCd[0]);
+              if (Math.random() < (mode === 'carry' ? RAPT.hopP * 0.7 : RAPT.hopP)) {
+                const px = -_rh.z, pz = _rh.x, pl = Math.hypot(px, pz) || 1, side = (_d.x * px + _d.z * pz) >= 0 ? 1 : -1;
+                for (const sg of [side, -side]) {
+                  const bx = this.pos.x + px / pl * RAPT.hop * sg, bz = this.pos.z + pz / pl * RAPT.hop * sg;
+                  if (Math.abs(bx) > ARENA - 6 || Math.abs(bz) > ARENA - 6 || pointInSolid(_c.set(bx, 1, bz), 2)) continue;
+                  this.A.copy(this.pos); this.B.set(bx, 0, bz); this.st = 'hop'; this.ft = 0; G.raptorHops = (G.raptorHops || 0) + 1; sfx('jetdive', this.c.distanceTo(P.pos) * 0.6);
+                  if (!G.raptorHopSaid && tg === P) { G.raptorHopSaid = true; G.onHint && G.onHint('迅猛机会躲开你的准星 · 换个方向扫，或者用不用瞄准的武器（电弧枪 / 导弹）', 3.5); }
+                  break;
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+    // scattergun + bite
+    if (this.st !== 'hop' && dist < RAPT.gunR && this.checkLos(dt) && this.gunT <= 0) {
+      this.gunT = (RAPT.gunCd[0] + Math.random() * (RAPT.gunCd[1] - RAPT.gunCd[0])) * (mode === 'carry' ? 1.5 : 1);
+      const m = this.n.Muzzle_RP, mp = m ? m.getWorldPosition(new V3()) : this.c.clone(); const aim = lead(mp, 150, _b, tg);
+      for (let k = 0; k < RAPT.pel; k++) {
+        _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * RAPT.spread; _d.y += (Math.random() - 0.5) * RAPT.spread * 0.6; _d.z += (Math.random() - 0.5) * RAPT.spread;
+        spawnShot({ p: mp, v: _d.normalize().multiplyScalar(150), dmg: RAPT.pdmg, team: 'E', kind: 'ebullet', color: 0xffa040, w: 0.22, len: 3.5, life: 0.5, label: 'raptor-gun' });
+      }
+      G.fx.muzzle(mp, _d, 0xffb050, 1.1); sfx('eshell', dist);
+    }
+    if (this.st !== 'hop' && this.biteT <= 0 && this.c.distanceTo(pc) < RAPT.biteR) {
+      this.biteT = RAPT.biteCd;
+      if (tg === P) damagePlayer(RAPT.bite, this, 'raptor-bite'); else if (tg._ent) tg._ent.hit(RAPT.bite, this, 'raptor-bite');
+      G.fx.sparks(pc, null, 10, 0xffc080, 12, 1, 0.3, 0.2); sfx('ric', dist);
+    }
+    // legs / tail / head
+    const run = Math.min(1, spd / RAPT.run); this.ph += dt * (4 + spd * 0.8);
+    if (this.n.RP_LegL) this.n.RP_LegL.rotation.x = this.st === 'hop' ? -0.5 : Math.sin(this.ph) * 0.75 * run;
+    if (this.n.RP_LegR) this.n.RP_LegR.rotation.x = this.st === 'hop' ? -0.5 : -Math.sin(this.ph) * 0.75 * run;
+    if (this.n.RP_Tail) this.n.RP_Tail.rotation.y = Math.sin(this.ph * 0.5) * 0.3 * (0.3 + run);
+    if (this.n.RP_Head) this.n.RP_Head.rotation.x = Math.sin(this.ph * 2) * 0.06 * run;
+    this.obj.rotation.y = this.yaw; this.obj.rotation.x = -0.12 * run;
+    this.c.set(this.pos.x, this.pos.y + 3, this.pos.z);
+  }
+}
+
+// ---- v61 capture the flag: two bases at either end of the map. Touch the red flag to carry it (x0.85 speed) and bring
+// it to your pad while your own flag is home to score; raptors raid your flag and run it home. Kill the carrier and touch
+// the dropped flag to send it home; a dropped flag returns on its own after 20 s
+export const CTF = { pickR: 4.5, capR: 7, slow: 0.85, boost: 0.5, grabT: 1.5, need: 3, foeNeed: 3, ret: 20, bases: { P: [0, 140], E: [0, -140] }, col: { P: 0x38d8ff, E: 0xff3a3a } };
+function tintFlag(o, col) {
+  o.traverse((m) => {
+    if (!m.isMesh || !m.material) return; const n = m.material.name;
+    if (n !== 'FlagCloth' && n !== 'FlagGlow') return;
+    m.material = m.material.clone();
+    if (n === 'FlagCloth') { m.material.color.setHex(col); if (m.material.emissive) { m.material.emissive.setHex(col); m.material.emissiveIntensity = 0.25; } }
+    else { m.material.color.setHex(col); m.material.emissive && m.material.emissive.setHex(col); }
+  });
+}
+export function startCTF() {
+  const S = G.ctf = { grabK: 0, caps: 0, lost: 0, grabs: 0, returns: 0, carrierKills: 0, steals: 0, needSaidT: 0, flags: {} };
+  for (const t of ['P', 'E']) {
+    const [x, z] = CTF.bases[t], gy = groundAt(x, z, 0);
+    const base = cloneKit('P_FlagBase'); base.position.set(x, gy, z); G.scene.add(base); tintFlag(base, CTF.col[t]);
+    const o = cloneKit('P_Flag'); o.position.set(x, gy, z); G.scene.add(o); tintFlag(o, CTF.col[t]);
+    S.flags[t] = { team: t, home: new V3(x, gy, z), pos: new V3(x, gy, z), st: 'home', carrier: null, dropT: 0, o, base, cloth: find(o, 'FG_Cloth'), ring: find(base, 'FP_Ring') };
+  }
+}
+export function clearCTF() {
+  if (G.ctf) for (const t in G.ctf.flags) { const f = G.ctf.flags[t]; f.o.parent && f.o.parent.remove(f.o); f.base.parent && f.base.parent.remove(f.base); }
+  if (G.ctf && G.player) { G.player.slowMul = 1; G.player.boostMul = 1; }
+  G.ctf = null;
+}
+function ctfHome(f) { f.st = 'home'; f.carrier = null; f.pos.copy(f.home); f.dropT = 0; }
+function ctfDrop(f, at) { f.st = 'dropped'; f.carrier = null; f.pos.set(at.x, groundAt(at.x, at.z, at.y + 1), at.z); f.dropT = CTF.ret; G.onCTF && G.onCTF('drop', f); }
+function updateCTF(dt) {
+  const S = G.ctf, P = G.player; if (!S || !P) return;
+  const FP = S.flags.P, FE = S.flags.E;
+  S.needSaidT -= dt;
+  for (const f of [FP, FE]) {
+    if (f.st === 'carried') {
+      const c = f.carrier;
+      if (c === P) { if (!P.alive) ctfDrop(f, P.pos); }
+      else if (!c || !c.alive || c.dying || c.gone) { if (c) S.carrierKills++; ctfDrop(f, c ? c.pos : f.pos); }
+    } else if (f.st === 'dropped') { f.dropT -= dt; if (f.dropT <= 0) { ctfHome(f); G.onCTF && G.onCTF('reset', f); } }
+  }
+  if (P.alive && !S.done) {
+    const near = (f) => Math.hypot(P.pos.x - f.pos.x, P.pos.z - f.pos.z) < CTF.pickR && P.pos.y - f.pos.y < 7;
+    if (FE.st !== 'carried' && near(FE)) {   // pulling the flag takes 1.5 s next to it (a dropped one is instant)
+      S.grabK += dt / (FE.st === 'dropped' ? 0.2 : CTF.grabT);
+      if (S.grabK >= 1) { S.grabK = 0; FE.st = 'carried'; FE.carrier = P; FE.dropT = 0; S.grabs++; G.onCTF && G.onCTF('grab', FE); }
+    } else S.grabK = Math.max(0, S.grabK - dt * 2);
+    if (FP.st === 'dropped' && near(FP)) { ctfHome(FP); S.returns++; G.onCTF && G.onCTF('return', FP); }
+    if (FE.carrier === P && Math.hypot(P.pos.x - FP.home.x, P.pos.z - FP.home.z) < CTF.capR && P.pos.y - FP.home.y < 9) {
+      if (FP.st === 'home') { S.caps++; ctfHome(FE); G.onCTF && G.onCTF('cap', FE); }
+      else if (S.needSaidT <= 0) { S.needSaidT = 4; G.onCTF && G.onCTF('needHome', FP); }
+    }
+  }
+  P.slowMul = FE.carrier === P ? CTF.slow : 1; P.boostMul = FE.carrier === P ? CTF.boost : 1;
+  for (const f of [FP, FE]) {
+    const o = f.o, c = f.carrier;
+    if (f.st === 'carried' && c === P) {
+      const y = P.legYaw, k = P.scale || 1; o.position.set(P.pos.x + Math.sin(y) * 1.4 * k, P.pos.y + 3.0 * k, P.pos.z + Math.cos(y) * 1.4 * k); o.rotation.set(0, y + Math.PI / 2, 0); o.scale.setScalar(0.85);
+    } else if (f.st === 'carried' && c) {
+      const m = c.n && c.n.RP_Flag; if (m) m.getWorldPosition(o.position); else o.position.copy(c.pos); o.rotation.set(0, (c.yaw || 0) + Math.PI, 0); o.scale.setScalar(0.8);
+    } else {
+      o.position.copy(f.pos); o.scale.setScalar(1); o.rotation.set(f.st === 'dropped' ? 0.3 : 0, f.st === 'dropped' ? 0.8 : 0, 0);
+      if (f.st === 'dropped' && Math.random() < 0.5) G.fx.emit('add', { x: f.pos.x + (Math.random() - 0.5) * 2, y: f.pos.y + 0.5, z: f.pos.z + (Math.random() - 0.5) * 2, vy: 6, life: 0.6, s0: 0.6, s1: 0.1, c0: CTF.col[f.team] });
+    }
+    if (f.st === 'carried') f.pos.set(o.position.x, groundAt(o.position.x, o.position.z, o.position.y), o.position.z);
+    if (f.cloth) f.cloth.rotation.y = Math.sin(G.time * 3.2 + (f.team === 'P' ? 0 : 1.7)) * 0.28 + (f.st === 'carried' ? 0.5 : 0);
+    if (f.ring) { const away = f.st !== 'home'; f.ring.scale.setScalar(away ? 1 + 0.06 * Math.sin(G.time * 8) : 1); f.ring.visible = !away || Math.sin(G.time * 6) > -0.4; }
+  }
+}
+
+// ---- AR-7 arc caster: hitscan arc at the enemy nearest the aim ray (with line of sight), then up to 3 chain jumps
+function fireArc(owner, slot, d, mul, aim, me) {
+  const mp = owner.muzzlePos(slot, new V3(), 0).clone(), dir = new V3().subVectors(aim, mp);
+  if (!Number.isFinite(dir.x + dir.y + dir.z) || !Number.isFinite(mp.x + mp.y + mp.z) || dir.lengthSq() < 1e-6) return;
+  dir.normalize();
+  let best = null, bs = 1e9;
+  for (const e of entsFor('P')) {
+    if (!e.alive || e.isMine || e.holo || e.cloaked || !e.c) continue;
+    _c.subVectors(e.c, mp); const L = _c.length(); if (!(L <= d.range) || L < 0.5) continue;
+    const al = _c.dot(dir); if (al <= 0) continue;
+    const off = Math.sqrt(Math.max(0, L * L - al * al)), lim = (e.r || 1.5) + 1.5 + al * 0.12; if (off > lim) continue;
+    const sc = off / lim + al / d.range * 0.3; if (sc < bs && clearLine(mp, e.c)) { bs = sc; best = e; }
+  }
+  if (!best) { const w = raySolids(mp, dir, d.range * 0.6); G.fx.lightning(mp, mp.clone().addScaledVector(dir, Math.min(w.t, d.range * 0.6)), 0x9fe8ff, 0.2, 0.08, 1.2); return; }
+  const prevL = G.curLabel; G.curLabel = 'p-arc';
+  const hit = new Set(); let from = mp, cur = best, dmg = d.dmg * mul;
+  for (let k = 0; k <= d.chain && cur; k++) {
+    const h = cur.kind === 'cpart' ? cur.owner : cur; hit.add(h);
+    const to = cur.c.clone();
+    G.fx.lightning(from, to, 0x9ff6ff, k ? 0.24 : 0.34, 0.12, 1.6);
+    G.fx.sparks(to, null, 6, 0x9ff6ff, 10, 0.8, 0.2, 0.15);
+    dealDamage(cur, dmg, 'P', to, 'p-arc');
+    if (k) { G.arcChains = (G.arcChains || 0) + 1; if (me) G.stats.shots++; }
+    from = to; dmg *= d.chainK;
+    let nb = null, nd = d.chainR;
+    for (const e of entsFor('P')) {
+      if (!e.alive || e.isMine || e.isBarrel || e.holo || e.cloaked || !e.c) continue;
+      if (hit.has(e.kind === 'cpart' ? e.owner : e)) continue;
+      const dd = e.c.distanceTo(from); if (dd < nd && clearLine(from, e.c)) { nd = dd; nb = e; }
+    }
+    cur = nb;
+  }
+  G.curLabel = prevL;
 }
 
 // ---- Solar flares: every ~23 s the sun flares for 5.5 s. Anything outside a building's shadow burns (you and enemies)
@@ -10336,7 +10562,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
-  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updatePolar(dt); updateJavs(dt); updateGlad(dt);
+  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updatePolar(dt); updateJavs(dt); updateCTF(dt); updateGlad(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
