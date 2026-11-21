@@ -162,6 +162,8 @@ M = dict(
     SprayBody=mat("SprayBody", "#f2f0ea", 0.35, metal=0.2),
     ScramGlow=mat("ScramGlow", "#c8ff8a", 0.25, emit="#7cff2a", strength=2.2), ScramPaint=mat("ScramPaint", "#3a4048", 0.4, metal=0.5),
     SoapGlow=mat("SoapGlow", "#e8f6ff", 0.12, emit="#9fd8ff", strength=1.2),
+    PolGlow=mat("PolGlow", "#ffffff", 0.2, emit="#ffffff", strength=2.0), DyadPaint=mat("DyadPaint", "#d8dce2", 0.35, metal=0.55),
+    JavGlow=mat("JavGlow", "#ffd29a", 0.25, emit="#ff9a3a", strength=2.0),
     AdaptGlow=mat("AdaptGlow", "#d8ecff", 0.25, emit="#6fb8ff", strength=2.4), AdaptPaint=mat("AdaptPaint", "#5a5e6a", 0.45, metal=0.55),
     VentGlow=mat("VentGlow", "#ffd8a0", 0.3, emit="#ff7a20", strength=2.6), SawSteel=mat("SawSteel", "#c8ccd2", 0.22, metal=0.95),
     ArenaStone=mat("ArenaStone", "#b09a7a", 0.88),
@@ -3852,6 +3854,48 @@ def build_scrambler():
         cyl((sx, 1.0, -0.42), 0.06, 0.55, M["Black"], K, rot=ALONG_Y, verts=8)
     muzzle("Muzzle_Scram", (0, 1.3, -0.42), K)
 
+def build_dyad():
+    # dyad: one of a linked pair of hover drones (front +Y). a pale armoured lozenge with a glowing core DY_Core (its
+    # PolGlow material is tinted red or blue per drone at runtime), a cage ring DY_Cage around it (spins about Y), four
+    # swept fins, a tether emitter DY_Emit on top and a twin gun under the nose (Muzzle_Dyad). origin at the centre
+    K = kit("E_Dyad")
+    ball((0, 0, 0), 0.62, M["PolGlow"], K, sub=2)
+    empty("DY_Core", (0, 0, 0), K)
+    for sz in (-1, 1):
+        cyl((0, 0, sz * 0.55), 0.85, 0.28, M["DyadPaint"], K, verts=8, r2=0.45)
+        cyl((0, 0, sz * 0.78), 0.4, 0.12, M["EArmor2"], K, verts=8)
+    c = empty("DY_Cage", (0, 0, 0), K)
+    torus((0, 0, 0), 1.05, 0.06, M["DyadPaint"], c, rot=ALONG_Y)
+    for k in range(6):
+        a = k * 1.0472
+        box((math.cos(a) * 1.05, 0, math.sin(a) * 1.05), (0.14, 0.3, 0.14), M["PolGlow"] if k % 2 == 0 else M["Frame"], c, rot=(0, -a, 0))
+    for k in range(4):
+        a = k * 1.5708 + 0.785
+        box((math.cos(a) * 1.0, -0.3, math.sin(a) * 0.55), (0.6, 0.9, 0.06), M["DyadPaint"], K, rot=(0.3, 0, a))
+    e = empty("DY_Emit", (0, 0, 1.0), K)
+    cyl((0, 0, 0), 0.12, 0.35, M["Frame"], e, verts=8)
+    ball((0, 0, 0.22), 0.14, M["PolGlow"], e, sub=1)
+    for sx in (-0.22, 0.22):
+        cyl((sx, 0.75, -0.55), 0.06, 0.6, M["Black"], K, rot=ALONG_Y, verts=8)
+    muzzle("Muzzle_Dyad", (0, 1.1, -0.55), K)
+
+def build_javelin():
+    # JV-3 javelin launcher: a long rail along +Y with side clamps; the loaded spear JV_Spear (shaft + glowing JavGlow
+    # head + tail fins) sits on the rail and is hidden while reloading
+    K = kit("W_Javelin")
+    box((0, 0.1, 0), (0.36, 1.5, 0.3), M["Frame"], K, bevel=0.05)
+    box((0, -0.35, -0.12), (0.3, 0.5, 0.36), M["Armor2"], K, bevel=0.05)
+    for y in (-0.2, 0.45):
+        for sx in (-1, 1):
+            box((sx * 0.22, y, 0.14), (0.08, 0.18, 0.2), M["Hazard"], K)
+    sp = empty("JV_Spear", (0, 0, 0.24), K)
+    cyl((0, 0.15, 0), 0.05, 1.7, M["Armor2"], sp, rot=ALONG_Y, verts=8)
+    cyl((0, 1.15, 0), 0.11, 0.42, M["JavGlow"], sp, rot=ALONG_Y, verts=8, r2=0.0)
+    for k in range(3):
+        a = k * 2.0944
+        box((math.cos(a) * 0.1, -0.62, math.sin(a) * 0.1), (0.03, 0.28, 0.16), M["Frame"], sp, rot=(0, -a, 0))
+    muzzle("Muzzle_Jav", (0, 1.4, 0.24), K)
+
 def build_bubble():
     # BU-6 bubble gun: a squat body with a big glass soap tank on top (SoapGlow), a wide bell muzzle and a little wand
     # ring at the mouth
@@ -3863,7 +3907,7 @@ def build_bubble():
     cyl((0, 1.02, 0), 0.32, 0.28, M["SoapGlow"], K, rot=ALONG_Y, verts=18, r2=0.16)
     torus((0, 1.18, 0), 0.3, 0.035, M["Hazard"], K, rot=ALONG_Y)
     muzzle("Muzzle_Bubble", (0, 1.25, 0.0), K)
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb(); build_bloater(); build_coolant(); build_cooltower(); build_atomdome(); build_decon(); build_isotope(); build_adaptor(); build_saws(); build_sawdisc(); build_arenagate(); build_firevent(); build_sprayer(); build_splat(); build_paintcan(); build_scrambler(); build_bubble()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb(); build_bloater(); build_coolant(); build_cooltower(); build_atomdome(); build_decon(); build_isotope(); build_adaptor(); build_saws(); build_sawdisc(); build_arenagate(); build_firevent(); build_sprayer(); build_splat(); build_paintcan(); build_scrambler(); build_bubble(); build_dyad(); build_javelin()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
