@@ -27,6 +27,7 @@ export const WEAPONS = {
   ricochet: { slot: 'arm', name: 'RB-4 跳弹枪', en: 'RB-4 Ricochet', desc: '撞墙反弹 3 次 · 反弹后转向附近敌机 · 每弹一次 +25%', type: 'bullet', rate: 0.11, dmg: 14, speed: 240, spread: 0.008, mag: 36, reload: 2.0, color: 0x80ffd0, w: 0.22, len: 6, life: 1.8, bounce: 3, sfx: 'rifle', recoil: 0.15 },
   drill: { slot: 'arm', name: 'DR-2 钻地弹', en: 'DR-2 Drill Gun', desc: '慢速钻头弹 · 可钻透 18 m 内的墙体与掩体 · 命中后爆炸 3.5 m · 隔着墙打躲在后面的敌机（看雷达）', type: 'bullet', drill: 18, rate: 0.36, dmg: 58, splash: 3.5, speed: 110, spread: 0.004, mag: 10, reload: 2.2, life: 1.8, color: 0xffa040, w: 0.45, len: 3, sfx: 'cannon', recoil: 0.4 },
   bubble: { slot: 'arm', name: 'BU-6 泡泡枪', en: 'BU-6 Bubble Gun', desc: '慢速大泡泡（轻微下坠）· 罩住 2000 血以下的普通敌机：被泡泡托起 8 m、瘫痪 2.8 秒（期间受伤 +30%），泡泡破了地面单位摔下来再吃 90 · 重型和头目只会被黏住减速 · 在「定时炸弹」里，被泡住的敌人没法把炸弹传回给你', type: 'bullet', grenade: true, bub: true, rate: 0.55, dmg: 24, splash: 2.2, speed: 58, grav: 5, spread: 0.004, mag: 8, reload: 2.2, color: 0xa8e8ff, sfx: 'spit', recoil: 0.3 },
+  ecan: { slot: 'arm', name: 'EC-2 能量炮', en: 'EC-2 Energy Cannon', desc: '不用弹匣，每发消耗 4 点推进能量 · 0.18 秒一发 38 伤害的贯穿光束，一条线上的敌机全吃 · 能量不够就打不响，开火不影响回能，但别想边打边一直推进 · 超载期间能量无限', type: 'ecan', rate: 0.18, dmg: 38, cost: 4, reserve: 0, range: 90, sfx: 'laser', recoil: 0.5 },
   arc: { slot: 'arm', name: 'AR-7 电弧枪', en: 'AR-7 Arc Caster', desc: '42 m 内瞬发电弧 · 自动打准星附近、有视线的敌机 · 再跳到 10 m 内最多 3 台敌机（每跳 ×0.7）· 不用瞄准，适合打迅猛机这种会闪避的快速目标', type: 'arc', rate: 0.15, dmg: 25, range: 42, chain: 3, chainR: 10, chainK: 0.7, mag: 28, reload: 1.8, sfx: 'coil', recoil: 0.15 },
   javelin: { slot: 'arm', name: 'JV-3 穿甲标枪', en: 'JV-3 Javelin', desc: '高速重标枪（轻微下坠）130 伤害 · 贯穿最多 4 台敌机，每穿一台伤害 ×0.8 · 命中的第一台轻型敌机被钉住瘫痪 1.2 秒并击退 4 m · 扎进墙里会留一会儿', type: 'javelin', rate: 0.75, dmg: 130, speed: 95, grav: 4, pierce: 4, pierceK: 0.8, pin: 1.2, knock: 4, life: 2.2, range: 120, mag: 4, reload: 2.4, color: 0xffb060, sfx: 'rail', recoil: 0.7 },
   splat: { slot: 'arm', name: 'SP-4 泼溅炮', en: 'SP-4 Splat Cannon', desc: '抛射大团青色涂料（有下坠）· 溅射 3.5 m · 被溅中的敌机 3 秒糊住镜头：射击大幅偏离（头目减半）、近身攻击伤害 −30% · 在「领地争夺」里一发涂出 4.5 m 青色', type: 'bullet', grenade: true, goo: true, rate: 0.45, dmg: 46, splash: 3.5, speed: 62, grav: 16, spread: 0.004, mag: 12, reload: 2.4, color: 0x40d8ff, sfx: 'grenade', recoil: 0.45 },
@@ -84,7 +85,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['arc', 'javelin', 'bubble', 'splat', 'isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['ecan', 'arc', 'javelin', 'bubble', 'splat', 'isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['saws', 'nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -789,6 +790,14 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
   } else if (d.type === 'plorb') {
     if (held && ws.reloadT <= 0 && ws.cd <= 0 && ws.ammo > 0 && isP) { ws.cd = d.rate; ws.ammo--; firePlOrb(owner, slot, d, dmgMul, aim, me); if (me) { G.stats.shots++; sfx(d.sfx, 0); } mslot.recoil = 1; }
     if (ws.ammo <= 0) startReload();
+  } else if (d.type === 'ecan') {
+    const odOn = !!(G.od && G.od.t > 0) && owner === G.player;
+    if (held && ws.cd <= 0 && isP && owner.alive && (odOn || owner.en >= d.cost + d.reserve)) {
+      ws.cd = d.rate; if (!odOn) owner.en -= d.cost; fireCharge(owner, slot, d, dmgMul, aim, me); if (me) { G.stats.shots++; sfx(d.sfx, 0); } mslot.recoil = d.recoil;
+    } else if (held && ws.cd <= 0 && me && owner.en < d.cost && !ws.dry) { ws.dry = true; sfx('empty', 0); }
+    if (!held) ws.dry = false;
+    const ek = owner.maxEn ? Math.max(0, owner.en / owner.maxEn) : 1;
+    for (const m of mslot.models) { const c = m._cg || (m._cg = find(m, 'CG_Core')); if (c) c.scale.setScalar(0.5 + 0.9 * ek + (ws.cd > d.rate * 0.5 ? 0.5 : 0)); }
   } else if (d.type === 'arc') {
     if (held && ws.reloadT <= 0 && ws.cd <= 0 && ws.ammo > 0 && isP) { ws.cd = d.rate; ws.ammo--; fireArc(owner, slot, d, dmgMul, aim, me); if (me) { G.stats.shots++; sfx(d.sfx, 0); } mslot.recoil = 1; }
     if (ws.ammo <= 0) startReload();
@@ -2035,7 +2044,7 @@ export const RAIDERS = {
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { ecan: 'rifle', arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -5589,6 +5598,221 @@ function updateCTF(dt) {
     if (f.cloth) f.cloth.rotation.y = Math.sin(G.time * 3.2 + (f.team === 'P' ? 0 : 1.7)) * 0.28 + (f.st === 'carried' ? 0.5 : 0);
     if (f.ring) { const away = f.st !== 'home'; f.ring.scale.setScalar(away ? 1 + 0.06 * Math.sin(G.time * 8) : 1); f.ring.visible = !away || Math.sin(G.time * 6) > -0.4; }
   }
+}
+
+// ---- v62 black hole ("singularity"): it hangs 20 m over the plaza, fed by four injector pylons. It pulls mechs (you and
+// enemies) toward itself (strongest close in, lifting near the middle), bends every projectile, and its event horizon
+// burns you at 70/s and swallows ordinary enemies outright. It grows every 45 s; each injector destroyed weakens and
+// shrinks it; with all four down it collapses in a shockwave
+export const BH = { x: 0, y: 20, z: 0, R0: 7, Rmax: 11, reach: 130, pull: 15, pullExp: 1.25, lift: 6, liftR: 30, dps: 70, bossK: 0.04, growEvery: 45, grow: 0.1, growR: 0.5, Kmax: 1.8, shrink: 0.7, shrinkR: 1.3, shotA: 1500, shotMax: 70, injHp: 6000, sites: [[95, 95], [-95, 95], [95, -95], [-95, -95]] };
+const _bh = new V3(), _bq = new THREE.Quaternion(), _bup = new V3(0, 1, 0);
+let bhMeshes = null;
+function makeBHMeshes() {
+  const g = new THREE.Group();
+  const core = new THREE.Mesh(new THREE.SphereGeometry(1, 40, 20), new THREE.MeshBasicMaterial({ color: 0x000000, fog: false }));
+  const glowMat = new THREE.ShaderMaterial({ uniforms: { uT: { value: 0 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, fog: false,
+    vertexShader: 'varying vec2 vU; void main(){ vU = uv; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'varying vec2 vU; uniform float uT; void main(){ float d = length(vU - 0.5) * 4.0; float a = atan(vU.y - 0.5, vU.x - 0.5);'
+      + ' float ring = exp(-pow((d - 1.06) / 0.05, 2.0)) * 2.2 + exp(-pow((d - 1.12) / 0.32, 2.0)) * 0.55 * (0.8 + 0.2 * sin(a * 5.0 + uT * 2.0));'
+      + ' vec3 c = mix(vec3(1.0, 0.55, 0.25), vec3(1.0, 0.95, 0.85), clamp(ring - 0.6, 0.0, 1.0)); gl_FragColor = vec4(c * ring, clamp(ring, 0.0, 1.0)); }' });
+  const glow = new THREE.Mesh(new THREE.PlaneGeometry(4, 4), glowMat);
+  const diskMat = new THREE.ShaderMaterial({ uniforms: { uT: { value: 0 } }, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, fog: false,
+    vertexShader: 'varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }',
+    fragmentShader: 'varying vec2 vP; uniform float uT; float h(float x){ return fract(sin(x * 91.7) * 4375.5); }'
+      + ' void main(){ float r = length(vP); float a = atan(vP.y, vP.x); float k = (r - 1.3) / 2.2;'
+      + ' float sw = a + 2.6 / r - uT * (1.6 / r); float b = 0.55 + 0.45 * sin(sw * 7.0) * sin(sw * 3.0 + r * 4.0);'
+      + ' float e = smoothstep(0.0, 0.08, k) * (1.0 - smoothstep(0.55, 1.0, k));'
+      + ' vec3 c = mix(vec3(1.0, 0.92, 0.75), mix(vec3(1.0, 0.45, 0.15), vec3(0.55, 0.2, 0.75), smoothstep(0.3, 1.0, k)), smoothstep(0.0, 0.45, k));'
+      + ' float i = e * b * (1.6 - k); gl_FragColor = vec4(c * i, clamp(i, 0.0, 1.0)); }' });
+  const disk = new THREE.Mesh(new THREE.RingGeometry(1.3, 3.5, 96, 1), diskMat); disk.rotation.x = -Math.PI / 2 + 0.28;
+  g.add(core, disk, glow); g.position.set(BH.x, BH.y, BH.z);
+  return { g, core, glow, disk, glowMat, diskMat };
+}
+const bhBeamMat = new THREE.MeshBasicMaterial({ color: 0xb070ff, transparent: true, opacity: 0.5, blending: THREE.AdditiveBlending, depthWrite: false, fog: false });
+const bhBeamGeo = new THREE.CylinderGeometry(1, 1, 1, 10, 1, true).translate(0, 0.5, 0);
+export class Injector extends Enemy {
+  constructor(pos) {
+    super('injector', 'E_Injector', pos, BH.injHp, 3.2); this.boom = 2.4; this.isObjective = true;
+    this.pos.y = 0;
+    this.solids = [addSolid(pos.x, pos.z, 7, 7, 2.6, 0, 'injector'), addSolid(pos.x, pos.z, 2.6, 2.6, 8.4, 2.6, 'injector')];
+    this.c.set(pos.x, 11.6, pos.z); this.ph = Math.random() * 6;
+    this.beam = new THREE.Mesh(bhBeamGeo, bhBeamMat); G.scene.add(this.beam);
+  }
+  die() {
+    for (const so of this.solids) removeSolid(so);
+    this.beam.parent && this.beam.parent.remove(this.beam);
+    this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this);
+    explodeAt(this.c, 10, 40, 'P', 2.6, 0xc080ff); G.fx.flash(this.c, 0xc080ff, 60, 30, 0.5);
+    for (let k = 0; k < 4; k++) G.queue.push({ label: 'inj', t: 0.25 + k * 0.3, fn: () => explodeAt(new V3(this.pos.x + (Math.random() - 0.5) * 4, 3 + k * 2, this.pos.z + (Math.random() - 0.5) * 4), 0, 0, 'P', 1.2, 0xc080ff) });
+    const B = G.bh; if (B && B.st === 'live') { B.K *= BH.shrink; B.R = Math.max(3, B.R - BH.shrinkR); B.injDead++; G.fx.ring(_bh.set(BH.x, BH.y, BH.z), null, B.R * 1.5, B.R * 4, 0.6, 0xc080ff); G.onBH && G.onBH('inj', B); }
+    this.remove();
+  }
+  remove() { this.beam.parent && this.beam.parent.remove(this.beam); super.remove(); }
+  update(dt) {
+    this.ph += dt; const n = this.n, B = G.bh;
+    if (n.IJ_Ring) n.IJ_Ring.rotation.y += dt * 1.6;
+    if (n.IJ_Core) { n.IJ_Core.getWorldPosition(this.c); n.IJ_Core.scale.setScalar(1 + 0.15 * Math.sin(this.ph * 7)); }
+    if (B && B.st === 'live') {
+      _bh.set(BH.x, BH.y, BH.z).sub(this.c); const L = _bh.length(); _bh.multiplyScalar(1 / L);
+      this.beam.position.copy(this.c); _bq.setFromUnitVectors(_bup, _bh); this.beam.quaternion.copy(_bq);
+      const w = 0.35 + 0.12 * Math.sin(this.ph * 11); this.beam.scale.set(w, Math.max(0, L - B.R), w); this.beam.visible = true;
+    } else this.beam.visible = false;
+  }
+}
+export function startBH() {
+  clearBH();
+  bhMeshes = makeBHMeshes(); G.scene.add(bhMeshes.g);
+  G.bh = { st: 'live', K: 1, R: BH.R0, t: BH.growEvery, eaten: 0, injDead: 0, grows: 0, colT: 0, inT: 0, bent: 0, inj: BH.sites.map(([x, z]) => new Injector(new V3(x, 0, z))), saidEat: false, saidIn: false };
+}
+export function clearBH() {
+  if (bhMeshes) { bhMeshes.g.parent && bhMeshes.g.parent.remove(bhMeshes.g); bhMeshes = null; }
+  G.bh = null;
+}
+const bhHeavy = (e) => e.kind === 'boss' || e.kind === 'raider' || e.isColossus || e.isTrain || e.isLev || e.maxHp > 3000 * G.diff.hp;
+function bhPullAt(x, z) { const B = G.bh, d = Math.hypot(x - BH.x, z - BH.z); if (d >= BH.reach) return 0; const k = 1 - d / BH.reach; return BH.pull * B.K * Math.pow(k, BH.pullExp); }
+function updateBH(dt) {
+  const B = G.bh; if (!B) return;
+  const M = bhMeshes, fx = G.fx, P = G.player;
+  if (M) { M.glowMat.uniforms.uT.value += dt; M.diskMat.uniforms.uT.value += dt; if (G.camera) M.glow.quaternion.copy(G.camera.quaternion); }
+  if (B.st === 'collapse') {
+    B.colT -= dt; const k = Math.max(0, B.colT / 2); if (M) M.g.scale.setScalar(Math.max(0.01, B.R * k * k));
+    if (B.colT <= 0) {
+      B.st = 'gone'; if (M) M.g.visible = false; _bh.set(BH.x, BH.y, BH.z);
+      G.curLabel = 'bh-collapse'; explodeAt(_bh.clone(), 45, 160, 'P', 4, 0xd0a0ff); fx.flash(_bh, 0xe0c0ff, 500, 300, 0.9); fx.ring(_bh.clone(), new V3(0, 1, 0), 2, 120, 1.2, 0xd0a0ff);
+      fx.trauma = 1; sfx('bigboom', 0); G.onBH && G.onBH('gone', B);
+    }
+    return;
+  }
+  if (B.st !== 'live') return;
+  if (M) M.g.scale.setScalar(B.R);
+  B.t -= dt;
+  if (B.t <= 0) { B.t = BH.growEvery; if (B.K < BH.Kmax) { B.K = Math.min(BH.Kmax, B.K * (1 + BH.grow)); B.R = Math.min(BH.Rmax, B.R + BH.growR); B.grows++; G.onBH && G.onBH('grow', B); } }
+  if (!B.inj.some((e) => e.alive)) { B.st = 'collapse'; B.colT = 2; G.onBH && G.onBH('collapse', B); sfx('alarm', 0); return; }
+  _bh.set(BH.x, BH.y, BH.z);
+  // you: pulled in, lifted near the middle, burned in the horizon
+  if (P && P.alive) {
+    const dx = BH.x - P.pos.x, dz = BH.z - P.pos.z, d = Math.hypot(dx, dz) || 1, v = bhPullAt(P.pos.x, P.pos.z);
+    if (v > 0) { P.pos.x += dx / d * v * dt; P.pos.z += dz / d * v * dt; }
+    if (d < BH.liftR && P.pos.y < BH.y) P.pos.y += BH.lift * B.K * (1 - d / BH.liftR) * dt;
+    const pc = P.center(_c);
+    if (pc.distanceTo(_bh) < B.R + 2) { hurtPlayer(BH.dps * dt, 'blackhole'); B.inT += dt; if (Math.random() < 0.5) fx.sparks(pc, null, 2, 0xd0a0ff, 10, 0.6, 0.2, 0.15); if (!B.saidIn) { B.saidIn = true; G.onBH && G.onBH('in', B); } }
+  }
+  // enemies: pulled the same way (heavies less); ordinary ones are swallowed at the horizon
+  for (const e of G.enemies) {
+    if (!e.alive || e.dying || e.isObjective || e.isMine || !e.pos || e.kind === 'cpart' || e.stuck) continue;
+    const dx = BH.x - e.pos.x, dz = BH.z - e.pos.z, d = Math.hypot(dx, dz) || 1, hv = bhHeavy(e), v = bhPullAt(e.pos.x, e.pos.z) * (hv ? 0.35 : 0.85);
+    if (v > 0) { const ox = e.pos.x, oz = e.pos.z; e.pos.x += dx / d * v * dt; e.pos.z += dz / d * v * dt; if (e.c) { e.c.x += e.pos.x - ox; e.c.z += e.pos.z - oz; } }
+    // lift: kept as an absolute height so walkers (which snap to the ground in their own update) still rise toward it
+    if (!hv && d < BH.liftR) { if (e.bhY == null) e.bhY = e.pos.y; e.bhY = Math.min(BH.y, e.bhY + BH.lift * B.K * (1.2 - d / BH.liftR) * dt); }
+    else if (e.bhY != null) { e.bhY -= 9 * dt; if (e.bhY <= e.pos.y) e.bhY = null; }
+    if (e.bhY != null && e.bhY > e.pos.y) { const dy = e.bhY - e.pos.y; e.pos.y = e.bhY; if (e.c) e.c.y += dy; if (e.obj) e.obj.position.y = e.pos.y; }
+    if (e.c && e.c.distanceTo(_bh) < B.R + (e.r || 2)) {
+      if (hv) { dealDamage(e, e.maxHp * BH.bossK * dt, 'X', e.c, 'bh'); }
+      else { B.eaten++; G.bhEaten = (G.bhEaten || 0) + 1; fx.flash(e.c.clone(), 0xd0a0ff, 30, 16, 0.25); fx.ring(e.c.clone(), null, 0.5, 6, 0.3, 0xd0a0ff); dealDamage(e, 1e9, 'X', e.c, 'bh'); if (!B.saidEat) { B.saidEat = true; G.onBH && G.onBH('eat', B); } }
+    }
+  }
+  // projectiles bend toward it and vanish inside the horizon
+  for (const sh of G.shots) {
+    const dx = BH.x - sh.x, dy = BH.y - sh.y, dz = BH.z - sh.z, d2 = dx * dx + dy * dy + dz * dz;
+    if (d2 > 8100) continue;
+    const d = Math.sqrt(d2) || 1;
+    if (d < B.R) { sh.life = 0; continue; }
+    const a = Math.min(BH.shotMax, BH.shotA * B.K / d2) * dt; sh.v.x += dx / d * a; sh.v.y += dy / d * a; sh.v.z += dz / d * a; B.bent++;
+  }
+  // matter spiralling in
+  if (Math.random() < 0.9) {
+    const a = Math.random() * 6.283, r = B.R * (2.6 + Math.random() * 2.5), tx = -Math.sin(a), tz = Math.cos(a);
+    fx.emit('add', { x: BH.x + Math.cos(a) * r, y: BH.y + (Math.random() - 0.5) * 2, z: BH.z + Math.sin(a) * r, vx: (-Math.cos(a) * 0.5 + tx) * r * 0.9, vy: 0, vz: (-Math.sin(a) * 0.5 + tz) * r * 0.9, life: 0.9, s0: 0.9, s1: 0.2, c0: Math.random() < 0.5 ? 0xffa060 : 0xc090ff });
+  }
+}
+
+// ---- v62 Gyro: a heavy spinning top. It winds up, then shoots off in a straight line at 22 m/s bending gently toward
+// its target and ricocheting off walls; contact hits for 35 and knocks you away. While spinning it shrugs off half the
+// damage and flings blade shards at you; after 4 bounces (or 7 s) it wobbles for 2.4 s and takes x1.6
+export const GYRO = { hp: 650, r: 2.2, speed: 22, turn: 0.7, bounces: 4, spinT: 7, wind: 1.1, wobT: 2.4, spinK: 0.5, wobK: 1.6, dmg: 35, knock: 14, hitCd: 1, reachY: 6, shardCd: 1.8, shardN: 2, shardDmg: 8 };
+export class Gyro extends Enemy {
+  constructor(pos) {
+    super('gyro', 'E_Gyro', pos, GYRO.hp, GYRO.r); this.boom = 1.2;
+    this.vel = new V3(); this.st = 'wind'; this.stT = GYRO.wind + Math.random(); this.b = 0; this.hitT = 0; this.shT = 1; this.spinV = 0; this.wob = 0;
+    this.c.set(pos.x, pos.y + 2, pos.z);
+  }
+  hit(dmg, at, label) {
+    if (this.st === 'spin') { dmg *= GYRO.spinK; if (Math.random() < 0.3) G.fx.sparks(this.c, null, 3, 0xffe0a0, 12, 0.6, 0.2, 0.12); }
+    else if (this.st === 'wobble') dmg *= GYRO.wobK;
+    super.hit(dmg);
+  }
+  update(dt) {
+    const P = G.player, tg = this.tg(), pc = tg.center(playerC), fx = G.fx;
+    const dx = pc.x - this.pos.x, dz = pc.z - this.pos.z, dist = Math.hypot(dx, dz) || 1;
+    this.stT -= dt; this.hitT -= dt;
+    if (this.st === 'wind') {
+      this.spinV += (30 - this.spinV) * Math.min(1, dt * 2); this.wob *= Math.exp(-4 * dt);
+      if (this.stT <= 0) { this.st = 'spin'; this.stT = GYRO.spinT; this.b = 0; this.shT = 0.8; this.vel.set(dx / dist * GYRO.speed, 0, dz / dist * GYRO.speed); G.gyroRuns = (G.gyroRuns || 0) + 1; sfx('jetdive', dist); }
+    } else if (this.st === 'spin') {
+      this.spinV = 40; this.wob *= Math.exp(-4 * dt);
+      const want = Math.atan2(dx, dz), cur = Math.atan2(this.vel.x, this.vel.z), a = cur + Math.max(-GYRO.turn * dt, Math.min(GYRO.turn * dt, angDiff(want, cur)));
+      this.vel.set(Math.sin(a) * GYRO.speed, 0, Math.cos(a) * GYRO.speed);
+      this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+      const px = this.pos.x, pz = this.pos.z; let bounced = false;
+      if (collideCyl(this.pos, 2.0, 3)) {
+        const nx = this.pos.x - px, nz = this.pos.z - pz, nl = Math.hypot(nx, nz);
+        if (nl > 1e-4) { const ux = nx / nl, uz = nz / nl, vn = this.vel.x * ux + this.vel.z * uz; if (vn < 0) { this.vel.x -= 2 * vn * ux; this.vel.z -= 2 * vn * uz; } } else this.vel.multiplyScalar(-1);
+        bounced = true;
+      }
+      for (const ax of ['x', 'z']) if (Math.abs(this.pos[ax]) > ARENA - 4) { this.pos[ax] = Math.sign(this.pos[ax]) * (ARENA - 4); this.vel[ax] = -Math.sign(this.pos[ax]) * Math.abs(this.vel[ax]); bounced = true; }
+      if (bounced) { this.b++; G.gyroBounces = (G.gyroBounces || 0) + 1; fx.sparks(_c.set(this.pos.x, this.pos.y + 1.6, this.pos.z), null, 14, 0xffd080, 18, 1, 0.3, 0.2); sfx('ric', dist); }
+      if (Math.random() < 0.6) fx.sparks(_d.set(this.pos.x, this.pos.y + 0.2, this.pos.z), null, 1, 0xffc070, 8, 0.5, 0.2, 0.12);
+      // blade shards flung at the target
+      this.shT -= dt;
+      if (this.shT <= 0 && dist < 55 && this.checkLos(dt)) {
+        this.shT = GYRO.shardCd; const mp = _a.set(this.pos.x, this.pos.y + 1.7, this.pos.z).clone(), aim = lead(mp, 90, _b, tg);
+        for (let k = 0; k < GYRO.shardN; k++) { _d.subVectors(aim, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.12; _d.y += (Math.random() - 0.5) * 0.06; _d.z += (Math.random() - 0.5) * 0.12; spawnShot({ p: mp, v: _d.normalize().multiplyScalar(90), dmg: GYRO.shardDmg, team: 'E', kind: 'ebullet', color: 0xffd060, w: 0.3, len: 2, life: 0.9, label: 'gyro-blade' }); }
+        sfx('eshot', dist);
+      }
+      // contact
+      if (this.hitT <= 0) for (const f of [P, ...G.friends]) {
+        if (!f || !f.alive || !f.pos) continue; const fx2 = f.pos.x - this.pos.x, fz = f.pos.z - this.pos.z, fd = Math.hypot(fx2, fz) || 1;
+        if (fd < 3.8 && f.pos.y - this.pos.y < GYRO.reachY) {
+          this.hitT = GYRO.hitCd; const vn = (this.vel.x * fx2 + this.vel.z * fz) / fd; if (vn > 0) { this.vel.x -= 2 * vn * fx2 / fd; this.vel.z -= 2 * vn * fz / fd; } this.b++;
+          if (f === P) { damagePlayer(GYRO.dmg, this, 'gyro'); P.vel.x += fx2 / fd * GYRO.knock; P.vel.z += fz / fd * GYRO.knock; P.vel.y = Math.max(P.vel.y, 5); P.grounded = false; G.gyroHits = (G.gyroHits || 0) + 1; }
+          else if (f._ent) f._ent.hit(GYRO.dmg, this, 'gyro');
+          fx.sparks(_c.set(f.pos.x, f.pos.y + 2, f.pos.z), null, 16, 0xffe0a0, 16, 1, 0.3, 0.2); sfx('ric', 0); break;
+        }
+      }
+      if (this.b >= GYRO.bounces || this.stT <= 0) { this.st = 'wobble'; this.stT = GYRO.wobT; this.vel.set(0, 0, 0); G.gyroWobbles = (G.gyroWobbles || 0) + 1; if (!G.gyroSaid && tg === P) { G.gyroSaid = true; G.onHint && G.onHint('陀螺机在晃 · 停转的 2.4 秒里受伤 ×1.6，转起来时只吃一半', 3); } }
+    } else {   // wobble: spinning down, tipping round its tip
+      this.spinV *= Math.exp(-1.2 * dt); this.wob += (1 - this.wob) * Math.min(1, dt * 3);
+      if (this.stT <= 0) { this.st = 'wind'; this.stT = GYRO.wind; }
+    }
+    this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 0.8, 2);
+    if (this.n.GY_Spin) this.n.GY_Spin.rotation.y += this.spinV * dt;
+    const t = G.time * (this.st === 'wobble' ? 5 : 9); this.obj.rotation.set(Math.sin(t) * (0.04 + 0.3 * this.wob), this.obj.rotation.y + this.spinV * dt * 0.15, Math.cos(t) * (0.04 + 0.3 * this.wob));
+    this.c.set(this.pos.x, this.pos.y + 1.9, this.pos.z);
+  }
+}
+
+// ---- EC-2 energy cannon: a thin piercing hitscan beam paid for with boost energy
+function fireCharge(owner, slot, d, mul, aim, me) {
+  const mp = owner.muzzlePos(slot, new V3(), 0).clone(), dir = new V3().subVectors(aim, mp);
+  if (!Number.isFinite(dir.x + dir.y + dir.z) || !Number.isFinite(mp.x + mp.y + mp.z) || dir.lengthSq() < 1e-6) return;
+  dir.normalize();
+  const w = raySolids(mp, dir, d.range), L = Math.min(w.t, d.range), end = mp.clone().addScaledVector(dir, L);
+  const rad = 0.7, dmg = d.dmg * mul;
+  const prevL = G.curLabel; G.curLabel = 'p-ecan'; let n = 0; const hit = new Set();
+  for (const e of entsFor('P')) {
+    if (!e.alive || e.isMine || e.holo || !e.c) continue;
+    const h = e.kind === 'cpart' ? e.owner : e; if (hit.has(h)) continue;
+    _c.subVectors(e.c, mp); const al = _c.dot(dir); if (al < 0 || al > L + (e.r || 1.5)) continue;
+    const off = Math.sqrt(Math.max(0, _c.lengthSq() - al * al)); if (off > rad + (e.r || 1.5)) continue;
+    hit.add(h); dealDamage(e, dmg, 'P', e.c, 'p-ecan'); n++;
+    if (n > 1 && me) G.stats.shots++;
+    G.fx.sparks(e.c, dir, 4, 0x80ffc0, 12, 0.6, 0.2, 0.14);
+  }
+  G.curLabel = prevL;
+  if (n > 1) G.chgPierce = (G.chgPierce || 0) + n - 1;
+  G.fx.streak(mp, end, 0.32, 0x60ffb0, 0.09);
+  G.fx.streak(mp, end, 0.1, 0xe0fff0, 0.07);
+  G.fx.flash(mp, 0x80ffc0, 8, 6, 0.08); if (!n) G.fx.sparks(end, null, 4, 0x80ffc0, 10, 0.6, 0.2, 0.12);
 }
 
 // ---- AR-7 arc caster: hitscan arc at the enemy nearest the aim ray (with line of sight), then up to 3 chain jumps
@@ -10562,7 +10786,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
-  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updatePolar(dt); updateJavs(dt); updateCTF(dt); updateGlad(dt);
+  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updatePolar(dt); updateJavs(dt); updateCTF(dt); updateBH(dt); updateGlad(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;
