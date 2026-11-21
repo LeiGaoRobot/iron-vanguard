@@ -20,6 +20,8 @@ html = read(os.path.join(SITE, 'index.html'))
 srcs = {m: read(os.path.join(SITE, m)) for m in MODULES + ['main.js']}
 glb = open(os.path.join(SITE, 'assets', 'kit.glb'), 'rb').read()
 glb_uri = 'data:model/gltf-binary;base64,' + base64.b64encode(glb).decode('ascii')
+parts = open(os.path.join(SITE, 'assets', 'parts.glb'), 'rb').read()   # swappable mech parts (build_parts.py)
+parts_uri = 'data:model/gltf-binary;base64,' + base64.b64encode(parts).decode('ascii')
 
 def strip_imports(src): return re.sub(r"^import [^;]*?;\s*$", '', src, flags=re.M | re.S)
 def exported_names(src): return re.findall(r"^export (?:const|let|async function|function|class) (\w+)", src, flags=re.M)
@@ -41,7 +43,7 @@ def bundle(esm):
         if key in seen: continue
         seen.add(key)
         lines.append(f"import {what} from '{THREE}/examples/jsm/{path}/+esm';" if esm else f"import {what} from 'three/addons/{path}';")
-    head = '\n'.join(lines) + f"\nwindow.__MA_KIT = '{glb_uri}';\n"
+    head = '\n'.join(lines) + f"\nwindow.__MA_KIT = '{glb_uri}';\nwindow.__MA_PARTS = '{parts_uri}';\n"
     return head + ''.join(as_iife(srcs[m], m) for m in MODULES) + "// ---------------- main.js ----------------\n" + strip_imports(srcs['main.js'])
 
 def fetch(url, name):

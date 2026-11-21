@@ -5,12 +5,12 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
-import { loadKit, cloneKit } from './kit.js';
+import { loadKit, loadParts, cloneKit } from './kit.js';
 import { buildArena, addSolid, ARENA, solids, raySolids, groundAt, pointInSolid, clearLine, relaySites, mulberry32, STORM_RODS, LAVA, lavaAt, PLAT, WATER, GRID } from './world.js';
 import { FX, TEX } from './fx.js';
 import { AtmospherePass, makeRidge } from './post.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
-import { Mech, PALETTES, FRAMES, angDiff, PHYS, MECHS } from './mech.js';
+import { Mech, PALETTES, FRAMES, angDiff, PHYS, MECHS, PARTS, PART_SLOTS, SLOT_NAMES, BUILDS, partStats, partsReady } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
 import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, Leaper, LEAP, FLARE, Herald, HERALD, Tower, Citadel, Trooper, Shade, SHADE, LANE, Marshal, DECAP, startDecap, clearDecap, Dazzler, DAZZ, clearLinkB, Pulsar, PULSE, MAZE, startMaze, clearMaze, clearRings, clearBWalls, Forklift, FACT, startFactory, clearFactory, clearTBeams, TSU, Swapper, SWAP, startTsunami, clearTsunami, clearNano, tsuEta, inWave, BIO, Seeder, SEED, startBio, clearBio, clearPlOrbs, inCreep, ATOM, Bloater, BLOAT, startAtom, clearAtom, decaySpread, GLAD, Adaptor, ADAPT, Sprayer, SPRAY, Scrambler, SCRAM, FUSE, startFuse, clearFuse, fuseNear, POL, DYAD, Dyad, spawnDyads, startPolar, clearPolar, togglePol, setPol, polThreat, BUB, clearBubbles, TURF, startTurf, clearTurf, turfShare, turfAt, turfKill, startGlad, clearGlad, gladGate, gladKill, gladVentAt, clearSaws, Reviver, REVIVE, noteWreck, CAMO, clearCamo, clearWrecks, SABOT, startSabot, clearSabot, sabTarget, Weaver, WEAVE, HACK, hackable, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, clearWebs, clearHacks, Launcher, Cruise, SKY, startSky, clearSky, Courier, COURIER, COURIER_PATH, startPursuit, clearPursuit, Torcher, TORCH, clearFires, clearNets, Dish, Anchor, ANCHOR, LANCE, startLance, clearLance, Engineer, ENG, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, clearBurn, startLane, clearLane, laneObjective, laneEscorted, clearRBeam, Bastion, Hijacker, HIJACK, FORT, FORT_PADS, startFort, clearFort, padAction, fortGoal, clearRefl, Scav, SCAV, SALV, startSalvage, clearSalvage, dropCores, nearestCore, Planter, PLANT, DEPOT, startDepots, clearDepots, nearestCharge, Lurker, LURK, FOG, startFog, clearFog, fogSeen, fogFar, resetRewind, Snatcher, SNATCH, SUPPLY, startSupply, clearSupply, nearestCrate, Disarmer, DISARM, RIFT, startRifts, clearRifts, Leech, LEECH, TRAFFIC, startTraffic, clearTraffic, truckAhead, THUNDER, startThunder, clearThunder, rodCover, clearRods, startFlares, clearFlares, inShade, resetNeedles, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
@@ -457,6 +457,8 @@ const SAVE_KEY = 'ironvanguard.save.v1';
 const save = { cr: 0, up: { armor: 0, gen: 0, thr: 0, fcs: 0 }, best: {}, bestWave: 0, earned: 0, wing: false, medals: {}, tally: {} };
 const WING_COST = 2500, WING_CR = 0.85;
 try { const o = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (o) { Object.assign(save, o); save.up = { armor: 0, gen: 0, thr: 0, fcs: 0, ...(o.up || {}) }; } } catch (e) { /* storage unavailable */ }
+const partOwned = (slot, id) => id === 'std' || !!(save.parts && save.parts[slot + '.' + id]);
+const myParts = () => { const r = {}; for (const s of PART_SLOTS) { const id = (cfg.parts || {})[s]; if (id && PARTS[s][id] && partOwned(s, id)) r[s] = id; } return r; };
 const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } };
 const playerMods = () => { const u = save.up, th = chipOn('thrust'); return { hp: 1 + 0.08 * u.armor, en: 1 + 0.08 * u.gen, regen: (1 + 0.08 * u.gen) * (th ? 1.25 : 1), boost: (1 + 0.04 * u.thr) * (th ? 1.1 : 1), speed: 1 + 0.02 * u.thr }; };
 const chipSlots = () => (save.chip2 ? 2 : 1);
@@ -464,6 +466,7 @@ const chipOn = (k) => Array.isArray(cfg.chips) && cfg.chips.slice(0, chipSlots()
 function playerWeapon(key) {   // weapon state with chip modifiers applied to a private copy of the weapon data
   const ws = weaponState(key), d = { ...ws.d };
   if (chipOn('mag') && d.slot === 'arm' && d.mag) { d.mag = Math.round(d.mag * 1.4); d.reload *= 0.8; }
+  if (d.slot === 'arm' && d.reload) d.reload *= partStats(myParts()).reload;   // brace arms
   if (chipOn('cool') && d.slot === 'shoulder' && d.cd) d.cd *= 0.75;
   ws.d = d; ws.ammo = d.mag || 0; return ws;
 }
@@ -480,6 +483,7 @@ try { const old = JSON.parse(localStorage.getItem('ironvanguard.best') || '{}');
 if (!MISSIONS[cfg.mission]) cfg.mission = 'drill';
 if (!cfg.mods || typeof cfg.mods !== 'object') cfg.mods = {};
 if (!Array.isArray(cfg.chips)) cfg.chips = [];
+if (!cfg.parts || typeof cfg.parts !== 'object') cfg.parts = {};
 
 // ------------------------------------------------------------------ renderer / scene
 const canvas = $('c');
@@ -922,7 +926,8 @@ function garageCamera(dt, auto) {
 
 // ------------------------------------------------------------------ aiming + locks
 const ray = new THREE.Raycaster(), ndc = new THREE.Vector2(), _sp = new V3();
-const lockR = () => innerHeight * 0.16, mslR = () => innerHeight * 0.3;
+const lockK = () => (G.player && G.player.frame.lock) || 1;   // hawk head widens both lock circles
+const lockR = () => innerHeight * 0.16 * lockK(), mslR = () => innerHeight * 0.3 * lockK();
 function reticlePx() { return freeMouse && !pad.active && !touch.active && state === 'play' ? { x: mouse.x, y: mouse.y } : { x: innerWidth / 2, y: innerHeight / 2 }; }
 function updateAim() {
   const p = G.player; const rp = reticlePx();
@@ -1024,7 +1029,7 @@ function mixWave(n, rnd) {
 
 function makePlayer() {
   if (G.player) G.player.dispose();
-  G.player = new Mech(scene, mctx, { palette: cfg.palette, frame: cfg.frame, loadout: { R: cfg.R, L: cfg.L, S: cfg.S }, yaw: 0, mods: playerMods() });
+  G.player = new Mech(scene, mctx, { palette: cfg.palette, frame: cfg.frame, parts: myParts(), loadout: { R: cfg.R, L: cfg.L, S: cfg.S }, yaw: 0, mods: playerMods() });
   G.player.pos.set(0, 0, 128);
   G.pw = freshPW();
   cam.yaw = 0; cam.pitch = -0.05;
@@ -1052,7 +1057,7 @@ function newGame() {
   if (modOn('glass')) { G.player.maxHp = Math.round(G.player.maxHp * 0.6); G.player.hp = G.player.maxHp; }
   Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
   const M = MISSIONS[cfg.mission];
-  G.echoLo = setEcho({ R: cfg.R, L: cfg.L, S: cfg.S, frame: cfg.frame });
+  G.echoLo = setEcho({ R: cfg.R, L: cfg.L, S: cfg.S, frame: cfg.frame, parts: myParts() });
   PHYS.g = M.grav || 1; PHYS.grip = M.grip || 1; if (M.ice) startIce(); if (M.wind) startWind(); G.glare = !!M.glare; if (M.cranes) startCranes(M.cranes); if (M.quake) startQuakes(); if (M.flare) startFlares(); if (M.thunder) startThunder(STORM_RODS); if (M.highway) startTraffic(); if (M.rift) startRifts(); if (M.supply) startSupply(); if (M.fog) startFog(); if (M.depot) startDepots(); if (M.salvage) startSalvage(); if (M.fortify) startFort(); if (M.lane) startLane(); G.meteorOn = !!M.meteors; if (M.acid) startAcid(M.acid); if (M.twisters) startTwisters(M.twisters); G.acidSaid = false; G.fenceSaid = false; G.linkSaid = false; if (tide) { tide.y = tide.yT = M.tide[0]; WATER.y = tide.y; } if (M.ascend) setStage(0, true); clearWells(); G.eruptT = 8; G.freezes = 0; G.lavaT = 0; G.eruptions = 0; G.burrowUps = 0;
   if (M.defense) {
     G.core = new Reactor(scene, new V3(0, 0, 0), M.coreHp); G.friends.push(G.core);
@@ -2712,8 +2717,10 @@ function buildGarage() {
   fill('gPaint', Object.entries(PALETTES).filter(([k, p]) => k !== 'tyrant' && !p.enemy).map(([k, p]) =>
     opt(`<i style="background:linear-gradient(135deg, ${p.Armor} 0 55%, ${p.Accent} 55% 75%, ${p.Armor2} 75%)"></i>`, cfg.palette === k, () => { cfg.palette = k; G.player.setPalette(k); }, 'sw')));
   fill('gFrame', Object.entries(FRAMES).map(([k, f]) => opt(`${f.name}<small>${f.en}</small>`, cfg.frame === k, () => { cfg.frame = k; rebuildPreview(); })));
-  const F = G.player.frame;
-  $('gStats').innerHTML = `AP <b>${Math.round(F.hp)}</b> · 速度 <b>×${F.speed.toFixed(2)}</b> · EN <b>${Math.round(F.en)}</b> · 推进 <b>×${F.boost.toFixed(2)}</b> · 受伤 <b>×${F.armor}</b>` + (save.up.fcs ? ` · 伤害 <b>×${dmgMul().toFixed(2)}</b>` : '');
+  buildParts(opt, fill);
+  const F = G.player.frame, xs = (k, lab) => (F[k] !== 1 ? ` · ${lab} <b>×${F[k].toFixed(2)}</b>` : '');
+  $('gStats').innerHTML = `AP <b>${Math.round(F.hp)}</b> · 速度 <b>×${F.speed.toFixed(2)}</b> · EN <b>${Math.round(F.en)}</b> · 推进 <b>×${F.boost.toFixed(2)}</b> · 受伤 <b>×${+F.armor.toFixed(2)}</b>` + (save.up.fcs ? ` · 伤害 <b>×${dmgMul().toFixed(2)}</b>` : '')
+    + xs('lock', '锁定') + xs('reload', '装填') + (F.jump !== 1 ? ` · 跳跃高度 <b>×${(F.jump * F.jump).toFixed(2)}</b>` : '') + xs('qb', '急闪耗能') + xs('hover', '悬停耗能') + (F.grip ? ' · <b>防滑</b>' : '');
   const wopt = (slot, k) => opt(`${WEAPONS[k].name}<small>${WEAPONS[k].desc}</small>`, cfg[slot] === k, () => { cfg[slot] = k; G.player.mount({ R: cfg.R, L: cfg.L, S: cfg.S }); G.pw = freshPW(); buildWeaponPanel(); });
   fill('gR', ARM_KEYS.map((k) => wopt('R', k)));
   fill('gL', ARM_KEYS.map((k) => wopt('L', k)));
@@ -2749,6 +2756,40 @@ function buildGarage() {
   fill('gDiff', Object.entries(DIFFS).map(([k, d]) => opt(`${d.name}<small>${d.desc}</small>`, cfg.diff === k, () => { cfg.diff = k; })));
 }
 function rebuildPreview() { makePlayer(); }
+// parts: four named builds (buy whatever is missing in one go, then equip) and one row per slot; an unowned part
+// shows its price and is bought + equipped on click
+function buildParts(opt, fill) {
+  const sec = $('gPartsSec'); if (!sec) return;
+  sec.style.display = partsReady() ? '' : 'none';
+  if (!partsReady()) return;
+  if (!save.parts) save.parts = {};
+  const cur = myParts();
+  const buy = (list) => { const cost = list.reduce((a, [s, id]) => a + PARTS[s][id].cost, 0); if (save.cr < cost) { sfx('empty'); return false; }
+    save.cr -= cost; for (const [s, id] of list) save.parts[s + '.' + id] = true; writeSave(); sfx('coin'); return true; };
+  fill('gBuild', Object.entries(BUILDS).map(([k, B]) => {
+    const want = PART_SLOTS.map((s) => [s, B.parts[s] || 'std']);
+    const miss = want.filter(([s, id]) => !partOwned(s, id)), cost = miss.reduce((a, [s, id]) => a + PARTS[s][id].cost, 0);
+    const on = want.every(([s, id]) => (cur[s] || 'std') === id);
+    return opt(`${B.name}<small>${on ? '已装备' : miss.length ? `缺 ${miss.length} 件 · ${cost} C` : B.en}</small>`, on, () => {
+      if (miss.length && !buy(miss)) return;
+      cfg.parts = { ...B.parts }; rebuildPreview();
+    }, miss.length && save.cr < cost ? 'lock' : '');
+  }));
+  const el = $('gParts'); el.innerHTML = '';
+  for (const s of PART_SLOTS) {
+    const row = document.createElement('div'); row.className = 'prow';
+    row.innerHTML = `<span class="pl">${SLOT_NAMES[s][0]}</span>`;
+    const o = document.createElement('div'); o.className = 'opts';
+    for (const [id, P] of Object.entries(PARTS[s])) {
+      const own = partOwned(s, id);
+      o.appendChild(opt(`${P.name}<small>${own ? (P.d || '基准') : `${P.cost} C · ${P.d}`}</small>`, (cur[s] || 'std') === id, () => {
+        if (!own && !buy([[s, id]])) return;
+        cfg.parts = { ...cur, [s]: id }; rebuildPreview();
+      }, own ? '' : (save.cr < P.cost ? 'lock' : 'buy')));
+    }
+    row.appendChild(o); el.appendChild(row);
+  }
+}
 
 // ------------------------------------------------------------------ HUD
 const wrows = {};
@@ -3575,6 +3616,7 @@ window.__iv = {
 (async () => {
   try {
     await loadKit('./assets/kit.glb?v=67');
+    await loadParts('./assets/parts.glb?v=1');
     ensureArena();
     makePlayer();
     setState('title');

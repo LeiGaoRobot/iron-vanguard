@@ -73,6 +73,25 @@ export async function loadKit(url) {
   } else {
     buf = await (await fetch(url)).arrayBuffer();
   }
+  return parseKit(buf);
+}
+
+// Swappable mech parts (parts.glb, built by build_parts.py): same Kit_ contract, loaded on top of the main kit.
+// Optional: the WeChat build has no parts file and just keeps the standard parts.
+export async function loadParts(url) {
+  try {
+    let buf;
+    if (window.__MA_PARTS) {
+      const bin = atob(window.__MA_PARTS.split(',')[1]); const u8 = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+      buf = u8.buffer;
+    } else if (window.__MA_KIT_LOAD) return KIT;
+    else buf = await (await fetch(url)).arrayBuffer();
+    return await parseKit(buf);
+  } catch (e) { console.warn('parts not loaded', e); return KIT; }
+}
+
+async function parseKit(buf) {
   const gltf = await new GLTFLoader().parseAsync(buf, '');
   for (const o of gltf.scene.children) {
     if (o.name.startsWith('Kit_')) KIT[o.name.slice(4)] = o;
@@ -90,6 +109,7 @@ export async function loadKit(url) {
 }
 
 export function cloneKit(name) {
+  if (!KIT[name]) throw new Error('kit missing: ' + name);
   const c = KIT[name].clone(true);
   c.position.set(0, 0, 0); c.rotation.set(0, 0, 0);
   c.userData.kit = name;

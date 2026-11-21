@@ -1,6 +1,6 @@
 // Mech: model assembly (paint + weapon mounts), movement physics, procedural animation, thrusters.
 import * as THREE from 'three';
-import { cloneKit, recolor, nodes, find } from './kit.js';
+import { KIT, cloneKit, recolor, nodes, find } from './kit.js';
 import { groundAt, collideCyl, ARENA, PLAT, WATER } from './world.js';
 import { TEX } from './fx.js';
 
@@ -21,6 +21,80 @@ export const FRAMES = {
   std: { name: '标准', en: 'Standard', hp: 1200, speed: 1.0, en: 100, boost: 1.0, regen: 1.0, armor: 1.0, scale: 1.0 },
   heavy: { name: '重型', en: 'Heavy', hp: 1650, speed: 0.86, en: 90, boost: 0.9, regen: 0.9, armor: 0.85, scale: 1.07 },
 };
+
+// Swappable parts (parts.glb). Multipliers stack onto the frame: hp / speed / en / boost / regen / armor (damage
+// taken), plus lock (lock-on radius), reload (arm weapons), jump, qb (quick-boost energy), hover (hover drain), grip
+// (ignores icy ground; jump scales take-off speed, so height goes with its square). id 'std' = the frame's own part, always owned.
+export const PART_SLOTS = ['head', 'core', 'arms', 'legs', 'pack'];
+export const SLOT_NAMES = { head: ['头部', 'Head'], core: ['躯干', 'Core'], arms: ['手臂', 'Arms'], legs: ['腿部', 'Legs'], pack: ['背包', 'Pack'] };
+export const PARTS = {
+  head: {
+    std: { name: '标准', e: 'Standard' },
+    hawk: { name: '鹰眼', e: 'Hawk', cost: 1800, lock: 1.3, d: '锁定范围 +30%', de: 'lock-on +30%' },
+    mono: { name: '独眼', e: 'Mono-eye', cost: 1500, hp: 1.05, d: '装甲 +5%', de: 'AP +5%' },
+    crest: { name: '角冠', e: 'Crest', cost: 1500, regen: 1.12, d: '能量回复 +12%', de: 'EN regen +12%' },
+  },
+  core: {
+    std: { name: '标准', e: 'Standard' },
+    bulwark: { name: '重甲胸', e: 'Bulwark', cost: 2200, armor: 0.92, speed: 0.97, d: '受伤 −8% · 速度 −3%', de: 'dmg taken −8% · speed −3%' },
+    sleek: { name: '流线胸', e: 'Sleek', cost: 2000, speed: 1.05, hp: 0.95, d: '速度 +5% · 装甲 −5%', de: 'speed +5% · AP −5%' },
+  },
+  arms: {
+    std: { name: '标准', e: 'Standard' },
+    brace: { name: '炮击臂', e: 'Brace', cost: 2000, reload: 0.85, d: '臂武器装填 −15%', de: 'arm reload −15%' },
+    guard: { name: '护盾臂', e: 'Guard', cost: 2000, armor: 0.95, boost: 0.98, d: '受伤 −5% · 推进 −2%', de: 'dmg taken −5% · boost −2%' },
+  },
+  legs: {
+    std: { name: '标准', e: 'Standard' },
+    heavy: { name: '重装腿', e: 'Heavy', cost: 2200, hp: 1.1, speed: 0.95, d: '装甲 +10% · 速度 −5%', de: 'AP +10% · speed −5%' },
+    rev: { name: '逆关节', e: 'Reverse joint', cost: 2600, jump: 1.2, qb: 0.7, hp: 0.94, d: '跳跃高度 +44% · 急闪耗能 −30% · 装甲 −6%', de: 'jump height +44% · quick boost −30% EN · AP −6%' },
+    tread: { name: '履带', e: 'Treads', cost: 3000, hp: 1.15, armor: 0.92, speed: 0.86, jump: 0.75, grip: true, d: '装甲 +15% · 受伤 −8% · 冰面不打滑 · 速度 −14% · 跳跃高度 −44%', de: 'AP +15% · dmg −8% · no ice slide · speed −14% · jump height −44%' },
+  },
+  pack: {
+    std: { name: '标准', e: 'Standard' },
+    sprint: { name: '高机动', e: 'Sprint', cost: 2000, boost: 1.08, en: 0.92, d: '推进 +8% · 能量 −8%', de: 'boost +8% · EN −8%' },
+    tank: { name: '大容量', e: 'Tank', cost: 1800, en: 1.18, boost: 0.95, d: '能量 +18% · 推进 −5%', de: 'EN +18% · boost −5%' },
+    glide: { name: '滑翔翼', e: 'Glide', cost: 2200, hover: 0.7, d: '悬停耗能 −30%', de: 'hover drain −30%' },
+  },
+};
+// named builds for the garage / enemies (slot -> id; missing slots = std)
+export const BUILDS = {
+  std: { name: '标准型', en: 'Standard', parts: {} },
+  striker: { name: '突击型', en: 'Striker', parts: { head: 'crest', core: 'sleek', legs: 'rev', pack: 'sprint' } },
+  juggernaut: { name: '重战车', en: 'Juggernaut', parts: { head: 'mono', core: 'bulwark', arms: 'brace', legs: 'tread', pack: 'tank' } },
+  recon: { name: '侦察型', en: 'Recon', parts: { head: 'hawk', arms: 'guard', legs: 'heavy', pack: 'glide' } },
+};
+export function partStats(parts) {
+  const r = { hp: 1, speed: 1, en: 1, boost: 1, regen: 1, armor: 1, lock: 1, reload: 1, jump: 1, qb: 1, hover: 1, grip: false };
+  for (const slot of PART_SLOTS) {
+    const p = PARTS[slot][(parts || {})[slot]]; if (!p) continue;
+    for (const k in r) if (p[k] !== undefined) r[k] = k === 'grip' ? r[k] || p[k] : r[k] * p[k];
+  }
+  return r;
+}
+export const partsReady = () => !!KIT.P_legs_tread;
+// swap the standard meshes for the part kits: PT_<pid>__<Node> groups replace <Node>'s own meshes, PV_ moves a
+// pivot, PH_ hides a node (tread legs hide the thighs). Missing part kits (WeChat build) leave the standard part.
+function applyParts(body, n, parts) {
+  const wheels = [];
+  for (const slot of PART_SLOTS) {
+    const id = (parts || {})[slot]; if (!id || id === 'std') continue;
+    const K = KIT[`P_${slot}_${id}`]; if (!K) continue;
+    for (const c of K.children) {
+      const m = /^(PT|PV|PH)_[a-z]+__(\w+)$/.exec(c.name); if (!m) continue;
+      const node = n[m[2]]; if (!node) continue;
+      if (m[1] === 'PV') node.position.copy(c.position);
+      else if (m[1] === 'PH') node.visible = false;
+      else {
+        for (const o of [...node.children]) if (o.isMesh) node.remove(o);
+        const g = c.clone(true); g.position.set(0, 0, 0); g.rotation.set(0, 0, 0); g.scale.set(1, 1, 1);
+        node.add(g);
+        g.traverse((o) => { if (o.isMesh && o.name.startsWith('TRW')) wheels.push(o); });
+      }
+    }
+  }
+  return wheels;
+}
 
 const WALK = 10, BOOST = 25, GRAV = 27, JUMP = 13;
 export const PHYS = { g: 1, grip: 1, wx: 0, wz: 0 };   // wx/wz: wind (gale ridge) added to every mech's target velocity   // grip: ground traction (frozen lake 0.3: you slide)   // gravity multiplier (lunar mission 0.4)
@@ -60,12 +134,18 @@ export class Mech {
     const M = opts.mods || {};
     this.frame = { ...FRAMES[opts.frame || 'std'] };
     this.frame.hp *= M.hp || 1; this.frame.en *= M.en || 1; this.frame.regen *= M.regen || 1; this.frame.boost *= M.boost || 1; this.frame.speed *= M.speed || 1;
+    this.parts = { ...(opts.parts || {}) };
+    const PS = partStats(opts.cosmetic ? {} : this.parts), F0 = this.frame;   // cosmetic: enemy mechs keep their tuned stats
+    for (const k of ['hp', 'speed', 'en', 'boost', 'regen', 'armor']) F0[k] *= PS[k];
+    F0.lock = PS.lock; F0.reload = PS.reload; F0.jump = PS.jump; F0.qb = PS.qb; F0.hover = PS.hover; F0.grip = PS.grip;
+    this.legKind = KIT['P_legs_' + this.parts.legs] ? this.parts.legs : 'std';
     this.scale = (opts.scale || 1) * this.frame.scale;
     this.isBoss = !!opts.isBoss;
     this.root = new THREE.Group(); scene.add(this.root);
     this.body = cloneKit('Mech'); this.body.scale.setScalar(this.scale);
     this.root.add(this.body);
     this.n = nodes(this.body);
+    this.wheels = applyParts(this.body, this.n, this.parts);
     this.setPalette(opts.palette || 'vanguard');
     this.slots = {};
     this.mount(opts.loadout || { R: 'rifle', L: 'gatling', S: 'missile' });
@@ -139,11 +219,12 @@ export class Mech {
     let drain = 0;
     this.boosting = I.boost && canBoost && mlen > 0.1;
     // quick boost
-    if (I.qboost && this.overheat <= 0 && this.en >= 18) {
+    const qbE = 18 * (F.qb || 1);
+    if (I.qboost && this.overheat <= 0 && this.en >= qbE) {
       const qx = mlen > 0.1 ? dx : -Math.sin(this.aimYaw), qz = mlen > 0.1 ? dz : -Math.cos(this.aimYaw);
       const q = 32 * F.boost;
       this.vel.x = qx * q; this.vel.z = qz * q; if (!this.grounded) this.vel.y = Math.max(this.vel.y, 1);
-      this.en -= 18; this.qbT = 0.28; this.drainT = 0;
+      this.en -= qbE; this.qbT = 0.28; this.drainT = 0;
       this.ctx.onQuickBoost && this.ctx.onQuickBoost(this);
     }
     if (this.lungeT > 0) {
@@ -153,8 +234,8 @@ export class Mech {
     }
     const lunging = this.lungeT > 0;
     const wade = WATER.on ? Math.max(0, Math.min(1, (WATER.y - this.pos.y) / 3)) : 0; this.wade = wade;
-    const top = (this.boosting ? BOOST * F.boost * (1 - 0.25 * wade) : WALK * F.speed * (1 - 0.4 * wade)) * mlen * (this.slowMul ?? 1) * (this.burnMul ?? 1) * (this.webMul ?? 1) * (this.creepMul ?? 1) * (this.turfMul ?? 1) * (this.boosting ? (this.gravBoost ?? 1) : 1);
-    const acc = this.grounded ? (this.boosting ? 70 : 55) * PHYS.grip : (this.boosting ? 32 : 12);
+    const top = (this.boosting ? BOOST * F.boost * (1 - 0.25 * wade) : WALK * F.speed * (1 - 0.4 * wade)) * mlen * (this.slowMul ?? 1) * (this.burnMul ?? 1) * (this.webMul ?? 1) * (this.creepMul ?? 1) * (this.turfMul ?? 1) * (this.boosting ? (this.gravBoost ?? 1) * (this.boostMul ?? 1) : 1);
+    const acc = this.grounded ? (this.boosting ? 70 : 55) * (F.grip ? 1 : PHYS.grip) : (this.boosting ? 32 : 12);
     const wk = this.grounded ? 0.22 : 0.62;   // the wind shoves you, much harder in the air
     const tx = dx * top + PHYS.wx * wk, tz = dz * top + PHYS.wz * wk;
     const k = this.qbT > 0 ? 1 - Math.exp(-2.2 * dt) : 1 - Math.exp(-acc / Math.max(6, top + 6) * dt * 1.6);
@@ -163,9 +244,9 @@ export class Mech {
     this.qbT = Math.max(0, this.qbT - dt);
     // vertical
     let hovering = false;
-    if (I.jump && this.grounded) { this.vel.y = JUMP; this.grounded = false; this.ctx.onJump && this.ctx.onJump(this); }
+    if (I.jump && this.grounded) { this.vel.y = JUMP * (F.jump || 1); this.grounded = false; this.ctx.onJump && this.ctx.onJump(this); }
     if (!this.grounded && I.hover && canBoost) {
-      hovering = true; drain += 26;
+      hovering = true; drain += 26 * (F.hover || 1);
       this.vel.y += (GRAV * PHYS.g + 20) * dt; if (this.vel.y > 9) this.vel.y = 9;
     }
     if (!lunging) this.vel.y -= GRAV * PHYS.g * (this.gravMul ?? 1) * (this.webG ?? 1) * dt;   // grav-lock dome: the hover lift no longer beats gravity
@@ -230,7 +311,9 @@ export class Mech {
     const c = Math.cos(this.legYaw), s = Math.sin(this.legYaw);
     const vf = -(this.vel.x * s + this.vel.z * c);     // forward speed
     const vr = this.vel.x * c - this.vel.z * s;        // right speed
-    if (this.grounded && !this.boosting && this.qbT <= 0) {
+    if (this.legKind === 'tread') {   // treads: no gait, the hull just leans into acceleration
+      T.torX = -Math.max(-0.12, Math.min(0.15, vf * 0.006));
+    } else if (this.grounded && !this.boosting && this.qbT <= 0) {
       const amp = Math.min(1, hs / (WALK * F.speed));
       this.phase += dt * (2.2 + hs * 0.42) * (this.backward ? -1 : 1);
       const sp = Math.sin(this.phase);
@@ -251,7 +334,11 @@ export class Mech {
     }
     // landing crouch
     const lc = this.landC * this.landC * 1.2;
-    T.hipY -= lc * 0.75; T.tl += lc * 0.9; T.tr += lc * 0.9; T.sl -= lc * 1.6; T.sr -= lc * 1.6; T.fl += lc * 0.7; T.fr += lc * 0.7; T.torX -= lc * 0.25;
+    if (this.legKind === 'tread') { T.hipY -= lc * 0.25; T.torX -= lc * 0.15; }
+    else { T.hipY -= lc * 0.75; T.tl += lc * 0.9; T.tr += lc * 0.9; T.sl -= lc * 1.6; T.sr -= lc * 1.6; T.fl += lc * 0.7; T.fr += lc * 0.7; T.torX -= lc * 0.25; }
+    if (this.legKind === 'rev') {   // reverse joint: the knee folds the other way, the long foot stays level
+      T.sl *= -0.85; T.sr *= -0.85; T.fl = -(T.tl + T.sl) * 0.7; T.fr = -(T.tr + T.sr) * 0.7;
+    }
     const k = 1 - Math.exp(-14 * dt);
     for (const key in T) P[key] = P[key] === undefined ? T[key] : P[key] + (T[key] - P[key]) * k;
     n.M_Hips.position.y = P.hipY + Math.sin(performance.now() * 0.002) * 0.02;
@@ -297,6 +384,7 @@ export class Mech {
     if (twist) n.M_Torso.rotation.y = this.torsoYaw + twist;
     n.M_Head.rotation.x = Math.max(-0.4, Math.min(0.5, pitch * 0.6));
     const ss = this.slots.S; if (ss) { ss.recoil = Math.max(0, (ss.recoil || 0) - dt * 3); for (const m of ss.models) m.position.z = (ss.recoil || 0) * 0.4; }
+    for (const w of this.wheels) w.rotateY(vf / 0.3 * dt);   // tread road wheels roll with forward speed
     // weapon spin
     for (const side of ['L', 'R']) { const sl = this.slots[side]; if (sl.spin) sl.spin.rotation.y += (sl.spinV || 0) * dt; }
     // flames
