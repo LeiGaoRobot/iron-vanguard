@@ -5,7 +5,7 @@
   dist/index.html     standalone: inline import map (three + addons as data: URLs) + inline modules + kit.glb data URI
   dist/artifact.html  body-only variant for claude.ai Artifacts (three + addons from jsDelivr +esm bundles)
 """
-import base64, os, re, json, urllib.request
+import base64, gzip, os, re, json, urllib.request
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SITE = os.path.join(ROOT, 'site'); DIST = os.path.join(ROOT, 'dist'); VENDOR = os.path.join(ROOT, 'vendor')
@@ -19,9 +19,9 @@ def read(p):
 html = read(os.path.join(SITE, 'index.html'))
 srcs = {m: read(os.path.join(SITE, m)) for m in MODULES + ['main.js']}
 glb = open(os.path.join(SITE, 'assets', 'kit.glb'), 'rb').read()
-glb_uri = 'data:model/gltf-binary;base64,' + base64.b64encode(glb).decode('ascii')
+glb_uri = 'data:application/gzip;base64,' + base64.b64encode(gzip.compress(glb, 9, mtime=0)).decode('ascii')   # kit.js inflates it
 parts = open(os.path.join(SITE, 'assets', 'parts.glb'), 'rb').read()   # swappable mech parts (build_parts.py)
-parts_uri = 'data:model/gltf-binary;base64,' + base64.b64encode(parts).decode('ascii')
+parts_uri = 'data:application/gzip;base64,' + base64.b64encode(gzip.compress(parts, 9, mtime=0)).decode('ascii')
 
 def strip_imports(src): return re.sub(r"^import [^;]*?;\s*$", '', src, flags=re.M | re.S)
 def exported_names(src): return re.findall(r"^export (?:const|let|async function|function|class) (\w+)", src, flags=re.M)

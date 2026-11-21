@@ -10,7 +10,7 @@ import { buildArena, addSolid, ARENA, solids, raySolids, groundAt, pointInSolid,
 import { FX, TEX } from './fx.js';
 import { AtmospherePass, makeRidge } from './post.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
-import { Mech, PALETTES, FRAMES, angDiff, PHYS, MECHS, PARTS, PART_SLOTS, SLOT_NAMES, BUILDS, partStats, partsReady } from './mech.js';
+import { Mech, PALETTES, FRAMES, angDiff, PHYS, MECHS, PARTS, PART_SLOTS, SLOT_NAMES, BUILDS, PATTERNS, partStats, partsReady } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
 import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, Leaper, LEAP, FLARE, Herald, HERALD, Tower, Citadel, Trooper, Shade, SHADE, LANE, Marshal, DECAP, startDecap, clearDecap, Dazzler, DAZZ, clearLinkB, Pulsar, PULSE, MAZE, startMaze, clearMaze, clearRings, clearBWalls, Forklift, FACT, startFactory, clearFactory, clearTBeams, TSU, Swapper, SWAP, startTsunami, clearTsunami, clearNano, tsuEta, inWave, BIO, Seeder, SEED, startBio, clearBio, clearPlOrbs, inCreep, ATOM, Bloater, BLOAT, startAtom, clearAtom, decaySpread, GLAD, Adaptor, ADAPT, Sprayer, SPRAY, Scrambler, SCRAM, FUSE, startFuse, clearFuse, fuseNear, POL, DYAD, Dyad, spawnDyads, startPolar, clearPolar, togglePol, setPol, polThreat, Raptor, RAPT, CTF, startCTF, clearCTF, Gyro, GYRO, BH, startBH, clearBH, AER, aerPads, startAerie, clearAerie, Swatter, SWAT, clearAG, BUB, clearBubbles, TURF, startTurf, clearTurf, turfShare, turfAt, turfKill, startGlad, clearGlad, gladGate, gladKill, gladVentAt, clearSaws, Reviver, REVIVE, noteWreck, CAMO, clearCamo, clearWrecks, SABOT, startSabot, clearSabot, sabTarget, Weaver, WEAVE, HACK, hackable, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, clearWebs, clearHacks, Launcher, Cruise, SKY, startSky, clearSky, Courier, COURIER, COURIER_PATH, startPursuit, clearPursuit, Torcher, TORCH, clearFires, clearNets, Dish, Anchor, ANCHOR, LANCE, startLance, clearLance, Engineer, ENG, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, clearBurn, startLane, clearLane, laneObjective, laneEscorted, clearRBeam, Bastion, Hijacker, HIJACK, FORT, FORT_PADS, startFort, clearFort, padAction, fortGoal, clearRefl, Scav, SCAV, SALV, startSalvage, clearSalvage, dropCores, nearestCore, Planter, PLANT, DEPOT, startDepots, clearDepots, nearestCharge, Lurker, LURK, FOG, startFog, clearFog, fogSeen, fogFar, resetRewind, Snatcher, SNATCH, SUPPLY, startSupply, clearSupply, nearestCrate, Disarmer, DISARM, RIFT, startRifts, clearRifts, Leech, LEECH, TRAFFIC, startTraffic, clearTraffic, truckAhead, THUNDER, startThunder, clearThunder, rodCover, clearRods, startFlares, clearFlares, inShade, resetNeedles, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
@@ -471,6 +471,8 @@ const save = { cr: 0, up: { armor: 0, gen: 0, thr: 0, fcs: 0 }, best: {}, bestWa
 const WING_COST = 2500, WING_CR = 0.85;
 try { const o = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (o) { Object.assign(save, o); save.up = { armor: 0, gen: 0, thr: 0, fcs: 0, ...(o.up || {}) }; } } catch (e) { /* storage unavailable */ }
 const partOwned = (slot, id) => id === 'std' || !!(save.parts && save.parts[slot + '.' + id]);
+const patOwned = (k) => k === 'none' || !!(save.pats && save.pats[k]);
+const myPattern = () => (PATTERNS[cfg.pattern] && patOwned(cfg.pattern) ? cfg.pattern : 'none');
 const myParts = () => { const r = {}; for (const s of PART_SLOTS) { const id = (cfg.parts || {})[s]; if (id && PARTS[s][id] && partOwned(s, id)) r[s] = id; } return r; };
 const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } };
 const playerMods = () => { const u = save.up, th = chipOn('thrust'); return { hp: 1 + 0.08 * u.armor, en: 1 + 0.08 * u.gen, regen: (1 + 0.08 * u.gen) * (th ? 1.25 : 1), boost: (1 + 0.04 * u.thr) * (th ? 1.1 : 1), speed: 1 + 0.02 * u.thr }; };
@@ -479,7 +481,12 @@ const chipOn = (k) => Array.isArray(cfg.chips) && cfg.chips.slice(0, chipSlots()
 function playerWeapon(key) {   // weapon state with chip modifiers applied to a private copy of the weapon data
   const ws = weaponState(key), d = { ...ws.d };
   if (chipOn('mag') && d.slot === 'arm' && d.mag) { d.mag = Math.round(d.mag * 1.4); d.reload *= 0.8; }
-  if (d.slot === 'arm' && d.reload) d.reload *= partStats(myParts()).reload;   // brace arms
+  const PSm = partStats(myParts());
+  if (d.slot === 'arm' && d.reload) d.reload *= PSm.reload;   // brace / brawler arms
+  if (d.slot === 'arm' && d.spread) d.spread *= PSm.spread;   // stabiliser arms
+  if (d.slot === 'arm' && d.type === 'bullet' && d.speed) d.speed *= PSm.pspd;
+  if (d.slot === 'shoulder' && d.cd) d.cd *= PSm.scd;   // pod arms
+  if ((d.type === 'blade' || d.type === 'pile') && d.dmg) d.dmg *= PSm.melee;   // brawler arms
   if (chipOn('cool') && d.slot === 'shoulder' && d.cd) d.cd *= 0.75;
   ws.d = d; ws.ammo = d.mag || 0; return ws;
 }
@@ -1042,7 +1049,7 @@ function mixWave(n, rnd) {
 
 function makePlayer() {
   if (G.player) G.player.dispose();
-  G.player = new Mech(scene, mctx, { palette: cfg.palette, frame: cfg.frame, parts: myParts(), loadout: { R: cfg.R, L: cfg.L, S: cfg.S }, yaw: 0, mods: playerMods() });
+  G.player = new Mech(scene, mctx, { palette: cfg.palette, frame: cfg.frame, parts: myParts(), pattern: myPattern(), loadout: { R: cfg.R, L: cfg.L, S: cfg.S }, yaw: 0, mods: playerMods() });
   G.player.pos.set(0, 0, 128);
   G.pw = freshPW();
   cam.yaw = 0; cam.pitch = -0.05;
@@ -1070,7 +1077,7 @@ function newGame() {
   if (modOn('glass')) { G.player.maxHp = Math.round(G.player.maxHp * 0.6); G.player.hp = G.player.maxHp; }
   Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
   const M = MISSIONS[cfg.mission];
-  G.echoLo = setEcho({ R: cfg.R, L: cfg.L, S: cfg.S, frame: cfg.frame, parts: myParts() });
+  G.echoLo = setEcho({ R: cfg.R, L: cfg.L, S: cfg.S, frame: cfg.frame, parts: myParts(), pattern: myPattern() });
   PHYS.g = M.grav || 1; PHYS.grip = M.grip || 1; if (M.ice) startIce(); if (M.wind) startWind(); G.glare = !!M.glare; if (M.cranes) startCranes(M.cranes); if (M.quake) startQuakes(); if (M.flare) startFlares(); if (M.thunder) startThunder(STORM_RODS); if (M.highway) startTraffic(); if (M.rift) startRifts(); if (M.supply) startSupply(); if (M.fog) startFog(); if (M.depot) startDepots(); if (M.salvage) startSalvage(); if (M.fortify) startFort(); if (M.lane) startLane(); G.meteorOn = !!M.meteors; if (M.acid) startAcid(M.acid); if (M.twisters) startTwisters(M.twisters); G.acidSaid = false; G.fenceSaid = false; G.linkSaid = false; if (tide) { tide.y = tide.yT = M.tide[0]; WATER.y = tide.y; } if (M.ascend) setStage(0, true); clearWells(); G.eruptT = 8; G.freezes = 0; G.lavaT = 0; G.eruptions = 0; G.burrowUps = 0;
   if (M.defense) {
     G.core = new Reactor(scene, new V3(0, 0, 0), M.coreHp); G.friends.push(G.core);
@@ -2891,11 +2898,22 @@ function buildGarage() {
   const fill = (id, items) => { const el = $(id); el.innerHTML = ''; items.forEach((i) => el.appendChild(i)); };
   fill('gPaint', Object.entries(PALETTES).filter(([k, p]) => k !== 'tyrant' && !p.enemy).map(([k, p]) =>
     opt(`<i style="background:linear-gradient(135deg, ${p.Armor} 0 55%, ${p.Accent} 55% 75%, ${p.Armor2} 75%)"></i>`, cfg.palette === k, () => { cfg.palette = k; G.player.setPalette(k); }, 'sw')));
+  if ($('gCamo')) {   // camouflage: bought once with credits, then free to switch
+    if (!save.pats) save.pats = {};
+    const curP = myPattern();
+    fill('gCamo', Object.entries(PATTERNS).map(([k, P]) => {
+      const own = patOwned(k);
+      return opt(`${P.name}<small>${own ? P.e : `${P.cost} C`}</small>`, curP === k, () => {
+        if (!own) { if (save.cr < P.cost) { sfx('empty'); return; } save.cr -= P.cost; save.pats[k] = true; writeSave(); sfx('coin'); }
+        cfg.pattern = k; G.player.setPalette(cfg.palette, k);
+      }, !own && save.cr < P.cost ? 'lock' : '');
+    }));
+  }
   fill('gFrame', Object.entries(FRAMES).map(([k, f]) => opt(`${f.name}<small>${f.en}</small>`, cfg.frame === k, () => { cfg.frame = k; rebuildPreview(); })));
   buildParts(opt, fill);
   const F = G.player.frame, xs = (k, lab) => (F[k] !== 1 ? ` · ${lab} <b>×${F[k].toFixed(2)}</b>` : '');
   $('gStats').innerHTML = `AP <b>${Math.round(F.hp)}</b> · 速度 <b>×${F.speed.toFixed(2)}</b> · EN <b>${Math.round(F.en)}</b> · 推进 <b>×${F.boost.toFixed(2)}</b> · 受伤 <b>×${+F.armor.toFixed(2)}</b>` + (save.up.fcs ? ` · 伤害 <b>×${dmgMul().toFixed(2)}</b>` : '')
-    + xs('lock', '锁定') + xs('reload', '装填') + (F.jump !== 1 ? ` · 跳跃高度 <b>×${(F.jump * F.jump).toFixed(2)}</b>` : '') + xs('qb', '急闪耗能') + xs('hover', '悬停耗能') + xs('lift', '悬停爬升') + xs('radar', '雷达') + xs('od', '超载充能') + (F.grip ? ' · <b>防滑</b>' : '') + (F.float ? ' · <b>涉水</b>' : '');
+    + xs('lock', '锁定') + xs('reload', '装填') + (F.jump !== 1 ? ` · 跳跃高度 <b>×${(F.jump * F.jump).toFixed(2)}</b>` : '') + xs('qb', '急闪耗能') + xs('hover', '悬停耗能') + xs('lift', '悬停爬升') + xs('radar', '雷达') + xs('od', '超载充能') + xs('spread', '散布') + xs('pspd', '弹速') + xs('scd', '肩武器冷却') + xs('melee', '近战伤害') + (F.grip ? ' · <b>防滑</b>' : '') + (F.float ? ' · <b>涉水</b>' : '');
   const wopt = (slot, k) => opt(`${WEAPONS[k].name}<small>${WEAPONS[k].desc}</small>`, cfg[slot] === k, () => { cfg[slot] = k; G.player.mount({ R: cfg.R, L: cfg.L, S: cfg.S }); G.pw = freshPW(); buildWeaponPanel(); });
   fill('gR', ARM_KEYS.map((k) => wopt('R', k)));
   fill('gL', ARM_KEYS.map((k) => wopt('L', k)));
@@ -3825,7 +3843,7 @@ window.__iv = {
 (async () => {
   try {
     await loadKit('./assets/kit.glb?v=71');
-    await loadParts('./assets/parts.glb?v=2');
+    await loadParts('./assets/parts.glb?v=3');
     ensureArena();
     makePlayer();
     setState('title');

@@ -25,7 +25,8 @@ export const FRAMES = {
 // Swappable parts (parts.glb). Multipliers stack onto the frame: hp / speed / en / boost / regen / armor (damage
 // taken), plus lock (lock-on radius), reload (arm weapons), jump, qb (quick-boost energy), hover (hover drain), grip
 // (ignores icy ground; jump scales take-off speed, so height goes with its square), radar (radar range), od (overdrive
-// charge), lift (hover climb), float (no wading slowdown). id 'std' = the frame's own part, always owned.
+// charge), lift (hover climb), float (no wading slowdown), spread / pspd (arm weapon spread and projectile speed),
+// scd (shoulder cooldown), melee (blade / pile damage). id 'std' = the frame's own part, always owned.
 export const PART_SLOTS = ['head', 'core', 'arms', 'legs', 'pack'];
 export const SLOT_NAMES = { head: ['头部', 'Head'], core: ['躯干', 'Core'], arms: ['手臂', 'Arms'], legs: ['腿部', 'Legs'], pack: ['背包', 'Pack'] };
 export const PARTS = {
@@ -46,6 +47,9 @@ export const PARTS = {
     std: { name: '标准', e: 'Standard' },
     brace: { name: '炮击臂', e: 'Brace', cost: 2000, reload: 0.85, d: '臂武器装填 −15%', de: 'arm reload −15%' },
     guard: { name: '护盾臂', e: 'Guard', cost: 2000, armor: 0.95, boost: 0.98, d: '受伤 −5% · 推进 −2%', de: 'dmg taken −5% · boost −2%' },
+    stab: { name: '稳定臂', e: 'Stabilizer', cost: 2200, spread: 0.55, pspd: 1.15, d: '臂武器散布 −45% · 弹速 +15%', de: 'arm weapon spread −45% · projectile speed +15%' },
+    pod: { name: '挂舱臂', e: 'Pod', cost: 2400, scd: 0.85, hp: 0.97, d: '肩武器冷却 −15% · 装甲 −3%', de: 'shoulder cooldown −15% · AP −3%' },
+    fist: { name: '格斗臂', e: 'Brawler', cost: 2400, melee: 1.3, armor: 0.97, reload: 1.08, d: '近战伤害 +30% · 受伤 −3% · 臂武器装填 +8%', de: 'melee damage +30% · dmg taken −3% · arm reload +8%' },
   },
   legs: {
     std: { name: '标准', e: 'Standard' },
@@ -71,9 +75,20 @@ export const BUILDS = {
   recon: { name: '侦察型', en: 'Recon', parts: { head: 'hawk', arms: 'guard', legs: 'heavy', pack: 'glide' } },
   gale: { name: '疾风型', en: 'Gale', parts: { head: 'crest', core: 'sleek', arms: 'guard', legs: 'hover', pack: 'jumpjet' } },
   siege: { name: '堡垒型', en: 'Siege', parts: { head: 'radar', core: 'reactor', arms: 'brace', legs: 'quad', pack: 'tank' } },
+  brawler: { name: '格斗型', en: 'Brawler', parts: { head: 'mono', core: 'bulwark', arms: 'fist', legs: 'heavy', pack: 'sprint' } },
+  marksman: { name: '狙击型', en: 'Marksman', parts: { head: 'hawk', arms: 'stab', legs: 'quad', pack: 'glide' } },
+  barrage: { name: '火力型', en: 'Barrage', parts: { head: 'radar', core: 'reactor', arms: 'pod', legs: 'tread', pack: 'tank' } },
+};
+// camouflage over the primary armour (kit.js CAMO_FRAG); the tones come from the palette, so each paint gets its own
+export const PATTERNS = {
+  none: { name: '纯色', e: 'Solid', id: 0 },
+  digital: { name: '数码迷彩', e: 'Digital', id: 1, cost: 800 },
+  tiger: { name: '虎纹', e: 'Tiger', id: 2, cost: 800 },
+  splinter: { name: '碎片迷彩', e: 'Splinter', id: 3, cost: 1000 },
+  hex: { name: '蜂巢', e: 'Hex', id: 4, cost: 1000 },
 };
 export function partStats(parts) {
-  const r = { hp: 1, speed: 1, en: 1, boost: 1, regen: 1, armor: 1, lock: 1, reload: 1, jump: 1, qb: 1, hover: 1, radar: 1, od: 1, lift: 1, grip: false, float: false };
+  const r = { hp: 1, speed: 1, en: 1, boost: 1, regen: 1, armor: 1, lock: 1, reload: 1, jump: 1, qb: 1, hover: 1, radar: 1, od: 1, lift: 1, spread: 1, pspd: 1, scd: 1, melee: 1, grip: false, float: false };
   for (const slot of PART_SLOTS) {
     const p = PARTS[slot][(parts || {})[slot]]; if (!p) continue;
     for (const k in r) if (p[k] !== undefined) r[k] = typeof r[k] === 'boolean' ? r[k] || p[k] : r[k] * p[k];
@@ -152,6 +167,7 @@ export class Mech {
     for (const k of ['hp', 'speed', 'en', 'boost', 'regen', 'armor']) F0[k] *= PS[k];
     F0.lock = PS.lock; F0.reload = PS.reload; F0.jump = PS.jump; F0.qb = PS.qb; F0.hover = PS.hover; F0.grip = PS.grip;
     F0.radar = PS.radar; F0.od = PS.od; F0.lift = PS.lift; F0.float = PS.float;
+    F0.spread = PS.spread; F0.pspd = PS.pspd; F0.scd = PS.scd; F0.melee = PS.melee;
     this.legKind = KIT['P_legs_' + this.parts.legs] ? this.parts.legs : 'std';
     this.scale = (opts.scale || 1) * this.frame.scale;
     this.isBoss = !!opts.isBoss;
@@ -160,6 +176,7 @@ export class Mech {
     this.root.add(this.body);
     this.n = nodes(this.body);
     const AP = applyParts(this.body, this.n, this.parts); this.wheels = AP.wheels; this.spinners = AP.spin; this.quadLegs = AP.quad;
+    this.pattern = opts.pattern || 'none';
     this.setPalette(opts.palette || 'vanguard');
     this.slots = {};
     this.mount(opts.loadout || { R: 'rifle', L: 'gatling', S: 'missile' });
@@ -189,9 +206,10 @@ export class Mech {
     this.radius = 1.5 * this.scale; this.height = 5.6 * this.scale;
   }
 
-  setPalette(key) {
+  setPalette(key, pattern) {
+    if (pattern !== undefined) this.pattern = pattern;
     this.paletteKey = key;
-    recolor(this.body, PALETTES[key], key, true);
+    recolor(this.body, PALETTES[key], key, true, (PATTERNS[this.pattern] || PATTERNS.none).id);   // camo on the body, not the weapons
     for (const s of Object.values(this.slots || {})) for (const m of s.models) recolor(m, PALETTES[key], key, true);
   }
 

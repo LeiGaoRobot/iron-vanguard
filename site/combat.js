@@ -2095,17 +2095,17 @@ export class Relay extends Enemy {
 
 // Boss mechs: enemy Mech run by the same physics + weapons as the player.
 export const BOSSES = {
-  tyrant: { name: '暴君 TYRANT · 重装指挥机', palette: 'tyrant', frame: 'heavy', parts: { head: 'radar', core: 'reactor', legs: 'quad', pack: 'tank' }, scale: 1.35, hp: 5200, want: [45, 32],
+  tyrant: { name: '暴君 TYRANT · 重装指挥机', palette: 'tyrant', pattern: 'tiger', frame: 'heavy', parts: { head: 'radar', core: 'reactor', legs: 'quad', pack: 'tank' }, scale: 1.35, hp: 5200, want: [45, 32],
     phases: [{ R: 'gatling', L: 'rifle', S: 'cannon' }, { R: 'gatling', L: 'coil', S: 'laser' }], mul: { gatling: 0.32, rifle: 0.35, coil: 0.3, cannon: 0.6, laser: 0.45 },
     phase2: ['暴君 · 第二形态', '武装切换：光束炮 / 闪电线圈'] },
-  phantom: { name: '幻影 PHANTOM · 强袭机', palette: 'phantom', frame: 'light', parts: { head: 'crest', core: 'sleek', legs: 'rev', pack: 'sprint' }, scale: 1.22, hp: 4300, want: [34, 20], agile: true,
+  phantom: { name: '幻影 PHANTOM · 强袭机', palette: 'phantom', pattern: 'hex', frame: 'light', parts: { head: 'crest', core: 'sleek', legs: 'rev', pack: 'sprint' }, scale: 1.22, hp: 4300, want: [34, 20], agile: true,
     phases: [{ R: 'rail', L: 'blade', S: 'missile' }, { R: 'gatling', L: 'blade', S: 'laser' }], mul: { rail: 0.25, blade: 0.34, missile: 0.5, gatling: 0.3, laser: 0.42 },
     phase2: ['幻影 · 解除限制', '机动全开：光束炮 / 加特林'] },
 };
 // Raiders: squad mechs, same AI and weapons as the bosses, no phases, no boss bar
 export const RAIDERS = {
-  raider: { name: '掠夺者 RAIDER', palette: 'raider', frame: 'std', parts: { head: 'mono', arms: 'brace', legs: 'tread' }, scale: 1.0, hp: 900, want: [36, 36], phases: [{ R: 'rifle', L: 'shotgun', S: 'missile' }], mul: { rifle: 0.1, shotgun: 0.15, missile: 0.14 } },
-  lancer: { name: '枪骑兵 LANCER', palette: 'lancer', frame: 'light', parts: { head: 'hawk', legs: 'hover', pack: 'jumpjet' }, scale: 0.96, hp: 700, want: [24, 24], agile: true, phases: [{ R: 'blade', L: 'gatling', S: 'cannon' }], mul: { blade: 0.13, gatling: 0.1, cannon: 0.2 } },
+  raider: { name: '掠夺者 RAIDER', palette: 'raider', pattern: 'splinter', frame: 'std', parts: { head: 'mono', arms: 'brace', legs: 'tread' }, scale: 1.0, hp: 900, want: [36, 36], phases: [{ R: 'rifle', L: 'shotgun', S: 'missile' }], mul: { rifle: 0.1, shotgun: 0.15, missile: 0.14 } },
+  lancer: { name: '枪骑兵 LANCER', palette: 'lancer', pattern: 'digital', frame: 'light', parts: { head: 'hawk', legs: 'hover', pack: 'jumpjet' }, scale: 0.96, hp: 700, want: [24, 24], agile: true, phases: [{ R: 'blade', L: 'gatling', S: 'cannon' }], mul: { blade: 0.13, gatling: 0.1, cannon: 0.2 } },
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
@@ -2113,7 +2113,7 @@ const ECHO_SUB = { antigrav: 'missile', ecan: 'rifle', arc: 'rifle', javelin: 'r
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
-  BOSSES.echo = { name: '镜像 ECHO · 复制体', palette: 'echo', frame: L.frame || 'std', parts: L.parts, scale: 1.15, hp: 6000, want: [32, 26], agile: true, phases: [lo, lo], mul: ECHO_MUL, phase2: ['镜像 · 分裂', '两台镜像碎片加入战斗'] };
+  BOSSES.echo = { name: '镜像 ECHO · 复制体', palette: 'echo', frame: L.frame || 'std', parts: L.parts, pattern: L.pattern, scale: 1.15, hp: 6000, want: [32, 26], agile: true, phases: [lo, lo], mul: ECHO_MUL, phase2: ['镜像 · 分裂', '两台镜像碎片加入战斗'] };
   RAIDERS.shard = { name: '镜像碎片 SHARD', palette: 'echo', frame: 'light', scale: 0.85, hp: 500, want: [28, 28], agile: true, phases: [lo], mul: Object.fromEntries(Object.entries(ECHO_MUL).map(([k, v]) => [k, v * 0.35])) };
   return lo;
 }
@@ -2121,7 +2121,7 @@ export class Boss {
   constructor(pos, ctx, type = 'tyrant', hpMul = 1) {
     const B = this.B = BOSSES[type] || RAIDERS[type];
     this.kind = 'boss'; this.type = type; this.r = 2.5 * B.scale; this.c = new V3(); this.alive = true; this.dying = false; this.flash = 0;
-    this.mech = new Mech(G.scene, ctx, { palette: B.palette, frame: B.frame, parts: B.parts, cosmetic: true, scale: B.scale, isBoss: true, loadout: B.phases[0], yaw: Math.PI });
+    this.mech = new Mech(G.scene, ctx, { palette: B.palette, pattern: B.pattern, frame: B.frame, parts: B.parts, cosmetic: true, scale: B.scale, isBoss: true, loadout: B.phases[0], yaw: Math.PI });
     if (RAIDERS[type]) { this.kind = 'raider'; this.r = 2.2 * B.scale; }
     this.mech.pos.copy(pos);
     this.maxHp = B.hp * G.diff.hp * hpMul; this.hp = this.maxHp; this.phase = 1;

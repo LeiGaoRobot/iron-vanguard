@@ -201,6 +201,91 @@ def arms_guard():
         box((s * 0.45, 0.34, -0.44), (0.03, 1.1, 0.12), M["Armor2"], fo, rot=(0, s * R(-6), 0))
         box((s * 0.45, 0.95, -0.06), (0.04, 0.12, 0.8), M["Frame"], fo, rot=(0, s * R(-6), 0))
 
+def arms_stab():
+    # stabiliser arms: slim rounded pauldrons, an elbow counterweight, long forearms wrapped in two gyro rings and a
+    # wrist sensor pod
+    K = kit("P_arms_stab")
+    for side, s in SIDES:
+        sh = pt(K, "armsstab", f"M_Shoulder{side}")
+        ball((0, 0, 0), 0.3, M["Joint"], sh)
+        box((s * 0.28, 0.02, 0.1), (0.62, 0.86, 0.6), M["Armor"], sh, bevel=0.1)
+        box((s * 0.6, 0.02, 0.1), (0.05, 0.62, 0.34), M["Armor2"], sh)
+        box((s * 0.36, 0.45, 0.2), (0.22, 0.03, 0.05), M["Visor"], sh)
+        cyl((s * 0.22, -0.28, 0.6), 0.035, 0.42, M["Frame"], sh)
+        ball((s * 0.22, -0.28, 0.82), 0.05, M["Visor"], sh)
+        ar = pt(K, "armsstab", f"M_Arm{side}")
+        cyl((0, 0, -0.42), 0.15, 0.84, M["Frame"], ar)
+        box((0, 0, -0.36), (0.44, 0.48, 0.54), M["Armor2"], ar, bevel=0.05)
+        box((0, -0.34, -0.72), (0.34, 0.28, 0.32), M["Frame"], ar, bevel=0.03)
+        box((0, -0.49, -0.72), (0.26, 0.03, 0.2), M["Hazard"], ar)
+        cyl((0, 0, -0.82), 0.2, 0.44, M["Joint"], ar, rot=(0, math.pi / 2, 0))
+        fo = pt(K, "armsstab", f"M_Fore{side}")
+        ball((0, 0, 0), 0.2, M["Joint"], fo)
+        box((0, 0.42, -0.04), (0.42, 1.12, 0.42), M["Armor"], fo, bevel=0.06)
+        box((s * 0.22, 0.42, -0.04), (0.04, 0.8, 0.26), M["Armor2"], fo)
+        for y in (0.26, 0.64):
+            torus((0, y, -0.04), 0.33, 0.05, M["Armor2"], fo, rot=ALONG_Y)
+            torus((0, y + 0.06, -0.04), 0.335, 0.014, M["Visor"], fo, rot=ALONG_Y)
+        cyl((s * 0.27, 0.86, 0.12), 0.07, 0.16, M["Black"], fo, rot=ALONG_Y)
+        cyl((s * 0.27, 0.945, 0.12), 0.045, 0.02, M["Visor"], fo, rot=ALONG_Y)
+
+def arms_pod():
+    # missile-pod arms: a six-tube mini-missile box riding on top of each pauldron, an armoured upper arm and a
+    # forearm with an ammo feed rail
+    K = kit("P_arms_pod")
+    for side, s in SIDES:
+        sh = pt(K, "armspod", f"M_Shoulder{side}")
+        ball((0, 0, 0), 0.31, M["Joint"], sh)
+        box((s * 0.3, 0, 0.1), (0.74, 1.02, 0.64), M["Armor"], sh, bevel=0.07)
+        box((s * 0.36, -0.02, 0.62), (0.64, 0.9, 0.42), M["Armor2"], sh, bevel=0.04)
+        box((s * 0.36, 0.44, 0.62), (0.6, 0.04, 0.38), M["Frame"], sh)
+        for x in (-0.19, 0.0, 0.19):
+            for z in (0.52, 0.72):
+                cyl((s * 0.36 + x, 0.46, z), 0.066, 0.04, M["Black"], sh, rot=ALONG_Y, verts=12)
+                cyl((s * 0.36 + x, 0.43, z), 0.05, 0.04, M["Hazard"], sh, rot=ALONG_Y, verts=12)
+        box((s * 0.69, -0.02, 0.62), (0.03, 0.7, 0.12), M["Accent"], sh)
+        box((s * 0.36, -0.48, 0.62), (0.4, 0.06, 0.24), M["Frame"], sh)
+        ar = pt(K, "armspod", f"M_Arm{side}")
+        cyl((0, 0, -0.42), 0.17, 0.84, M["Frame"], ar)
+        box((0, 0, -0.4), (0.56, 0.58, 0.64), M["Armor2"], ar, bevel=0.05)
+        box((s * 0.29, 0, -0.4), (0.04, 0.38, 0.4), M["Accent"], ar)
+        cyl((0, 0, -0.82), 0.22, 0.46, M["Joint"], ar, rot=(0, math.pi / 2, 0))
+        fo = pt(K, "armspod", f"M_Fore{side}")
+        ball((0, 0, 0), 0.22, M["Joint"], fo)
+        box((0, 0.38, -0.04), (0.54, 1.0, 0.54), M["Armor"], fo, bevel=0.06)
+        box((s * 0.29, 0.38, -0.04), (0.06, 0.84, 0.14), M["Frame"], fo)
+        for y in (0.12, 0.3, 0.48, 0.66):
+            box((s * 0.33, y, -0.04), (0.04, 0.1, 0.18), M["Hazard"] if y > 0.6 else M["Armor2"], fo)
+        box((0, 0.4, 0.25), (0.1, 0.56, 0.03), M["Visor"], fo)
+
+def arms_fist():
+    # brawler arms: spiked heavy pauldrons, a thick upper arm with twin pistons and huge gauntlets with a flared cuff
+    # and a row of studs down the outside (kept behind the hand so weapons still fit)
+    K = kit("P_arms_fist")
+    for side, s in SIDES:
+        sh = pt(K, "armsfist", f"M_Shoulder{side}")
+        ball((0, 0, 0), 0.33, M["Joint"], sh)
+        box((s * 0.32, 0, 0.14), (0.9, 1.12, 0.78), M["Armor"], sh, bevel=0.09)
+        box((s * 0.32, 0, 0.55), (0.7, 0.86, 0.08), M["Armor2"], sh, bevel=0.02)
+        for k in (-0.3, 0.0, 0.3):
+            cyl((s * 0.5, k, 0.62), 0.09, 0.34, M["Frame"], sh, r2=0.012, verts=10)
+        box((s * 0.78, 0, 0.12), (0.06, 0.86, 0.46), M["Accent"], sh)
+        ar = pt(K, "armsfist", f"M_Arm{side}")
+        cyl((0, 0, -0.42), 0.2, 0.84, M["Frame"], ar)
+        box((0, 0.02, -0.4), (0.66, 0.66, 0.68), M["Armor2"], ar, bevel=0.06)
+        for k in (-1, 1):
+            cyl((k * 0.2, 0.36, -0.44), 0.05, 0.6, M["Piston"], ar)
+        cyl((0, 0, -0.82), 0.26, 0.52, M["Joint"], ar, rot=(0, math.pi / 2, 0))
+        fo = pt(K, "armsfist", f"M_Fore{side}")
+        ball((0, 0, 0), 0.25, M["Joint"], fo)
+        box((0, 0.36, -0.04), (0.74, 0.86, 0.7), M["Armor"], fo, bevel=0.08)
+        box((0, 0.76, -0.04), (0.84, 0.14, 0.8), M["Armor2"], fo, bevel=0.03)
+        box((0, 0.76, 0.37), (0.6, 0.06, 0.03), M["Accent"], fo)
+        box((s * 0.38, 0.36, -0.04), (0.06, 0.7, 0.52), M["Armor2"], fo, bevel=0.02)
+        for y in (0.14, 0.36, 0.58):
+            cyl((s * 0.44, y, -0.04), 0.075, 0.2, M["Frame"], fo, r2=0.012, rot=(0, s * math.pi / 2, 0), verts=10)
+        cyl((0, -0.12, -0.36), 0.08, 0.28, M["Frame"], fo, r2=0.012, rot=(math.pi * 0.62, 0, 0), verts=10)
+
 # ================================================================= LEGS
 # M_Thigh (hips +-0.62,0,-0.12) > M_Shin (0,0,-1.15) > M_Foot (0,0,-1.2); sole ~0.36 under the ankle -> hips 2.75
 def legs_heavy():
@@ -508,6 +593,7 @@ def pack_jumpjet():
         cyl((s * 0.66, -0.1, -0.04), 0.07, 0.16, M["Nozzle"], wg, r2=0.1, rot=(math.pi, 0, 0))
 
 head_radar(); core_reactor(); legs_hover(); legs_quad(); pack_jumpjet()
+arms_stab(); arms_pod(); arms_fist()
 head_hawk(); head_mono(); head_crest()
 core_bulwark(); core_sleek()
 arms_brace(); arms_guard()
@@ -539,6 +625,9 @@ if PREVIEW:
         ("recon", dict(head="hawk", arms="guard", legs="heavy", pack="glide")),
         ("gale", dict(head="crest", core="sleek", arms="guard", legs="hover", pack="jumpjet")),
         ("siege", dict(head="radar", core="reactor", arms="brace", legs="quad", pack="tank")),
+        ("brawler", dict(head="mono", core="bulwark", arms="fist", legs="heavy", pack="sprint")),
+        ("marksman", dict(head="hawk", arms="stab", legs="quad", pack="glide")),
+        ("barrage", dict(head="radar", core="reactor", arms="pod", legs="tread", pack="tank")),
     ]
     def dup(o, parent, tag):
         c = o.copy()
@@ -568,9 +657,9 @@ if PREVIEW:
     scene.display.shading.light = "STUDIO"; scene.display.shading.color_type = "MATERIAL"; scene.display.shading.show_cavity = True
     w = bpy.data.worlds.new("W"); scene.world = w; w.use_nodes = True
     w.node_tree.nodes["Background"].inputs[0].default_value = (0.55, 0.6, 0.66, 1)
-    cam_data = bpy.data.cameras.new("C"); cam_data.type = "ORTHO"; cam_data.ortho_scale = 36
+    cam_data = bpy.data.cameras.new("C"); cam_data.type = "ORTHO"; cam_data.ortho_scale = max(36, len(PRESETS) * 5.8 + 4)
     cam = bpy.data.objects.new("C", cam_data); scene.collection.objects.link(cam); scene.camera = cam
-    scene.render.resolution_x = 2400; scene.render.resolution_y = 640
+    scene.render.resolution_x = int(2400 * max(36, len(PRESETS) * 5.8 + 4) / 36); scene.render.resolution_y = 640
     from mathutils import Vector
     c = Vector((0, 0, 2.9))
     roots = [o for o in bpy.data.objects if o.parent is None and "|" in o.name]

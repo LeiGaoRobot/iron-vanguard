@@ -35,25 +35,55 @@ const PANEL_FRAG = `
         float kpV = kpH > 0.93 ? (1.0 - smoothstep(0.07, 0.075 + kpW, max(kpC.x, kpC.y * 1.6))) : 0.0;
         diffuseColor.rgb *= (0.955 + 0.09 * kpH) * (1.0 - 0.5 * kpL - 0.08 * kpB) * (1.0 - 0.45 * kpV);
         kpSeam = max(kpL, kpV);`;
-export function addWear(m, panel = false) {
+// Camouflage over the primary armour (CAMO 1 digital, 2 tiger, 3 splinter, 4 hex) in the same per-part face frame
+// as the seams. uCa = second tone (the palette's Armor2), uCb = dark tone; applied as a ratio to the base colour so
+// the wear, seam and tone variation already multiplied into diffuseColor survive.
+const CAMO_FRAG = `
+        vec2 kcU = kpU; float kcA = 0.0, kcB = 0.0;
+#if CAMO == 1
+        vec2 kcP = floor(kcU / 0.1);
+        float kcN = kn(vec3(kcP * 0.17, 1.3)) * 0.72 + kh(vec3(kcP, 4.1)) * 0.28;
+        kcA = step(0.47, kcN); kcB = step(0.63, kcN);
+#elif CAMO == 2
+        float kcS = sin(dot(kcU, vec2(2.4, 6.2)) + kn(vec3(kcU * 1.3, 2.7)) * 6.0);
+        float kcF = fwidth(kcS);
+        kcB = smoothstep(0.45 - kcF, 0.45 + kcF, kcS) * step(0.3, kn(vec3(kcU * 0.9, 8.1)));
+#elif CAMO == 3
+        vec2 kr1 = mat2(0.8, 0.6, -0.6, 0.8) * kcU / 0.5, kr2 = mat2(0.34, -0.94, 0.94, 0.34) * kcU / 0.37;
+        float kcN = kh(vec3(floor(kr1), 5.0)) * 0.62 + kh(vec3(floor(kr2), 6.0)) * 0.38;
+        kcA = step(0.42, kcN); kcB = step(0.7, kcN);
+#elif CAMO == 4
+        vec2 kq = kcU / 0.16, kr = vec2(1.0, 1.7320508), kh2 = kr * 0.5;
+        vec2 ka = mod(kq, kr) - kh2, kb = mod(kq - kh2, kr) - kh2;
+        vec2 kg = dot(ka, ka) < dot(kb, kb) ? ka : kb, kag = abs(kg);
+        float ke = 0.5 - max(dot(kag, vec2(0.5, 0.8660254)), kag.x), kfw = fwidth(kq.x) * 1.2;
+        kcA = step(0.62, kh(vec3(floor((kq - kg) * 2.0 + 0.5), 7.0)));
+        kcB = (1.0 - smoothstep(0.035, 0.035 + kfw, ke)) * 0.85;
+#endif
+        vec3 kcBase = max(diffuse, vec3(0.012));
+        vec3 kcT = mix(vec3(1.0), uCa / kcBase, kcA);
+        diffuseColor.rgb *= mix(kcT, uCb / kcBase, kcB);`;
+export function addWear(m, panel = false, camo = 0, cols = null) {
   if (!m || !m.isMeshStandardMaterial || m.userData.glow || m.userData.wear) return m;
   m.userData.wear = true;
-  m.customProgramCacheKey = () => (panel ? 'kitwearP' : 'kitwear');
+  if (!panel) camo = 0;
+  m.customProgramCacheKey = () => (panel ? 'kitwearP' + (camo || '') : 'kitwear');
   const PV = ' varying vec3 vKL; varying vec3 vKN; varying vec3 vKS;';
   m.onBeforeCompile = (sh) => {
+    if (camo) { sh.uniforms.uCa = { value: cols.a }; sh.uniforms.uCb = { value: cols.b }; }
     sh.vertexShader = sh.vertexShader
       .replace('#include <common>', '#include <common>\nvarying vec3 vKO; varying float vKY;' + (panel ? PV : ''))
       .replace('#include <project_vertex>', '#include <project_vertex>\nvKO = transformed; vKY = (modelMatrix * vec4(transformed, 1.0)).y;' +
         (panel ? ' vKS = vec3(length(modelMatrix[0].xyz), length(modelMatrix[1].xyz), length(modelMatrix[2].xyz)); vKL = transformed * vKS; vKN = objectNormal;' : ''));
     sh.fragmentShader = sh.fragmentShader
-      .replace('#include <common>', '#include <common>\n' + WEAR_PARS + (panel ? PV : ''))
+      .replace('#include <common>', '#include <common>\n' + WEAR_PARS + (panel ? PV : '') + (camo ? `\n#define CAMO ${camo}\nuniform vec3 uCa; uniform vec3 uCb;` : ''))
       .replace('#include <color_fragment>', `#include <color_fragment>
         float kwA = kn(vKO * 2.3) * 0.55 + kn(vKO * 7.1 + 11.0) * 0.3 + kn(vKO * 19.0 + 5.0) * 0.15;
         float kwL = dot(diffuseColor.rgb, vec3(0.3, 0.55, 0.15));
         diffuseColor.rgb *= 1.0 - (0.04 + 0.06 * kwL) * smoothstep(0.35, 0.8, kwA);
         float kwD = (1.0 - smoothstep(0.0, 0.8, vKY)) * (0.55 + 0.45 * kn(vKO * 4.0 + 3.0));
         diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.32, 0.3, 0.27) * (0.6 + 0.4 * kwL), kwD * 0.22);
-        float kpSeam = 0.0;` + (panel ? PANEL_FRAG : ''))
+        float kpSeam = 0.0;` + (panel ? PANEL_FRAG : '') + (camo ? CAMO_FRAG : ''))
       .replace('#include <metalnessmap_fragment>', `#include <metalnessmap_fragment>
         roughnessFactor = clamp(roughnessFactor * (0.8 + 0.45 * kwA) + kwD * 0.2 + kpSeam * 0.3, 0.04, 1.0);`);
   };
@@ -61,15 +91,21 @@ export function addWear(m, panel = false) {
   return m;
 }
 
+// Single-file builds embed the GLBs gzip-compressed (kit.glb 9.4 MB -> 0.8 MB): data:application/gzip URIs are
+// inflated with DecompressionStream, plain data:model/gltf-binary URIs are used as they are.
+async function uriBytes(uri) {
+  const bin = atob(uri.split(',')[1]); const u8 = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+  if (!uri.startsWith('data:application/gzip')) return u8.buffer;
+  return new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer();
+}
+
 export async function loadKit(url) {
   let buf;
   if (window.__MA_KIT_LOAD) {   // WeChat mini-game build: the host hands over the GLB bytes
     buf = await window.__MA_KIT_LOAD();
   } else if (window.__MA_KIT) {
-    const b64 = window.__MA_KIT.split(',')[1];
-    const bin = atob(b64); const u8 = new Uint8Array(bin.length);
-    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-    buf = u8.buffer;
+    buf = await uriBytes(window.__MA_KIT);
   } else {
     buf = await (await fetch(url)).arrayBuffer();
   }
@@ -81,11 +117,8 @@ export async function loadKit(url) {
 export async function loadParts(url) {
   try {
     let buf;
-    if (window.__MA_PARTS) {
-      const bin = atob(window.__MA_PARTS.split(',')[1]); const u8 = new Uint8Array(bin.length);
-      for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
-      buf = u8.buffer;
-    } else if (window.__MA_KIT_LOAD) return KIT;
+    if (window.__MA_PARTS) buf = await uriBytes(window.__MA_PARTS);
+    else if (window.__MA_KIT_LOAD) return KIT;
     else buf = await (await fetch(url)).arrayBuffer();
     return await parseKit(buf);
   } catch (e) { console.warn('parts not loaded', e); return KIT; }
@@ -134,20 +167,22 @@ export function nodes(root) {
 const recolorCache = new Map();
 const PANEL_MATS = new Set(['Armor', 'Armor2', 'Accent']);
 const MECH_GLOW = { Visor: 0.28, NozzleGlow: 0.5 };
-export function recolor(root, palette, key, mech = false) {
+export function recolor(root, palette, key, mech = false, camo = 0) {
   root.traverse((o) => {
     if (!o.isMesh) return;
     const base = o.material.userData.base || o.material;
     const col = palette[base.name];
     if (!col && !mech) return;
-    const k = key + '|' + base.name + (mech ? '|m' : '');
+    const cm = mech && camo && base.name === 'Armor' ? camo : 0;
+    const k = key + '|' + base.name + (mech ? '|m' : '') + (cm ? '|c' + cm : '');
     let m = recolorCache.get(k);
     if (!m) {
       m = base.clone(); m.userData.base = base;
       if (col) m.color.set(col);
       if (palette[base.name + 'Emit']) m.emissive.set(palette[base.name + 'Emit']);
       if (mech && base.userData.glow && MECH_GLOW[base.name]) m.emissiveIntensity = base.emissiveIntensity * MECH_GLOW[base.name];
-      m.userData.wear = false; addWear(m, mech && PANEL_MATS.has(base.name));
+      const cols = cm ? { a: new THREE.Color(palette.Armor2 || '#888888'), b: new THREE.Color(palette.Armor || '#888888').multiplyScalar(0.2) } : null;
+      m.userData.wear = false; addWear(m, mech && PANEL_MATS.has(base.name), cm, cols);
       recolorCache.set(k, m);
     }
     o.material = m;
