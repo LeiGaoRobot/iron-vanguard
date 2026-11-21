@@ -2139,6 +2139,17 @@ export const RAIDERS = {
   raider: { name: '掠夺者 RAIDER', palette: 'raider', pattern: 'splinter', frame: 'std', parts: { head: 'mono', arms: 'brace', legs: 'tread' }, scale: 1.0, hp: 900, want: [36, 36], phases: [{ R: 'rifle', L: 'shotgun', S: 'missile' }], mul: { rifle: 0.1, shotgun: 0.15, missile: 0.14 } },
   lancer: { name: '枪骑兵 LANCER', palette: 'lancer', pattern: 'digital', frame: 'light', parts: { head: 'hawk', legs: 'hover', pack: 'jumpjet' }, scale: 0.96, hp: 700, want: [24, 24], agile: true, phases: [{ R: 'blade', L: 'gatling', S: 'cannon' }], mul: { blade: 0.13, gatling: 0.1, cannon: 0.2 } },
 };
+// Ace pilots (王牌机师): named enemy mechs that may drop into a mission once per run (main.js aceLogic). Raider brain,
+// their own parts / camo / paint; the first kill of each unlocks its paint for the player.
+export const ACES = {
+  ace_fox: { ace: true, name: '王牌 · 赤狐 RED FOX', short: '赤狐', en: 'Red Fox', trait: '轻型高机动 · 光束剑冲刺 · 霰弹贴身', palette: 'ace_fox', pattern: 'tiger', frame: 'light', parts: { head: 'crest', core: 'sleek', arms: 'fist', legs: 'rev', pack: 'sprint' }, scale: 1.0, hp: 4200, want: [18, 18], agile: true, phases: [{ R: 'blade', L: 'shotgun', S: 'missile' }], mul: { blade: 0.13, shotgun: 0.15, missile: 0.16 } },
+  ace_bastion: { ace: true, name: '王牌 · 铁壁 BASTION', short: '铁壁', en: 'Bastion', trait: '重装履带 · 能量护盾挡正面 · 加特林压制', palette: 'ace_bastion', pattern: 'digital', frame: 'heavy', parts: { head: 'mono', core: 'bulwark', arms: 'guard', legs: 'tread', pack: 'tank' }, scale: 1.12, hp: 6000, want: [32, 28], phases: [{ R: 'gatling', L: 'grenade', S: 'shield' }], mul: { gatling: 0.24, grenade: 0.34, shield: 0 } },
+  ace_white: { ace: true, name: '王牌 · 白夜 WHITE NIGHT', short: '白夜', en: 'White Night', trait: '远程狙击 · 磁轨炮 + 激光 · 拉开距离', palette: 'ace_white', pattern: 'hex', frame: 'std', parts: { head: 'hawk', arms: 'stab', legs: 'quad', pack: 'glide' }, scale: 1.0, hp: 4500, want: [58, 46], phases: [{ R: 'rail', L: 'rifle', S: 'laser' }], mul: { rail: 0.16, rifle: 0.13, laser: 0.2 } },
+  ace_viper: { ace: true, name: '王牌 · 毒蛇 VIPER', short: '毒蛇', en: 'Viper', trait: '悬浮游走 · 冷冻枪减速 · 放出无人机', palette: 'ace_viper', pattern: 'digital', frame: 'light', parts: { head: 'crest', core: 'sleek', legs: 'hover', pack: 'jumpjet' }, scale: 0.98, hp: 4200, want: [26, 24], agile: true, phases: [{ R: 'cryo', L: 'grenade', S: 'drones' }], mul: { cryo: 0.26, grenade: 0.3, drones: 0.2 } },
+  ace_meteor: { ace: true, name: '王牌 · 流星 METEOR', short: '流星', en: 'Meteor', trait: '空中强袭 · 线圈炮 + 加特林 · 飞弹齐射', palette: 'ace_meteor', pattern: 'none', frame: 'std', parts: { head: 'crest', core: 'reactor', arms: 'pod', legs: 'rev', pack: 'jumpjet' }, scale: 1.02, hp: 4800, want: [30, 26], agile: true, phases: [{ R: 'coil', L: 'gatling', S: 'missile' }], mul: { coil: 0.22, gatling: 0.2, missile: 0.22 } },
+  ace_thunder: { ace: true, name: '王牌 · 雷鸣 THUNDER', short: '雷鸣', en: 'Thunder', trait: '四足重炮 · 榴弹 + 加农炮 · 正面硬', palette: 'ace_thunder', pattern: 'splinter', frame: 'heavy', parts: { head: 'radar', core: 'reactor', arms: 'pod', legs: 'quad', pack: 'tank' }, scale: 1.15, hp: 5800, want: [40, 34], phases: [{ R: 'grenade', L: 'coil', S: 'cannon' }], mul: { grenade: 0.25, coil: 0.19, cannon: 0.3 } },
+};
+Object.assign(RAIDERS, ACES);
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
 const ECHO_SUB = { xswap: 'missile', antigrav: 'missile', ecan: 'rifle', arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
@@ -2155,6 +2166,7 @@ export class Boss {
     this.kind = 'boss'; this.type = type; this.r = 2.5 * B.scale; this.c = new V3(); this.alive = true; this.dying = false; this.flash = 0;
     this.mech = new Mech(G.scene, ctx, { palette: B.palette, pattern: B.pattern, frame: B.frame, parts: B.parts, cosmetic: true, scale: B.scale, isBoss: true, loadout: B.phases[0], yaw: Math.PI });
     if (RAIDERS[type]) { this.kind = 'raider'; this.r = 2.2 * B.scale; }
+    if (B.ace) this.isAce = true;
     this.mech.pos.copy(pos);
     this.maxHp = B.hp * G.diff.hp * hpMul; this.hp = this.maxHp; this.phase = 1;
     this.ws = { R: weaponState(B.phases[0].R), L: weaponState(B.phases[0].L), S: weaponState(B.phases[0].S) };

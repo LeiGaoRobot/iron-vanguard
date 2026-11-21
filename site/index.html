@@ -131,10 +131,12 @@ button.primary:hover { background: #9af0ff; }
 .opt:hover { border-color: var(--cyan); }
 .opt.on { background: rgba(95, 227, 255, 0.18); border-color: var(--cyan); color: #fff; }
 .opt small { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; }
-.opt.buy small { color: #f2c14e; } .opt.lock { opacity: 0.45; }
+.opt.buy small { color: #f2c14e; } .opt.nocr { opacity: 0.45; }
 .prow { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; } .prow .pl { flex: 0 0 34px; font-size: 12px; color: var(--dim); padding-top: 8px; } .prow .opts { flex: 1; }
 .sw { width: 34px; height: 34px; padding: 0; position: relative; }
 .sw i { position: absolute; inset: 4px; }
+.opt.ace { cursor: default; }
+.opt.ace i { display: inline-block; width: 12px; height: 12px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; }
 .stats { font-family: var(--num); font-size: 13px; color: var(--dim); margin-top: 8px; letter-spacing: 1px; }
 .stats b { color: var(--ink); }
 .res { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; font-size: 15px; margin-top: 14px; }
@@ -322,6 +324,7 @@ body.touchmode #mAlert { top: 30%; }
     <div style="display:flex; justify-content:space-between; align-items:baseline"><h2 style="margin:0; font-family: var(--num); letter-spacing: 4px">HANGAR</h2><span style="color:var(--dim); font-size:13px">机库 · 拖动画面旋转</span></div>
     <div class="gsec"><h3>强化 · 持有资金 <b id="gCr" class="crv">0 C</b></h3><div id="gUp"></div></div>
     <div class="gsec"><h3>涂装</h3><div class="opts" id="gPaint"></div><div class="opts" id="gCamo" style="margin-top:6px"></div></div>
+    <div class="gsec"><h3>王牌名录 ACES <small id="gAceN"></small></h3><div class="opts" id="gAces"></div></div>
     <div class="gsec"><h3>机体框架</h3><div class="opts" id="gFrame"></div></div>
     <div class="gsec" id="gPartsSec"><h3>机体部件 PARTS</h3><div class="opts" id="gBuild"></div><div id="gParts"></div><div class="stats" id="gStats"></div></div>
     <div class="gsec"><h3>右臂 · 左键</h3><div class="opts" id="gR"></div></div>
