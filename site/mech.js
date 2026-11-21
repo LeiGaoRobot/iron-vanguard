@@ -14,13 +14,6 @@ export const PALETTES = {
   raider: { name: '掠夺者', en: 'Raider', enemy: true, Armor: '#8a6a44', Armor2: '#3a3430', Accent: '#ff7a1a', Visor: '#ffb040', VisorEmit: '#ff8a10', NozzleGlow: '#ffc080', NozzleGlowEmit: '#ff8a30' },
   lancer: { name: '枪骑兵', en: 'Lancer', enemy: true, Armor: '#5a2a4a', Armor2: '#241c24', Accent: '#ff3ac0', Visor: '#ff70e0', VisorEmit: '#ff30c8', NozzleGlow: '#ff9ae8', NozzleGlowEmit: '#ff40c0' },
   echo: { name: '镜像', en: 'Echo', enemy: true, Armor: '#3a3e52', Armor2: '#16171f', Accent: '#ff2ad8', Visor: '#7ff4ff', VisorEmit: '#20e0ff', NozzleGlow: '#ff8af0', NozzleGlowEmit: '#ff30d0' },
-  // ace paints: worn by the ace pilots (combat.js ACES), unlocked for the player by the first kill of that ace
-  ace_fox: { name: '赤狐', en: 'Red Fox', ace: 'ace_fox', Armor: '#b8261c', Armor2: '#2a2426', Accent: '#ffb020', Visor: '#ffd060', VisorEmit: '#ffb020' },
-  ace_bastion: { name: '铁壁', en: 'Bastion', ace: 'ace_bastion', Armor: '#7d8288', Armor2: '#3d4247', Accent: '#ffd21a' },
-  ace_white: { name: '白夜', en: 'White Night', ace: 'ace_white', Armor: '#f4f6f8', Armor2: '#2c3440', Accent: '#30e0ff', Visor: '#80f0ff', VisorEmit: '#20d8ff' },
-  ace_viper: { name: '毒蛇', en: 'Viper', ace: 'ace_viper', Armor: '#2f5a2a', Armor2: '#141814', Accent: '#b0ff30', Visor: '#c0ff40', VisorEmit: '#90ff10' },
-  ace_meteor: { name: '流星', en: 'Meteor', ace: 'ace_meteor', Armor: '#c9a03a', Armor2: '#1c1a17', Accent: '#ff5a1a' },
-  ace_thunder: { name: '雷鸣', en: 'Thunder', ace: 'ace_thunder', Armor: '#4a2f78', Armor2: '#1d1a26', Accent: '#ffe020', Visor: '#ffe860', VisorEmit: '#ffd000' },
   tyrant: { name: '暴君', en: 'Tyrant', Armor: '#3b2627', Armor2: '#1d1e22', Accent: '#ff3a20', Visor: '#ff5a3a', VisorEmit: '#ff2a10', NozzleGlow: '#ffb070', NozzleGlowEmit: '#ff6a20' },
 };
 export const FRAMES = {

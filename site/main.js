@@ -12,7 +12,7 @@ import { AtmospherePass, makeRidge } from './post.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff, PHYS, MECHS, PARTS, PART_SLOTS, SLOT_NAMES, BUILDS, PATTERNS, partStats, partsReady } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, ACES, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, Leaper, LEAP, FLARE, Herald, HERALD, Tower, Citadel, Trooper, Shade, SHADE, LANE, Marshal, DECAP, startDecap, clearDecap, Dazzler, DAZZ, clearLinkB, Pulsar, PULSE, MAZE, startMaze, clearMaze, clearRings, clearBWalls, Forklift, FACT, startFactory, clearFactory, clearTBeams, TSU, Swapper, SWAP, startTsunami, clearTsunami, clearNano, tsuEta, inWave, BIO, Seeder, SEED, startBio, clearBio, clearPlOrbs, inCreep, ATOM, Bloater, BLOAT, startAtom, clearAtom, decaySpread, GLAD, Adaptor, ADAPT, Sprayer, SPRAY, Scrambler, SCRAM, FUSE, startFuse, clearFuse, fuseNear, POL, DYAD, Dyad, spawnDyads, startPolar, clearPolar, togglePol, setPol, polThreat, Raptor, RAPT, CTF, startCTF, clearCTF, Gyro, GYRO, BH, startBH, clearBH, AER, aerPads, startAerie, clearAerie, Swatter, SWAT, clearAG, NEM, Nemesis, nemPylons, startHunted, clearHunted, BUB, clearBubbles, TURF, startTurf, clearTurf, turfShare, turfAt, turfKill, startGlad, clearGlad, gladGate, gladKill, gladVentAt, clearSaws, Reviver, REVIVE, noteWreck, CAMO, clearCamo, clearWrecks, SABOT, startSabot, clearSabot, sabTarget, Weaver, WEAVE, HACK, hackable, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, clearWebs, clearHacks, Launcher, Cruise, SKY, startSky, clearSky, Courier, COURIER, COURIER_PATH, startPursuit, clearPursuit, Torcher, TORCH, clearFires, clearNets, Dish, Anchor, ANCHOR, LANCE, startLance, clearLance, Engineer, ENG, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, clearBurn, startLane, clearLane, laneObjective, laneEscorted, clearRBeam, Bastion, Hijacker, HIJACK, FORT, FORT_PADS, startFort, clearFort, padAction, fortGoal, clearRefl, Scav, SCAV, SALV, startSalvage, clearSalvage, dropCores, nearestCore, Planter, PLANT, DEPOT, startDepots, clearDepots, nearestCharge, Lurker, LURK, FOG, startFog, clearFog, fogSeen, fogFar, resetRewind, Snatcher, SNATCH, SUPPLY, startSupply, clearSupply, nearestCrate, Disarmer, DISARM, RIFT, startRifts, clearRifts, Leech, LEECH, TRAFFIC, startTraffic, clearTraffic, truckAhead, THUNDER, startThunder, clearThunder, rodCover, clearRods, startFlares, clearFlares, inShade, resetNeedles, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, Leaper, LEAP, FLARE, Herald, HERALD, Tower, Citadel, Trooper, Shade, SHADE, LANE, Marshal, DECAP, startDecap, clearDecap, Dazzler, DAZZ, clearLinkB, Pulsar, PULSE, MAZE, startMaze, clearMaze, clearRings, clearBWalls, Forklift, FACT, startFactory, clearFactory, clearTBeams, TSU, Swapper, SWAP, startTsunami, clearTsunami, clearNano, tsuEta, inWave, BIO, Seeder, SEED, startBio, clearBio, clearPlOrbs, inCreep, ATOM, Bloater, BLOAT, startAtom, clearAtom, decaySpread, GLAD, Adaptor, ADAPT, Sprayer, SPRAY, Scrambler, SCRAM, FUSE, startFuse, clearFuse, fuseNear, POL, DYAD, Dyad, spawnDyads, startPolar, clearPolar, togglePol, setPol, polThreat, Raptor, RAPT, CTF, startCTF, clearCTF, Gyro, GYRO, BH, startBH, clearBH, AER, aerPads, startAerie, clearAerie, Swatter, SWAT, clearAG, NEM, Nemesis, nemPylons, startHunted, clearHunted, BUB, clearBubbles, TURF, startTurf, clearTurf, turfShare, turfAt, turfKill, startGlad, clearGlad, gladGate, gladKill, gladVentAt, clearSaws, Reviver, REVIVE, noteWreck, CAMO, clearCamo, clearWrecks, SABOT, startSabot, clearSabot, sabTarget, Weaver, WEAVE, HACK, hackable, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, clearWebs, clearHacks, Launcher, Cruise, SKY, startSky, clearSky, Courier, COURIER, COURIER_PATH, startPursuit, clearPursuit, Torcher, TORCH, clearFires, clearNets, Dish, Anchor, ANCHOR, LANCE, startLance, clearLance, Engineer, ENG, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, clearBurn, startLane, clearLane, laneObjective, laneEscorted, clearRBeam, Bastion, Hijacker, HIJACK, FORT, FORT_PADS, startFort, clearFort, padAction, fortGoal, clearRefl, Scav, SCAV, SALV, startSalvage, clearSalvage, dropCores, nearestCore, Planter, PLANT, DEPOT, startDepots, clearDepots, nearestCharge, Lurker, LURK, FOG, startFog, clearFog, fogSeen, fogFar, resetRewind, Snatcher, SNATCH, SUPPLY, startSupply, clearSupply, nearestCrate, Disarmer, DISARM, RIFT, startRifts, clearRifts, Leech, LEECH, TRAFFIC, startTraffic, clearTraffic, truckAhead, THUNDER, startThunder, clearThunder, rodCover, clearRods, startFlares, clearFlares, inShade, resetNeedles, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 // rail loop for the train mission: a 118 x 82 m oval, closed (last point == first)
@@ -1122,7 +1122,7 @@ function newGame() {
   G.od = { k: 0, t: 0, ringT: 0, dur: OD.dur + (chipOn('cap') ? 3 : 0) }; G.odGain = (chipOn('cap') ? 1.4 : 1) * (G.player.frame.od || 1); G.hurtAt = -99;
   $('coreName').textContent = G.core ? (M.creep ? '净化塔 PURIFIER' : M.convoy ? '运输车 CONVOY' : M.lane ? '基地 HQ' : '反应堆 REACTOR') : '';
   if (wingOn()) { G.wing = new Wingman(scene, mctx, cfg.palette === 'kestrel' ? 'vanguard' : 'kestrel'); G.friends.push(G.wing); }
-  aceReset(); run.coreLost = false; run.trainLost = false; run.depotLost = false; run.salvage = !!M.salvage; run.quota = M.quota || 0; run.fortify = !!M.fortify; run.hackSaid = false; run.decap = !!M.decap; run.dcT = 16; run.dcN = 0; run.vipLost = false; run.dcWarn = 0; run.sabot = !!M.sabot; run.sbT = 14; run.sbN = 0; run.sbBoss = false; run.orbLost = false; run.sbWarn = 0; run.rescue = !!M.rescue; run.rsT = 10; run.rsN = 0; run.rsCap = 5; run.rsBoss = false; run.civLost = false; run.sky = !!M.sky; run.skyW = 0; run.skyBreak = 5; run.skyT = 16; run.skyB = 12; run.cityLost = false; run.pursuit = !!M.pursuit; run.prsT = 10; run.prsN = 0; run.dataLost = false; run.lance = !!M.lance; run.factory = !!M.factory; run.ctf = !!M.ctf; run.hunted = !!M.hunted; run.hnT = 26; run.hnSq = 0; run.nemT = NEM.spawnT; run.aerie = !!M.aerie; run.aeSqT = 30; run.aeSq = 0; run.singularity = !!M.singularity; run.bhSqT = 22; run.bhSq = 0; run.flagLost = false; run.rpT = 7; run.sqT = 26; run.ctfSq = 0; run.raidSaid = false; run.fcT = 20; run.tsunami = !!M.tsunami; run.tsT = 18; run.tsN = 0; run.creep = !!M.creep; run.crT = 16; run.crN = 0; run.seedT = 14; run.glad = !!M.glad; run.turf = !!M.turf; run.hf = !!M.hotfuse; run.tfC = 0; run.tfT = 10; run.tfN = 0; run.tfLast = false; run.tfBoss = false; run.turfLost = false; run.gRound = -1; run.gT = 5; run.gBreak = false; run.gq = []; run.gRe = false; run.gN0 = 0; run.hypeLost = false; run.hypeMsg = ''; run.hypeMsgT = 0; run.meltdown = !!M.meltdown; run.mdT = 20; run.mdN = 0; run.blT = 10; run.meltLost = false; run.lcnT = 6; run.lcnN = 0; run.beacon = !!M.beacon; run.bcnT = 3; run.bcnN = 0; run.timeUp = false; run.lane = !!M.lane; run.laneT = 8; run.laneN = 0; run.shadeSaid = false; run.squadSaid = false; run.armorSaid = false;
+  run.coreLost = false; run.trainLost = false; run.depotLost = false; run.salvage = !!M.salvage; run.quota = M.quota || 0; run.fortify = !!M.fortify; run.hackSaid = false; run.decap = !!M.decap; run.dcT = 16; run.dcN = 0; run.vipLost = false; run.dcWarn = 0; run.sabot = !!M.sabot; run.sbT = 14; run.sbN = 0; run.sbBoss = false; run.orbLost = false; run.sbWarn = 0; run.rescue = !!M.rescue; run.rsT = 10; run.rsN = 0; run.rsCap = 5; run.rsBoss = false; run.civLost = false; run.sky = !!M.sky; run.skyW = 0; run.skyBreak = 5; run.skyT = 16; run.skyB = 12; run.cityLost = false; run.pursuit = !!M.pursuit; run.prsT = 10; run.prsN = 0; run.dataLost = false; run.lance = !!M.lance; run.factory = !!M.factory; run.ctf = !!M.ctf; run.hunted = !!M.hunted; run.hnT = 26; run.hnSq = 0; run.nemT = NEM.spawnT; run.aerie = !!M.aerie; run.aeSqT = 30; run.aeSq = 0; run.singularity = !!M.singularity; run.bhSqT = 22; run.bhSq = 0; run.flagLost = false; run.rpT = 7; run.sqT = 26; run.ctfSq = 0; run.raidSaid = false; run.fcT = 20; run.tsunami = !!M.tsunami; run.tsT = 18; run.tsN = 0; run.creep = !!M.creep; run.crT = 16; run.crN = 0; run.seedT = 14; run.glad = !!M.glad; run.turf = !!M.turf; run.hf = !!M.hotfuse; run.tfC = 0; run.tfT = 10; run.tfN = 0; run.tfLast = false; run.tfBoss = false; run.turfLost = false; run.gRound = -1; run.gT = 5; run.gBreak = false; run.gq = []; run.gRe = false; run.gN0 = 0; run.hypeLost = false; run.hypeMsg = ''; run.hypeMsgT = 0; run.meltdown = !!M.meltdown; run.mdT = 20; run.mdN = 0; run.blT = 10; run.meltLost = false; run.lcnT = 6; run.lcnN = 0; run.beacon = !!M.beacon; run.bcnT = 3; run.bcnN = 0; run.timeUp = false; run.lane = !!M.lane; run.laneT = 8; run.laneN = 0; run.shadeSaid = false; run.squadSaid = false; run.armorSaid = false;
   run.ring = M.storm ? { x: 0, z: 0, r: STORM.r0, x0: 0, z0: 0, r0: STORM.r0, x1: 0, z1: 0, r1: STORM.r0, t: 0, T: 1, wait: 0, outT: 0, said: false } : null; G.ring = run.ring; G.tether = null; G.blinkInv = 0; G.grapHits = 0; G.snaps = 0; G.blinks = 0; G.stormT = 0; run.tetherSaid = false;
   stormWall.visible = !!M.storm; stormNext.visible = false;
   run.extract = !!M.extract; run.dlN = 0; run.got = 0; run.evac = null; run.lateBoss = null;
@@ -1346,7 +1346,6 @@ function spawnGroup(S, R = 1, b) {
 }
 
 G.onKill = (e) => {
-  if (e.isAce) aceKilled(e);
   noteWreck(e); decaySpread(e); gladKill(e); turfKill(e);
   G.hud.kill = 0.3;
   const T = save.tally; T.all = (T.all || 0) + 1; T[e.kind] = (T[e.kind] || 0) + 1;
@@ -1425,57 +1424,11 @@ function updateOD(dt) {
   if (o.t <= 0) { showHint('超载结束', 1.6); sfx('odend'); }
 }
 
-// ---- v63.2 ace pilots (combat.js ACES): in 35% of runs one named ace drops in 45-120 s after the sortie (it waits
-// while a boss is up). Unbeaten aces are picked first. Kill: +1500 C (difficulty-scaled) and, the first time, its paint.
-const ACE_CHANCE = 0.35, ACE_BONUS = 1500, ACE_SKIP = new Set(['mirror', 'gauntlet', 'coliseum']);
-function aceWon(id) { return !!(save.aces && save.aces[id]); }
-function aceReset() {
-  const M = MISSIONS[cfg.mission];
-  run.aceE = null;
-  run.aceT = M && !ACE_SKIP.has(cfg.mission) && Math.random() < ACE_CHANCE ? 45 + Math.random() * 75 : Infinity;
-}
-function aceSpawn(id) {
-  const ids = Object.keys(ACES);
-  if (!id) { const fresh = ids.filter((k) => !aceWon(k)); const pool = fresh.length && Math.random() < 0.7 ? fresh : ids; id = pool[Math.floor(Math.random() * pool.length)]; }
-  const A = ACES[id]; if (!A) return null;
-  const e = new Boss(spot(80, 110), mctx, id, 1);
-  run.aceE = e; run.aceT = Infinity;
-  if (!save.aceSeen) save.aceSeen = {};
-  save.aceSeen[id] = true; writeSave();
-  banner('王牌出击 · ' + A.short, `${A.trait} · 击败可解锁「${A.short}」涂装`, true); sfx('alarm');
-  fx.ring(e.mech.pos.clone(), null, 2, 14, 0.6, 0xffd040);
-  return e;
-}
-function aceLogic() {
-  if (!(run.t >= run.aceT) || run.won || !G.player.alive) return;
-  if (G.bosses && G.bosses.some((b) => b && b.alive)) { run.aceT = run.t + 10; return; }
-  aceSpawn();
-}
-function aceKilled(e) {
-  const A = ACES[e.type]; if (!A) return;
-  if (!save.aces) save.aces = {};
-  const first = !save.aces[e.type];
-  save.aces[e.type] = (save.aces[e.type] || 0) + 1; writeSave();
-  const bonus = Math.round(ACE_BONUS * DIFFS[cfg.diff].cr);
-  run.cr += bonus; G.hud.cr = 1.2;
-  banner('击败王牌 · ' + A.short, `+${bonus} C` + (first ? ` · 解锁涂装「${A.short}」` : ''), false); sfx('medal');
-}
-function buildAces() {
-  const el = $('gAces'); if (!el) return;
-  const ids = Object.keys(ACES), n = $('gAceN');
-  if (n) n.textContent = `${ids.filter(aceWon).length} / ${ids.length}`;
-  el.innerHTML = ids.map((k) => {
-    const A = ACES[k], P = PALETTES[A.palette], seen = !!(save.aceSeen && save.aceSeen[k]), w = (save.aces || {})[k] || 0;
-    const sw = seen ? `linear-gradient(135deg, ${P.Armor} 0 55%, ${P.Accent} 55% 75%, ${P.Armor2} 75%)` : '#2a2d33';
-    return `<div class="opt ace${w ? ' on' : ''}"><i style="background:${sw}"></i>${seen ? A.short : '？？？'}<small>${w ? `击败 ${w} 次 · 涂装已解锁` : seen ? A.trait : '尚未遭遇'}</small></div>`;
-  }).join('');
-}
 function waveLogic(dt) {
   const p = G.player;
   if (run.over) return;
   run.t += dt;
   if (run.ring) stormLogic(dt);
-  aceLogic();
   if (G.hf) G.hf.pause = run.breakT > 0 || !!run.won;
   if (G.polar) G.polar.pause = run.breakT > 0 || !!run.won;
   if (!p.alive) {
@@ -2983,7 +2936,7 @@ function buildGarage() {
   buildUpgrades();
   const opt = (html, on, fn, cls = '') => { const d = document.createElement('div'); d.className = 'opt ' + cls + (on ? ' on' : ''); d.innerHTML = html; d.onclick = () => { sfx('ui'); fn(); saveCfg(); buildGarage(); }; return d; };
   const fill = (id, items) => { const el = $(id); el.innerHTML = ''; items.forEach((i) => el.appendChild(i)); };
-  fill('gPaint', Object.entries(PALETTES).filter(([k, p]) => k !== 'tyrant' && !p.enemy && (!p.ace || aceWon(p.ace))).map(([k, p]) =>
+  fill('gPaint', Object.entries(PALETTES).filter(([k, p]) => k !== 'tyrant' && !p.enemy).map(([k, p]) =>
     opt(`<i style="background:linear-gradient(135deg, ${p.Armor} 0 55%, ${p.Accent} 55% 75%, ${p.Armor2} 75%)"></i>`, cfg.palette === k, () => { cfg.palette = k; G.player.setPalette(k); }, 'sw')));
   if ($('gCamo')) {   // camouflage: bought once with credits, then free to switch
     if (!save.pats) save.pats = {};
@@ -2996,7 +2949,6 @@ function buildGarage() {
       }, !own && save.cr < P.cost ? 'lock' : '');
     }));
   }
-  buildAces();
   fill('gFrame', Object.entries(FRAMES).map(([k, f]) => opt(`${f.name}<small>${f.en}</small>`, cfg.frame === k, () => { cfg.frame = k; rebuildPreview(); })));
   buildParts(opt, fill);
   const F = G.player.frame, xs = (k, lab) => (F[k] !== 1 ? ` · ${lab} <b>×${F[k].toFixed(2)}</b>` : '');
@@ -3490,7 +3442,6 @@ function drawHUD(dt) {
     if (e.kind === 'relay' || e.kind === 'aerogen' || e.kind === 'injector' || e.kind === 'dish' || e.kind === 'fab' || e.kind === 'pump' || e.kind === 'bionode' || e.kind === 'courier' || e.kind === 'launcher' || e.kind === 'tower' || e.kind === 'citadel') { rctx.fillStyle = e.kind === 'citadel' && e.shielded ? '#ff6040' : '#ffd23a'; rctx.save(); rctx.translate(x, z); rctx.rotate(Math.PI / 4); rctx.fillRect(-6, -6, 12, 12); rctx.restore(); continue; }
     rctx.fillStyle = e.kind === 'boss' ? '#ff8a1a' : '#ff4a3a';
     if (e.kind === 'raider') rctx.fillStyle = '#ff9a5a';
-    if (e.isAce) rctx.fillStyle = '#ffd040';
     const s = e.kind === 'boss' ? 9 : e.kind === 'gunship' || e.kind === 'raider' ? 8 : e.kind === 'walker' || e.kind === 'bulwark' ? 7 : 5;
     rctx.fillRect(x - s / 2, z - s / 2, s, s);
   }
@@ -3922,7 +3873,6 @@ function render(dt) {
 // ------------------------------------------------------------------ test hooks
 window.__iv = {
   G, cam, cfg, auto, run, fx,
-  ace: (id) => aceSpawn(id),
   state: () => state,
   start: (o = {}) => { Object.assign(cfg, o); sortie(); if (!pointerLocked) freeMouse = true; mouse.x = innerWidth / 2; mouse.y = innerHeight / 2; },
   step: (n = 1) => { for (let i = 0; i < n; i++) step(1 / 60); render(1 / 60); },
