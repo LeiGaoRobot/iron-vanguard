@@ -128,10 +128,12 @@ button.primary:hover { background: #9af0ff; }
 .opt:hover { border-color: var(--cyan); }
 .opt.on { background: rgba(95, 227, 255, 0.18); border-color: var(--cyan); color: #fff; }
 .opt small { display: block; color: var(--dim); font-size: 11px; margin-top: 2px; }
-.opt.buy small { color: #f2c14e; } .opt.lock { opacity: 0.45; }
+.opt.buy small { color: #f2c14e; } .opt.nocr { opacity: 0.45; }
 .prow { display: flex; gap: 8px; align-items: flex-start; margin-top: 6px; } .prow .pl { flex: 0 0 34px; font-size: 12px; color: var(--dim); padding-top: 8px; } .prow .opts { flex: 1; }
 .sw { width: 34px; height: 34px; padding: 0; position: relative; }
 .sw i { position: absolute; inset: 4px; }
+.opt.ace { cursor: default; }
+.opt.ace i { display: inline-block; width: 12px; height: 12px; margin-right: 5px; vertical-align: -1px; border-radius: 2px; }
 .stats { font-family: var(--num); font-size: 13px; color: var(--dim); margin-top: 8px; letter-spacing: 1px; }
 .stats b { color: var(--ink); }
 .res { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; font-size: 15px; margin-top: 14px; }
@@ -319,6 +321,7 @@ body.touchmode #mAlert { top: 30%; }
     <div style="display:flex; justify-content:space-between; align-items:baseline"><h2 style="margin:0; font-family: var(--num); letter-spacing: 4px">HANGAR</h2><span style="color:var(--dim); font-size:13px">机库 · 拖动画面旋转</span></div>
     <div class="gsec"><h3>强化 · 持有资金 <b id="gCr" class="crv">0 C</b></h3><div id="gUp"></div></div>
     <div class="gsec"><h3>涂装</h3><div class="opts" id="gPaint"></div><div class="opts" id="gCamo" style="margin-top:6px"></div></div>
+    <div class="gsec"><h3>王牌名录 ACES <small id="gAceN"></small></h3><div class="opts" id="gAces"></div></div>
     <div class="gsec"><h3>机体框架</h3><div class="opts" id="gFrame"></div></div>
     <div class="gsec" id="gPartsSec"><h3>机体部件 PARTS</h3><div class="opts" id="gBuild"></div><div id="gParts"></div><div class="stats" id="gStats"></div></div>
     <div class="gsec"><h3>右臂 · 左键</h3><div class="opts" id="gR"></div></div>
@@ -2199,6 +2202,13 @@ const PALETTES = {
   raider: { name: '掠夺者', en: 'Raider', enemy: true, Armor: '#8a6a44', Armor2: '#3a3430', Accent: '#ff7a1a', Visor: '#ffb040', VisorEmit: '#ff8a10', NozzleGlow: '#ffc080', NozzleGlowEmit: '#ff8a30' },
   lancer: { name: '枪骑兵', en: 'Lancer', enemy: true, Armor: '#5a2a4a', Armor2: '#241c24', Accent: '#ff3ac0', Visor: '#ff70e0', VisorEmit: '#ff30c8', NozzleGlow: '#ff9ae8', NozzleGlowEmit: '#ff40c0' },
   echo: { name: '镜像', en: 'Echo', enemy: true, Armor: '#3a3e52', Armor2: '#16171f', Accent: '#ff2ad8', Visor: '#7ff4ff', VisorEmit: '#20e0ff', NozzleGlow: '#ff8af0', NozzleGlowEmit: '#ff30d0' },
+  // ace paints: worn by the ace pilots (combat.js ACES), unlocked for the player by the first kill of that ace
+  ace_fox: { name: '赤狐', en: 'Red Fox', ace: 'ace_fox', Armor: '#b8261c', Armor2: '#2a2426', Accent: '#ffb020', Visor: '#ffd060', VisorEmit: '#ffb020' },
+  ace_bastion: { name: '铁壁', en: 'Bastion', ace: 'ace_bastion', Armor: '#7d8288', Armor2: '#3d4247', Accent: '#ffd21a' },
+  ace_white: { name: '白夜', en: 'White Night', ace: 'ace_white', Armor: '#f4f6f8', Armor2: '#2c3440', Accent: '#30e0ff', Visor: '#80f0ff', VisorEmit: '#20d8ff' },
+  ace_viper: { name: '毒蛇', en: 'Viper', ace: 'ace_viper', Armor: '#2f5a2a', Armor2: '#141814', Accent: '#b0ff30', Visor: '#c0ff40', VisorEmit: '#90ff10' },
+  ace_meteor: { name: '流星', en: 'Meteor', ace: 'ace_meteor', Armor: '#c9a03a', Armor2: '#1c1a17', Accent: '#ff5a1a' },
+  ace_thunder: { name: '雷鸣', en: 'Thunder', ace: 'ace_thunder', Armor: '#4a2f78', Armor2: '#1d1a26', Accent: '#ffe020', Visor: '#ffe860', VisorEmit: '#ffd000' },
   tyrant: { name: '暴君', en: 'Tyrant', Armor: '#3b2627', Armor2: '#1d1e22', Accent: '#ff3a20', Visor: '#ff5a3a', VisorEmit: '#ff2a10', NozzleGlow: '#ffb070', NozzleGlowEmit: '#ff6a20' },
 };
 const FRAMES = {
@@ -2658,7 +2668,7 @@ class Mech {
 return { PALETTES, FRAMES, PART_SLOTS, SLOT_NAMES, PARTS, BUILDS, PATTERNS, partStats, partsReady, partsV2, PHYS, angDiff, MECHS, Mech };
 })();
 // ---------------- combat.js ----------------
-const { G, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, rayEnts, enemyEnts, OD, hurtPlayer, explodeAt, spawnShot, weaponTick, Decoy, Sentry, smokeBlocks, clearSmokes, clearHooks, clearDiscs, clearStrikes, clearAG, clearWells, updateDecoys, clearDecoys, clearMinis, shieldBlock, pickTarget, Turret, Drone, Walker, PRISM, Prism, Bulwark, Gunship, Relay, BOSSES, RAIDERS, setEcho, Boss, Colossus, TRAIN, Train, Stalker, Mender, Crawler, clearChill, Burrower, Sapper, clearMines, JAM_R, GRAP, Grappler, EEL, Eel, JET, Jet, SPLIT, Splitter, METEOR, clearMeteors, Skimmer, LEV, Leviathan, Jammer, Howitzer, domeAt, Warden, Dropship, FENCE, Fencer, stasisK, clearStasis, ACID, clearAcid, startAcid, HIVE, Hive, Swarm, GRIDZ, clearGrid, TWIST, clearTwisters, startTwisters, BLINK, Blinker, WATCH, Watchtower, clearBarrage, ICE, FROST, startIce, clearIce, addPChill, Frostcaster, WIND, startWind, clearWind, BLIMP, Airship, clearStickies, MIRAGE, HoloDrone, Mirage, MAGNET, clearCranes, startCranes, DEFL, Deflector, RAM, Rammer, QUAKE, startQuakes, clearQuakes, fissureDist, RICO, LEAP, Leaper, RAPT, CTF_LANE_X, Raptor, CTF, startCTF, clearCTF, NEM, nemPylons, Nemesis, startHunted, clearHunted, AER, aerPads, AeroGen, startAerie, clearAerie, SWAT, Swatter, BH, Injector, startBH, clearBH, GYRO, Gyro, FLARE, startFlares, clearFlares, inShade, THUNDER, RODS_AT, startThunder, clearThunder, rodCover, Rod, clearRods, HERALD, Herald, TRAFFIC, startTraffic, clearTraffic, laneOf, truckAhead, LEECH, Leech, CORR, SUPPLY, startSupply, clearSupply, empower, nearestCrate, SNATCH, Snatcher, RIFT, startRifts, clearRifts, nearestRift, DEPOT, startDepots, clearDepots, depotTarget, plantCharge, nearestCharge, PLANT, Planter, SALV, FORT, FORT_PADS, HIJACK, startFort, clearFort, padAction, fortGoal, Bastion, Hijacker, clearRefl, LANE, SHADE, startLane, clearLane, laneEscorted, laneObjective, Shade, Tower, Citadel, Trooper, clearRBeam, startSalvage, clearSalvage, dropCores, nearestCore, takeCore, SCAV, Scav, FOG, startFog, clearFog, fogFar, fogSeen, LURK, Lurker, resetRewind, DISARM, jamPlayer, Disarmer, NEEDLE, resetNeedles, clearPMines, dropRepair, updateBurn, clearBurn, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, updateBeacon, ENG, Engineer, LANCE, Dish, startLance, clearLance, updateLance, ANCHOR, Anchor, updateGrav, SKY, Launcher, Cruise, startSky, clearSky, WEAVE, HACK, webAt, clearWebs, Weaver, hackable, clearHacks, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, COURIER, COURIER_PATH, Courier, startPursuit, clearPursuit, TORCH, Torcher, clearFires, clearNets, CAMO, camoHidden, clearCamo, REVIVE, noteWreck, clearWrecks, Reviver, SABOT, startSabot, clearSabot, sabTarget, DAZZ, Dazzler, DECAP, Marshal, startDecap, clearDecap, clearLinkB, MAZE, startMaze, clearMaze, PULSE, clearRings, Pulsar, clearBWalls, FACT, Fabricator, startFactory, clearFactory, TSU, TidePump, startTsunami, clearTsunami, tsuEta, inWave, SWAP, Swapper, clearNano, BIO, inCreep, BioNode, Tumor, startBio, clearBio, seedSpot, SEED, Seeder, clearPlOrbs, ATOM, radAt, startAtom, clearAtom, atomPuddle, BLOAT, Bloater, DECAY, decaySpread, FORK, Forklift, clearTBeams, updateCombat, GLAD, startGlad, clearGlad, gladGate, gladKill, gladVentAt, adaptCat, ADAPT, Adaptor, castSaws, clearSaws, TURF, startTurf, clearTurf, turfShare, turfAt, paintAt, turfKill, updateTurf, SPRAY, Sprayer, FUSE, startFuse, clearFuse, fuseNear, fuseDrives, updateFuse, BUB, clearBubbles, SCRAM, Scrambler, POL, startPolar, clearPolar, setPol, togglePol, updatePolar, polThreat, DYAD, spawnDyads, Dyad } = (() => {
+const { G, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, rayEnts, enemyEnts, OD, hurtPlayer, explodeAt, spawnShot, weaponTick, Decoy, Sentry, smokeBlocks, clearSmokes, clearHooks, clearDiscs, clearStrikes, clearAG, clearWells, updateDecoys, clearDecoys, clearMinis, shieldBlock, pickTarget, Turret, Drone, Walker, PRISM, Prism, Bulwark, Gunship, Relay, BOSSES, RAIDERS, ACES, setEcho, Boss, Colossus, TRAIN, Train, Stalker, Mender, Crawler, clearChill, Burrower, Sapper, clearMines, JAM_R, GRAP, Grappler, EEL, Eel, JET, Jet, SPLIT, Splitter, METEOR, clearMeteors, Skimmer, LEV, Leviathan, Jammer, Howitzer, domeAt, Warden, Dropship, FENCE, Fencer, stasisK, clearStasis, ACID, clearAcid, startAcid, HIVE, Hive, Swarm, GRIDZ, clearGrid, TWIST, clearTwisters, startTwisters, BLINK, Blinker, WATCH, Watchtower, clearBarrage, ICE, FROST, startIce, clearIce, addPChill, Frostcaster, WIND, startWind, clearWind, BLIMP, Airship, clearStickies, MIRAGE, HoloDrone, Mirage, MAGNET, clearCranes, startCranes, DEFL, Deflector, RAM, Rammer, QUAKE, startQuakes, clearQuakes, fissureDist, RICO, LEAP, Leaper, RAPT, CTF_LANE_X, Raptor, CTF, startCTF, clearCTF, NEM, nemPylons, Nemesis, startHunted, clearHunted, AER, aerPads, AeroGen, startAerie, clearAerie, SWAT, Swatter, BH, Injector, startBH, clearBH, GYRO, Gyro, FLARE, startFlares, clearFlares, inShade, THUNDER, RODS_AT, startThunder, clearThunder, rodCover, Rod, clearRods, HERALD, Herald, TRAFFIC, startTraffic, clearTraffic, laneOf, truckAhead, LEECH, Leech, CORR, SUPPLY, startSupply, clearSupply, empower, nearestCrate, SNATCH, Snatcher, RIFT, startRifts, clearRifts, nearestRift, DEPOT, startDepots, clearDepots, depotTarget, plantCharge, nearestCharge, PLANT, Planter, SALV, FORT, FORT_PADS, HIJACK, startFort, clearFort, padAction, fortGoal, Bastion, Hijacker, clearRefl, LANE, SHADE, startLane, clearLane, laneEscorted, laneObjective, Shade, Tower, Citadel, Trooper, clearRBeam, startSalvage, clearSalvage, dropCores, nearestCore, takeCore, SCAV, Scav, FOG, startFog, clearFog, fogFar, fogSeen, LURK, Lurker, resetRewind, DISARM, jamPlayer, Disarmer, NEEDLE, resetNeedles, clearPMines, dropRepair, updateBurn, clearBurn, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, updateBeacon, ENG, Engineer, LANCE, Dish, startLance, clearLance, updateLance, ANCHOR, Anchor, updateGrav, SKY, Launcher, Cruise, startSky, clearSky, WEAVE, HACK, webAt, clearWebs, Weaver, hackable, clearHacks, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, COURIER, COURIER_PATH, Courier, startPursuit, clearPursuit, TORCH, Torcher, clearFires, clearNets, CAMO, camoHidden, clearCamo, REVIVE, noteWreck, clearWrecks, Reviver, SABOT, startSabot, clearSabot, sabTarget, DAZZ, Dazzler, DECAP, Marshal, startDecap, clearDecap, clearLinkB, MAZE, startMaze, clearMaze, PULSE, clearRings, Pulsar, clearBWalls, FACT, Fabricator, startFactory, clearFactory, TSU, TidePump, startTsunami, clearTsunami, tsuEta, inWave, SWAP, Swapper, clearNano, BIO, inCreep, BioNode, Tumor, startBio, clearBio, seedSpot, SEED, Seeder, clearPlOrbs, ATOM, radAt, startAtom, clearAtom, atomPuddle, BLOAT, Bloater, DECAY, decaySpread, FORK, Forklift, clearTBeams, updateCombat, GLAD, startGlad, clearGlad, gladGate, gladKill, gladVentAt, adaptCat, ADAPT, Adaptor, castSaws, clearSaws, TURF, startTurf, clearTurf, turfShare, turfAt, paintAt, turfKill, updateTurf, SPRAY, Sprayer, FUSE, startFuse, clearFuse, fuseNear, fuseDrives, updateFuse, BUB, clearBubbles, SCRAM, Scrambler, POL, startPolar, clearPolar, setPol, togglePol, updatePolar, polThreat, DYAD, spawnDyads, Dyad } = (() => {
 // Weapons, projectiles, enemies, damage.  Shared state lives in G.
 
 
@@ -4799,6 +4809,17 @@ const RAIDERS = {
   raider: { name: '掠夺者 RAIDER', palette: 'raider', pattern: 'splinter', frame: 'std', parts: { head: 'mono', arms: 'brace', legs: 'tread' }, scale: 1.0, hp: 900, want: [36, 36], phases: [{ R: 'rifle', L: 'shotgun', S: 'missile' }], mul: { rifle: 0.1, shotgun: 0.15, missile: 0.14 } },
   lancer: { name: '枪骑兵 LANCER', palette: 'lancer', pattern: 'digital', frame: 'light', parts: { head: 'hawk', legs: 'hover', pack: 'jumpjet' }, scale: 0.96, hp: 700, want: [24, 24], agile: true, phases: [{ R: 'blade', L: 'gatling', S: 'cannon' }], mul: { blade: 0.13, gatling: 0.1, cannon: 0.2 } },
 };
+// Ace pilots (王牌机师): named enemy mechs that may drop into a mission once per run (main.js aceLogic). Raider brain,
+// their own parts / camo / paint; the first kill of each unlocks its paint for the player.
+const ACES = {
+  ace_fox: { ace: true, name: '王牌 · 赤狐 RED FOX', short: '赤狐', en: 'Red Fox', trait: '轻型高机动 · 光束剑冲刺 · 霰弹贴身', palette: 'ace_fox', pattern: 'tiger', frame: 'light', parts: { head: 'crest', core: 'sleek', arms: 'fist', legs: 'rev', pack: 'sprint' }, scale: 1.0, hp: 4200, want: [18, 18], agile: true, phases: [{ R: 'blade', L: 'shotgun', S: 'missile' }], mul: { blade: 0.13, shotgun: 0.15, missile: 0.16 } },
+  ace_bastion: { ace: true, name: '王牌 · 铁壁 BASTION', short: '铁壁', en: 'Bastion', trait: '重装履带 · 能量护盾挡正面 · 加特林压制', palette: 'ace_bastion', pattern: 'digital', frame: 'heavy', parts: { head: 'mono', core: 'bulwark', arms: 'guard', legs: 'tread', pack: 'tank' }, scale: 1.12, hp: 6000, want: [32, 28], phases: [{ R: 'gatling', L: 'grenade', S: 'shield' }], mul: { gatling: 0.24, grenade: 0.34, shield: 0 } },
+  ace_white: { ace: true, name: '王牌 · 白夜 WHITE NIGHT', short: '白夜', en: 'White Night', trait: '远程狙击 · 磁轨炮 + 激光 · 拉开距离', palette: 'ace_white', pattern: 'hex', frame: 'std', parts: { head: 'hawk', arms: 'stab', legs: 'quad', pack: 'glide' }, scale: 1.0, hp: 4500, want: [58, 46], phases: [{ R: 'rail', L: 'rifle', S: 'laser' }], mul: { rail: 0.16, rifle: 0.13, laser: 0.2 } },
+  ace_viper: { ace: true, name: '王牌 · 毒蛇 VIPER', short: '毒蛇', en: 'Viper', trait: '悬浮游走 · 冷冻枪减速 · 放出无人机', palette: 'ace_viper', pattern: 'digital', frame: 'light', parts: { head: 'crest', core: 'sleek', legs: 'hover', pack: 'jumpjet' }, scale: 0.98, hp: 4200, want: [26, 24], agile: true, phases: [{ R: 'cryo', L: 'grenade', S: 'drones' }], mul: { cryo: 0.26, grenade: 0.3, drones: 0.2 } },
+  ace_meteor: { ace: true, name: '王牌 · 流星 METEOR', short: '流星', en: 'Meteor', trait: '空中强袭 · 线圈炮 + 加特林 · 飞弹齐射', palette: 'ace_meteor', pattern: 'none', frame: 'std', parts: { head: 'crest', core: 'reactor', arms: 'pod', legs: 'rev', pack: 'jumpjet' }, scale: 1.02, hp: 4800, want: [30, 26], agile: true, phases: [{ R: 'coil', L: 'gatling', S: 'missile' }], mul: { coil: 0.22, gatling: 0.2, missile: 0.22 } },
+  ace_thunder: { ace: true, name: '王牌 · 雷鸣 THUNDER', short: '雷鸣', en: 'Thunder', trait: '四足重炮 · 榴弹 + 加农炮 · 正面硬', palette: 'ace_thunder', pattern: 'splinter', frame: 'heavy', parts: { head: 'radar', core: 'reactor', arms: 'pod', legs: 'quad', pack: 'tank' }, scale: 1.15, hp: 5800, want: [40, 34], phases: [{ R: 'grenade', L: 'coil', S: 'cannon' }], mul: { grenade: 0.25, coil: 0.19, cannon: 0.3 } },
+};
+Object.assign(RAIDERS, ACES);
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
 const ECHO_SUB = { xswap: 'missile', antigrav: 'missile', ecan: 'rifle', arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
@@ -4815,6 +4836,7 @@ class Boss {
     this.kind = 'boss'; this.type = type; this.r = 2.5 * B.scale; this.c = new V3(); this.alive = true; this.dying = false; this.flash = 0;
     this.mech = new Mech(G.scene, ctx, { palette: B.palette, pattern: B.pattern, frame: B.frame, parts: B.parts, cosmetic: true, scale: B.scale, isBoss: true, loadout: B.phases[0], yaw: Math.PI });
     if (RAIDERS[type]) { this.kind = 'raider'; this.r = 2.2 * B.scale; }
+    if (B.ace) this.isAce = true;
     this.mech.pos.copy(pos);
     this.maxHp = B.hp * G.diff.hp * hpMul; this.hp = this.maxHp; this.phase = 1;
     this.ws = { R: weaponState(B.phases[0].R), L: weaponState(B.phases[0].L), S: weaponState(B.phases[0].S) };
@@ -14827,7 +14849,7 @@ function updateJavs(dt) {
 }
 const _jd = new V3(), _jb = new V3(), _jc = new V3();
 
-return { G, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, rayEnts, enemyEnts, OD, hurtPlayer, explodeAt, spawnShot, weaponTick, Decoy, Sentry, smokeBlocks, clearSmokes, clearHooks, clearDiscs, clearStrikes, clearAG, clearWells, updateDecoys, clearDecoys, clearMinis, shieldBlock, pickTarget, Turret, Drone, Walker, PRISM, Prism, Bulwark, Gunship, Relay, BOSSES, RAIDERS, setEcho, Boss, Colossus, TRAIN, Train, Stalker, Mender, Crawler, clearChill, Burrower, Sapper, clearMines, JAM_R, GRAP, Grappler, EEL, Eel, JET, Jet, SPLIT, Splitter, METEOR, clearMeteors, Skimmer, LEV, Leviathan, Jammer, Howitzer, domeAt, Warden, Dropship, FENCE, Fencer, stasisK, clearStasis, ACID, clearAcid, startAcid, HIVE, Hive, Swarm, GRIDZ, clearGrid, TWIST, clearTwisters, startTwisters, BLINK, Blinker, WATCH, Watchtower, clearBarrage, ICE, FROST, startIce, clearIce, addPChill, Frostcaster, WIND, startWind, clearWind, BLIMP, Airship, clearStickies, MIRAGE, HoloDrone, Mirage, MAGNET, clearCranes, startCranes, DEFL, Deflector, RAM, Rammer, QUAKE, startQuakes, clearQuakes, fissureDist, RICO, LEAP, Leaper, RAPT, CTF_LANE_X, Raptor, CTF, startCTF, clearCTF, NEM, nemPylons, Nemesis, startHunted, clearHunted, AER, aerPads, AeroGen, startAerie, clearAerie, SWAT, Swatter, BH, Injector, startBH, clearBH, GYRO, Gyro, FLARE, startFlares, clearFlares, inShade, THUNDER, RODS_AT, startThunder, clearThunder, rodCover, Rod, clearRods, HERALD, Herald, TRAFFIC, startTraffic, clearTraffic, laneOf, truckAhead, LEECH, Leech, CORR, SUPPLY, startSupply, clearSupply, empower, nearestCrate, SNATCH, Snatcher, RIFT, startRifts, clearRifts, nearestRift, DEPOT, startDepots, clearDepots, depotTarget, plantCharge, nearestCharge, PLANT, Planter, SALV, FORT, FORT_PADS, HIJACK, startFort, clearFort, padAction, fortGoal, Bastion, Hijacker, clearRefl, LANE, SHADE, startLane, clearLane, laneEscorted, laneObjective, Shade, Tower, Citadel, Trooper, clearRBeam, startSalvage, clearSalvage, dropCores, nearestCore, takeCore, SCAV, Scav, FOG, startFog, clearFog, fogFar, fogSeen, LURK, Lurker, resetRewind, DISARM, jamPlayer, Disarmer, NEEDLE, resetNeedles, clearPMines, dropRepair, updateBurn, clearBurn, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, updateBeacon, ENG, Engineer, LANCE, Dish, startLance, clearLance, updateLance, ANCHOR, Anchor, updateGrav, SKY, Launcher, Cruise, startSky, clearSky, WEAVE, HACK, webAt, clearWebs, Weaver, hackable, clearHacks, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, COURIER, COURIER_PATH, Courier, startPursuit, clearPursuit, TORCH, Torcher, clearFires, clearNets, CAMO, camoHidden, clearCamo, REVIVE, noteWreck, clearWrecks, Reviver, SABOT, startSabot, clearSabot, sabTarget, DAZZ, Dazzler, DECAP, Marshal, startDecap, clearDecap, clearLinkB, MAZE, startMaze, clearMaze, PULSE, clearRings, Pulsar, clearBWalls, FACT, Fabricator, startFactory, clearFactory, TSU, TidePump, startTsunami, clearTsunami, tsuEta, inWave, SWAP, Swapper, clearNano, BIO, inCreep, BioNode, Tumor, startBio, clearBio, seedSpot, SEED, Seeder, clearPlOrbs, ATOM, radAt, startAtom, clearAtom, atomPuddle, BLOAT, Bloater, DECAY, decaySpread, FORK, Forklift, clearTBeams, updateCombat, GLAD, startGlad, clearGlad, gladGate, gladKill, gladVentAt, adaptCat, ADAPT, Adaptor, castSaws, clearSaws, TURF, startTurf, clearTurf, turfShare, turfAt, paintAt, turfKill, updateTurf, SPRAY, Sprayer, FUSE, startFuse, clearFuse, fuseNear, fuseDrives, updateFuse, BUB, clearBubbles, SCRAM, Scrambler, POL, startPolar, clearPolar, setPol, togglePol, updatePolar, polThreat, DYAD, spawnDyads, Dyad };
+return { G, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, rayEnts, enemyEnts, OD, hurtPlayer, explodeAt, spawnShot, weaponTick, Decoy, Sentry, smokeBlocks, clearSmokes, clearHooks, clearDiscs, clearStrikes, clearAG, clearWells, updateDecoys, clearDecoys, clearMinis, shieldBlock, pickTarget, Turret, Drone, Walker, PRISM, Prism, Bulwark, Gunship, Relay, BOSSES, RAIDERS, ACES, setEcho, Boss, Colossus, TRAIN, Train, Stalker, Mender, Crawler, clearChill, Burrower, Sapper, clearMines, JAM_R, GRAP, Grappler, EEL, Eel, JET, Jet, SPLIT, Splitter, METEOR, clearMeteors, Skimmer, LEV, Leviathan, Jammer, Howitzer, domeAt, Warden, Dropship, FENCE, Fencer, stasisK, clearStasis, ACID, clearAcid, startAcid, HIVE, Hive, Swarm, GRIDZ, clearGrid, TWIST, clearTwisters, startTwisters, BLINK, Blinker, WATCH, Watchtower, clearBarrage, ICE, FROST, startIce, clearIce, addPChill, Frostcaster, WIND, startWind, clearWind, BLIMP, Airship, clearStickies, MIRAGE, HoloDrone, Mirage, MAGNET, clearCranes, startCranes, DEFL, Deflector, RAM, Rammer, QUAKE, startQuakes, clearQuakes, fissureDist, RICO, LEAP, Leaper, RAPT, CTF_LANE_X, Raptor, CTF, startCTF, clearCTF, NEM, nemPylons, Nemesis, startHunted, clearHunted, AER, aerPads, AeroGen, startAerie, clearAerie, SWAT, Swatter, BH, Injector, startBH, clearBH, GYRO, Gyro, FLARE, startFlares, clearFlares, inShade, THUNDER, RODS_AT, startThunder, clearThunder, rodCover, Rod, clearRods, HERALD, Herald, TRAFFIC, startTraffic, clearTraffic, laneOf, truckAhead, LEECH, Leech, CORR, SUPPLY, startSupply, clearSupply, empower, nearestCrate, SNATCH, Snatcher, RIFT, startRifts, clearRifts, nearestRift, DEPOT, startDepots, clearDepots, depotTarget, plantCharge, nearestCharge, PLANT, Planter, SALV, FORT, FORT_PADS, HIJACK, startFort, clearFort, padAction, fortGoal, Bastion, Hijacker, clearRefl, LANE, SHADE, startLane, clearLane, laneEscorted, laneObjective, Shade, Tower, Citadel, Trooper, clearRBeam, startSalvage, clearSalvage, dropCores, nearestCore, takeCore, SCAV, Scav, FOG, startFog, clearFog, fogFar, fogSeen, LURK, Lurker, resetRewind, DISARM, jamPlayer, Disarmer, NEEDLE, resetNeedles, clearPMines, dropRepair, updateBurn, clearBurn, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, updateBeacon, ENG, Engineer, LANCE, Dish, startLance, clearLance, updateLance, ANCHOR, Anchor, updateGrav, SKY, Launcher, Cruise, startSky, clearSky, WEAVE, HACK, webAt, clearWebs, Weaver, hackable, clearHacks, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, COURIER, COURIER_PATH, Courier, startPursuit, clearPursuit, TORCH, Torcher, clearFires, clearNets, CAMO, camoHidden, clearCamo, REVIVE, noteWreck, clearWrecks, Reviver, SABOT, startSabot, clearSabot, sabTarget, DAZZ, Dazzler, DECAP, Marshal, startDecap, clearDecap, clearLinkB, MAZE, startMaze, clearMaze, PULSE, clearRings, Pulsar, clearBWalls, FACT, Fabricator, startFactory, clearFactory, TSU, TidePump, startTsunami, clearTsunami, tsuEta, inWave, SWAP, Swapper, clearNano, BIO, inCreep, BioNode, Tumor, startBio, clearBio, seedSpot, SEED, Seeder, clearPlOrbs, ATOM, radAt, startAtom, clearAtom, atomPuddle, BLOAT, Bloater, DECAY, decaySpread, FORK, Forklift, clearTBeams, updateCombat, GLAD, startGlad, clearGlad, gladGate, gladKill, gladVentAt, adaptCat, ADAPT, Adaptor, castSaws, clearSaws, TURF, startTurf, clearTurf, turfShare, turfAt, paintAt, turfKill, updateTurf, SPRAY, Sprayer, FUSE, startFuse, clearFuse, fuseNear, fuseDrives, updateFuse, BUB, clearBubbles, SCRAM, Scrambler, POL, startPolar, clearPolar, setPol, togglePol, updatePolar, polThreat, DYAD, spawnDyads, Dyad };
 })();
 // ---------------- ally.js ----------------
 const { WING, Wingman, Convoy, Reactor } = (() => {
@@ -16508,7 +16530,7 @@ function newGame() {
   G.od = { k: 0, t: 0, ringT: 0, dur: OD.dur + (chipOn('cap') ? 3 : 0) }; G.odGain = (chipOn('cap') ? 1.4 : 1) * (G.player.frame.od || 1); G.hurtAt = -99;
   $('coreName').textContent = G.core ? (M.creep ? '净化塔 PURIFIER' : M.convoy ? '运输车 CONVOY' : M.lane ? '基地 HQ' : '反应堆 REACTOR') : '';
   if (wingOn()) { G.wing = new Wingman(scene, mctx, cfg.palette === 'kestrel' ? 'vanguard' : 'kestrel'); G.friends.push(G.wing); }
-  run.coreLost = false; run.trainLost = false; run.depotLost = false; run.salvage = !!M.salvage; run.quota = M.quota || 0; run.fortify = !!M.fortify; run.hackSaid = false; run.decap = !!M.decap; run.dcT = 16; run.dcN = 0; run.vipLost = false; run.dcWarn = 0; run.sabot = !!M.sabot; run.sbT = 14; run.sbN = 0; run.sbBoss = false; run.orbLost = false; run.sbWarn = 0; run.rescue = !!M.rescue; run.rsT = 10; run.rsN = 0; run.rsCap = 5; run.rsBoss = false; run.civLost = false; run.sky = !!M.sky; run.skyW = 0; run.skyBreak = 5; run.skyT = 16; run.skyB = 12; run.cityLost = false; run.pursuit = !!M.pursuit; run.prsT = 10; run.prsN = 0; run.dataLost = false; run.lance = !!M.lance; run.factory = !!M.factory; run.ctf = !!M.ctf; run.hunted = !!M.hunted; run.hnT = 26; run.hnSq = 0; run.nemT = NEM.spawnT; run.aerie = !!M.aerie; run.aeSqT = 30; run.aeSq = 0; run.singularity = !!M.singularity; run.bhSqT = 22; run.bhSq = 0; run.flagLost = false; run.rpT = 7; run.sqT = 26; run.ctfSq = 0; run.raidSaid = false; run.fcT = 20; run.tsunami = !!M.tsunami; run.tsT = 18; run.tsN = 0; run.creep = !!M.creep; run.crT = 16; run.crN = 0; run.seedT = 14; run.glad = !!M.glad; run.turf = !!M.turf; run.hf = !!M.hotfuse; run.tfC = 0; run.tfT = 10; run.tfN = 0; run.tfLast = false; run.tfBoss = false; run.turfLost = false; run.gRound = -1; run.gT = 5; run.gBreak = false; run.gq = []; run.gRe = false; run.gN0 = 0; run.hypeLost = false; run.hypeMsg = ''; run.hypeMsgT = 0; run.meltdown = !!M.meltdown; run.mdT = 20; run.mdN = 0; run.blT = 10; run.meltLost = false; run.lcnT = 6; run.lcnN = 0; run.beacon = !!M.beacon; run.bcnT = 3; run.bcnN = 0; run.timeUp = false; run.lane = !!M.lane; run.laneT = 8; run.laneN = 0; run.shadeSaid = false; run.squadSaid = false; run.armorSaid = false;
+  aceReset(); run.coreLost = false; run.trainLost = false; run.depotLost = false; run.salvage = !!M.salvage; run.quota = M.quota || 0; run.fortify = !!M.fortify; run.hackSaid = false; run.decap = !!M.decap; run.dcT = 16; run.dcN = 0; run.vipLost = false; run.dcWarn = 0; run.sabot = !!M.sabot; run.sbT = 14; run.sbN = 0; run.sbBoss = false; run.orbLost = false; run.sbWarn = 0; run.rescue = !!M.rescue; run.rsT = 10; run.rsN = 0; run.rsCap = 5; run.rsBoss = false; run.civLost = false; run.sky = !!M.sky; run.skyW = 0; run.skyBreak = 5; run.skyT = 16; run.skyB = 12; run.cityLost = false; run.pursuit = !!M.pursuit; run.prsT = 10; run.prsN = 0; run.dataLost = false; run.lance = !!M.lance; run.factory = !!M.factory; run.ctf = !!M.ctf; run.hunted = !!M.hunted; run.hnT = 26; run.hnSq = 0; run.nemT = NEM.spawnT; run.aerie = !!M.aerie; run.aeSqT = 30; run.aeSq = 0; run.singularity = !!M.singularity; run.bhSqT = 22; run.bhSq = 0; run.flagLost = false; run.rpT = 7; run.sqT = 26; run.ctfSq = 0; run.raidSaid = false; run.fcT = 20; run.tsunami = !!M.tsunami; run.tsT = 18; run.tsN = 0; run.creep = !!M.creep; run.crT = 16; run.crN = 0; run.seedT = 14; run.glad = !!M.glad; run.turf = !!M.turf; run.hf = !!M.hotfuse; run.tfC = 0; run.tfT = 10; run.tfN = 0; run.tfLast = false; run.tfBoss = false; run.turfLost = false; run.gRound = -1; run.gT = 5; run.gBreak = false; run.gq = []; run.gRe = false; run.gN0 = 0; run.hypeLost = false; run.hypeMsg = ''; run.hypeMsgT = 0; run.meltdown = !!M.meltdown; run.mdT = 20; run.mdN = 0; run.blT = 10; run.meltLost = false; run.lcnT = 6; run.lcnN = 0; run.beacon = !!M.beacon; run.bcnT = 3; run.bcnN = 0; run.timeUp = false; run.lane = !!M.lane; run.laneT = 8; run.laneN = 0; run.shadeSaid = false; run.squadSaid = false; run.armorSaid = false;
   run.ring = M.storm ? { x: 0, z: 0, r: STORM.r0, x0: 0, z0: 0, r0: STORM.r0, x1: 0, z1: 0, r1: STORM.r0, t: 0, T: 1, wait: 0, outT: 0, said: false } : null; G.ring = run.ring; G.tether = null; G.blinkInv = 0; G.grapHits = 0; G.snaps = 0; G.blinks = 0; G.stormT = 0; run.tetherSaid = false;
   stormWall.visible = !!M.storm; stormNext.visible = false;
   run.extract = !!M.extract; run.dlN = 0; run.got = 0; run.evac = null; run.lateBoss = null;
@@ -16732,6 +16754,7 @@ function spawnGroup(S, R = 1, b) {
 }
 
 G.onKill = (e) => {
+  if (e.isAce) aceKilled(e);
   noteWreck(e); decaySpread(e); gladKill(e); turfKill(e);
   G.hud.kill = 0.3;
   const T = save.tally; T.all = (T.all || 0) + 1; T[e.kind] = (T[e.kind] || 0) + 1;
@@ -16810,11 +16833,57 @@ function updateOD(dt) {
   if (o.t <= 0) { showHint('超载结束', 1.6); sfx('odend'); }
 }
 
+// ---- v63.2 ace pilots (combat.js ACES): in 35% of runs one named ace drops in 45-120 s after the sortie (it waits
+// while a boss is up). Unbeaten aces are picked first. Kill: +1500 C (difficulty-scaled) and, the first time, its paint.
+const ACE_CHANCE = 0.35, ACE_BONUS = 1500, ACE_SKIP = new Set(['mirror', 'gauntlet', 'coliseum']);
+function aceWon(id) { return !!(save.aces && save.aces[id]); }
+function aceReset() {
+  const M = MISSIONS[cfg.mission];
+  run.aceE = null;
+  run.aceT = M && !ACE_SKIP.has(cfg.mission) && Math.random() < ACE_CHANCE ? 45 + Math.random() * 75 : Infinity;
+}
+function aceSpawn(id) {
+  const ids = Object.keys(ACES);
+  if (!id) { const fresh = ids.filter((k) => !aceWon(k)); const pool = fresh.length && Math.random() < 0.7 ? fresh : ids; id = pool[Math.floor(Math.random() * pool.length)]; }
+  const A = ACES[id]; if (!A) return null;
+  const e = new Boss(spot(80, 110), mctx, id, 1);
+  run.aceE = e; run.aceT = Infinity;
+  if (!save.aceSeen) save.aceSeen = {};
+  save.aceSeen[id] = true; writeSave();
+  banner('王牌出击 · ' + A.short, `${A.trait} · 击败可解锁「${A.short}」涂装`, true); sfx('alarm');
+  fx.ring(e.mech.pos.clone(), null, 2, 14, 0.6, 0xffd040);
+  return e;
+}
+function aceLogic() {
+  if (!(run.t >= run.aceT) || run.won || !G.player.alive) return;
+  if (G.bosses && G.bosses.some((b) => b && b.alive)) { run.aceT = run.t + 10; return; }
+  aceSpawn();
+}
+function aceKilled(e) {
+  const A = ACES[e.type]; if (!A) return;
+  if (!save.aces) save.aces = {};
+  const first = !save.aces[e.type];
+  save.aces[e.type] = (save.aces[e.type] || 0) + 1; writeSave();
+  const bonus = Math.round(ACE_BONUS * DIFFS[cfg.diff].cr);
+  run.cr += bonus; G.hud.cr = 1.2;
+  banner('击败王牌 · ' + A.short, `+${bonus} C` + (first ? ` · 解锁涂装「${A.short}」` : ''), false); sfx('medal');
+}
+function buildAces() {
+  const el = $('gAces'); if (!el) return;
+  const ids = Object.keys(ACES), n = $('gAceN');
+  if (n) n.textContent = `${ids.filter(aceWon).length} / ${ids.length}`;
+  el.innerHTML = ids.map((k) => {
+    const A = ACES[k], P = PALETTES[A.palette], seen = !!(save.aceSeen && save.aceSeen[k]), w = (save.aces || {})[k] || 0;
+    const sw = seen ? `linear-gradient(135deg, ${P.Armor} 0 55%, ${P.Accent} 55% 75%, ${P.Armor2} 75%)` : '#2a2d33';
+    return `<div class="opt ace${w ? ' on' : ''}"><i style="background:${sw}"></i>${seen ? A.short : '？？？'}<small>${w ? `击败 ${w} 次 · 涂装已解锁` : seen ? A.trait : '尚未遭遇'}</small></div>`;
+  }).join('');
+}
 function waveLogic(dt) {
   const p = G.player;
   if (run.over) return;
   run.t += dt;
   if (run.ring) stormLogic(dt);
+  aceLogic();
   if (G.hf) G.hf.pause = run.breakT > 0 || !!run.won;
   if (G.polar) G.polar.pause = run.breakT > 0 || !!run.won;
   if (!p.alive) {
@@ -18322,7 +18391,7 @@ function buildGarage() {
   buildUpgrades();
   const opt = (html, on, fn, cls = '') => { const d = document.createElement('div'); d.className = 'opt ' + cls + (on ? ' on' : ''); d.innerHTML = html; d.onclick = () => { sfx('ui'); fn(); saveCfg(); buildGarage(); }; return d; };
   const fill = (id, items) => { const el = $(id); el.innerHTML = ''; items.forEach((i) => el.appendChild(i)); };
-  fill('gPaint', Object.entries(PALETTES).filter(([k, p]) => k !== 'tyrant' && !p.enemy).map(([k, p]) =>
+  fill('gPaint', Object.entries(PALETTES).filter(([k, p]) => k !== 'tyrant' && !p.enemy && (!p.ace || aceWon(p.ace))).map(([k, p]) =>
     opt(`<i style="background:linear-gradient(135deg, ${p.Armor} 0 55%, ${p.Accent} 55% 75%, ${p.Armor2} 75%)"></i>`, cfg.palette === k, () => { cfg.palette = k; G.player.setPalette(k); }, 'sw')));
   if ($('gCamo')) {   // camouflage: bought once with credits, then free to switch
     if (!save.pats) save.pats = {};
@@ -18332,9 +18401,10 @@ function buildGarage() {
       return opt(`${P.name}<small>${own ? P.e : `${P.cost} C`}</small>`, curP === k, () => {
         if (!own) { if (save.cr < P.cost) { sfx('empty'); return; } save.cr -= P.cost; save.pats[k] = true; writeSave(); sfx('coin'); }
         cfg.pattern = k; G.player.setPalette(cfg.palette, k);
-      }, !own && save.cr < P.cost ? 'lock' : '');
+      }, !own && save.cr < P.cost ? 'nocr' : '');
     }));
   }
+  buildAces();
   fill('gFrame', Object.entries(FRAMES).map(([k, f]) => opt(`${f.name}<small>${f.en}</small>`, cfg.frame === k, () => { cfg.frame = k; rebuildPreview(); })));
   buildParts(opt, fill);
   const F = G.player.frame, xs = (k, lab) => (F[k] !== 1 ? ` · ${lab} <b>×${F[k].toFixed(2)}</b>` : '');
@@ -18392,7 +18462,7 @@ function buildParts(opt, fill) {
     return opt(`${B.name}<small>${on ? '已装备' : miss.length ? `缺 ${miss.length} 件 · ${cost} C` : B.en}</small>`, on, () => {
       if (miss.length && !buy(miss)) return;
       cfg.parts = { ...B.parts }; rebuildPreview();
-    }, miss.length && save.cr < cost ? 'lock' : '');
+    }, miss.length && save.cr < cost ? 'nocr' : '');
   }));
   const el = $('gParts'); el.innerHTML = '';
   for (const s of PART_SLOTS) {
@@ -18404,7 +18474,7 @@ function buildParts(opt, fill) {
       o.appendChild(opt(`${P.name}<small>${own ? (P.d || '基准') : `${P.cost} C · ${P.d}`}</small>`, (cur[s] || 'std') === id, () => {
         if (!own && !buy([[s, id]])) return;
         cfg.parts = { ...cur, [s]: id }; rebuildPreview();
-      }, own ? '' : (save.cr < P.cost ? 'lock' : 'buy')));
+      }, own ? '' : (save.cr < P.cost ? 'nocr' : 'buy')));
     }
     row.appendChild(o); el.appendChild(row);
   }
@@ -18828,6 +18898,7 @@ function drawHUD(dt) {
     if (e.kind === 'relay' || e.kind === 'aerogen' || e.kind === 'injector' || e.kind === 'dish' || e.kind === 'fab' || e.kind === 'pump' || e.kind === 'bionode' || e.kind === 'courier' || e.kind === 'launcher' || e.kind === 'tower' || e.kind === 'citadel') { rctx.fillStyle = e.kind === 'citadel' && e.shielded ? '#ff6040' : '#ffd23a'; rctx.save(); rctx.translate(x, z); rctx.rotate(Math.PI / 4); rctx.fillRect(-6, -6, 12, 12); rctx.restore(); continue; }
     rctx.fillStyle = e.kind === 'boss' ? '#ff8a1a' : '#ff4a3a';
     if (e.kind === 'raider') rctx.fillStyle = '#ff9a5a';
+    if (e.isAce) rctx.fillStyle = '#ffd040';
     const s = e.kind === 'boss' ? 9 : e.kind === 'gunship' || e.kind === 'raider' ? 8 : e.kind === 'walker' || e.kind === 'bulwark' ? 7 : 5;
     rctx.fillRect(x - s / 2, z - s / 2, s, s);
   }
@@ -19259,6 +19330,7 @@ function render(dt) {
 // ------------------------------------------------------------------ test hooks
 window.__iv = {
   G, cam, cfg, auto, run, fx,
+  ace: (id) => aceSpawn(id),
   state: () => state,
   start: (o = {}) => { Object.assign(cfg, o); sortie(); if (!pointerLocked) freeMouse = true; mouse.x = innerWidth / 2; mouse.y = innerHeight / 2; },
   step: (n = 1) => { for (let i = 0; i < n; i++) step(1 / 60); render(1 / 60); },
