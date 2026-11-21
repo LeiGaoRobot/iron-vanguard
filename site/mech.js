@@ -97,8 +97,8 @@ export class Mech {
 
   setPalette(key) {
     this.paletteKey = key;
-    recolor(this.body, PALETTES[key], key);
-    for (const s of Object.values(this.slots || {})) for (const m of s.models) recolor(m, PALETTES[key], key);
+    recolor(this.body, PALETTES[key], key, true);
+    for (const s of Object.values(this.slots || {})) for (const m of s.models) recolor(m, PALETTES[key], key, true);
   }
 
   mount(loadout) {
@@ -110,7 +110,7 @@ export class Mech {
       const models = [], muzzles = [];
       for (const mt of mounts) {
         const m = cloneKit(kitOf[key]);
-        this.n[mt].add(m); recolor(m, PALETTES[this.paletteKey], this.paletteKey);
+        this.n[mt].add(m); recolor(m, PALETTES[this.paletteKey], this.paletteKey, true);
         models.push(m); muzzles.push(find(m, 'Muzzle'));
       }
       this.slots[slot] = { key, models, muzzles, spin: find(models[0], 'G_Spin'), blade: find(models[0], 'B_Blade'), pile: find(models[0], 'P_Spike'), pileT: 0, alt: 0, slashT: 0, slashSide: 1, bladeOn: 0, bladeLv: 0 };

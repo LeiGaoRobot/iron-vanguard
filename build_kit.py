@@ -293,123 +293,210 @@ def grille(loc, size, parent, n=4, axis="z", mat_bg="Black", mat_slat="Frame"):
         else:
             box((loc[0] + k * sx * 0.9, loc[1], loc[2]), (sx * 0.12, sy * 1.3, sz * 0.95), M[mat_slat], parent)
 
+def rod(a, b, r, material, parent, verts=8):
+    """Cylinder from point a to point b (parent-local coordinates)."""
+    from mathutils import Vector
+    a, b = Vector(a), Vector(b)
+    d = b - a
+    rot = d.normalized().to_track_quat("Z", "Y").to_euler()
+    return cyl(tuple((a + b) / 2), r, d.length, material, parent, rot=tuple(rot), verts=verts)
+
+def cable(pts, r, material, parent):
+    """Hose: rods between successive points with a ball at each bend."""
+    for i in range(len(pts) - 1):
+        rod(pts[i], pts[i + 1], r, material, parent)
+    for p in pts[1:-1]:
+        ball(p, r * 1.05, material, parent, sub=1)
+
+def bell(loc, r_lip, r_throat, h, parent, glow=True):
+    """Thruster bell opening downward (-Z): outer cone, dark lip ring, inner throat and glow disc at the mouth."""
+    x, y, z = loc
+    cyl((x, y, z), r_lip, h, M["Nozzle"], parent, r2=r_throat, verts=16)
+    torus((x, y, z - h / 2), r_lip * 0.96, r_lip * 0.09, M["Frame"], parent)
+    cyl((x, y, z - h / 2 - 0.005), r_lip * 0.86, 0.012, M["Black"], parent, verts=16)
+    if glow:
+        cyl((x, y, z - h / 2 - 0.012), r_lip * 0.55, 0.012, M["NozzleGlow"], parent, verts=16)
+
 def build_mech():
+    # v2 (2026-11-21): broader abdomen instead of the thin waist pole, layered chest / shoulders / skirt, bigger
+    # head with crest and cheek guards, chunkier legs, and a real backpack (nacelles with bells, radiator, hoses).
+    # Node names and pivots are a contract with mech.js (M_*, T_*, W_* below) - keep them.
     K = kit("Mech")
     hips = empty("M_Hips", (0, 0, 2.75), K)
-    box((0, 0, 0.02), (1.05, 0.78, 0.46), M["Frame"], hips, bevel=0.05)
-    cyl((0, 0, -0.05), 0.2, 1.4, M["Joint"], hips, rot=(0, math.pi / 2, 0))
+    box((0, 0, 0.02), (1.1, 0.82, 0.48), M["Frame"], hips, bevel=0.05)
+    cyl((0, 0, -0.05), 0.21, 1.42, M["Joint"], hips, rot=(0, math.pi / 2, 0))
     for s in (-1, 1):
-        wedge((s * 0.3, 0.42, -0.2), (0.48, 0.16, 0.62), M["Armor"], hips, rot=(math.radians(14), 0, s * math.radians(-8)), bevel=0.03, taper=0.75)
-        box((s * 0.3, 0.51, -0.06), (0.3, 0.03, 0.06), M["Accent"], hips, rot=(math.radians(14), 0, 0))
-        wedge((s * 0.7, 0.02, -0.18), (0.18, 0.86, 0.7), M["Armor"], hips, rot=(0, s * math.radians(10), 0), bevel=0.03, taper=0.8)
-        box((s * 0.8, 0.12, -0.12), (0.03, 0.42, 0.12), M["Hazard"], hips, rot=(0, s * math.radians(10), 0))
-    box((0, 0.42, -0.25), (0.2, 0.16, 0.42), M["Accent"], hips, bevel=0.03)
-    wedge((0, -0.46, -0.12), (0.8, 0.14, 0.56), M["Armor2"], hips, rot=(math.radians(-12), 0, 0), bevel=0.03, taper=0.75)
+        # front skirt: two overlapping layers
+        wedge((s * 0.31, 0.44, -0.22), (0.52, 0.16, 0.7), M["Armor"], hips, rot=(math.radians(16), 0, s * math.radians(-8)), bevel=0.03, taper=0.75)
+        wedge((s * 0.3, 0.37, -0.5), (0.42, 0.12, 0.34), M["Armor2"], hips, rot=(math.radians(10), 0, s * math.radians(-8)), bevel=0.02, taper=0.7)
+        box((s * 0.31, 0.53, -0.06), (0.32, 0.03, 0.06), M["Accent"], hips, rot=(math.radians(16), 0, 0))
+        # side skirt with a small vent
+        wedge((s * 0.72, 0.02, -0.2), (0.2, 0.96, 0.8), M["Armor"], hips, rot=(0, s * math.radians(10), 0), bevel=0.03, taper=0.8)
+        box((s * 0.83, 0.14, -0.14), (0.03, 0.44, 0.12), M["Hazard"], hips, rot=(0, s * math.radians(10), 0))
+        grille((s * 0.82, -0.22, -0.34), (0.03, 0.26, 0.2), hips, n=3)
+    box((0, 0.44, -0.27), (0.22, 0.17, 0.46), M["Accent"], hips, bevel=0.03)
+    wedge((0, -0.47, -0.14), (0.86, 0.15, 0.6), M["Armor2"], hips, rot=(math.radians(-12), 0, 0), bevel=0.03, taper=0.75)
+    wedge((0, -0.5, -0.46), (0.6, 0.1, 0.3), M["Frame"], hips, rot=(math.radians(-8), 0, 0), bevel=0.02, taper=0.7)
 
     for side, s in (("L", -1), ("R", 1)):
         th = empty(f"M_Thigh{side}", (s * 0.62, 0, -0.12), hips)
-        ball((0, 0, 0), 0.26, M["Joint"], th)
-        cyl((0, 0, -0.55), 0.15, 1.0, M["Frame"], th)
-        wedge((0, 0.12, -0.5), (0.5, 0.48, 0.85), M["Armor"], th, bevel=0.05, taper=0.85)
-        box((s * 0.27, 0.0, -0.52), (0.07, 0.5, 0.7), M["Armor2"], th, bevel=0.02)
-        box((s * 0.31, 0.0, -0.52), (0.02, 0.3, 0.4), M["Frame"], th)
-        box((0, 0.37, -0.48), (0.1, 0.03, 0.55), M["Accent"], th)
+        ball((0, 0, 0), 0.27, M["Joint"], th)
+        cyl((0, 0, -0.55), 0.16, 1.0, M["Frame"], th)
+        wedge((0, 0.12, -0.52), (0.6, 0.56, 0.9), M["Armor"], th, bevel=0.05, taper=0.85)
+        box((s * 0.32, 0.0, -0.54), (0.08, 0.56, 0.74), M["Armor2"], th, bevel=0.02)
+        box((s * 0.365, 0.0, -0.54), (0.02, 0.34, 0.42), M["Frame"], th)
+        box((-s * 0.3, 0.06, -0.5), (0.05, 0.4, 0.6), M["Armor2"], th, bevel=0.015)
+        box((0, 0.41, -0.5), (0.1, 0.03, 0.58), M["Accent"], th)
         for k in (-1, 1):
-            cyl((k * 0.15, -0.22, -0.55), 0.045, 0.8, M["Piston"], th)
-            cyl((k * 0.15, -0.22, -0.3), 0.07, 0.3, M["Frame"], th)
+            cyl((k * 0.16, -0.24, -0.55), 0.045, 0.8, M["Piston"], th)
+            cyl((k * 0.16, -0.24, -0.3), 0.075, 0.3, M["Frame"], th)
         sh = empty(f"M_Shin{side}", (0, 0, -1.15), th)
-        ball((0, 0, 0), 0.24, M["Joint"], sh)
-        wedge((0, 0.3, 0.08), (0.46, 0.26, 0.5), M["Armor2"], sh, bevel=0.04, taper=0.6)
-        box((0, 0.44, 0.12), (0.12, 0.06, 0.3), M["Accent"], sh)
-        cyl((0, 0.45, 0.36), 0.08, 0.26, M["Armor2"], sh, r2=0.0, verts=6, smooth=False)
-        wedge((0, 0.1, -0.62), (0.66, 0.74, 1.1), M["Armor"], sh, rot=(math.pi, 0, 0), bevel=0.05, taper=0.82)
-        box((0, 0.47, -0.55), (0.08, 0.03, 0.6), M["Visor"], sh)
-        box((0, 0.46, -0.98), (0.42, 0.04, 0.1), M["Accent"], sh)
+        ball((0, 0, 0), 0.25, M["Joint"], sh)
+        # knee: big pad + spike
+        wedge((0, 0.32, 0.08), (0.52, 0.28, 0.56), M["Armor2"], sh, bevel=0.04, taper=0.6)
+        box((0, 0.47, 0.12), (0.13, 0.06, 0.32), M["Accent"], sh)
+        cyl((0, 0.48, 0.38), 0.09, 0.28, M["Armor2"], sh, r2=0.0, verts=6, smooth=False)
         for k in (-1, 1):
-            grille((k * 0.34, 0.1, -0.62), (0.03, 0.42, 0.38), sh, n=4)
-        box((0, -0.3, -0.5), (0.46, 0.34, 0.8), M["Frame"], sh, bevel=0.04)
+            wedge((k * 0.3, 0.18, 0.02), (0.1, 0.36, 0.4), M["Armor"], sh, bevel=0.015, taper=0.7)
+        # shin shell
+        wedge((0, 0.1, -0.62), (0.72, 0.8, 1.12), M["Armor"], sh, rot=(math.pi, 0, 0), bevel=0.05, taper=0.82)
+        box((0, 0.51, -0.55), (0.08, 0.03, 0.56), M["Visor"], sh)
+        box((0, 0.5, -0.99), (0.46, 0.04, 0.1), M["Accent"], sh)
         for k in (-1, 1):
+            grille((k * 0.37, 0.1, -0.62), (0.03, 0.44, 0.4), sh, n=4)
+        # calf: thruster housing with side pods
+        box((0, -0.32, -0.5), (0.5, 0.36, 0.82), M["Frame"], sh, bevel=0.04)
+        for k in (-1, 1):
+            box((k * 0.27, -0.34, -0.42), (0.12, 0.34, 0.62), M["Armor2"], sh, bevel=0.02)
             cyl((k * 0.17, -0.12, -0.3), 0.05, 0.7, M["Piston"], sh)
-        cyl((0, -0.42, -0.82), 0.16, 0.24, M["Nozzle"], sh, r2=0.2)
-        cyl((0, -0.42, -0.93), 0.13, 0.02, M["NozzleGlow"], sh)
+        bell((0, -0.44, -0.84), 0.2, 0.14, 0.22, sh)
         empty(f"T_Leg{side}", (0, -0.42, -0.95), sh)
+        box((0, 0.0, -1.1), (0.5, 0.56, 0.16), M["Frame"], sh, bevel=0.03)
         ft = empty(f"M_Foot{side}", (0, 0, -1.2), sh)
-        ball((0, 0, 0), 0.2, M["Joint"], ft)
-        wedge((0, 0.02, -0.06), (0.56, 0.6, 0.3), M["Armor2"], ft, bevel=0.03, taper=0.7)
-        box((0, 0.12, -0.24), (0.86, 1.3, 0.24), M["Frame"], ft, bevel=0.05)
+        ball((0, 0, 0), 0.21, M["Joint"], ft)
+        wedge((0, 0.02, -0.06), (0.6, 0.64, 0.32), M["Armor2"], ft, bevel=0.03, taper=0.7)
+        box((0, 0.12, -0.24), (0.9, 1.34, 0.24), M["Frame"], ft, bevel=0.05)
         for k in (-1, 0, 1):
-            wedge((k * 0.28, 0.85, -0.25), (0.24, 0.5, 0.22), M["Armor"], ft, bevel=0.03, taper=0.35)
-        wedge((0, -0.58, -0.22), (0.44, 0.4, 0.26), M["Armor"], ft, rot=(0, 0, math.pi), bevel=0.03, taper=0.5)
+            wedge((k * 0.29, 0.87, -0.25), (0.25, 0.52, 0.22), M["Armor"], ft, bevel=0.03, taper=0.35)
+        wedge((0, -0.6, -0.22), (0.48, 0.42, 0.28), M["Armor"], ft, rot=(0, 0, math.pi), bevel=0.03, taper=0.5)
         for k in (-1, 1):
-            box((k * 0.44, 0.12, -0.24), (0.03, 0.9, 0.12), M["Hazard"], ft)
+            box((k * 0.46, 0.12, -0.24), (0.03, 0.92, 0.12), M["Hazard"], ft)
 
     tor = empty("M_Torso", (0, 0, 0.3), hips)
-    cyl((0, 0, 0.12), 0.3, 0.4, M["Joint"], tor)
-    for i, w in enumerate((0.8, 0.86, 0.92)):
-        box((0, 0.04, 0.24 + i * 0.16), (w, 0.6, 0.13), M["Frame"] if i % 2 == 0 else M["Armor2"], tor, bevel=0.03)
-    box((0, 0.02, 1.0), (1.8, 1.15, 0.95), M["Armor"], tor, bevel=0.08)
+    # abdomen: a solid armoured block instead of the old thin joint column
+    box((0, 0, 0.2), (1.02, 0.74, 0.56), M["Frame"], tor, bevel=0.05)
+    cyl((0, 0, 0.0), 0.36, 0.2, M["Joint"], tor, verts=16)
+    for i, (w, z) in enumerate(((0.74, 0.03), (0.84, 0.2), (0.94, 0.37))):
+        wedge((0, 0.37 + i * 0.02, z), (w, 0.16, 0.18), M["Armor2"] if i % 2 == 0 else M["Armor"], tor, rot=(math.radians(-8), 0, 0), bevel=0.02, taper=0.85)
     for s in (-1, 1):
-        wedge((s * 0.42, 0.56, 1.1), (0.68, 0.22, 0.7), M["Armor"], tor, rot=(math.radians(-10), 0, s * math.radians(6)), bevel=0.04, taper=0.7)
-        box((s * 0.42, 0.68, 0.82), (0.5, 0.04, 0.06), M["Accent"], tor)
-        box((s * 0.66, 0.66, 1.15), (0.04, 0.04, 0.45), M["Visor"], tor)
-        grille((s * 0.86, 0.3, 0.92), (0.06, 0.4, 0.42), tor, n=5)
-        box((s * 0.92, -0.1, 1.05), (0.04, 0.5, 0.6), M["Armor2"], tor, bevel=0.02)
-    box((0, 0.66, 1.0), (0.24, 0.12, 0.62), M["Armor2"], tor, bevel=0.03)
-    box((0, 0.73, 1.22), (0.16, 0.04, 0.14), M["Visor"], tor)
-    grille((0, 0.62, 0.6), (0.6, 0.06, 0.16), tor, n=4, axis="x")
-    box((0, -0.05, 1.52), (1.2, 0.95, 0.18), M["Frame"], tor, bevel=0.04)
+        wedge((s * 0.52, 0.04, 0.24), (0.1, 0.66, 0.46), M["Armor2"], tor, bevel=0.02, taper=0.8)
+        cyl((s * 0.44, -0.2, 0.22), 0.04, 0.5, M["Piston"], tor)
+    box((0, 0.02, 0.5), (1.24, 0.86, 0.16), M["Armor2"], tor, bevel=0.03)
+    box((0, 0.452, 0.5), (0.9, 0.02, 0.04), M["Frame"], tor)
+    # chest: main block + raised upper chest + angled pec plates
+    box((0, 0.0, 0.98), (1.72, 1.06, 0.86), M["Armor"], tor, bevel=0.08)
+    wedge((0, 0.08, 1.3), (1.92, 1.12, 0.36), M["Armor"], tor, bevel=0.05, taper=0.82)
     for s in (-1, 1):
-        wedge((s * 0.42, 0.25, 1.55), (0.3, 0.5, 0.2), M["Armor2"], tor, bevel=0.02, taper=0.6)
+        wedge((s * 0.44, 0.58, 1.1), (0.72, 0.24, 0.72), M["Armor"], tor, rot=(math.radians(-10), 0, s * math.radians(6)), bevel=0.04, taper=0.7)
+        wedge((s * 0.44, 0.66, 0.74), (0.6, 0.1, 0.18), M["Armor2"], tor, rot=(math.radians(-25), 0, s * math.radians(6)), bevel=0.015, taper=0.7)
+        box((s * 0.44, 0.72, 0.86), (0.5, 0.04, 0.05), M["Accent"], tor)
+        box((s * 0.7, 0.68, 1.16), (0.035, 0.04, 0.42), M["Visor"], tor)
+        grille((s * 0.87, 0.3, 0.92), (0.06, 0.42, 0.44), tor, n=5)
+        box((s * 0.93, -0.12, 1.06), (0.05, 0.52, 0.64), M["Armor2"], tor, bevel=0.02)
+        box((s * 0.96, -0.12, 1.06), (0.02, 0.3, 0.4), M["Frame"], tor)
+    box((0, 0.68, 1.0), (0.26, 0.12, 0.64), M["Armor2"], tor, bevel=0.03)
+    box((0, 0.75, 1.22), (0.16, 0.04, 0.14), M["Visor"], tor)
+    grille((0, 0.62, 0.6), (0.62, 0.06, 0.16), tor, n=4, axis="x")
+    # back of the chest (seen beside the pack)
+    box((0, -0.55, 0.98), (1.4, 0.06, 0.7), M["Armor2"], tor, bevel=0.02)
+    # collar, neck ring and collar guards
+    box((0, -0.05, 1.52), (1.24, 0.98, 0.18), M["Frame"], tor, bevel=0.04)
+    cyl((0, 0.12, 1.6), 0.26, 0.12, M["Joint"], tor, verts=16)
+    for s in (-1, 1):
+        wedge((s * 0.46, 0.22, 1.58), (0.34, 0.56, 0.24), M["Armor2"], tor, bevel=0.02, taper=0.6)
+        wedge((s * 0.46, -0.32, 1.6), (0.4, 0.36, 0.22), M["Armor"], tor, rot=(0, 0, math.pi), bevel=0.02, taper=0.6)
+
     hd = empty("M_Head", (0, 0.15, 1.62), tor)
-    cyl((0, 0, 0.05), 0.17, 0.15, M["Joint"], hd)
-    wedge((0, 0.04, 0.22), (0.54, 0.62, 0.34), M["Armor"], hd, bevel=0.05, taper=0.7)
-    wedge((0, 0.16, 0.4), (0.4, 0.42, 0.08), M["Armor2"], hd, bevel=0.02, taper=0.6)
-    box((0, 0.36, 0.24), (0.44, 0.06, 0.08), M["Black"], hd)
-    box((0, 0.375, 0.24), (0.3, 0.04, 0.05), M["Visor"], hd)
-    box((0, 0.34, 0.1), (0.28, 0.12, 0.1), M["Frame"], hd, bevel=0.02)
-    box((0, 0.1, 0.45), (0.08, 0.5, 0.05), M["Accent"], hd)
+    cyl((0, 0, 0.06), 0.19, 0.17, M["Joint"], hd)
+    wedge((0, 0.03, 0.26), (0.64, 0.74, 0.4), M["Armor"], hd, bevel=0.05, taper=0.7)
+    wedge((0, 0.17, 0.47), (0.48, 0.5, 0.1), M["Armor2"], hd, bevel=0.02, taper=0.6)
+    box((0, -0.3, 0.28), (0.5, 0.18, 0.34), M["Armor2"], hd, bevel=0.03)
+    box((0, 0.42, 0.27), (0.54, 0.07, 0.1), M["Black"], hd)
+    box((0, 0.44, 0.27), (0.38, 0.04, 0.05), M["Visor"], hd)
+    wedge((0, 0.4, 0.1), (0.34, 0.16, 0.14), M["Frame"], hd, rot=(math.pi, 0, 0), bevel=0.02, taper=0.6)
+    grille((0, 0.47, 0.11), (0.2, 0.03, 0.08), hd, n=3, axis="x")
+    box((0, 0.04, 0.54), (0.07, 0.62, 0.08), M["Accent"], hd)
+    wedge((0, -0.22, 0.6), (0.05, 0.36, 0.22), M["Accent"], hd, taper=0.3)
     for s in (-1, 1):
-        grille((s * 0.3, 0.05, 0.2), (0.06, 0.3, 0.18), hd, n=3)
-        cyl((s * 0.26, -0.18, 0.45), 0.018, 0.55, M["Piston"], hd, rot=(math.radians(-30), 0, 0), smooth=False)
+        wedge((s * 0.33, 0.14, 0.18), (0.08, 0.46, 0.3), M["Armor2"], hd, bevel=0.015, taper=0.6)
+        grille((s * 0.36, -0.12, 0.24), (0.06, 0.26, 0.18), hd, n=3)
+        cyl((s * 0.3, -0.24, 0.52), 0.018, 0.6, M["Piston"], hd, rot=(math.radians(-30), 0, 0), smooth=False)
+        ball((s * 0.3, -0.07, 0.25), 0.05, M["Visor"], hd, sub=1)
+
     pk = empty("M_Pack", (0, -0.72, 1.0), tor)
     box((0, 0, 0), (1.25, 0.5, 1.0), M["Frame"], pk, bevel=0.06)
-    box((0, -0.27, 0.15), (0.8, 0.06, 0.5), M["Armor2"], pk, bevel=0.02)
-    grille((0, -0.3, -0.25), (0.5, 0.04, 0.24), pk, n=3, axis="x")
+    wedge((0, -0.04, 0.56), (1.02, 0.44, 0.18), M["Armor2"], pk, bevel=0.03, taper=0.75)
+    box((0, -0.26, 0.2), (0.78, 0.06, 0.5), M["Armor2"], pk, bevel=0.02)
+    grille((0, -0.3, 0.2), (0.5, 0.05, 0.36), pk, n=5)
+    grille((0, -0.29, -0.3), (0.56, 0.04, 0.22), pk, n=3, axis="x")
+    box((0, -0.29, 0.5), (0.5, 0.03, 0.05), M["Hazard"], pk)
     for idx, s in ((1, -1), (2, 1)):
-        cyl((s * 0.44, -0.22, -0.1), 0.23, 0.9, M["Armor"], pk)
-        cyl((s * 0.44, -0.22, 0.38), 0.15, 0.14, M["Accent"], pk)
-        box((s * 0.44, -0.47, -0.05), (0.04, 0.2, 0.6), M["Armor2"], pk)
-        cyl((s * 0.44, -0.22, -0.66), 0.17, 0.26, M["Nozzle"], pk, r2=0.24)
-        cyl((s * 0.44, -0.22, -0.8), 0.18, 0.02, M["NozzleGlow"], pk)
+        # thruster nacelle: armoured can, band, cap ring, side fins, bell
+        cyl((s * 0.44, -0.22, -0.08), 0.24, 0.92, M["Armor"], pk, verts=16)
+        cyl((s * 0.44, -0.22, 0.06), 0.255, 0.08, M["Frame"], pk, verts=16)
+        cyl((s * 0.44, -0.22, -0.4), 0.255, 0.06, M["Frame"], pk, verts=16)
+        cyl((s * 0.44, -0.22, 0.4), 0.16, 0.14, M["Accent"], pk, verts=16)
+        torus((s * 0.44, -0.22, 0.38), 0.2, 0.035, M["Frame"], pk)
+        box((s * 0.44, -0.48, -0.08), (0.04, 0.2, 0.62), M["Armor2"], pk)
+        box((s * 0.69, -0.22, -0.12), (0.2, 0.04, 0.5), M["Armor2"], pk, bevel=0.01)
+        bell((s * 0.44, -0.22, -0.67), 0.27, 0.19, 0.3, pk)
         empty(f"T_Back{idx}", (s * 0.44, -0.22, -0.82), pk)
+        # coolant hoses: nacelle top -> pack, pack side -> torso flank
+        cable([(s * 0.44, -0.3, 0.46), (s * 0.3, -0.36, 0.6), (s * 0.12, -0.28, 0.6)], 0.035, M["Black"], pk)
+        cable([(s * 0.62, 0.1, 0.32), (s * 0.82, 0.18, 0.22), (s * 0.9, 0.36, 0.1)], 0.04, M["Black"], pk)
+        # verniers on the lower corners
+        cyl((s * 0.66, 0.02, -0.42), 0.07, 0.14, M["Nozzle"], pk, rot=(0, s * math.pi / 2, 0), r2=0.1)
         wing = empty(f"M_Wing{side_name(s)}", (s * 0.55, 0.0, 0.38), pk, rot=(math.radians(-18), 0, s * math.radians(-28)))
         box((s * 0.55, -0.1, 0.05), (1.1, 0.07, 0.5), M["Armor"], wing, bevel=0.02)
+        box((s * 0.5, -0.1, -0.28), (0.8, 0.06, 0.18), M["Armor2"], wing, bevel=0.015)
         box((s * 0.75, -0.1, 0.26), (0.7, 0.08, 0.06), M["Accent"], wing)
-        box((s * 1.05, -0.1, -0.1), (0.16, 0.09, 0.5), M["Armor2"], wing, bevel=0.02)
+        box((s * 1.05, -0.1, -0.1), (0.16, 0.09, 0.56), M["Armor2"], wing, bevel=0.02)
         box((s * 0.95, -0.15, 0.05), (0.04, 0.03, 0.36), M["NozzleGlow"], wing)
+        cyl((s * 1.05, -0.1, -0.42), 0.06, 0.12, M["Nozzle"], wing, r2=0.09)
     empty("W_BackL", (-0.64, -0.5, 1.64), tor)
     empty("W_BackR", (0.64, -0.5, 1.64), tor)
     for side, s in (("L", -1), ("R", 1)):
         shd = empty(f"M_Shoulder{side}", (s * 1.12, 0, 1.12), tor)
-        ball((0, 0, 0), 0.3, M["Joint"], shd)
-        wedge((s * 0.24, 0, 0.16), (0.66, 1.06, 0.66), M["Armor"], shd, bevel=0.06, taper=0.7)
-        wedge((s * 0.3, 0.05, 0.52), (0.5, 0.8, 0.12), M["Armor2"], shd, bevel=0.02, taper=0.7)
-        box((s * 0.58, 0, 0.16), (0.04, 0.84, 0.14), M["Accent"], shd)
-        box((s * 0.57, 0.1, -0.06), (0.04, 0.45, 0.14), M["Hazard"], shd)
-        box((s * 0.24, 0.54, 0.2), (0.4, 0.04, 0.05), M["Visor"], shd)
-        wedge((s * 0.3, 0, -0.26), (0.5, 0.86, 0.22), M["Armor2"], shd, rot=(math.pi, 0, 0), bevel=0.02, taper=0.8)
+        ball((0, 0, 0), 0.31, M["Joint"], shd)
+        # pauldron: core shell, outer flared layer, top plate, trims
+        wedge((s * 0.26, 0, 0.17), (0.72, 1.12, 0.68), M["Armor"], shd, bevel=0.06, taper=0.7)
+        box((s * 0.6, 0.0, 0.02), (0.1, 1.04, 0.62), M["Armor"], shd, rot=(0, s * math.radians(-14), 0), bevel=0.03)
+        box((s * 0.66, 0.0, -0.06), (0.04, 0.7, 0.36), M["Armor2"], shd, rot=(0, s * math.radians(-14), 0))
+        wedge((s * 0.3, 0.05, 0.54), (0.54, 0.84, 0.12), M["Armor2"], shd, bevel=0.02, taper=0.7)
+        for k in (-1, 1):
+            box((s * 0.28, k * 0.565, -0.1), (0.62, 0.05, 0.08), M["Frame"], shd)
+        box((s * 0.62, 0, 0.32), (0.04, 0.86, 0.12), M["Accent"], shd, rot=(0, s * math.radians(-14), 0))
+        box((s * 0.6, 0.12, -0.2), (0.04, 0.45, 0.12), M["Hazard"], shd, rot=(0, s * math.radians(-14), 0))
+        box((s * 0.26, 0.6, 0.22), (0.4, 0.04, 0.05), M["Visor"], shd)
+        wedge((s * 0.3, 0, -0.27), (0.54, 0.9, 0.22), M["Armor2"], shd, rot=(math.pi, 0, 0), bevel=0.02, taper=0.8)
+        bell((s * 0.3, -0.5, 0.0), 0.08, 0.06, 0.12, shd, glow=False)
         arm = empty(f"M_Arm{side}", (s * 0.3, 0, -0.18), shd)
-        cyl((0, 0, -0.4), 0.15, 0.8, M["Frame"], arm)
-        box((0, 0, -0.38), (0.42, 0.46, 0.55), M["Armor2"], arm, bevel=0.05)
-        box((s * 0.22, 0, -0.38), (0.03, 0.3, 0.35), M["Frame"], arm)
+        cyl((0, 0, -0.4), 0.16, 0.8, M["Frame"], arm)
+        box((0, 0, -0.4), (0.48, 0.52, 0.6), M["Armor2"], arm, bevel=0.05)
+        wedge((s * 0.26, 0.02, -0.38), (0.08, 0.46, 0.5), M["Armor"], arm, bevel=0.015, taper=0.75)
+        box((s * 0.31, 0.02, -0.38), (0.02, 0.26, 0.3), M["Frame"], arm)
+        for k in (-1, 1):
+            cyl((k * 0.13, 0.27, -0.42), 0.035, 0.5, M["Piston"], arm)
         fo = empty(f"M_Fore{side}", (0, 0, -0.85), arm)
-        ball((0, 0, 0), 0.2, M["Joint"], fo)
-        wedge((0, -0.2, 0.0), (0.4, 0.3, 0.36), M["Armor2"], fo, rot=(math.pi / 2, 0, 0), bevel=0.02, taper=0.6)
-        box((0, 0.36, -0.04), (0.5, 0.92, 0.5), M["Armor"], fo, bevel=0.06)
-        wedge((s * 0.27, 0.32, -0.02), (0.08, 0.7, 0.36), M["Armor2"], fo, bevel=0.02, taper=0.8)
-        box((s * 0.315, 0.36, -0.02), (0.02, 0.5, 0.1), M["Accent"], fo)
-        box((0, 0.36, 0.23), (0.1, 0.6, 0.03), M["Visor"], fo)
-        box((0, 0.36, -0.31), (0.32, 0.6, 0.06), M["Frame"], fo)
+        ball((0, 0, 0), 0.21, M["Joint"], fo)
+        wedge((0, -0.22, 0.0), (0.44, 0.32, 0.4), M["Armor"], fo, rot=(math.pi / 2, 0, 0), bevel=0.02, taper=0.6)
+        box((0, 0.36, -0.04), (0.52, 0.94, 0.52), M["Armor"], fo, bevel=0.06)
+        wedge((s * 0.28, 0.32, -0.02), (0.08, 0.72, 0.38), M["Armor2"], fo, bevel=0.02, taper=0.8)
+        wedge((-s * 0.27, 0.3, -0.02), (0.05, 0.6, 0.3), M["Armor2"], fo, bevel=0.015, taper=0.8)
+        box((s * 0.325, 0.36, -0.02), (0.02, 0.5, 0.1), M["Accent"], fo)
+        box((0, 0.36, 0.24), (0.1, 0.6, 0.03), M["Visor"], fo)
+        box((0, 0.36, -0.32), (0.34, 0.62, 0.06), M["Frame"], fo)
+        grille((0, 0.0, 0.25), (0.3, 0.2, 0.03), fo, n=3, axis="x")
         empty(f"W_Hand{side}", (0, 0.82, -0.08), fo)
 
 

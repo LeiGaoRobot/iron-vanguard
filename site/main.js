@@ -3542,7 +3542,7 @@ window.__iv = {
 // ------------------------------------------------------------------ boot
 (async () => {
   try {
-    await loadKit('./assets/kit.glb?v=65');
+    await loadKit('./assets/kit.glb?v=66');
     ensureArena();
     makePlayer();
     setState('title');
