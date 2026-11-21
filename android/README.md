@@ -23,6 +23,7 @@ python android/build_apk.py --code 2 --name 1.0.1
 - 横屏全屏沉浸模式,屏幕常亮;切到后台时 WebView 暂停,游戏自己会进入暂停
 - 返回键:战斗中暂停,暂停时继续,机库 / 勋章 / 结算页返回上一级,标题页连按两次退出
 - WebView 渲染进程被系统杀掉时重建 Activity,不会直接闪退
+- `IVShell` JS 桥:`webViewVersion()` 返回系统 WebView 包名和版本,`openWebViewUpdate()` 在应用商店打开它(先 `market://`,不行再网页版 Play)
 - debug 构建才能用 `chrome://inspect` 远程调试(release 构建关闭)
 
 ## 打包时对页面做的适配(`build_apk.py` 的 `MOBILE_CSS` / `MOBILE_JS`)
@@ -32,6 +33,7 @@ python android/build_apk.py --code 2 --name 1.0.1
 - 标题 / 暂停 / 结算:整张卡片按屏幕缩放到正好放下
 - 机库 / 勋章:本来就是要滚动的长列表,只缩到 0.6–1 倍,然后滚动
 - 触屏设备隐藏标题页的键盘鼠标说明(战斗里有触屏按钮)
+- **启动检查(`CHECK_JS`)**:游戏需要 import maps(Chrome 89)、DecompressionStream(80,单文件版的 GLB 是 gzip 内嵌的)和 WebGL2。页面一开始用纯 ES5 检查 UA 里的 Chrome 版本 ≥ `MIN_CHROME`(89)、DecompressionStream 和 WebGL2,缺任何一项就盖一层全屏中英文提示(显示当前 WebView 版本、"去应用商店更新"按钮、"仍然尝试"关掉提示),而不是黑屏。测试时在地址后加 `?ivcheck=v`(版本过旧)或 `?ivcheck=gl`(无 WebGL2)强制显示
 
 这些改动只在 APK 里生效,不改 `site/`。
 
@@ -53,5 +55,5 @@ D:\AI\tools\android-sdk\platform-tools\adb.exe logcat -s IronVanguard
 ## 已知限制
 
 - 菜单是缩放后的桌面布局,文字偏小,没有微信版那样专门的手机界面
-- three r184 只支持 WebGL2:Android 8+ 配近几年的 Android System WebView 基本都有,但很老的 GPU 驱动可能会黑屏
-- 目前只在桌面 Chromium 里模拟手机横屏(740×360)验证过页面,外壳代码(资源拦截、返回键)还没有在真机或模拟器上跑过
+- 最低要求 Android System WebView 89 + WebGL2:Android 8 出厂自带的 WebView 更老,但 WebView 可以通过应用商店单独更新,没更新过的设备会看到启动检查的提示;没有 Google Play 的设备上"去应用商店更新"可能打不开,只会弹 Toast
+- 目前只在桌面 Chromium 里模拟手机横屏(740×360)验证过页面(启动检查用 `?ivcheck=` + 模拟的 `IVShell` 验过两种提示和两个按钮),外壳代码(资源拦截、返回键、JS 桥)还没有在真机或模拟器上跑过

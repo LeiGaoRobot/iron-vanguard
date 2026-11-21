@@ -71,13 +71,72 @@ document.documentElement.classList.add('apk');
 """
 
 
+# Start-up check, plain ES5 so it runs on any WebView. The game needs import maps (Chrome 89),
+# DecompressionStream (80, for the gzip-embedded GLBs) and WebGL2. If any is missing, a full-screen
+# notice replaces the black screen and offers to open the WebView page in the app store
+# (through the IVShell bridge in MainActivity). Add ?ivcheck=1 to the URL to force it for testing.
+MIN_CHROME = 89
+CHECK_JS = """<script>
+(function () {
+  var m = /Chrome\/(\d+)/.exec(navigator.userAgent), ver = m ? +m[1] : 0, why = [];
+  if (ver && ver < MINV) why.push('v');
+  if (typeof DecompressionStream === 'undefined') why.push('v');
+  var gl = null;
+  try { gl = document.createElement('canvas').getContext('webgl2'); } catch (e) {}
+  if (!gl) why.push('gl');
+  else { var x = gl.getExtension('WEBGL_lose_context'); if (x) x.loseContext(); }
+  var force = /[?&]ivcheck=(\w+)/.exec(location.search);
+  if (force) why = [force[1] === 'gl' ? 'gl' : 'v'];
+  if (!why.length) return;
+  window.__ivUnsupported = why;
+  var zh = /^zh/i.test(navigator.language || ''), sh = window.IVShell, old = why.indexOf('v') >= 0;
+  var wv = ''; try { wv = sh ? sh.webViewVersion() : ''; } catch (e) {}
+  var t = zh ? {
+    h: old ? '系统 WebView 版本过旧' : '设备不支持 WebGL2',
+    p: old ? '《钢翼先锋》需要 Android System WebView MINV 或更高版本。请在应用商店中更新后重新打开游戏。'
+           : '这台设备的图形驱动无法创建 WebGL2 画面。更新 Android System WebView 有时能解决，否则这台设备暂时无法运行本游戏。',
+    c: '当前：', b: '去应用商店更新', k: '仍然尝试'
+  } : {
+    h: old ? 'System WebView is too old' : 'WebGL2 is not available',
+    p: old ? 'Iron Vanguard needs Android System WebView MINV or newer. Update it from your app store, then reopen the game.'
+           : 'The graphics driver on this device could not create a WebGL2 context. Updating Android System WebView sometimes helps; otherwise this device cannot run the game yet.',
+    c: 'Current: ', b: 'Update in app store', k: 'Try anyway'
+  };
+  function show() {
+    var d = document.createElement('div');
+    d.id = 'ivUnsupported';
+    d.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:2147483647;background:#0b0f14;color:#dfe8f0;display:flex;'
+      + 'align-items:center;justify-content:center;font:15px/1.5 Rajdhani,system-ui,sans-serif;padding:16px;box-sizing:border-box';
+    d.innerHTML = '<div style="max-width:520px;text-align:center">'
+      + '<div class="h" style="font-size:22px;font-weight:700;color:#ffb347;margin-bottom:8px"></div><div class="p"></div>'
+      + '<div class="c" style="opacity:.55;font-size:12px;margin-top:8px"></div>'
+      + '<div style="margin-top:16px">'
+      + '<button class="b" style="margin:4px;padding:10px 18px;border:0;border-radius:6px;background:#2f8fff;color:#fff;font:inherit;font-weight:700"></button>'
+      + '<button class="k" style="margin:4px;padding:10px 18px;border:1px solid #4a5866;border-radius:6px;background:none;color:#9fb0c0;font:inherit"></button>'
+      + '</div></div>';
+    d.querySelector('.h').textContent = t.h;
+    d.querySelector('.p').textContent = t.p;
+    d.querySelector('.c').textContent = t.c + (wv || (ver ? 'Chrome ' + ver : '?'));
+    var b = d.querySelector('.b'), k = d.querySelector('.k');
+    b.textContent = t.b; k.textContent = t.k;
+    if (!sh) b.style.display = 'none';
+    b.onclick = function () { try { sh.openWebViewUpdate(); } catch (e) {} };
+    k.onclick = function () { d.parentNode.removeChild(d); };
+    document.body.appendChild(d);
+  }
+  if (document.body) show(); else document.addEventListener('DOMContentLoaded', show);
+})();
+</script>
+""".replace('MINV', str(MIN_CHROME))
+
+
 def patch_html(src):
     html = open(src, encoding='utf-8').read()
     # Google Fonts -> bundled Rajdhani (the APK is offline; a blocked stylesheet would also stall first paint)
     html = re.sub(r'<link rel="preconnect" href="https://fonts\.g[^>]*>\s*', '', html)
     html = re.sub(r'<link href="https://fonts\.googleapis\.com[^>]*>\s*', '', html)
     fonts = open(os.path.join(HERE, 'fonts', 'rajdhani.local.css'), encoding='utf-8').read()
-    html = html.replace('</head>', '<style>\n' + fonts + MOBILE_CSS + '</style>\n' + MOBILE_JS + '</head>', 1)
+    html = html.replace('</head>', CHECK_JS + '<style>\n' + fonts + MOBILE_CSS + '</style>\n' + MOBILE_JS + '</head>', 1)
     html = html.replace('content="width=device-width, initial-scale=1"',
                         'content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no"', 1)
     left = sorted(set(u for u in re.findall(r'https?://[\w.-]+', html) if '127.0.0.1' not in u))

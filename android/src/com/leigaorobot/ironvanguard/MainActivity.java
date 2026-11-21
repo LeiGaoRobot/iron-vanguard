@@ -1,6 +1,9 @@
 package com.leigaorobot.ironvanguard;
 
 import android.app.Activity;
+import android.content.ActivityNotFoundException;
+import android.content.Intent;
+import android.content.pm.PackageInfo;
 import android.content.pm.ApplicationInfo;
 import android.graphics.Color;
 import android.net.Uri;
@@ -13,6 +16,7 @@ import android.view.WindowInsets;
 import android.view.WindowInsetsController;
 import android.view.WindowManager;
 import android.webkit.ConsoleMessage;
+import android.webkit.JavascriptInterface;
 import android.webkit.RenderProcessGoneDetail;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
@@ -71,6 +75,7 @@ public class MainActivity extends Activity {
         s.setTextZoom(100);
         s.setCacheMode(WebSettings.LOAD_NO_CACHE);   // everything is local; no stale copies after an update
 
+        web.addJavascriptInterface(new Shell(), "IVShell");   // only local assets are ever loaded
         web.setWebViewClient(new Client());
         web.setWebChromeClient(new WebChromeClient() {
             @Override
@@ -143,6 +148,32 @@ public class MainActivity extends Activity {
     @Override protected void onResume() { super.onResume(); if (web != null) { web.resumeTimers(); web.onResume(); } hideSystemBars(); }
     @Override protected void onSaveInstanceState(Bundle out) { super.onSaveInstanceState(out); if (web != null) web.saveState(out); }
     @Override protected void onDestroy() { if (web != null) { web.destroy(); web = null; } super.onDestroy(); }
+
+    /** Called by the page's start-up check (build_apk.py) when the system WebView is too old. */
+    private class Shell {
+        @JavascriptInterface
+        public String webViewVersion() {
+            PackageInfo p = WebView.getCurrentWebViewPackage();
+            return p == null ? "" : p.packageName + " " + p.versionName;
+        }
+
+        @JavascriptInterface
+        public void openWebViewUpdate() {
+            runOnUiThread(() -> {
+                PackageInfo p = WebView.getCurrentWebViewPackage();
+                String pkg = p != null ? p.packageName : "com.google.android.webview";
+                try {
+                    startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=" + pkg)));
+                } catch (ActivityNotFoundException e) {
+                    try {
+                        startActivity(new Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=" + pkg)));
+                    } catch (ActivityNotFoundException e2) {
+                        Toast.makeText(MainActivity.this, isZh() ? "请在应用商店中更新 Android System WebView" : "Update Android System WebView from your app store", Toast.LENGTH_LONG).show();
+                    }
+                }
+            });
+        }
+    }
 
     private static final Map<String, String> MIME = new HashMap<>();
     static {
