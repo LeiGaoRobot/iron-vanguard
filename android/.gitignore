@@ -1,0 +1,4 @@
+build/
+out/
+# release signing key: never commit, but DO back it up (TapTap updates must be signed with the same key)
+keystore/
