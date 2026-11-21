@@ -2021,7 +2021,7 @@ export class Relay extends Enemy {
 
 // Boss mechs: enemy Mech run by the same physics + weapons as the player.
 export const BOSSES = {
-  tyrant: { name: '暴君 TYRANT · 重装指挥机', palette: 'tyrant', frame: 'heavy', parts: { head: 'mono', core: 'bulwark', legs: 'heavy', pack: 'tank' }, scale: 1.35, hp: 5200, want: [45, 32],
+  tyrant: { name: '暴君 TYRANT · 重装指挥机', palette: 'tyrant', frame: 'heavy', parts: { head: 'radar', core: 'reactor', legs: 'quad', pack: 'tank' }, scale: 1.35, hp: 5200, want: [45, 32],
     phases: [{ R: 'gatling', L: 'rifle', S: 'cannon' }, { R: 'gatling', L: 'coil', S: 'laser' }], mul: { gatling: 0.32, rifle: 0.35, coil: 0.3, cannon: 0.6, laser: 0.45 },
     phase2: ['暴君 · 第二形态', '武装切换：光束炮 / 闪电线圈'] },
   phantom: { name: '幻影 PHANTOM · 强袭机', palette: 'phantom', frame: 'light', parts: { head: 'crest', core: 'sleek', legs: 'rev', pack: 'sprint' }, scale: 1.22, hp: 4300, want: [34, 20], agile: true,
@@ -2031,7 +2031,7 @@ export const BOSSES = {
 // Raiders: squad mechs, same AI and weapons as the bosses, no phases, no boss bar
 export const RAIDERS = {
   raider: { name: '掠夺者 RAIDER', palette: 'raider', frame: 'std', parts: { head: 'mono', arms: 'brace', legs: 'tread' }, scale: 1.0, hp: 900, want: [36, 36], phases: [{ R: 'rifle', L: 'shotgun', S: 'missile' }], mul: { rifle: 0.1, shotgun: 0.15, missile: 0.14 } },
-  lancer: { name: '枪骑兵 LANCER', palette: 'lancer', frame: 'light', parts: { head: 'hawk', legs: 'rev', pack: 'glide' }, scale: 0.96, hp: 700, want: [24, 24], agile: true, phases: [{ R: 'blade', L: 'gatling', S: 'cannon' }], mul: { blade: 0.13, gatling: 0.1, cannon: 0.2 } },
+  lancer: { name: '枪骑兵 LANCER', palette: 'lancer', frame: 'light', parts: { head: 'hawk', legs: 'hover', pack: 'jumpjet' }, scale: 0.96, hp: 700, want: [24, 24], agile: true, phases: [{ R: 'blade', L: 'gatling', S: 'cannon' }], mul: { blade: 0.13, gatling: 0.1, cannon: 0.2 } },
 };
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.

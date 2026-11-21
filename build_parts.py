@@ -370,6 +370,144 @@ def pack_glide():
             box((cx, -0.13 - j * 0.04, cz - w * 0.42 * ca), (L * 0.9, 0.03, 0.04), M["NozzleGlow"], wg, rot=rot)
         cyl((s * 2.3, -0.1, 0.7), 0.05, 0.14, M["Accent"], wg, rot=(0, R(s * -18), 0))
 
+# ================================================================= v61.1 additions
+def head_radar():
+    # radar head: low armoured helm with a wide visor band, a mast on top carrying a rotating dish (SPN_ empty: the
+    # page spins it about its own vertical axis)
+    K = kit("P_head_radar"); g = pt(K, "headradar", "M_Head")
+    cyl((0, 0, 0.06), 0.19, 0.17, M["Joint"], g)
+    box((0, 0.02, 0.24), (0.62, 0.66, 0.34), M["Armor"], g, bevel=0.06)
+    box((0, 0.34, 0.26), (0.56, 0.06, 0.1), M["Black"], g)
+    box((0, 0.36, 0.26), (0.46, 0.03, 0.05), M["Visor"], g)
+    wedge((0, 0.24, 0.1), (0.48, 0.24, 0.14), M["Armor2"], g, rot=(math.pi, 0, 0), bevel=0.02, taper=0.6)
+    for s in (-1, 1):
+        box((s * 0.34, -0.02, 0.24), (0.08, 0.5, 0.26), M["Armor2"], g, bevel=0.02)
+        cyl((s * 0.39, 0.1, 0.24), 0.06, 0.05, M["Visor"], g, rot=(0, math.pi / 2, 0), verts=10)
+    box((0, -0.3, 0.26), (0.44, 0.12, 0.3), M["Frame"], g, bevel=0.02)
+    cyl((0, -0.08, 0.52), 0.12, 0.2, M["Frame"], g, verts=12)
+    sp = empty("SPN_radar", (0, -0.08, 0.66), g)
+    cyl((0, 0, 0.0), 0.05, 0.22, M["Piston"], sp, verts=8)
+    box((0, 0, 0.14), (0.9, 0.1, 0.32), M["Armor2"], sp, bevel=0.02)
+    box((0, 0.06, 0.14), (0.8, 0.02, 0.22), M["Frame"], sp)
+    box((0, 0.075, 0.14), (0.6, 0.01, 0.04), M["Visor"], sp)
+    for s in (-1, 1):
+        box((s * 0.46, 0, 0.14), (0.04, 0.12, 0.36), M["Accent"], sp)
+
+def core_reactor():
+    # reactor chest: rounded chest block around a glowing reactor eye, coolant pipes running up to the shoulders,
+    # heat-sink fins on the flanks
+    K = kit("P_core_reactor"); g = pt(K, "corereactor", "M_Torso")
+    box((0, 0, 0.22), (0.96, 0.7, 0.56), M["Frame"], g, bevel=0.05)
+    cyl((0, 0, 0.0), 0.34, 0.2, M["Joint"], g, verts=16)
+    for i in range(3):
+        box((0, 0.36, 0.06 + i * 0.16), (0.7 + i * 0.06, 0.1, 0.12), M["Armor2"] if i % 2 == 0 else M["Armor"], g, bevel=0.02)
+    box((0, 0.0, 0.56), (1.2, 0.84, 0.14), M["Armor2"], g, bevel=0.03)
+    box((0, -0.02, 1.02), (1.76, 1.04, 0.88), M["Armor"], g, bevel=0.1)
+    cyl((0, 0.52, 1.04), 0.36, 0.14, M["Armor2"], g, rot=ALONG_Y, verts=20)
+    cyl((0, 0.58, 1.04), 0.27, 0.06, M["Black"], g, rot=ALONG_Y, verts=20)
+    ball((0, 0.56, 1.04), 0.2, M["NozzleGlow"], g, scale=(1, 0.5, 1))
+    torus((0, 0.6, 1.04), 0.3, 0.035, M["Accent"], g, rot=ALONG_Y)
+    for k in range(6):
+        a = k / 6 * math.pi * 2
+        box((math.cos(a) * 0.32, 0.61, 1.04 + math.sin(a) * 0.32), (0.06, 0.04, 0.06), M["Frame"], g)
+    for s in (-1, 1):
+        cable([(s * 0.3, 0.56, 1.25), (s * 0.55, 0.5, 1.42), (s * 0.9, 0.2, 1.4)], 0.05, M["Piston"], g)
+        cable([(s * 0.3, 0.56, 0.83), (s * 0.62, 0.48, 0.74), (s * 0.86, 0.2, 0.82)], 0.045, M["Black"], g)
+        for j in range(4):
+            box((s * 0.92, -0.2 + j * 0.13, 1.0), (0.12, 0.04, 0.62), M["Frame"], g)
+        box((s * 0.5, 0.45, 1.44), (0.34, 0.12, 0.06), M["Visor"], g)
+    box((0, -0.56, 1.0), (1.3, 0.08, 0.7), M["Armor2"], g, bevel=0.02)
+    box((0, -0.04, 1.5), (1.04, 0.9, 0.16), M["Frame"], g, bevel=0.04)
+    cyl((0, 0.12, 1.6), 0.25, 0.12, M["Joint"], g, verts=16)
+
+def legs_hover():
+    # hover skirt (thighs hidden): an armoured column under the hips into a wide octagonal skirt that floats 0.6 m off
+    # the ground on four fan pods and a central lift disc (glow strips underneath)
+    K = kit("P_legs_hover")
+    for side, _ in SIDES:
+        ph(K, "legshover", f"M_Thigh{side}")
+    g = pt(K, "legshover", "M_Hips")
+    cyl((0, 0, 0.1), 0.5, 0.2, M["Joint"], g, verts=20)
+    box((0, 0, -0.14), (1.1, 0.96, 0.34), M["Armor2"], g, bevel=0.04)
+    box((0, 0, -0.75), (0.9, 0.9, 1.0), M["Frame"], g, bevel=0.05)
+    for s in (-1, 1):
+        box((s * 0.48, 0, -0.75), (0.06, 0.7, 0.8), M["Armor"], g, bevel=0.02)
+        box((0, s * 0.48, -0.7), (0.6, 0.06, 0.6), M["Armor"], g, bevel=0.02)
+    cyl((0, 0, -1.55), 1.55, 0.5, M["Armor"], g, verts=8, rot=(0, 0, math.pi / 8))
+    cyl((0, 0, -1.93), 1.55, 0.26, M["Frame"], g, verts=8, r2=1.2, rot=(math.pi, 0, math.pi / 8))
+    cyl((0, 0, -1.28), 1.42, 0.06, M["Armor2"], g, verts=8, rot=(0, 0, math.pi / 8))
+    for k in range(8):
+        a = k / 8 * math.pi * 2
+        box((math.cos(a) * 1.5, math.sin(a) * 1.5, -1.58), (0.05, 0.5, 0.12) if k % 2 else (0.05, 0.5, 0.06),
+            M["Hazard"] if k in (1, 5) else M["Accent"], g, rot=(0, 0, a))
+    for sx in (-1, 1):
+        for sy in (-1, 1):
+            x, y = sx * 0.95, sy * 0.95
+            cyl((x, y, -1.95), 0.42, 0.34, M["Armor2"], g, verts=14)
+            torus((x, y, -2.1), 0.4, 0.04, M["Frame"], g)
+            cyl((x, y, -2.13), 0.33, 0.02, M["NozzleGlow"], g, verts=14)
+    cyl((0, 0, -2.08), 0.6, 0.02, M["NozzleGlow"], g, verts=16)
+    box((0, 1.38, -1.5), (0.6, 0.18, 0.2), M["Black"], g)
+    box((0, 1.47, -1.5), (0.46, 0.02, 0.05), M["Visor"], g)
+
+QUAD_LEGS = (("FL", -1, 1), ("FR", 1, 1), ("BL", -1, -1), ("BR", 1, -1))
+def legs_quad():
+    # four spider legs (thighs hidden): chassis under the hips; each leg hangs off a QH_<leg> empty at its hip joint
+    # (the page swings it about the vertical and lifts it for a diagonal trot); knee high and out, foot pad on the
+    # ground at z -2.75
+    K = kit("P_legs_quad")
+    for side, _ in SIDES:
+        ph(K, "legsquad", f"M_Thigh{side}")
+    g = pt(K, "legsquad", "M_Hips")
+    cyl((0, 0, 0.1), 0.52, 0.2, M["Joint"], g, verts=20)
+    box((0, 0, -0.16), (1.2, 1.1, 0.36), M["Armor2"], g, bevel=0.04)
+    box((0, 0, -0.55), (1.5, 1.5, 0.6), M["Frame"], g, bevel=0.06)
+    wedge((0, 0.8, -0.5), (1.1, 0.3, 0.5), M["Armor"], g, rot=(R(-20), 0, 0), bevel=0.03, taper=0.7)
+    box((0, 0.98, -0.42), (0.5, 0.03, 0.05), M["Visor"], g)
+    box((0, -0.82, -0.5), (1.0, 0.14, 0.4), M["Armor"], g, bevel=0.02)
+    grille((0, -0.9, -0.5), (0.6, 0.03, 0.24), g, n=4, axis="x")
+    for name, sx, sy in QUAD_LEGS:
+        H = (sx * 0.72, sy * 0.62, -0.42)
+        Kn = (sx * 0.9, sy * 0.78, 0.55)      # knee relative to the hip pivot
+        Ft = (sx * 1.25, sy * 1.15, -2.28)    # ankle relative to the hip pivot (pad under it reaches -2.75)
+        q = empty(f"QH_{name}", H, g)
+        ball((0, 0, 0), 0.26, M["Joint"], q)
+        rod((0, 0, 0), Kn, 0.15, M["Frame"], q)
+        rod((Kn[0] * 0.15, Kn[1] * 0.15, Kn[2] * 0.15), (Kn[0] * 0.85, Kn[1] * 0.85, Kn[2] * 0.85), 0.24, M["Armor"], q)
+        ball(Kn, 0.22, M["Joint"], q)
+        wedge((Kn[0], Kn[1], Kn[2] + 0.18), (0.34, 0.34, 0.2), M["Accent"], q, bevel=0.02, taper=0.5)
+        rod(Kn, Ft, 0.12, M["Frame"], q)
+        m = tuple(Kn[i] + (Ft[i] - Kn[i]) * 0.3 for i in range(3)); m2 = tuple(Kn[i] + (Ft[i] - Kn[i]) * 0.72 for i in range(3))
+        rod(m, m2, 0.2, M["Armor2"], q)
+        rod(Kn, (Kn[0] + (Ft[0] - Kn[0]) * 0.4, Kn[1] + (Ft[1] - Kn[1]) * 0.4, Kn[2] + (Ft[2] - Kn[2]) * 0.4), 0.05, M["Piston"], q)
+        ball(Ft, 0.17, M["Joint"], q)
+        cyl((Ft[0], Ft[1], Ft[2] - 0.2), 0.34, 0.14, M["Frame"], q, verts=10)
+        cyl((Ft[0], Ft[1], Ft[2] - 0.08), 0.24, 0.14, M["Armor2"], q, verts=10)
+        box((Ft[0], Ft[1], Ft[2] - 0.2), (0.7, 0.08, 0.1), M["Hazard"], q, rot=(0, 0, math.atan2(sy, sx)))
+
+def pack_jumpjet():
+    # jump-jet pack: compact core between two tall vertical rocket pods with big bells and intake cowls; short
+    # stub wings with vents. The thruster anchors move under the pods.
+    K = kit("P_pack_jumpjet"); g = pt(K, "packjumpjet", "M_Pack")
+    box((0, 0, 0.1), (0.8, 0.5, 0.9), M["Frame"], g, bevel=0.05)
+    grille((0, -0.27, 0.15), (0.4, 0.04, 0.5), g, n=4)
+    for idx, s in ((1, -1), (2, 1)):
+        x, y = s * 0.6, -0.3
+        pv(K, "packjumpjet", f"T_Back{idx}", (x, y, -1.3))
+        cyl((x, y, -0.15), 0.3, 1.5, M["Armor"], g, verts=16)
+        ball((x, y, 0.6), 0.3, M["Armor"], g, scale=(1, 1, 0.7))
+        cyl((x, y + 0.2, 0.42), 0.14, 0.2, M["Black"], g, rot=ALONG_Y, verts=12)
+        for z in (0.3, -0.35):
+            cyl((x, y, z), 0.315, 0.07, M["Hazard"] if z > 0 else M["Frame"], g, verts=16)
+        box((x + s * 0.3, y, -0.1), (0.06, 0.12, 1.0), M["Accent"], g)
+        bell((x, y, -1.08), 0.36, 0.24, 0.42, g)
+        rod((x, y + 0.3, 0.2), (s * 0.2, 0.0, 0.3), 0.06, M["Frame"], g)
+        wg = pt(K, "packjumpjet", f"M_Wing{side_name(s)}")
+        box((s * 0.36, -0.1, 0.0), (0.6, 0.1, 0.34), M["Armor2"], wg, bevel=0.02)
+        grille((s * 0.36, -0.16, 0.0), (0.44, 0.03, 0.22), wg, n=3, axis="x")
+        cyl((s * 0.66, -0.1, -0.04), 0.07, 0.16, M["Nozzle"], wg, r2=0.1, rot=(math.pi, 0, 0))
+
+head_radar(); core_reactor(); legs_hover(); legs_quad(); pack_jumpjet()
 head_hawk(); head_mono(); head_crest()
 core_bulwark(); core_sleek()
 arms_brace(); arms_guard()
@@ -383,7 +521,7 @@ for K in PARTS:
     K.select_set(True)
     for o in K.children_recursive: o.select_set(True)
 bpy.ops.export_scene.gltf(filepath=glb, export_format="GLB", use_selection=True, export_apply=True, export_yup=True,
-                          export_materials="EXPORT", export_animations=False, export_normals=True,
+                          export_materials="EXPORT", export_animations=False, export_normals=True, export_texcoords=False,
                           export_lights=False, export_cameras=False)
 nmesh = sum(1 for K in PARTS for o in K.children_recursive if o.type == "MESH")
 print(f"exported {glb}: {len(PARTS)} parts, {nmesh} meshes, {os.path.getsize(glb)/1e6:.2f} MB")
@@ -399,6 +537,8 @@ if PREVIEW:
         ("striker", dict(head="crest", core="sleek", legs="rev", pack="sprint")),
         ("juggernaut", dict(head="mono", core="bulwark", arms="brace", legs="tread", pack="tank")),
         ("recon", dict(head="hawk", arms="guard", legs="heavy", pack="glide")),
+        ("gale", dict(head="crest", core="sleek", arms="guard", legs="hover", pack="jumpjet")),
+        ("siege", dict(head="radar", core="reactor", arms="brace", legs="quad", pack="tank")),
     ]
     def dup(o, parent, tag):
         c = o.copy()
@@ -407,7 +547,7 @@ if PREVIEW:
         for ch in o.children: dup(ch, c, tag)
         return c
     for n, (tag, pr) in enumerate(PRESETS):
-        root = dup(MECH, None, tag); root.location = (n * 5.5 - 8.25, 0, 0)
+        root = dup(MECH, None, tag); root.location = ((n - (len(PRESETS) - 1) / 2) * 5.8, 0, 0)
         byname = {o.name.split("|", 1)[1]: o for o in root.children_recursive}
         for slot, pid in pr.items():
             K = bpy.data.objects[f"Kit_P_{slot}_{pid}"]
@@ -428,9 +568,9 @@ if PREVIEW:
     scene.display.shading.light = "STUDIO"; scene.display.shading.color_type = "MATERIAL"; scene.display.shading.show_cavity = True
     w = bpy.data.worlds.new("W"); scene.world = w; w.use_nodes = True
     w.node_tree.nodes["Background"].inputs[0].default_value = (0.55, 0.6, 0.66, 1)
-    cam_data = bpy.data.cameras.new("C"); cam_data.type = "ORTHO"; cam_data.ortho_scale = 23
+    cam_data = bpy.data.cameras.new("C"); cam_data.type = "ORTHO"; cam_data.ortho_scale = 36
     cam = bpy.data.objects.new("C", cam_data); scene.collection.objects.link(cam); scene.camera = cam
-    scene.render.resolution_x = 1600; scene.render.resolution_y = 640
+    scene.render.resolution_x = 2400; scene.render.resolution_y = 640
     from mathutils import Vector
     c = Vector((0, 0, 2.9))
     roots = [o for o in bpy.data.objects if o.parent is None and "|" in o.name]

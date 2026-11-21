@@ -1097,7 +1097,7 @@ function newGame() {
     G.core = new Convoy(scene, M.path, M.coreHp); G.friends.push(G.core);
     G.player.pos.set(M.path[0][0] + 6, 0, M.path[0][1] - 9); cam.yaw = -Math.PI / 2; G.player.aimYaw = cam.yaw;
   }
-  G.od = { k: 0, t: 0, ringT: 0, dur: OD.dur + (chipOn('cap') ? 3 : 0) }; G.odGain = chipOn('cap') ? 1.4 : 1; G.hurtAt = -99;
+  G.od = { k: 0, t: 0, ringT: 0, dur: OD.dur + (chipOn('cap') ? 3 : 0) }; G.odGain = (chipOn('cap') ? 1.4 : 1) * (G.player.frame.od || 1); G.hurtAt = -99;
   $('coreName').textContent = G.core ? (M.creep ? '净化塔 PURIFIER' : M.convoy ? '运输车 CONVOY' : M.lane ? '基地 HQ' : '反应堆 REACTOR') : '';
   if (wingOn()) { G.wing = new Wingman(scene, mctx, cfg.palette === 'kestrel' ? 'vanguard' : 'kestrel'); G.friends.push(G.wing); }
   run.coreLost = false; run.trainLost = false; run.depotLost = false; run.salvage = !!M.salvage; run.quota = M.quota || 0; run.fortify = !!M.fortify; run.hackSaid = false; run.decap = !!M.decap; run.dcT = 16; run.dcN = 0; run.vipLost = false; run.dcWarn = 0; run.sabot = !!M.sabot; run.sbT = 14; run.sbN = 0; run.sbBoss = false; run.orbLost = false; run.sbWarn = 0; run.rescue = !!M.rescue; run.rsT = 10; run.rsN = 0; run.rsCap = 5; run.rsBoss = false; run.civLost = false; run.sky = !!M.sky; run.skyW = 0; run.skyBreak = 5; run.skyT = 16; run.skyB = 12; run.cityLost = false; run.pursuit = !!M.pursuit; run.prsT = 10; run.prsN = 0; run.dataLost = false; run.lance = !!M.lance; run.factory = !!M.factory; run.ctf = !!M.ctf; run.flagLost = false; run.rpT = 7; run.sqT = 26; run.ctfSq = 0; run.raidSaid = false; run.fcT = 20; run.tsunami = !!M.tsunami; run.tsT = 18; run.tsN = 0; run.creep = !!M.creep; run.crT = 16; run.crN = 0; run.seedT = 14; run.glad = !!M.glad; run.turf = !!M.turf; run.hf = !!M.hotfuse; run.tfC = 0; run.tfT = 10; run.tfN = 0; run.tfLast = false; run.tfBoss = false; run.turfLost = false; run.gRound = -1; run.gT = 5; run.gBreak = false; run.gq = []; run.gRe = false; run.gN0 = 0; run.hypeLost = false; run.hypeMsg = ''; run.hypeMsgT = 0; run.meltdown = !!M.meltdown; run.mdT = 20; run.mdN = 0; run.blT = 10; run.meltLost = false; run.lcnT = 6; run.lcnN = 0; run.beacon = !!M.beacon; run.bcnT = 3; run.bcnN = 0; run.timeUp = false; run.lane = !!M.lane; run.laneT = 8; run.laneN = 0; run.shadeSaid = false; run.squadSaid = false; run.armorSaid = false;
@@ -2797,7 +2797,7 @@ function buildGarage() {
   buildParts(opt, fill);
   const F = G.player.frame, xs = (k, lab) => (F[k] !== 1 ? ` · ${lab} <b>×${F[k].toFixed(2)}</b>` : '');
   $('gStats').innerHTML = `AP <b>${Math.round(F.hp)}</b> · 速度 <b>×${F.speed.toFixed(2)}</b> · EN <b>${Math.round(F.en)}</b> · 推进 <b>×${F.boost.toFixed(2)}</b> · 受伤 <b>×${+F.armor.toFixed(2)}</b>` + (save.up.fcs ? ` · 伤害 <b>×${dmgMul().toFixed(2)}</b>` : '')
-    + xs('lock', '锁定') + xs('reload', '装填') + (F.jump !== 1 ? ` · 跳跃高度 <b>×${(F.jump * F.jump).toFixed(2)}</b>` : '') + xs('qb', '急闪耗能') + xs('hover', '悬停耗能') + (F.grip ? ' · <b>防滑</b>' : '');
+    + xs('lock', '锁定') + xs('reload', '装填') + (F.jump !== 1 ? ` · 跳跃高度 <b>×${(F.jump * F.jump).toFixed(2)}</b>` : '') + xs('qb', '急闪耗能') + xs('hover', '悬停耗能') + xs('lift', '悬停爬升') + xs('radar', '雷达') + xs('od', '超载充能') + (F.grip ? ' · <b>防滑</b>' : '') + (F.float ? ' · <b>涉水</b>' : '');
   const wopt = (slot, k) => opt(`${WEAPONS[k].name}<small>${WEAPONS[k].desc}</small>`, cfg[slot] === k, () => { cfg[slot] = k; G.player.mount({ R: cfg.R, L: cfg.L, S: cfg.S }); G.pw = freshPW(); buildWeaponPanel(); });
   fill('gR', ARM_KEYS.map((k) => wopt('R', k)));
   fill('gL', ARM_KEYS.map((k) => wopt('L', k)));
@@ -3199,7 +3199,7 @@ function drawHUD(dt) {
   bannerT -= dt; if (bannerT <= 0) $('banner').classList.remove('show');
   hintT -= dt; if (hintT <= 0) $('hint').classList.add('hidden');
   // radar
-  const W = radar.width, R = W / 2, K = R / 140;
+  const W = radar.width, R = W / 2, K = R / (140 * (p.frame.radar || 1));   // radar head: wider radar
   rctx.clearRect(0, 0, W, W);
   rctx.save(); rctx.beginPath(); rctx.arc(R, R, R - 2, 0, Math.PI * 2); rctx.clip();
   rctx.translate(R, R); rctx.rotate(cam.yaw);
@@ -3707,7 +3707,7 @@ window.__iv = {
 (async () => {
   try {
     await loadKit('./assets/kit.glb?v=68');
-    await loadParts('./assets/parts.glb?v=1');
+    await loadParts('./assets/parts.glb?v=2');
     ensureArena();
     makePlayer();
     setState('title');

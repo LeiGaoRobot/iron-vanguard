@@ -24,7 +24,8 @@ export const FRAMES = {
 
 // Swappable parts (parts.glb). Multipliers stack onto the frame: hp / speed / en / boost / regen / armor (damage
 // taken), plus lock (lock-on radius), reload (arm weapons), jump, qb (quick-boost energy), hover (hover drain), grip
-// (ignores icy ground; jump scales take-off speed, so height goes with its square). id 'std' = the frame's own part, always owned.
+// (ignores icy ground; jump scales take-off speed, so height goes with its square), radar (radar range), od (overdrive
+// charge), lift (hover climb), float (no wading slowdown). id 'std' = the frame's own part, always owned.
 export const PART_SLOTS = ['head', 'core', 'arms', 'legs', 'pack'];
 export const SLOT_NAMES = { head: ['头部', 'Head'], core: ['躯干', 'Core'], arms: ['手臂', 'Arms'], legs: ['腿部', 'Legs'], pack: ['背包', 'Pack'] };
 export const PARTS = {
@@ -33,11 +34,13 @@ export const PARTS = {
     hawk: { name: '鹰眼', e: 'Hawk', cost: 1800, lock: 1.3, d: '锁定范围 +30%', de: 'lock-on +30%' },
     mono: { name: '独眼', e: 'Mono-eye', cost: 1500, hp: 1.05, d: '装甲 +5%', de: 'AP +5%' },
     crest: { name: '角冠', e: 'Crest', cost: 1500, regen: 1.12, d: '能量回复 +12%', de: 'EN regen +12%' },
+    radar: { name: '雷达头', e: 'Radar', cost: 2000, radar: 1.6, lock: 1.1, d: '雷达范围 +60% · 锁定范围 +10%', de: 'radar range +60% · lock-on +10%' },
   },
   core: {
     std: { name: '标准', e: 'Standard' },
     bulwark: { name: '重甲胸', e: 'Bulwark', cost: 2200, armor: 0.92, speed: 0.97, d: '受伤 −8% · 速度 −3%', de: 'dmg taken −8% · speed −3%' },
     sleek: { name: '流线胸', e: 'Sleek', cost: 2000, speed: 1.05, hp: 0.95, d: '速度 +5% · 装甲 −5%', de: 'speed +5% · AP −5%' },
+    reactor: { name: '反应堆胸', e: 'Reactor', cost: 2400, od: 1.35, regen: 1.06, hp: 0.97, d: '超载充能 +35% · 能量回复 +6% · 装甲 −3%', de: 'overdrive charge +35% · EN regen +6% · AP −3%' },
   },
   arms: {
     std: { name: '标准', e: 'Standard' },
@@ -49,12 +52,15 @@ export const PARTS = {
     heavy: { name: '重装腿', e: 'Heavy', cost: 2200, hp: 1.1, speed: 0.95, d: '装甲 +10% · 速度 −5%', de: 'AP +10% · speed −5%' },
     rev: { name: '逆关节', e: 'Reverse joint', cost: 2600, jump: 1.2, qb: 0.7, hp: 0.94, d: '跳跃高度 +44% · 急闪耗能 −30% · 装甲 −6%', de: 'jump height +44% · quick boost −30% EN · AP −6%' },
     tread: { name: '履带', e: 'Treads', cost: 3000, hp: 1.15, armor: 0.92, speed: 0.86, jump: 0.75, grip: true, d: '装甲 +15% · 受伤 −8% · 冰面不打滑 · 速度 −14% · 跳跃高度 −44%', de: 'AP +15% · dmg −8% · no ice slide · speed −14% · jump height −44%' },
+    hover: { name: '悬浮裙', e: 'Hover skirt', cost: 2800, speed: 1.12, hover: 0.85, float: true, hp: 0.88, d: '速度 +12% · 悬停耗能 −15% · 涉水不减速 · 装甲 −12%', de: 'speed +12% · hover drain −15% · no wading slowdown · AP −12%' },
+    quad: { name: '四足', e: 'Quad', cost: 3200, hp: 1.12, armor: 0.94, reload: 0.92, grip: true, speed: 0.9, d: '装甲 +12% · 受伤 −6% · 臂武器装填 −8% · 冰面不打滑 · 速度 −10%', de: 'AP +12% · dmg −6% · arm reload −8% · no ice slide · speed −10%' },
   },
   pack: {
     std: { name: '标准', e: 'Standard' },
     sprint: { name: '高机动', e: 'Sprint', cost: 2000, boost: 1.08, en: 0.92, d: '推进 +8% · 能量 −8%', de: 'boost +8% · EN −8%' },
     tank: { name: '大容量', e: 'Tank', cost: 1800, en: 1.18, boost: 0.95, d: '能量 +18% · 推进 −5%', de: 'EN +18% · boost −5%' },
     glide: { name: '滑翔翼', e: 'Glide', cost: 2200, hover: 0.7, d: '悬停耗能 −30%', de: 'hover drain −30%' },
+    jumpjet: { name: '跳跃背包', e: 'Jump jet', cost: 2400, jump: 1.25, lift: 1.3, boost: 0.95, d: '跳跃高度 +56% · 悬停爬升 +30% · 推进 −5%', de: 'jump height +56% · hover climb +30% · boost −5%' },
   },
 };
 // named builds for the garage / enemies (slot -> id; missing slots = std)
@@ -63,20 +69,23 @@ export const BUILDS = {
   striker: { name: '突击型', en: 'Striker', parts: { head: 'crest', core: 'sleek', legs: 'rev', pack: 'sprint' } },
   juggernaut: { name: '重战车', en: 'Juggernaut', parts: { head: 'mono', core: 'bulwark', arms: 'brace', legs: 'tread', pack: 'tank' } },
   recon: { name: '侦察型', en: 'Recon', parts: { head: 'hawk', arms: 'guard', legs: 'heavy', pack: 'glide' } },
+  gale: { name: '疾风型', en: 'Gale', parts: { head: 'crest', core: 'sleek', arms: 'guard', legs: 'hover', pack: 'jumpjet' } },
+  siege: { name: '堡垒型', en: 'Siege', parts: { head: 'radar', core: 'reactor', arms: 'brace', legs: 'quad', pack: 'tank' } },
 };
 export function partStats(parts) {
-  const r = { hp: 1, speed: 1, en: 1, boost: 1, regen: 1, armor: 1, lock: 1, reload: 1, jump: 1, qb: 1, hover: 1, grip: false };
+  const r = { hp: 1, speed: 1, en: 1, boost: 1, regen: 1, armor: 1, lock: 1, reload: 1, jump: 1, qb: 1, hover: 1, radar: 1, od: 1, lift: 1, grip: false, float: false };
   for (const slot of PART_SLOTS) {
     const p = PARTS[slot][(parts || {})[slot]]; if (!p) continue;
-    for (const k in r) if (p[k] !== undefined) r[k] = k === 'grip' ? r[k] || p[k] : r[k] * p[k];
+    for (const k in r) if (p[k] !== undefined) r[k] = typeof r[k] === 'boolean' ? r[k] || p[k] : r[k] * p[k];
   }
   return r;
 }
 export const partsReady = () => !!KIT.P_legs_tread;
+export const partsV2 = () => !!KIT.P_legs_quad;   // v61.1 parts in parts.glb
 // swap the standard meshes for the part kits: PT_<pid>__<Node> groups replace <Node>'s own meshes, PV_ moves a
 // pivot, PH_ hides a node (tread legs hide the thighs). Missing part kits (WeChat build) leave the standard part.
 function applyParts(body, n, parts) {
-  const wheels = [];
+  const wheels = [], spin = [], quad = [];
   for (const slot of PART_SLOTS) {
     const id = (parts || {})[slot]; if (!id || id === 'std') continue;
     const K = KIT[`P_${slot}_${id}`]; if (!K) continue;
@@ -89,11 +98,15 @@ function applyParts(body, n, parts) {
         for (const o of [...node.children]) if (o.isMesh) node.remove(o);
         const g = c.clone(true); g.position.set(0, 0, 0); g.rotation.set(0, 0, 0); g.scale.set(1, 1, 1);
         node.add(g);
-        g.traverse((o) => { if (o.isMesh && o.name.startsWith('TRW')) wheels.push(o); });
+        g.traverse((o) => {
+          if (o.isMesh && o.name.startsWith('TRW')) wheels.push(o);
+          else if (o.name.startsWith('SPN_')) spin.push(o);   // radar dish etc: spins about its own vertical
+          else if (/^QH_[FB][LR]$/.test(o.name)) { o.userData.p0 = o.position.clone(); o.userData.diag = o.name === 'QH_FL' || o.name === 'QH_BR' ? 0 : Math.PI; o.userData.sy = o.name[3] === 'F' ? 1 : -1; o.userData.sx = o.name[4] === 'L' ? 1 : -1; quad.push(o); }
+        });
       }
     }
   }
-  return wheels;
+  return { wheels, spin, quad };
 }
 
 const WALK = 10, BOOST = 25, GRAV = 27, JUMP = 13;
@@ -138,6 +151,7 @@ export class Mech {
     const PS = partStats(opts.cosmetic ? {} : this.parts), F0 = this.frame;   // cosmetic: enemy mechs keep their tuned stats
     for (const k of ['hp', 'speed', 'en', 'boost', 'regen', 'armor']) F0[k] *= PS[k];
     F0.lock = PS.lock; F0.reload = PS.reload; F0.jump = PS.jump; F0.qb = PS.qb; F0.hover = PS.hover; F0.grip = PS.grip;
+    F0.radar = PS.radar; F0.od = PS.od; F0.lift = PS.lift; F0.float = PS.float;
     this.legKind = KIT['P_legs_' + this.parts.legs] ? this.parts.legs : 'std';
     this.scale = (opts.scale || 1) * this.frame.scale;
     this.isBoss = !!opts.isBoss;
@@ -145,7 +159,7 @@ export class Mech {
     this.body = cloneKit('Mech'); this.body.scale.setScalar(this.scale);
     this.root.add(this.body);
     this.n = nodes(this.body);
-    this.wheels = applyParts(this.body, this.n, this.parts);
+    const AP = applyParts(this.body, this.n, this.parts); this.wheels = AP.wheels; this.spinners = AP.spin; this.quadLegs = AP.quad;
     this.setPalette(opts.palette || 'vanguard');
     this.slots = {};
     this.mount(opts.loadout || { R: 'rifle', L: 'gatling', S: 'missile' });
@@ -233,7 +247,7 @@ export class Mech {
       this.boosting = true;
     }
     const lunging = this.lungeT > 0;
-    const wade = WATER.on ? Math.max(0, Math.min(1, (WATER.y - this.pos.y) / 3)) : 0; this.wade = wade;
+    const wade = WATER.on && !F.float ? Math.max(0, Math.min(1, (WATER.y - this.pos.y) / 3)) : 0; this.wade = wade;   // hover skirts skim the water
     const top = (this.boosting ? BOOST * F.boost * (1 - 0.25 * wade) : WALK * F.speed * (1 - 0.4 * wade)) * mlen * (this.slowMul ?? 1) * (this.burnMul ?? 1) * (this.webMul ?? 1) * (this.creepMul ?? 1) * (this.turfMul ?? 1) * (this.boosting ? (this.gravBoost ?? 1) * (this.boostMul ?? 1) : 1);
     const acc = this.grounded ? (this.boosting ? 70 : 55) * (F.grip ? 1 : PHYS.grip) : (this.boosting ? 32 : 12);
     const wk = this.grounded ? 0.22 : 0.62;   // the wind shoves you, much harder in the air
@@ -247,7 +261,7 @@ export class Mech {
     if (I.jump && this.grounded) { this.vel.y = JUMP * (F.jump || 1); this.grounded = false; this.ctx.onJump && this.ctx.onJump(this); }
     if (!this.grounded && I.hover && canBoost) {
       hovering = true; drain += 26 * (F.hover || 1);
-      this.vel.y += (GRAV * PHYS.g + 20) * dt; if (this.vel.y > 9) this.vel.y = 9;
+      this.vel.y += (GRAV * PHYS.g + 20 * (F.lift || 1)) * dt; const vc = 9 * (F.lift || 1); if (this.vel.y > vc) this.vel.y = vc;
     }
     if (!lunging) this.vel.y -= GRAV * PHYS.g * (this.gravMul ?? 1) * (this.webG ?? 1) * dt;   // grav-lock dome: the hover lift no longer beats gravity
     if (this.grounded && this.vel.y < 0) this.vel.y = 0;
@@ -311,8 +325,16 @@ export class Mech {
     const c = Math.cos(this.legYaw), s = Math.sin(this.legYaw);
     const vf = -(this.vel.x * s + this.vel.z * c);     // forward speed
     const vr = this.vel.x * c - this.vel.z * s;        // right speed
-    if (this.legKind === 'tread') {   // treads: no gait, the hull just leans into acceleration
+    if (this.legKind === 'tread' || this.legKind === 'hover') {   // treads / hover skirt: no gait, the hull just leans into acceleration
       T.torX = -Math.max(-0.12, Math.min(0.15, vf * 0.006));
+      if (this.legKind === 'hover') T.hipY = 2.6 + (this.grounded ? 0 : 0.15);
+    } else if (this.legKind === 'quad') {   // quad: diagonal trot driven by phase, body stays level
+      const amp = this.grounded && this.qbT <= 0 ? Math.min(1, hs / (WALK * F.speed)) : 0;
+      this.phase += dt * (2.6 + hs * 0.38) * (this.backward ? -1 : 1);
+      T.hipY = 2.95 - Math.abs(Math.sin(this.phase)) * 0.06 * amp; T.torX = -0.04 * amp;
+      this.quadAmp = amp;
+      const st = Math.floor(this.phase / Math.PI);
+      if (st !== this.lastStep && amp > 0.25) { this.lastStep = st; this.ctx.onStep && this.ctx.onStep(this, st & 1); }
     } else if (this.grounded && !this.boosting && this.qbT <= 0) {
       const amp = Math.min(1, hs / (WALK * F.speed));
       this.phase += dt * (2.2 + hs * 0.42) * (this.backward ? -1 : 1);
@@ -334,14 +356,15 @@ export class Mech {
     }
     // landing crouch
     const lc = this.landC * this.landC * 1.2;
-    if (this.legKind === 'tread') { T.hipY -= lc * 0.25; T.torX -= lc * 0.15; }
+    if (this.legKind === 'tread' || this.legKind === 'hover' || this.legKind === 'quad') { T.hipY -= lc * (this.legKind === 'quad' ? 0.5 : 0.25); T.torX -= lc * 0.15; }
     else { T.hipY -= lc * 0.75; T.tl += lc * 0.9; T.tr += lc * 0.9; T.sl -= lc * 1.6; T.sr -= lc * 1.6; T.fl += lc * 0.7; T.fr += lc * 0.7; T.torX -= lc * 0.25; }
     if (this.legKind === 'rev') {   // reverse joint: the knee folds the other way, the long foot stays level
       T.sl *= -0.85; T.sr *= -0.85; T.fl = -(T.tl + T.sl) * 0.7; T.fr = -(T.tr + T.sr) * 0.7;
     }
     const k = 1 - Math.exp(-14 * dt);
     for (const key in T) P[key] = P[key] === undefined ? T[key] : P[key] + (T[key] - P[key]) * k;
-    n.M_Hips.position.y = P.hipY + Math.sin(performance.now() * 0.002) * 0.02;
+    const now = performance.now();
+    n.M_Hips.position.y = P.hipY + Math.sin(now * (this.legKind === 'hover' ? 0.0035 : 0.002)) * (this.legKind === 'hover' ? 0.09 : 0.02);
     n.M_Hips.rotation.z = -vr * 0.006;
     n.M_ThighL.rotation.x = P.tl; n.M_ThighR.rotation.x = P.tr;
     n.M_ShinL.rotation.x = P.sl; n.M_ShinR.rotation.x = P.sr;
@@ -385,6 +408,16 @@ export class Mech {
     n.M_Head.rotation.x = Math.max(-0.4, Math.min(0.5, pitch * 0.6));
     const ss = this.slots.S; if (ss) { ss.recoil = Math.max(0, (ss.recoil || 0) - dt * 3); for (const m of ss.models) m.position.z = (ss.recoil || 0) * 0.4; }
     for (const w of this.wheels) w.rotateY(vf / 0.3 * dt);   // tread road wheels roll with forward speed
+    for (const o of this.spinners) o.rotation.y += dt * 2.4;   // glTF export: an unrotated empty's local y is up
+    if (this.quadLegs.length) {   // diagonal pairs swing fore/aft about the hip and lift during the swing; airborne: tuck
+      const a = this.quadAmp || 0, air = this.grounded ? 0 : 1;
+      for (const q of this.quadLegs) {
+        const ph = this.phase + q.userData.diag, sw = Math.sin(ph) * a;
+        q.rotation.y += ((sw * 0.3 * q.userData.sx) - q.rotation.y) * k;
+        q.position.y = q.userData.p0.y + Math.max(0, Math.cos(ph)) * 0.32 * a;
+        q.rotation.x += (-air * 0.35 * q.userData.sy - q.rotation.x) * k;
+      }
+    }
     // weapon spin
     for (const side of ['L', 'R']) { const sl = this.slots[side]; if (sl.spin) sl.spin.rotation.y += (sl.spinV || 0) * dt; }
     // flames
