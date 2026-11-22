@@ -709,7 +709,124 @@ def pack_aegis():
         box((s * 0.5, -0.15, 0.0), (0.12, 0.03, 0.2), M["Visor"], wg)
 
 head_radar(); core_reactor(); legs_hover(); legs_quad(); pack_jumpjet()
+def head_hunter():
+    # hunter head: low wide helm with a slit visor and a long monocular scope on the right temple, swept cheek fins
+    K = kit("P_head_hunter"); g = pt(K, "headhunter", "M_Head")
+    cyl((0, 0, 0.06), 0.18, 0.17, M["Joint"], g)
+    box((0, 0.06, 0.22), (0.64, 0.7, 0.26), M["Armor"], g, bevel=0.05)
+    wedge((0, 0.16, 0.39), (0.5, 0.56, 0.1), M["Armor2"], g, bevel=0.02, taper=0.6)
+    box((0, 0.42, 0.22), (0.56, 0.05, 0.08), M["Black"], g)
+    box((0, 0.44, 0.22), (0.5, 0.02, 0.03), M["Visor"], g)
+    wedge((0, 0.34, 0.06), (0.44, 0.26, 0.1), M["Frame"], g, rot=(math.pi, 0, 0), bevel=0.02, taper=0.6)
+    box((0, -0.3, 0.24), (0.46, 0.2, 0.3), M["Armor2"], g, bevel=0.03)
+    cyl((0.4, 0.2, 0.3), 0.08, 0.86, M["Frame"], g, rot=ALONG_Y)
+    for y in (-0.12, 0.3):
+        cyl((0.4, y, 0.3), 0.1, 0.1, M["Armor2"], g, rot=ALONG_Y)
+    cyl((0.4, 0.64, 0.3), 0.065, 0.03, M["Visor"], g, rot=ALONG_Y)
+    box((0.33, 0.1, 0.3), (0.08, 0.16, 0.06), M["Frame"], g)
+    for sd in (-1, 1):
+        wedge((sd * 0.36, -0.08, 0.12), (0.08, 0.5, 0.26), M["Armor"], g, rot=(R(-15), 0, 0), bevel=0.01, taper=0.4)
+    box((-0.3, 0.3, 0.3), (0.04, 0.2, 0.04), M["Accent"], g)
+
+def core_reclaim():
+    # reclaim core: blocky chest with a big salvage intake in the sternum (dark mouth, crusher slats), two collection
+    # drums on the flanks and hazard trim
+    K = kit("P_core_reclaim"); g = pt(K, "corereclaim", "M_Torso")
+    box((0, 0, 0.22), (0.92, 0.66, 0.56), M["Frame"], g, bevel=0.05)
+    cyl((0, 0, 0.0), 0.34, 0.2, M["Joint"], g, verts=16)
+    for i in range(3):
+        box((0, 0.34, 0.06 + i * 0.16), (0.66 + i * 0.05, 0.1, 0.12), M["Armor2"] if i % 2 else M["Armor"], g, bevel=0.02)
+    box((0, 0.0, 0.56), (1.18, 0.82, 0.14), M["Armor2"], g, bevel=0.03)
+    box((0, -0.02, 1.02), (1.7, 1.0, 0.86), M["Armor"], g, bevel=0.08)
+    box((0, 0.5, 1.0), (0.8, 0.08, 0.5), M["Black"], g)
+    for i in range(5):
+        box((-0.3 + i * 0.15, 0.53, 1.0), (0.06, 0.06, 0.46), M["Piston"], g)
+    box((0, 0.52, 1.28), (0.9, 0.06, 0.06), M["Hazard"], g)
+    box((0, 0.52, 0.72), (0.9, 0.06, 0.06), M["Hazard"], g)
+    box((0, 0.54, 1.38), (0.5, 0.03, 0.04), M["Visor"], g)
+    for sd in (-1, 1):
+        cyl((sd * 0.86, 0.04, 1.02), 0.26, 0.7, M["Armor2"], g, verts=16)
+        for z in (0.78, 1.26):
+            cyl((sd * 0.86, 0.04, z), 0.28, 0.06, M["Frame"], g, verts=16)
+        cyl((sd * 0.86, 0.04, 1.4), 0.12, 0.08, M["Visor"], g, verts=12)
+        cable([(sd * 0.7, 0.3, 1.3), (sd * 0.5, 0.52, 1.36), (sd * 0.3, 0.54, 1.2)], 0.04, M["Black"], g)
+    box((0, -0.54, 1.0), (1.24, 0.08, 0.68), M["Armor2"], g, bevel=0.02)
+    box((0, -0.04, 1.5), (1.02, 0.88, 0.16), M["Armor2"], g, bevel=0.04)
+    cyl((0, 0.12, 1.6), 0.25, 0.12, M["Joint"], g, verts=16)
+
+def arms_rapid():
+    # rapid-fire arms: compact pauldrons with an ammo box, a feed belt down to the forearm, finned barrel-cooling
+    # forearms with a glowing heat strip
+    K = kit("P_arms_rapid")
+    for side, s in SIDES:
+        sh = pt(K, "armsrapid", f"M_Shoulder{side}")
+        ball((0, 0, 0), 0.3, M["Joint"], sh)
+        box((s * 0.26, 0.0, 0.08), (0.62, 0.8, 0.56), M["Armor"], sh, bevel=0.07)
+        box((s * 0.34, -0.36, 0.1), (0.4, 0.3, 0.4), M["Armor2"], sh, bevel=0.03)
+        box((s * 0.34, -0.52, 0.1), (0.3, 0.03, 0.26), M["Hazard"], sh)
+        box((s * 0.36, 0.42, 0.18), (0.24, 0.03, 0.05), M["Visor"], sh)
+        ar = pt(K, "armsrapid", f"M_Arm{side}")
+        cyl((0, 0, -0.42), 0.15, 0.84, M["Frame"], ar)
+        box((0, 0, -0.36), (0.44, 0.46, 0.54), M["Armor2"], ar, bevel=0.05)
+        cable([(s * 0.18, -0.26, 0.1), (s * 0.26, -0.3, -0.4), (s * 0.2, -0.22, -0.8)], 0.05, M["Piston"], ar)
+        cyl((0, 0, -0.82), 0.2, 0.44, M["Joint"], ar, rot=(0, math.pi / 2, 0))
+        fo = pt(K, "armsrapid", f"M_Fore{side}")
+        ball((0, 0, 0), 0.2, M["Joint"], fo)
+        box((0, 0.4, -0.04), (0.4, 1.1, 0.4), M["Armor"], fo, bevel=0.05)
+        for i in range(6):
+            box((0, 0.12 + i * 0.13, -0.04), (0.5, 0.04, 0.5), M["Frame"], fo)
+        box((s * 0.22, 0.42, -0.04), (0.03, 0.86, 0.1), M["NozzleGlow"], fo)
+        box((0, 0.42, 0.2), (0.24, 0.9, 0.06), M["Armor2"], fo)
+
+def legs_spring():
+    # spring legs: slim thighs, shins carrying an exposed coil spring around a damper rod, wide feet with a sprung
+    # heel pad. They walk like standard legs; the page gives them a second jump in mid-air.
+    K = kit("P_legs_spring")
+    for side, s in SIDES:
+        th = pt(K, "legsspring", f"M_Thigh{side}")
+        ball((0, 0, 0), 0.27, M["Joint"], th)
+        cyl((0, 0, -0.55), 0.16, 1.0, M["Frame"], th)
+        wedge((0, 0.08, -0.48), (0.56, 0.52, 0.84), M["Armor"], th, rot=(math.pi, 0, 0), bevel=0.05, taper=0.78)
+        box((s * 0.29, 0.0, -0.5), (0.05, 0.42, 0.6), M["Armor2"], th, bevel=0.02)
+        sh = pt(K, "legsspring", f"M_Shin{side}")
+        ball((0, 0, 0), 0.25, M["Joint"], sh)
+        box((0, 0.28, 0.04), (0.5, 0.2, 0.46), M["Armor2"], sh, bevel=0.04)
+        box((0, 0.1, -0.2), (0.46, 0.46, 0.3), M["Armor"], sh, bevel=0.04)
+        cyl((0, 0.0, -0.62), 0.07, 0.8, M["Piston"], sh)
+        for i in range(7):
+            torus((0, 0.0, -0.36 - i * 0.075), 0.2, 0.035, M["Hazard"] if i % 2 == 0 else M["Accent"], sh)
+        box((0, 0.06, -0.98), (0.5, 0.5, 0.3), M["Armor"], sh, bevel=0.04)
+        box((0, 0.32, -0.98), (0.08, 0.03, 0.2), M["Visor"], sh)
+        for k in (-1, 1):
+            box((k * 0.26, -0.06, -0.62), (0.05, 0.12, 0.7), M["Frame"], sh)
+        ft = pt(K, "legsspring", f"M_Foot{side}")
+        ball((0, 0, 0), 0.22, M["Joint"], ft)
+        box((0, 0.04, -0.06), (0.6, 0.6, 0.26), M["Armor2"], ft, bevel=0.03)
+        box((0, 0.16, -0.26), (0.86, 1.36, 0.18), M["Frame"], ft, bevel=0.04)
+        wedge((0, 0.86, -0.24), (0.78, 0.36, 0.2), M["Armor"], ft, bevel=0.02, taper=0.45)
+        for i in range(3):
+            torus((0, -0.44, -0.24 + i * 0.07), 0.15, 0.03, M["Hazard"], ft)
+        box((0, -0.44, -0.04), (0.36, 0.3, 0.1), M["Armor"], ft, bevel=0.02)
+
+def pack_drone():
+    # drone pack: a slim pack with a docking cradle on top (two prongs, a glowing landing ring). The page flies a
+    # D_Mini escort drone out of it for the whole sortie.
+    K = kit("P_pack_drone"); g = pt(K, "packdrone", "M_Pack")
+    box((0, 0, 0.0), (0.92, 0.5, 1.0), M["Frame"], g, bevel=0.06)
+    grille((0, -0.26, -0.1), (0.46, 0.04, 0.5), g, n=4)
+    box((0, -0.04, 0.56), (0.8, 0.5, 0.12), M["Armor2"], g, bevel=0.03)
+    cyl((0, -0.04, 0.66), 0.3, 0.06, M["Black"], g, verts=20)
+    torus((0, -0.04, 0.7), 0.3, 0.03, M["Visor"], g)
+    for sd in (-1, 1):
+        box((sd * 0.38, -0.04, 0.82), (0.08, 0.36, 0.34), M["Armor"], g, bevel=0.02)
+        box((sd * 0.42, -0.04, 0.96), (0.03, 0.2, 0.04), M["Accent"], g)
+        box((sd * 0.52, -0.08, 0.0), (0.14, 0.4, 0.86), M["Armor"], g, bevel=0.03)
+        box((sd * 0.6, -0.08, 0.0), (0.03, 0.26, 0.6), M["Hazard"], g)
+    rod((0.2, -0.24, 0.5), (0.34, -0.2, 1.2), 0.02, M["Piston"], g)
+    ball((0.34, -0.2, 1.22), 0.035, M["Visor"], g, sub=1)
+
 head_ew(); core_nanite(); legs_wheel(); pack_aegis()
+head_hunter(); core_reclaim(); arms_rapid(); legs_spring(); pack_drone()
 arms_stab(); arms_pod(); arms_fist()
 head_hawk(); head_mono(); head_crest()
 core_bulwark(); core_sleek()
@@ -747,6 +864,8 @@ if PREVIEW:
         ("barrage", dict(head="radar", core="reactor", arms="pod", legs="tread", pack="tank")),
         ("racer", dict(head="ew", core="sleek", arms="stab", legs="wheel", pack="sprint")),
         ("aegis", dict(head="ew", core="nanite", arms="guard", legs="heavy", pack="aegis")),
+        ("hunter", dict(head="hunter", core="reclaim", arms="rapid", legs="rev", pack="drone")),
+        ("hopper", dict(head="crest", core="sleek", arms="stab", legs="spring", pack="jumpjet")),
     ]
     def dup(o, parent, tag):
         c = o.copy()

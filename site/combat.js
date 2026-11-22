@@ -164,6 +164,13 @@ function dealDamage(ent, dmg, team, at, label) {
     if (team === 'P' && G.hf && G.hf.h === h && h.kind !== 'boss' && h.kind !== 'raider' && (label || G.curLabel) !== 'p-fuse') { dmg *= FUSE.carrierK; G.hf.shielded = (G.hf.shielded || 0) + dmg; }   // the bomb's field shields its carrier   // adaptor: resists the damage type it adapted to
     if (team === 'P' && G.glad && !isAlly(label || G.curLabel) && !ent.isBarrel) { if (G.glad.h >= GLAD.frenzy) { G.gladBonus += dmg * (GLAD.fdmg - 1); dmg *= GLAD.fdmg; } G.glad.lastDmgT = G.time; G.glad.h = Math.min(100, G.glad.h + Math.min(dmg, 200) * (h.kind === 'boss' ? GLAD.bossK : GLAD.dmgK)); }   // a good show keeps them interested
     if (h && !ent.isBarrel) { h._lastLbl = label || G.curLabel || ''; h._lastTeam = team; } }
+  if (team === 'P' && G.player && !ent.isBarrel && !isAlly(label || G.curLabel)) {   // falcon airborne / bedrock brace / hunter head
+    const pl = G.player, pf = pl.frame, h = ent.kind === 'cpart' ? ent.owner : ent, fb = G.stats.fb || (G.stats.fb = { air: 0, brace: 0, hunt: 0 });
+    if (pf.aerial && !pl.grounded) { fb.air += dmg * pf.aerial; dmg *= 1 + pf.aerial; }
+    if (pl.stance) { fb.brace += dmg * (MECHX.braceDmg - 1); dmg *= MECHX.braceDmg; }
+    if (pf.hunt > 1 && h.maxHp && h.hp < h.maxHp * MECHX.huntBelow) { fb.hunt += dmg * (pf.hunt - 1); dmg *= pf.hunt; }
+    if ((label || G.curLabel) === 'drone-pack') fb.drone = (fb.drone || 0) + dmg;
+  }
   if (G.tl && team === 'P' && (label || G.curLabel || '').startsWith('ally-ghost')) G.tl.gdmg += dmg;
   ent.hit(dmg, at, label || G.curLabel);
   if (dmg >= 4) hitFlash(ent.kind === 'cpart' ? ent.owner : ent);
@@ -172,6 +179,8 @@ function dealDamage(ent, dmg, team, at, label) {
 }
 
 const BURN_WEAK = 0.75, STUN_VULN = 1.3, _dodgeP = new THREE.Vector3();
+// v66.1 frames and parts: bedrock brace, hunter head threshold, escort drone
+export const MECHX = { braceCut: 0.7, braceDmg: 1.2, huntBelow: 0.3, drone: { dmg: 5, rate: 0.28, range: 60 } };
 const isAlly = (l) => !!l && l.startsWith('ally');
 export function hurtPlayer(dmg, label) { G.curSrc = null; damagePlayer(dmg, null, label); }
 function damagePlayer(dmg, src, label) {
@@ -196,6 +205,7 @@ function damagePlayer(dmg, src, label) {
   if (G.burn && G.burn.t > 0) dmg *= 1 - G.burn.d.cut;   // afterburner   // reflector: what it can't bounce, it softens
   if (G.curShooter && G.curShooter.burnT > 0) dmg *= BURN_WEAK;   // direct hits (melee, beams) from a burning enemy
   let d = dmg * G.diff.dmg * p.frame.armor * (1 - blk) * (G.od && G.od.t > 0 ? OD.armor : 1);
+  if (p.stance) { G.stats.braced = (G.stats.braced || 0) + d * (1 - MECHX.braceCut); d *= MECHX.braceCut; }   // bedrock frame: braced
   const bk = p.frame.bulk; if (bk && d > bk) { G.stats.bulked = (G.stats.bulked || 0) + (d - bk) * 0.5; d = bk + (d - bk) * 0.5; }   // titan frame: big hits are softened
   if (p.aegis > 0) {   // aegis pack: the shield soaks first
     const a = Math.min(p.aegis, d); p.aegis -= a; d -= a; G.stats.aegis = (G.stats.aegis || 0) + a; G.hurtAt = G.time; G.aegisHitT = G.time;
@@ -1534,6 +1544,14 @@ function spawnMini(owner, slot, k, d, dmgMul, team) {
   G.minis.push({ obj, n: nodes(obj), owner, t: d.dur, side: k ? -1 : 1, fireT: 0.4 + k * 0.08, team, dmg: d.dmg * dmgMul, rate: d.rate, range: d.range, tgt: null, tgtT: 0, ph: Math.random() * 6, label: owner === G.player ? 'drone-pod' : 'ally-drone' });
   G.fx.ring(obj.position, null, 0.2, 1.6, 0.25, 0x9fe8ff);
 }
+export function spawnPackDrone(owner) {   // escort drone pack: one drone for the whole sortie
+  const obj = cloneKit('D_Mini'), D = MECHX.drone;
+  if (owner.paletteKey) recolor(obj, PALETTES[owner.paletteKey], owner.paletteKey);
+  obj.position.set(owner.pos.x, owner.pos.y + 4.2 * owner.scale, owner.pos.z);
+  G.scene.add(obj);
+  G.minis.push({ obj, n: nodes(obj), owner, t: Infinity, side: 1, pack: true, fireT: 0.6, team: 'P', dmg: D.dmg, rate: D.rate, range: D.range, tgt: null, tgtT: 0, ph: Math.random() * 6, label: 'drone-pack' });
+  G.fx.ring(obj.position, null, 0.2, 1.6, 0.25, 0x9fe8ff);
+}
 export function clearMinis() { for (const m of G.minis) m.obj.parent && m.obj.parent.remove(m.obj); G.minis.length = 0; }
 const _md = new V3();
 function updateMinis(dt) {
@@ -1542,8 +1560,8 @@ function updateMinis(dt) {
     m.t -= dt;
     if (m.t <= 0 || !o.alive) { G.fx.sparks(P, null, 6, 0x9fe8ff, 8, 0.6, 0.25, 0.2); G.fx.ring(P, null, 0.2, 1.4, 0.2, 0x9fe8ff); m.obj.parent && m.obj.parent.remove(m.obj); G.minis.splice(i, 1); continue; }
     m.ph += dt;
-    const a = G.time * 0.8 + (m.side > 0 ? 0 : Math.PI);
-    _md.set(o.pos.x + Math.cos(a) * 4.6, o.pos.y + 5.2 + Math.sin(m.ph * 2.1) * 0.5, o.pos.z + Math.sin(a) * 4.6);
+    const a = G.time * (m.pack ? -0.6 : 0.8) + (m.pack ? 0 : m.side > 0 ? 0 : Math.PI), mr = m.pack ? 3.8 : 4.6;
+    _md.set(o.pos.x + Math.cos(a) * mr, o.pos.y + (m.pack ? 6.2 : 5.2) + Math.sin(m.ph * 2.1) * 0.5, o.pos.z + Math.sin(a) * mr);
     P.lerp(_md, 1 - Math.exp(-3.5 * dt));
     for (let r = 1; r <= 4; r++) { const rr = m.n['D_Rotor' + r]; if (rr) rr.rotation.z += dt * 40; }
     // target: closest visible enemy in range, re-picked a few times a second

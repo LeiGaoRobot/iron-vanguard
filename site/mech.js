@@ -30,6 +30,8 @@ export const FRAMES = {
   std: { name: '标准', e: 'Standard', hp: 1200, speed: 1.0, en: 100, boost: 1.0, regen: 1.0, armor: 1.0, scale: 1.0 },
   heavy: { name: '重型', e: 'Heavy', hp: 1650, speed: 0.86, en: 90, boost: 0.9, regen: 0.9, armor: 0.85, scale: 1.07 },
   wraith: { name: '迅影', e: 'Wraith', hp: 760, speed: 1.24, en: 130, boost: 1.18, regen: 1.25, armor: 1.15, scale: 0.9, cost: 4500, dodge: true, d: '急闪的 0.28 秒内完全无敌 · 最快 · 装甲最低', de: 'quick boost: 0.28 s invulnerable · fastest · lowest AP' },
+  falcon: { name: '猎隼', e: 'Falcon', hp: 1100, speed: 1.0, en: 120, boost: 1.08, regen: 1.1, armor: 1.0, scale: 0.95, cost: 4800, aerial: 0.2, hv: 0.7, d: '离地时伤害 +20% · 悬停耗能 −30% · 装甲略低', de: 'damage +20% while airborne · hover drain −30% · slightly less AP' },
+  rock: { name: '磐石', e: 'Bedrock', hp: 1550, speed: 0.84, en: 95, boost: 0.88, regen: 0.95, armor: 0.92, scale: 1.1, cost: 4800, stance: true, d: '落地站定 0.6 秒进入架设:伤害 +20%、受伤 −30% · 慢', de: 'stand still on the ground for 0.6 s to brace: damage +20%, damage taken −30% · slow' },
   titan: { name: '泰坦', e: 'Titan', hp: 2100, speed: 0.74, en: 85, boost: 0.8, regen: 0.85, armor: 0.84, scale: 1.15, cost: 5000, bulk: 40, d: '单次伤害超过 40 的部分减半 · 装甲最高 · 最慢', de: 'single hits above 40: the excess is halved · most AP · slowest' },
 };
 
@@ -47,6 +49,7 @@ export const PARTS = {
     mono: { name: '独眼', e: 'Mono-eye', cost: 1500, hp: 1.05, d: '装甲 +5%', de: 'AP +5%' },
     crest: { name: '角冠', e: 'Crest', cost: 1500, regen: 1.12, d: '能量回复 +12%', de: 'EN regen +12%' },
     radar: { name: '雷达头', e: 'Radar', cost: 2000, radar: 1.6, lock: 1.1, d: '雷达范围 +60% · 锁定范围 +10%', de: 'radar range +60% · lock-on +10%' },
+    hunter: { name: '猎手', e: 'Hunter', cost: 2400, hunt: 1.2, hp: 0.97, d: '对装甲低于 30% 的敌人伤害 +20% · 装甲 −3%', de: 'damage +20% to enemies below 30% AP · AP −3%' },
     ew: { name: '电战头', e: 'EW suite', cost: 2600, ew: true, lock: 1.1, hp: 0.96, d: '免疫电子干扰 · 致盲 / 扰频时长 −60% · 锁定范围 +10% · 装甲 −4%', de: 'immune to jamming · blind / scramble −60% · lock-on +10% · AP −4%' },
   },
   core: {
@@ -54,6 +57,7 @@ export const PARTS = {
     bulwark: { name: '重甲胸', e: 'Bulwark', cost: 2200, armor: 0.92, speed: 0.97, d: '受伤 −8% · 速度 −3%', de: 'dmg taken −8% · speed −3%' },
     sleek: { name: '流线胸', e: 'Sleek', cost: 2000, speed: 1.05, hp: 0.95, d: '速度 +5% · 装甲 −5%', de: 'speed +5% · AP −5%' },
     reactor: { name: '反应堆胸', e: 'Reactor', cost: 2400, od: 1.35, regen: 1.06, hp: 0.97, d: '超载充能 +35% · 能量回复 +6% · 装甲 −3%', de: 'overdrive charge +35% · EN regen +6% · AP −3%' },
+    reclaim: { name: '回收核心', e: 'Reclaim', cost: 2600, reclaim: 0.015, hp: 0.97, d: '你击毁的敌人修复 1.5% 装甲(大型目标 6%)· 装甲 −3%', de: 'your kills repair 1.5% AP (6% for big targets) · AP −3%' },
     nanite: { name: '纳米核心', e: 'Nanite', cost: 2800, nanite: 0.25, hp: 0.96, d: '受到伤害的 25% 随后由纳米修复回来 · 装甲 −4%', de: '25% of damage taken is repaired back over the next seconds · AP −4%' },
   },
   arms: {
@@ -62,6 +66,7 @@ export const PARTS = {
     guard: { name: '护盾臂', e: 'Guard', cost: 2000, armor: 0.95, boost: 0.98, d: '受伤 −5% · 推进 −2%', de: 'dmg taken −5% · boost −2%' },
     stab: { name: '稳定臂', e: 'Stabilizer', cost: 2200, spread: 0.55, pspd: 1.15, d: '臂武器散布 −45% · 弹速 +15%', de: 'arm weapon spread −45% · projectile speed +15%' },
     pod: { name: '挂舱臂', e: 'Pod', cost: 2400, scd: 0.85, hp: 0.97, d: '肩武器冷却 −15% · 装甲 −3%', de: 'shoulder cooldown −15% · AP −3%' },
+    rapid: { name: '速射臂', e: 'Rapid', cost: 2400, rate: 0.87, spread: 1.25, hp: 0.97, d: '臂武器射速 +15% · 散布 +25% · 装甲 −3%', de: 'arm weapon fire rate +15% · spread +25% · AP −3%' },
     fist: { name: '格斗臂', e: 'Brawler', cost: 2400, melee: 1.3, armor: 0.97, reload: 1.08, d: '近战伤害 +30% · 受伤 −3% · 臂武器装填 +8%', de: 'melee damage +30% · dmg taken −3% · arm reload +8%' },
   },
   legs: {
@@ -71,6 +76,7 @@ export const PARTS = {
     tread: { name: '履带', e: 'Treads', cost: 3000, hp: 1.15, armor: 0.92, speed: 0.86, jump: 0.75, grip: true, d: '装甲 +15% · 受伤 −8% · 冰面不打滑 · 速度 −14% · 跳跃高度 −44%', de: 'AP +15% · dmg −8% · no ice slide · speed −14% · jump height −44%' },
     hover: { name: '悬浮裙', e: 'Hover skirt', cost: 2800, speed: 1.12, hover: 0.85, float: true, hp: 0.88, d: '速度 +12% · 悬停耗能 −15% · 涉水不减速 · 装甲 −12%', de: 'speed +12% · hover drain −15% · no wading slowdown · AP −12%' },
     quad: { name: '四足', e: 'Quad', cost: 3200, hp: 1.12, armor: 0.94, reload: 0.92, grip: true, speed: 0.9, d: '装甲 +12% · 受伤 −6% · 臂武器装填 −8% · 冰面不打滑 · 速度 −10%', de: 'AP +12% · dmg −6% · arm reload −8% · no ice slide · speed −10%' },
+    spring: { name: '弹跳腿', e: 'Spring', cost: 2800, djump: true, jump: 1.05, hp: 0.95, d: '空中可再跳一次(不耗能)· 跳跃高度 +10% · 装甲 −5%', de: 'a second jump in mid-air (no EN) · jump height +10% · AP −5%' },
     wheel: { name: '轮足', e: 'Wheels', cost: 3000, speed: 1.2, boost: 1.06, jump: 0.85, hp: 0.92, d: '速度 +20% · 推进 +6% · 跳跃高度 −28% · 装甲 −8%', de: 'speed +20% · boost +6% · jump height −28% · AP −8%' },
   },
   pack: {
@@ -79,6 +85,7 @@ export const PARTS = {
     tank: { name: '大容量', e: 'Tank', cost: 1800, en: 1.18, boost: 0.95, d: '能量 +18% · 推进 −5%', de: 'EN +18% · boost −5%' },
     glide: { name: '滑翔翼', e: 'Glide', cost: 2200, hover: 0.7, d: '悬停耗能 −30%', de: 'hover drain −30%' },
     jumpjet: { name: '跳跃背包', e: 'Jump jet', cost: 2400, jump: 1.25, lift: 1.3, boost: 0.95, d: '跳跃高度 +56% · 悬停爬升 +30% · 推进 −5%', de: 'jump height +56% · hover climb +30% · boost −5%' },
+    drone: { name: '僚机背包', e: 'Escort drone', cost: 3000, drone: true, en: 0.92, d: '全程带一架护卫无人机自动射击(约 18 伤害/秒)· 能量 −8%', de: 'an escort drone fights beside you all sortie (~18 dps) · EN −8%' },
     aegis: { name: '神盾背包', e: 'Aegis', cost: 3200, aegis: 220, en: 0.9, d: '220 点护盾先于装甲受伤 · 6 秒未受伤后每秒回 30 · 能量 −10%', de: '220-point shield takes hits before armour · regenerates 30/s after 6 s unhurt · EN −10%' },
   },
 };
@@ -95,6 +102,8 @@ export const BUILDS = {
   barrage: { name: '火力型', en: 'Barrage', parts: { head: 'radar', core: 'reactor', arms: 'pod', legs: 'tread', pack: 'tank' } },
   racer: { name: '飙车型', en: 'Racer', parts: { head: 'ew', core: 'sleek', arms: 'stab', legs: 'wheel', pack: 'sprint' } },
   aegis: { name: '神盾型', en: 'Aegis', parts: { head: 'ew', core: 'nanite', arms: 'guard', legs: 'heavy', pack: 'aegis' } },
+  hunter: { name: '猎杀型', en: 'Hunter', parts: { head: 'hunter', core: 'reclaim', arms: 'rapid', legs: 'rev', pack: 'drone' } },
+  hopper: { name: '跳蚤型', en: 'Hopper', parts: { head: 'crest', core: 'sleek', arms: 'stab', legs: 'spring', pack: 'jumpjet' } },
 };
 // camouflage over the primary armour (kit.js CAMO_FRAG); the tones come from the palette, so each paint gets its own
 export const PATTERNS = {
@@ -105,8 +114,8 @@ export const PATTERNS = {
   hex: { name: '蜂巢', e: 'Hex', id: 4, cost: 1000 },
 };
 export function partStats(parts) {
-  const r = { hp: 1, speed: 1, en: 1, boost: 1, regen: 1, armor: 1, lock: 1, reload: 1, jump: 1, qb: 1, hover: 1, radar: 1, od: 1, lift: 1, spread: 1, pspd: 1, scd: 1, melee: 1, grip: false, float: false, ew: false, nanite: 0, aegis: 0 };
-  const ADD = { nanite: 1, aegis: 1 };   // additive: nanite (share of damage repaired back), aegis (shield points)
+  const r = { hp: 1, speed: 1, en: 1, boost: 1, regen: 1, armor: 1, lock: 1, reload: 1, jump: 1, qb: 1, hover: 1, radar: 1, od: 1, lift: 1, spread: 1, pspd: 1, scd: 1, melee: 1, grip: false, float: false, ew: false, nanite: 0, aegis: 0, hunt: 1, reclaim: 0, rate: 1, djump: false, drone: false };
+  const ADD = { nanite: 1, aegis: 1, reclaim: 1 };   // additive: nanite (share of damage repaired back), aegis (shield points)
   for (const slot of PART_SLOTS) {
     const p = PARTS[slot][(parts || {})[slot]]; if (!p) continue;
     for (const k in r) if (p[k] !== undefined) r[k] = typeof r[k] === 'boolean' ? r[k] || p[k] : ADD[k] ? r[k] + p[k] : r[k] * p[k];
@@ -184,10 +193,12 @@ export class Mech {
     this.parts = { ...(opts.parts || {}) };
     const PS = partStats(opts.cosmetic ? {} : this.parts), F0 = this.frame;   // cosmetic: enemy mechs keep their tuned stats
     for (const k of ['hp', 'speed', 'en', 'boost', 'regen', 'armor']) F0[k] *= PS[k];
-    F0.lock = PS.lock; F0.reload = PS.reload; F0.jump = PS.jump; F0.qb = PS.qb; F0.hover = PS.hover; F0.grip = PS.grip;
+    F0.lock = PS.lock; F0.reload = PS.reload; F0.jump = PS.jump; F0.qb = PS.qb; F0.hover = PS.hover * (F0.hv || 1); F0.grip = PS.grip;
     F0.radar = PS.radar; F0.od = PS.od; F0.lift = PS.lift; F0.float = PS.float;
     F0.spread = PS.spread; F0.pspd = PS.pspd; F0.scd = PS.scd; F0.melee = PS.melee;
     F0.ew = PS.ew; F0.nanite = PS.nanite; F0.aegis = PS.aegis; this.aegis = PS.aegis;
+    F0.hunt = PS.hunt; F0.reclaim = PS.reclaim; F0.rate = PS.rate; F0.djump = PS.djump; F0.drone = PS.drone;
+    this.stanceT = 0; this.stanceK = 0; this.stance = false; this.djUsed = false;
     this.legKind = KIT['P_legs_' + this.parts.legs] ? this.parts.legs : 'std';
     this.scale = (opts.scale || 1) * this.frame.scale;
     this.isBoss = !!opts.isBoss;
@@ -298,6 +309,11 @@ export class Mech {
     // vertical
     let hovering = false;
     if (I.jump && this.grounded) { this.vel.y = JUMP * (F.jump || 1); this.grounded = false; this.ctx.onJump && this.ctx.onJump(this); }
+    else if (I.jump && F.djump && !this.djUsed && !(this.slamT > 0)) {   // spring legs: one more jump in mid-air
+      this.vel.y = Math.max(this.vel.y, JUMP * 0.95 * (F.jump || 1)); this.djUsed = true;
+      if (mlen > 0.1) { this.vel.x += dx * 5; this.vel.z += dz * 5; }
+      this.ctx.onDJump && this.ctx.onDJump(this);
+    }
     if (!this.grounded && I.hover && canBoost) {
       hovering = true; drain += 26 * (F.hover || 1);
       this.vel.y += (GRAV * PHYS.g + 20 * (F.lift || 1)) * dt; const vc = 9 * (F.lift || 1); if (this.vel.y > vc) this.vel.y = vc;
@@ -324,7 +340,7 @@ export class Mech {
     if (p.y <= g + 0.001) {
       if (!this.grounded) {
         const impact = -this.vel.y;
-        this.grounded = true;
+        this.grounded = true; this.djUsed = false;
         if (impact > 6) { this.landC = Math.min(1, impact / 22); this.ctx.onLand && this.ctx.onLand(this, impact); }
       }
       p.y = g; this.vel.y = 0;
@@ -333,6 +349,11 @@ export class Mech {
       else this.grounded = false;
     }
     if (p.y > 60) { p.y = 60; this.vel.y = Math.min(0, this.vel.y); }
+    // bedrock frame: brace after standing still on the ground
+    if (F.stance && this.grounded && mlen < 0.1 && !this.boosting && Math.hypot(this.vel.x, this.vel.z) < 1.2) this.stanceT += dt; else this.stanceT = 0;
+    const st0 = this.stance; this.stance = this.stanceT > 0.6;
+    if (this.stance && !st0) this.ctx.onBrace && this.ctx.onBrace(this);
+    this.stanceK += ((this.stance ? 1 : 0) - this.stanceK) * (1 - Math.exp(-9 * dt));
     // thrust levels for visuals / audio
     const thr = this.qbT > 0 || lunging ? 1 : (this.boosting ? 0.85 : hovering ? 0.7 : 0);
     this.thrustLv += (thr - this.thrustLv) * (1 - Math.exp(-14 * dt));
@@ -405,6 +426,11 @@ export class Mech {
     else { T.hipY -= lc * 0.75; T.tl += lc * 0.9; T.tr += lc * 0.9; T.sl -= lc * 1.6; T.sr -= lc * 1.6; T.fl += lc * 0.7; T.fr += lc * 0.7; T.torX -= lc * 0.25; }
     if (this.legKind === 'rev') {   // reverse joint: the knee folds the other way, the long foot stays level
       T.sl *= -0.85; T.sr *= -0.85; T.fl = -(T.tl + T.sl) * 0.7; T.fr = -(T.tr + T.sr) * 0.7;
+    }
+    if (this.stanceK > 0.01) {   // braced: knees bent, hips low
+      const q = this.stanceK;
+      if (this.legKind === 'tread' || this.legKind === 'hover' || this.legKind === 'quad') T.hipY -= 0.18 * q;
+      else { T.hipY -= 0.34 * q; T.tl += 0.3 * q; T.tr += 0.3 * q; T.sl -= 0.6 * q; T.sr -= 0.6 * q; T.fl += 0.3 * q; T.fr += 0.3 * q; }
     }
     const k = 1 - Math.exp(-14 * dt);
     for (const key in T) P[key] = P[key] === undefined ? T[key] : P[key] + (T[key] - P[key]) * k;

@@ -12,7 +12,7 @@ import { AtmospherePass, makeRidge } from './post.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
 import { Mech, PALETTES, FRAMES, angDiff, PHYS, MECHS, PARTS, PART_SLOTS, SLOT_NAMES, BUILDS, PATTERNS, partStats, partsReady, partAvail } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
-import { G, OD, ACES, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, Leaper, LEAP, FLARE, Herald, HERALD, Tower, Citadel, Trooper, Shade, SHADE, LANE, Marshal, DECAP, startDecap, clearDecap, Dazzler, DAZZ, clearLinkB, Pulsar, PULSE, MAZE, startMaze, clearMaze, clearRings, clearBWalls, Forklift, FACT, startFactory, clearFactory, clearTBeams, TSU, Swapper, SWAP, startTsunami, clearTsunami, clearNano, tsuEta, inWave, BIO, Seeder, SEED, startBio, clearBio, clearPlOrbs, inCreep, ATOM, Bloater, BLOAT, startAtom, clearAtom, decaySpread, GLAD, Adaptor, ADAPT, Sprayer, SPRAY, Scrambler, SCRAM, FUSE, startFuse, clearFuse, fuseNear, POL, DYAD, Dyad, spawnDyads, startPolar, clearPolar, togglePol, setPol, polThreat, Raptor, RAPT, CTF, startCTF, clearCTF, Gyro, GYRO, BH, startBH, clearBH, AER, aerPads, startAerie, clearAerie, Swatter, SWAT, clearAG, NEM, Nemesis, nemPylons, startHunted, clearHunted, HEATW, heatSites, startHeatwave, clearHeatwave, heatAdd, inPool, Scorcher, SCORCH, clearTrips, TLOOP, tlSites, startTLoop, clearTLoop, Reverter, REVERT, BUB, clearBubbles, TURF, startTurf, clearTurf, turfShare, turfAt, turfKill, startGlad, clearGlad, gladGate, gladKill, gladVentAt, clearSaws, Reviver, REVIVE, noteWreck, CAMO, clearCamo, clearWrecks, SABOT, startSabot, clearSabot, sabTarget, Weaver, WEAVE, HACK, hackable, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, clearWebs, clearHacks, Launcher, Cruise, SKY, startSky, clearSky, Courier, COURIER, COURIER_PATH, startPursuit, clearPursuit, Torcher, TORCH, clearFires, clearNets, Dish, Anchor, ANCHOR, LANCE, startLance, clearLance, Engineer, ENG, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, clearBurn, startLane, clearLane, laneObjective, laneEscorted, clearRBeam, Bastion, Hijacker, HIJACK, FORT, FORT_PADS, startFort, clearFort, padAction, fortGoal, clearRefl, Scav, SCAV, SALV, startSalvage, clearSalvage, dropCores, nearestCore, Planter, PLANT, DEPOT, startDepots, clearDepots, nearestCharge, Lurker, LURK, FOG, startFog, clearFog, fogSeen, fogFar, resetRewind, Snatcher, SNATCH, SUPPLY, startSupply, clearSupply, nearestCrate, Disarmer, DISARM, RIFT, startRifts, clearRifts, Leech, LEECH, TRAFFIC, startTraffic, clearTraffic, truckAhead, THUNDER, startThunder, clearThunder, rodCover, clearRods, startFlares, clearFlares, inShade, resetNeedles, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
+import { G, OD, ACES, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, Leaper, LEAP, FLARE, Herald, HERALD, Tower, Citadel, Trooper, Shade, SHADE, LANE, Marshal, DECAP, startDecap, clearDecap, Dazzler, DAZZ, clearLinkB, Pulsar, PULSE, MAZE, startMaze, clearMaze, clearRings, clearBWalls, Forklift, FACT, startFactory, clearFactory, clearTBeams, TSU, Swapper, SWAP, startTsunami, clearTsunami, clearNano, tsuEta, inWave, BIO, Seeder, SEED, startBio, clearBio, clearPlOrbs, inCreep, ATOM, Bloater, BLOAT, startAtom, clearAtom, decaySpread, GLAD, Adaptor, ADAPT, Sprayer, SPRAY, Scrambler, SCRAM, FUSE, startFuse, clearFuse, fuseNear, POL, DYAD, Dyad, spawnDyads, startPolar, clearPolar, togglePol, setPol, polThreat, Raptor, RAPT, CTF, startCTF, clearCTF, Gyro, GYRO, BH, startBH, clearBH, AER, aerPads, startAerie, clearAerie, Swatter, SWAT, clearAG, NEM, Nemesis, nemPylons, startHunted, clearHunted, HEATW, heatSites, startHeatwave, clearHeatwave, heatAdd, inPool, Scorcher, SCORCH, clearTrips, TLOOP, tlSites, startTLoop, clearTLoop, Reverter, REVERT, BUB, clearBubbles, TURF, startTurf, clearTurf, turfShare, turfAt, turfKill, startGlad, clearGlad, gladGate, gladKill, gladVentAt, clearSaws, Reviver, REVIVE, noteWreck, CAMO, clearCamo, clearWrecks, SABOT, startSabot, clearSabot, sabTarget, Weaver, WEAVE, HACK, hackable, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, clearWebs, clearHacks, Launcher, Cruise, SKY, startSky, clearSky, Courier, COURIER, COURIER_PATH, startPursuit, clearPursuit, Torcher, TORCH, clearFires, clearNets, Dish, Anchor, ANCHOR, LANCE, startLance, clearLance, Engineer, ENG, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, clearBurn, startLane, clearLane, laneObjective, laneEscorted, clearRBeam, Bastion, Hijacker, HIJACK, FORT, FORT_PADS, startFort, clearFort, padAction, fortGoal, clearRefl, Scav, SCAV, SALV, startSalvage, clearSalvage, dropCores, nearestCore, Planter, PLANT, DEPOT, startDepots, clearDepots, nearestCharge, Lurker, LURK, FOG, startFog, clearFog, fogSeen, fogFar, resetRewind, Snatcher, SNATCH, SUPPLY, startSupply, clearSupply, nearestCrate, Disarmer, DISARM, RIFT, startRifts, clearRifts, Leech, LEECH, TRAFFIC, startTraffic, clearTraffic, truckAhead, THUNDER, startThunder, clearThunder, rodCover, clearRods, startFlares, clearFlares, inShade, resetNeedles, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, spawnPackDrone, MECHX, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
 const $ = (id) => document.getElementById(id);
 // rail loop for the train mission: a 118 x 82 m oval, closed (last point == first)
@@ -497,7 +497,8 @@ function playerWeapon(key) {   // weapon state with chip modifiers applied to a 
   if (chipOn('mag') && d.slot === 'arm' && d.mag) { d.mag = Math.round(d.mag * 1.4); d.reload *= 0.8; }
   const PSm = partStats(myParts());
   if (d.slot === 'arm' && d.reload) d.reload *= PSm.reload;   // brace / brawler arms
-  if (d.slot === 'arm' && d.spread) d.spread *= PSm.spread;   // stabiliser arms
+  if (d.slot === 'arm' && d.spread) d.spread *= PSm.spread;   // stabiliser / rapid arms
+  if (d.slot === 'arm' && d.rate) d.rate *= PSm.rate;   // rapid arms
   if (d.slot === 'arm' && d.type === 'bullet' && d.speed) d.speed *= PSm.pspd;
   if (d.slot === 'shoulder' && d.cd) d.cd *= PSm.scd;   // pod arms
   if ((d.type === 'blade' || d.type === 'pile') && d.dmg) d.dmg *= PSm.melee;   // brawler arms
@@ -784,6 +785,8 @@ const mctx = {
     if (m.grounded) fx.dust(m.pos, 6, 2, 6);
   },
   onJump(m) { fx.dust(m.pos, 6, 2, 5); },
+  onDJump(m) { const q = m.pos.clone(); fx.ring(q, null, 0.4, 3.2, 0.3, 0xffd27a); fx.sparks(q, new V3(0, -1, 0), 8, 0xffd27a, 10, 0.4, 0.25, 0.25); if (m === G.player) { sfx('qboost', 0); G.stats.djumps = (G.stats.djumps || 0) + 1; } },
+  onBrace(m) { fx.ring(m.pos.clone(), null, 0.8, 4.2, 0.45, 0xffb347); if (m === G.player) { sfx('shield', 0); G.stats.braces = (G.stats.braces || 0) + 1; } },
   onOverheat(m) { if (m === G.player) { sfx('overheat'); showHint('能量过热！停止推进 2 秒', 1.6); } },
 };
 
@@ -1089,7 +1092,7 @@ function newGame() {
   G.noRepair = modOn('nofix');
   makePlayer();
   if (modOn('glass')) { G.player.maxHp = Math.round(G.player.maxHp * 0.6); G.player.hp = G.player.maxHp; }
-  Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
+  Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0, fb: null, braced: 0, braces: 0, reclaim: 0, djumps: 0, dodged: 0, bulked: 0, aegis: 0, nanite: 0 });   // frame / part tallies too
   const M = MISSIONS[cfg.mission];
   G.echoLo = setEcho({ R: cfg.R, L: cfg.L, S: cfg.S, frame: myFrame(), parts: myParts(), pattern: myPattern() });
   PHYS.g = M.grav || 1; PHYS.grip = M.grip || 1; if (M.ice) startIce(); if (M.wind) startWind(); G.glare = !!M.glare; if (M.cranes) startCranes(M.cranes); if (M.quake) startQuakes(); if (M.flare) startFlares(); if (M.thunder) startThunder(STORM_RODS); if (M.highway) startTraffic(); if (M.rift) startRifts(); if (M.supply) startSupply(); if (M.fog) startFog(); if (M.depot) startDepots(); if (M.salvage) startSalvage(); if (M.fortify) startFort(); if (M.lane) startLane(); G.meteorOn = !!M.meteors; if (M.acid) startAcid(M.acid); if (M.twisters) startTwisters(M.twisters); G.acidSaid = false; G.fenceSaid = false; G.linkSaid = false; if (tide) { tide.y = tide.yT = M.tide[0]; WATER.y = tide.y; } if (M.ascend) setStage(0, true); clearWells(); G.eruptT = 8; G.freezes = 0; G.lavaT = 0; G.eruptions = 0; G.burrowUps = 0;
@@ -1359,6 +1362,10 @@ function spawnGroup(S, R = 1, b) {
 
 G.onKill = (e) => {
   if (e.isAce) aceKilled(e);
+  { const p = G.player; if (p && p.alive && p.frame.reclaim && e._lastTeam === 'P' && !(e._lastLbl || '').startsWith('ally')) {   // reclaim core: salvage your own kills
+    const big = e.kind === 'boss' || e.kind === 'raider' || (e.maxHp || 0) >= 3000, h = Math.min(p.maxHp - p.hp, p.maxHp * p.frame.reclaim * (big ? 4 : 1));
+    if (h > 0) { p.hp += h; G.stats.reclaim = (G.stats.reclaim || 0) + h; fx.ring(p.pos.clone(), null, 0.5, 3, 0.35, 0x7dffb0); }
+  } }
   noteWreck(e); decaySpread(e); gladKill(e); turfKill(e);
   G.hud.kill = 0.3;
   const T = save.tally; T.all = (T.all || 0) + 1; T[e.kind] = (T[e.kind] || 0) + 1;
@@ -2879,6 +2886,7 @@ function setState(s) {
   if (s !== 'play') { touch.b = {}; touch.mx = touch.my = 0; touch.stick = touch.look = null; for (const b of document.querySelectorAll('#tBtns button')) b.classList.remove('on'); }
   if (s !== 'play' && document.pointerLockElement) document.exitPointerLock();
   if (s !== 'play') { mouse.b0 = mouse.b2 = false; thrust(0); }
+  if (s === 'garage' || s === 'title') clearMinis();   // no escort drone left hovering over the hangar
   if (s === 'garage') buildGarage();
   if (s === 'title') buildTitle();
   if (s === 'medals') buildMedals();
@@ -3093,7 +3101,8 @@ function buildGarage() {
   const F = G.player.frame, xs = (k, lab) => (F[k] !== 1 ? ` · ${lab} <b>×${F[k].toFixed(2)}</b>` : '');
   $('gStats').innerHTML = `AP <b>${Math.round(F.hp)}</b> · 速度 <b>×${F.speed.toFixed(2)}</b> · EN <b>${Math.round(F.en)}</b> · 推进 <b>×${F.boost.toFixed(2)}</b> · 受伤 <b>×${+F.armor.toFixed(2)}</b>` + (save.up.fcs ? ` · 伤害 <b>×${dmgMul().toFixed(2)}</b>` : '')
     + xs('lock', '锁定') + xs('reload', '装填') + (F.jump !== 1 ? ` · 跳跃高度 <b>×${(F.jump * F.jump).toFixed(2)}</b>` : '') + xs('qb', '急闪耗能') + xs('hover', '悬停耗能') + xs('lift', '悬停爬升') + xs('radar', '雷达') + xs('od', '超载充能') + xs('spread', '散布') + xs('pspd', '弹速') + xs('scd', '肩武器冷却') + xs('melee', '近战伤害') + (F.grip ? ' · <b>防滑</b>' : '') + (F.float ? ' · <b>涉水</b>' : '')
-    + (F.dodge ? ' · <b>急闪无敌</b>' : '') + (F.bulk ? ` · <b>重击减半 (>${F.bulk})</b>` : '') + (F.ew ? ' · <b>抗干扰</b>' : '') + (F.nanite ? ` · 纳米修复 <b>${Math.round(F.nanite * 100)}%</b>` : '') + (F.aegis ? ` · 护盾 <b>${F.aegis}</b>` : '');
+    + (F.dodge ? ' · <b>急闪无敌</b>' : '') + (F.bulk ? ` · <b>重击减半 (>${F.bulk})</b>` : '') + (F.ew ? ' · <b>抗干扰</b>' : '') + (F.nanite ? ` · 纳米修复 <b>${Math.round(F.nanite * 100)}%</b>` : '') + (F.aegis ? ` · 护盾 <b>${F.aegis}</b>` : '')
+    + (F.aerial ? ` · <b>空中伤害 +${Math.round(F.aerial * 100)}%</b>` : '') + (F.stance ? ' · <b>架设姿态</b>' : '') + (F.hunt > 1 ? ` · <b>斩杀 +${Math.round((F.hunt - 1) * 100)}%</b>` : '') + (F.reclaim ? ` · 击毁回收 <b>${(F.reclaim * 100).toFixed(1)}%</b>` : '') + xs('rate', '射击间隔') + (F.djump ? ' · <b>二段跳</b>' : '') + (F.drone ? ' · <b>护卫无人机</b>' : '');
   const wopt = (slot, k) => opt(`${WEAPONS[k].name}<small>${WEAPONS[k].desc}</small>`, cfg[slot] === k, () => { cfg[slot] = k; G.player.mount({ R: cfg.R, L: cfg.L, S: cfg.S }); G.pw = freshPW(); buildWeaponPanel(); });
   fill('gR', ARM_KEYS.map((k) => wopt('R', k)));
   fill('gL', ARM_KEYS.map((k) => wopt('L', k)));
@@ -3947,7 +3956,14 @@ function step(dt) {
   }
   let A;
   G.tbWide = !!auto.on;
-  if (auto.on) A = autoIntent(dt);
+  if (auto.on) {
+    A = autoIntent(dt);
+    if (p.frame.stance && G.time - G.hurtAt > 0.8) {   // bedrock autopilot: plant for a few seconds now and then
+      auto.plT = (auto.plT ?? 3) - dt; if (auto.plT <= 0) { auto.pl = !auto.pl; auto.plT = auto.pl ? 2 + Math.random() * 1.5 : 3 + Math.random() * 3; }
+      if (auto.pl) { A.f = 0; A.s = 0; A.boost = false; A.qboost = false; A.jump = false; A.hover = false; }
+    }
+    if (p.frame.djump && !p.grounded && !p.djUsed && p.vel.y < -1 && A.hover && p.en < 70) A.jump = true;   // spring legs: save energy with the second jump
+  }
   else {
     const B = pad.b, T = touch.b;
     const shift = keys.has('ShiftLeft') || keys.has('ShiftRight') || !!B[1] || !!B[4] || !!B[10] || !!T.boost, space = keys.has('Space') || !!B[0] || !!T.jump;
@@ -3975,6 +3991,7 @@ function step(dt) {
   updateOD(dt);
   if (chipOn('nano') && G.player.alive && state === 'play' && G.time - G.hurtAt > 5) G.player.hp = Math.min(G.player.maxHp, G.player.hp + G.player.maxHp * 0.006 * dt);
   { const p = G.player; if (p.alive && state === 'play') {   // nanite core pays back banked damage; the aegis shield recharges after 6 s unhurt
+    if (p.frame.drone && !G.minis.some((m) => m.pack && m.owner === p)) { G.droneT = (G.droneT || 0) + dt; if (G.droneT > 1.5) { G.droneT = 0; spawnPackDrone(p); } }   // escort drone pack
     if (G.nanBank > 0 && G.time - G.hurtAt > 0.8) { const h = Math.min(G.nanBank, p.maxHp * 0.04 * dt); p.hp = Math.min(p.maxHp, p.hp + h); G.nanBank -= h; G.stats.nanite = (G.stats.nanite || 0) + h; }
     if (p.frame.aegis && p.aegis < p.frame.aegis && G.time - G.hurtAt > 6) p.aegis = Math.min(p.frame.aegis, p.aegis + 30 * dt);
   } }
@@ -4060,7 +4077,7 @@ window.__iv = {
 (async () => {
   try {
     await loadKit('./assets/kit.glb?v=75');
-    await loadParts('./assets/parts.glb?v=4');
+    await loadParts('./assets/parts.glb?v=5');
     ensureArena();
     makePlayer();
     setState('title');
