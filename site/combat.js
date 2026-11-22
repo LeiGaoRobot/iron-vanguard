@@ -21,6 +21,7 @@ export const G = {
 };
 
 export const WEAPONS = {
+  seismic: { slot: 'shoulder', name: 'SQ-2 震地波', en: 'SQ-2 Quake Driver', desc: '向前方地面砸出三道沿地面推进的震波（30 m/s、48 m）· 碰到地面上的敌机 110 伤害并瘫痪 1 秒（重型 / 头目 55%、不瘫痪）· 沿着脚下的地面走：在龟背上打就沿甲板扫过去 · 打不到空中目标，拦截者也拦不住 · 冷却 8 秒', type: 'seismic', cd: 8, n: 3, fan: 0.2, speed: 30, len: 48, w: 2.8, dmg: 110, big: 0.55, stun: 1.0, hgt: 4.5 },
   halt: { slot: 'arm', name: 'CR-9 停滞步枪', en: 'CR-9 Halt Rifle', desc: '按住开火：子弹停在机体前方排成一排（最多 9 发）· 松开或停满时一齐射向准星 · 一次齐射的弹数越多每发越痛（9 发 +36%）· 打不中移动目标就松早一点', type: 'park', rate: 0.11, dmg: 18, max: 9, bonus: 0.04, speed: 200, spread: 0.004, mag: 36, reload: 2.2, color: 0x7af0ff, sfx: 'coil', recoil: 0.3 },
   siphon: { slot: 'arm', name: 'VB-1 汲能枪', en: 'VB-1 Siphon Gun', desc: '高速红色能量弹 · 每发命中敌机为你回复 12% 伤害量的装甲 · 持续输出也是持续回血', type: 'bullet', siphon: 0.12, rate: 0.12, dmg: 13, speed: 210, spread: 0.014, mag: 36, reload: 2.2, color: 0xff3050, w: 0.28, len: 4, life: 0.6, sfx: 'rifle', recoil: 0.1 },
   acid: { slot: 'arm', name: 'AC-2 酸液喷枪', en: 'AC-2 Acid Sprayer', desc: '抛射酸液团（有下坠）· 溅射 3 m · 命中叠加腐蚀：每层受伤 +7%，最多 5 层，4 秒不补就消退', type: 'bullet', acid: true, rate: 0.15, dmg: 15, speed: 90, spread: 0.02, mag: 30, reload: 2.0, color: 0x90ff30, w: 0.45, len: 1.6, life: 1.1, sfx: 'rifle', recoil: 0.12 },
@@ -90,7 +91,7 @@ export const WEAPONS = {
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
 export const ARM_KEYS = ['halt', 'ecan', 'arc', 'javelin', 'bubble', 'splat', 'isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
-export const SHOULDER_KEYS = ['trip', 'xswap', 'antigrav', 'saws', 'nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
+export const SHOULDER_KEYS = ['seismic', 'trip', 'xswap', 'antigrav', 'saws', 'nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
   const d = WEAPONS[key];
@@ -822,6 +823,8 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Sentry(owner, slot, d, dmgMul); sfx('sentry', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'decoy') {
     if (pressed && ws.cd <= 0 && isP) { ws.cd = d.cd; new Decoy(owner, slot, d, dmgMul); sfx('decoy', dist); if (me) G.stats.shots++; }
+  } else if (d.type === 'seismic') {
+    if (pressed && ws.cd <= 0 && isP && owner.alive) { ws.cd = d.cd; launchSeismic(owner, d, dmgMul, aim); sfx('pile', dist); if (me) { G.stats.shots++; fx.trauma = Math.min(1, fx.trauma + 0.25); } mslot.recoil = 0.6; }
   } else if (d.type === 'trip') {
     if (pressed && ws.cd <= 0 && isP && owner.alive && castTrip(owner, d, dmgMul, aim)) { ws.cd = d.cd; sfx('sentry', dist); if (me) G.stats.shots++; }
   } else if (d.type === 'xswap') {
@@ -2209,7 +2212,7 @@ export const ACES = {
 Object.assign(RAIDERS, ACES);
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { halt: 'rifle', trip: 'missile', xswap: 'missile', antigrav: 'missile', ecan: 'rifle', arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { seismic: 'missile', halt: 'rifle', trip: 'missile', xswap: 'missile', antigrav: 'missile', ecan: 'rifle', arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -6150,6 +6153,334 @@ function updateTrips(dt) {
     G.curLabel = null;
   }
 }
+
+// ---- v67 SQ-2 quake driver: three shock waves run out along the ground under you (the deck too). Each hits a ground
+// target once: 110 and a 1 s stun, heavies / bosses / parts 55 % and no stun. Flying targets are out of reach
+G.qd = [];
+const _qd = new V3();
+function launchSeismic(owner, d, mul, aim) {
+  const P = owner.pos; let dx = aim.x - P.x, dz = aim.z - P.z, L = Math.hypot(dx, dz);
+  if (L < 1) { dx = -Math.sin(owner.aimYaw || 0); dz = -Math.cos(owner.aimYaw || 0); L = 1; }
+  const a0 = Math.atan2(dx / L, dz / L), y0 = groundAt(P.x, P.z, P.y + 0.6);
+  for (let k = 0; k < d.n; k++) {
+    const a = a0 + (k - (d.n - 1) / 2) * d.fan, ux = Math.sin(a), uz = Math.cos(a);
+    G.qd.push({ x: P.x + ux * 2.5, z: P.z + uz * 2.5, y: y0, ux, uz, dist: 0, d, mul, hit: new Set(), me: owner === G.player, any: false });
+  }
+  G.sdWaves = (G.sdWaves || 0) + 1;
+  _qd.set(P.x, y0 + 0.3, P.z); G.fx.ring(_qd, new V3(0, 1, 0), 1, 7, 0.4, 0xffa040); G.fx.dust(_qd, 14, 3, 9);
+}
+export function clearSeismic() { G.qd.length = 0; }
+function updateSeismic(dt) {
+  if (!G.qd.length) return;
+  const fx = G.fx;
+  for (let i = G.qd.length - 1; i >= 0; i--) {
+    const w = G.qd[i], d = w.d, st = d.speed * dt;
+    w.x += w.ux * st; w.z += w.uz * st; w.dist += st;
+    const ny = groundAt(w.x, w.z, w.y + 1.2);
+    _qd.set(w.x, ny + 1.0, w.z);
+    if (w.dist >= d.len || pointInSolid(_qd) || Math.abs(w.x) > ARENA || Math.abs(w.z) > ARENA) { fx.dust(_qd.setY(ny + 0.4), 6, 2, 6); G.qd.splice(i, 1); continue; }
+    w.y = ny;
+    if (Math.random() < 0.9) fx.emit('smoke', { x: w.x + (Math.random() - 0.5) * 1.6, y: w.y + 0.4, z: w.z + (Math.random() - 0.5) * 1.6, vy: 3 + Math.random() * 3, vx: w.ux * 3, vz: w.uz * 3, life: 0.8, s0: 1.2, s1: 2.8, c0: 0x8a7558, a0: 0.55 });
+    if (Math.random() < 0.35) fx.emit('add', { x: w.x, y: w.y + 0.3, z: w.z, vy: 5, life: 0.3, s0: 0.9, s1: 0.2, c0: 0xffb050 });
+    for (const ent of entsFor('P')) {
+      if (w.hit.has(ent) || !ent.c || ent.isMine) continue;
+      const dy = ent.c.y - w.y; if (dy < -1 || dy > d.hgt + (ent.r || 1.5) * 0.5) continue;
+      if (Math.hypot(ent.c.x - w.x, ent.c.z - w.z) > d.w + (ent.r || 1.5) * 0.6) continue;
+      w.hit.add(ent);
+      const h = ent.kind === 'cpart' ? ent.owner : ent, big = ent.kind === 'cpart' || h.kind === 'boss' || h.kind === 'raider' || (h.maxHp || 0) > 3000;
+      dealDamage(ent, d.dmg * w.mul * (big ? d.big : 1), 'P', ent.c, 'seismic');
+      if (!big && h.alive && !h.dying && !ent.isBarrel) { h.stunT = Math.max(h.stunT || 0, d.stun); h.stunMax = h.stunT; }
+      fx.sparks(ent.c, null, 8, 0xffb060, 12, 1, 0.3, 0.25); fx.dust(_qd.set(ent.c.x, w.y + 0.3, ent.c.z), 6, 2.4, 7);
+      if (w.me) { G.sdHits = (G.sdHits || 0) + 1; if (!w.any) { w.any = true; G.stats.hits++; } }
+    }
+  }
+}
+
+// ---- v67 interceptor: a point-defence tripod. Within 32 m it shoots down your slow ordnance (missiles, grenades,
+// shells, orbs: anything that is not a fast bullet) every 0.2 s with an 85 % kill chance; each shot heats it, and at
+// 100 it overheats for 3 s (no interceptions, takes +50 %). Between interceptions it fires five-round bursts. Some ride
+// on the behemoth's deck
+export const ICPT = { hp: 900, r: 2.2, R: 32, rate: 0.2, kill: 0.85, heat: 22, cool: 12, overT: 3, overMul: 1.5, speed: 6, near: 22, far: 40, gunCd: [2.8, 3.6], gunN: 4, gunDmg: 3, gunSpd: 160 };
+const _ic = new V3(), _ic2 = new V3();
+export class Interceptor extends Enemy {
+  constructor(pos, ride = null, lx = 0, lz = 0) {
+    super('icpt', 'E_Interceptor', pos, ICPT.hp, ICPT.r); this.boom = 1.0;
+    this.ride = ride; this.lx = lx; this.lz = lz; this.heat = 0; this.over = 0; this.fT = 0; this.gunT = 1 + Math.random(); this.burst = 0; this.burstT = 0;
+    this.dir = Math.random() < 0.5 ? 1 : -1; this.vel = new V3(); this.spin = 0; this.ph = Math.random() * 6; this.sfxT = 0; this.tYaw = 0;
+    if (!ride) this.pos.y = groundAt(pos.x, pos.z, 40);
+    this.c.copy(this.pos); this.c.y += 4.2;
+    this.heatM = []; this.obj.traverse((o) => { if (o.isMesh && o.material && o.material.name === 'HeatGlow') { o.material = o.material.clone(); this.heatM.push(o.material); } });
+  }
+  hit(dmg, at, label) { super.hit(this.over > 0 ? dmg * ICPT.overMul : dmg, at, label); }
+  update(dt) {
+    const tg = this.tg(), pc = tg.center(playerC); this.ph += dt;
+    const dx = this.pos.x - pc.x, dz = this.pos.z - pc.z, dist = Math.hypot(dx, dz) || 1;
+    if (!this.ride) {   // keep 22-40 m off, strafing
+      const want = dist < ICPT.near ? 1 : dist > ICPT.far ? -1 : 0, ox = dx / dist, oz = dz / dist;
+      if (Math.random() < dt * 0.25) this.dir *= -1;
+      this.vel.x += ((ox * want * 1.2 - oz * this.dir) * ICPT.speed - this.vel.x) * (1 - Math.exp(-2 * dt)); this.vel.z += ((oz * want * 1.2 + ox * this.dir) * ICPT.speed - this.vel.z) * (1 - Math.exp(-2 * dt));
+      this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+      this.pos.x = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.x)); this.pos.z = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.z));
+      if (collideCyl(this.pos, 2.0, 4)) { this.dir *= -1; blockedSlide(this); }
+      this.pos.y = groundAt(this.pos.x, this.pos.z, this.pos.y + 1);
+    }
+    this.c.set(this.pos.x, this.pos.y + 4.2, this.pos.z);
+    const n = this.n, mp = n.Muzzle_IC ? n.Muzzle_IC.getWorldPosition(_ic) : _ic.copy(this.c);
+    if (this.over > 0) { this.over -= dt; if (this.over <= 0) this.heat = 30; if (Math.random() < 0.4) G.fx.emit('smoke', { x: this.c.x, y: this.c.y + 0.5, z: this.c.z, vy: 4, life: 0.8, s0: 0.8, s1: 2.2, c0: 0xd8d8d8, a0: 0.4 }); }
+    else this.heat = Math.max(0, this.heat - ICPT.cool * dt);
+    let aim = pc;
+    this.fT -= dt; this.sfxT -= dt;
+    if (this.over <= 0 && this.fT <= 0) {   // point defence: nearest slow shot of yours inside 32 m
+      let k = -1, bd = ICPT.R;
+      for (let i = 0; i < G.shots.length; i++) { const q = G.shots[i]; if (q.team !== 'P' || (q.kind === 'bullet' && q.speed > 100)) continue; const dd = Math.hypot(q.x - this.c.x, q.y - this.c.y, q.z - this.c.z); if (dd < bd) { bd = dd; k = i; } }
+      if (k >= 0) {
+        this.fT = ICPT.rate; const q = G.shots[k]; _ic2.set(q.x, q.y, q.z); aim = _ic2;
+        G.fx.streak(mp, _ic2, 0.1, 0x9ae0ff, 0.05); this.spin = 1;
+        if (Math.random() < ICPT.kill) { G.fx.emit('add', { x: q.x, y: q.y, z: q.z, life: 0.25, s0: 2.2, s1: 0.5, c0: 0xc8f0ff, c1: 0x40a0ff }); G.fx.sparks(_ic2, null, 6, 0x9ae0ff, 10, 1, 0.3, 0.2); G.shots.splice(k, 1); G.icptKills = (G.icptKills || 0) + 1; }
+        G.icptShots = (G.icptShots || 0) + 1; this.heat += ICPT.heat;
+        if (this.sfxT <= 0) { this.sfxT = 0.25; sfx('gatling', dist); }
+        if (this.heat >= 100) { this.over = ICPT.overT; G.icptOver = (G.icptOver || 0) + 1; sfx('overheat', dist); G.fx.flash(this.c, 0xff8040, 20, 12, 0.3); }
+      }
+    }
+    // gun: five-round bursts at its target
+    const los = dist < 90 && this.checkLos(dt);
+    this.gunT -= dt;
+    if (this.over <= 0 && los && this.gunT <= 0 && this.burst <= 0) { this.burst = ICPT.gunN; this.burstT = 0; this.gunT = ICPT.gunCd[0] + Math.random() * (ICPT.gunCd[1] - ICPT.gunCd[0]); }
+    if (this.burst > 0 && (this.burstT -= dt) <= 0) {
+      this.burst--; this.burstT = 0.1; const a = lead(mp, ICPT.gunSpd, _b, tg);
+      _d.subVectors(a, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.04; _d.y += (Math.random() - 0.5) * 0.03; _d.z += (Math.random() - 0.5) * 0.04;
+      spawnShot({ p: mp.clone(), v: _d.normalize().multiplyScalar(ICPT.gunSpd), dmg: ICPT.gunDmg, team: 'E', kind: 'ebullet', color: 0x9ae0ff, w: 0.22, len: 4, life: 0.9, label: 'icpt-gun' });
+      G.fx.muzzle(mp, _d, 0x9ae0ff, 0.9); sfx('eshot', dist); this.spin = 1;
+    }
+    // turret + visuals
+    const want = Math.atan2(-(aim.x - this.pos.x), -(aim.z - this.pos.z)) - this.obj.rotation.y;
+    if (n.IC_Turret) n.IC_Turret.rotation.y += angDiff(want, n.IC_Turret.rotation.y) * Math.min(1, dt * 8);
+    this.spin = Math.max(0, this.spin - dt * 1.5);
+    if (n.IC_Barrels) n.IC_Barrels.rotation.z += dt * (2 + 40 * this.spin);
+    if (n.IC_Dish) n.IC_Dish.rotation.y += dt * 2.5;
+    const hk = this.over > 0 ? 3 + Math.sin(this.ph * 30) : 0.3 + this.heat / 100 * 2.5;
+    for (const m of this.heatM) m.emissiveIntensity = hk;
+  }
+}
+
+// ---- v67 behemoth: a walking fortress-turtle (36 m) on a closed trail round the city. The flat deck on its shell is
+// solid at 16 m and carries whoever stands on it. Its four exhaust vents take full damage only from someone aboard
+// (within 17 m, above 12 m): from the ground the shell plating soaks 85 %. Two deck guns, a head cannon for anyone off
+// the deck, legs that stomp, interceptors riding the deck. Every 12-16 s it bucks (1.5 s red warning): anyone standing
+// on the deck is thrown off; be in the air when it bucks. All vents down -> the core under the deck lid opens; kill it
+export const BEAST = { speed: 4.2, fast: 5.4, deckY: 16, body0: 7, rects: [[10, 10], [13, 6], [6, 13]], ventHp: 2500, gunHp: 700, coreHp: 5200, armour: 0.15, coreArm: 0.05, coreOff: 0.3, aboardR: 17, aboardY: 12,
+  buck: [12, 16], buck2: [8, 10], warn: 1.5, buckDmg: 28, buckV: 20, buckUp: 13, stompR: 7.5, stompDmg: 26, gunCd: [2.6, 3.4], gunN: 5, gunDmg: 3, gunSpd: 150, headCd: [5, 6.5], headDmg: 18, riders: 2, riderCd: 55, seats: [[9.5, 0], [-9.5, 0]] };
+export const BEH_PATH = (() => { const a = []; for (let i = 0; i <= 96; i++) { const t = i / 96 * Math.PI * 2; a.push([104 * Math.cos(t), 86 * Math.sin(t)]); } a[96] = a[0]; a.trail = true; return a; })();
+const BH_LEGS = [['BH_LegFL', 0], ['BH_LegBR', 0], ['BH_LegFR', Math.PI], ['BH_LegBL', Math.PI]];
+const _bm = new V3(), _bm2 = new V3();
+export function behAboard(p) { const B = G.beast; return !!B && B.alive && B.onDeck(p.pos || p); }
+export class Behemoth {
+  constructor(path, hpMul = 1) {
+    this.kind = 'boss'; this.isBeast = true;
+    this.B = { name: '移动堡垒 · 巨龟 BEHEMOTH', phase2: ['核心暴露', '四个排气口全毁 · 巨龟发狂了 · 打爆甲板中央的核心'] };
+    this.pts = path.map(([x, z]) => new V3(x, 0, z)); this.cum = [0];
+    for (let i = 1; i < this.pts.length; i++) this.cum.push(this.cum[i - 1] + this.pts[i].distanceTo(this.pts[i - 1]));
+    this.total = this.cum[this.cum.length - 1];
+    this.obj = cloneKit('E_Behemoth'); G.scene.add(this.obj); this.n = nodes(this.obj); this.pos = this.obj.position; this.vel = new V3();
+    this.obj.traverse((o) => { if (o.isMesh) { o.castShadow = true; o.receiveShadow = true; } });
+    this.glowM = null; this.obj.traverse((o) => { if (o.isMesh && o.material && o.material.name === 'BehGlow') { if (!this.glowM) this.glowM = o.material.clone(); o.material = this.glowM; } });
+    if (this.glowM) { this.glowE = this.glowM.emissive.clone(); this.glowI = this.glowM.emissiveIntensity; }
+    const H = G.diff.hp * hpMul;
+    const mk = (key, node, hp, r) => { const pt = { kind: 'cpart', key, node, owner: this, c: new V3(), r, hp: hp * H, maxHp: hp * H, alive: true, vel: this.vel }; pt.hit = (dmg) => this.hitPart(pt, dmg); return pt; };
+    this.vents = [1, 2, 3, 4].map((i) => mk('vent', this.n['BH_VGlow' + i], BEAST.ventHp, 2.0));
+    this.guns = [1, 2].map((i) => { const g = mk('gun', this.n['BH_Gun' + i], BEAST.gunHp, 1.9); g.i = i; g.t = 1.5 + i; g.burst = 0; g.bT = 0; g.base = g.node ? g.node.rotation.y : 0; return g; });
+    this.core = mk('core', this.n.BH_Core, BEAST.coreHp, 2.3);
+    this.parts = [...this.vents, ...this.guns, this.core];
+    this.maxHp = this.parts.reduce((a, q) => a + q.maxHp, 0); this.hp = this.maxHp;
+    this.c = new V3(); this.r = 6; this.alive = true; this.dying = false; this.phase = 1; this.v = BEAST.speed;
+    let best = -1; this.d = 0;
+    for (let i = 0; i < this.pts.length - 1; i++) { const q = this.pts[i].distanceTo(G.player.pos); if (q > best) { best = q; this.d = this.cum[i]; } }
+    this.legs = BH_LEGS.map(([nm, off]) => { const L = this.n[nm]; return L ? { L, off, y0: L.position.y, sx: Math.sign(L.position.x) || 1, lift: 0 } : null; }).filter(Boolean);
+    this.hatch0 = this.n.BH_Hatch ? this.n.BH_Hatch.position.clone() : null; this.core0 = this.n.BH_Core ? this.n.BH_Core.position.y : 0; this.open = 0;
+    this.solids = BEAST.rects.map(([hx, hz]) => { const so = addSolid(0, 0, hx * 2, hz * 2, BEAST.deckY - BEAST.body0, BEAST.body0, 'beast'); so.hx = hx; so.hz = hz; return so; });
+    this.buckT = 10; this.warnT = 0; this.tilt = 0; this.tiltPh = 0; this.headT = 4; this.riderT = 8; this.gait = 0; this.riders = [];
+    this.bucks = 0; this.bucked = 0; this.dodged = 0; this.stomps = 0; this.stompHits = 0; this.rideT = 0; this.armSaid = -99; this.autoR = true;
+    this.yaw = 0; this.place(true);
+    G.enemies.push(this); G.beast = this;
+  }
+  sample(d, out) {
+    d = ((d % this.total) + this.total) % this.total;
+    let lo = 1, hi = this.cum.length - 1;
+    while (lo < hi) { const m = (lo + hi) >> 1; if (this.cum[m] < d) lo = m + 1; else hi = m; }
+    const a = this.pts[lo - 1], b = this.pts[lo], k = (d - this.cum[lo - 1]) / Math.max(1e-6, this.cum[lo] - this.cum[lo - 1]);
+    return out.copy(a).lerp(b, k);
+  }
+  place() {
+    this.sample(this.d, this.pos); this.pos.y = 0;
+    this.sample(this.d + 8, _bm); this.sample(this.d - 8, _bm2);
+    this.yaw = Math.atan2(-(_bm.x - _bm2.x), -(_bm.z - _bm2.z));
+    this.obj.rotation.set(this.tilt * Math.sin(this.tiltPh * 17) * 0.07, this.yaw, this.tilt * Math.cos(this.tiltPh * 13) * 0.05);
+    for (const so of this.solids) { so.min.set(this.pos.x - so.hx, BEAST.body0, this.pos.z - so.hz); so.max.set(this.pos.x + so.hx, BEAST.deckY, this.pos.z + so.hz); }
+    this.obj.updateMatrixWorld(true);
+    for (const q of this.parts) { if (q.node) q.node.getWorldPosition(q.c); if (q.key === 'gun') q.c.y += 1.2; }
+  }
+  onDeck(P, x = this.pos.x, z = this.pos.z) {
+    if (Math.abs(P.y - BEAST.deckY) > 0.8) return false;
+    const dx = Math.abs(P.x - x), dz = Math.abs(P.z - z);
+    return BEAST.rects.some(([hx, hz]) => dx < hx && dz < hz);
+  }
+  aboard(P) { return Math.hypot(P.x - this.pos.x, P.z - this.pos.z) < BEAST.aboardR && P.y > BEAST.aboardY; }
+  seat(e) {
+    const c = Math.cos(this.yaw), sn = Math.sin(this.yaw);
+    e.pos.set(this.pos.x + e.lx * c + e.lz * sn, BEAST.deckY, this.pos.z - e.lx * sn + e.lz * c); e.obj.rotation.y = this.yaw;
+    e.c.set(e.pos.x, e.pos.y + 4.2, e.pos.z);
+  }
+  hitPart(pt, dmg) {
+    if (!pt.alive || !this.alive) return;
+    const P = G.player, on = P && P.alive && this.aboard(P.pos);
+    if (pt.key === 'vent' && !on) {
+      dmg *= BEAST.armour;
+      if (Math.random() < 0.3) G.fx.sparks(pt.c, null, 4, 0xffd080, 12, 1, 0.25, 0.2);
+      if (G.time - this.armSaid > 14) { this.armSaid = G.time; G.onHint && G.onHint('外壳装甲挡住了 85% · 跳上龟背近距离打排气口', 2.6); }
+    }
+    if (pt.key === 'core') dmg *= this.phase === 1 ? BEAST.coreArm : on ? 1 : BEAST.coreOff;
+    pt.hp -= dmg;
+    this.hp = this.parts.reduce((a, q) => a + Math.max(0, q.hp), 0);
+    if (pt.hp > 0) return;
+    pt.alive = false; pt.hp = 0;
+    if (pt.key === 'core') { this.die(); return; }
+    G.fx.explosion(pt.c, 2.2); G.fx.flash(pt.c, 0xff8040, 50, 40, 0.4); sfx('bigboom', G.player.pos.distanceTo(pt.c)); G.fx.trauma = Math.min(1, (G.fx.trauma || 0) + 0.35);
+    if (pt.node) pt.node.visible = false;
+    if (pt.key === 'vent') { pt.burn = true; const nl = this.vents.filter((v) => v.alive).length; G.onBeast && G.onBeast('vent', nl); }
+    else G.onHint && G.onHint('甲板炮塔已摧毁', 1.8);
+    if (this.phase === 1 && this.vents.every((v) => !v.alive)) { this.phase = 2; this.buckT = Math.min(this.buckT, 4); G.onBossPhase && G.onBossPhase(this); }
+  }
+  die() {
+    this.alive = false; this.dying = true; this.deathT = 4.5; this.hp = 0; this.warnT = 0;
+    for (const so of this.solids) removeSolid(so); this.solids = [];
+    for (const e of this.riders) if (e.alive && !e.dying) e.die();
+    G.stats.kills++; G.onKill && G.onKill(this);
+  }
+  remove() { for (const so of this.solids) removeSolid(so); this.solids = []; this.obj.parent && this.obj.parent.remove(this.obj); this.gone = true; }
+  tg() { return pickTarget(this); }
+  stomp(L) {
+    const fx = G.fx, P = G.player;
+    L.L.localToWorld(_bm.set(L.sx * 2.4, -10, 0)); _bm.y = 0.3;
+    fx.dust(_bm, 10, 3.2, 6); this.stomps++;
+    const dP = P ? Math.hypot(P.pos.x - _bm.x, P.pos.z - _bm.z) : 999;
+    if (dP < 60) { fx.trauma = Math.min(1, fx.trauma + 0.12 * (1 - dP / 60)); sfx('boom', dP * 1.5); }
+    if (P && P.alive && P.pos.y < 3 && dP < BEAST.stompR) {
+      const k = 1 / (dP || 1); P.vel.x += (P.pos.x - _bm.x) * k * 14; P.vel.z += (P.pos.z - _bm.z) * k * 14; P.vel.y = Math.max(P.vel.y, 7); P.grounded = false;
+      G.curSrc = _bm; damagePlayer(BEAST.stompDmg, _bm, 'beh-stomp'); this.stompHits++;
+    }
+  }
+  update(dt) {
+    const fx = G.fx, P = G.player;
+    if (this.dying) {   // legs splay, the shell drops, explosions walk round the rim
+      this.deathT -= dt;
+      for (const L of this.legs) L.L.rotation.z += L.sx * dt * 0.25;
+      this.pos.y = Math.max(-6, this.pos.y - dt * (this.deathT < 2.5 ? 2.4 : 0.6));
+      if (Math.random() < 0.3) { const a = Math.random() * 6.28; _bm.set(this.pos.x + Math.cos(a) * 14, this.pos.y + 12 + Math.random() * 4, this.pos.z + Math.sin(a) * 14); fx.explosion(_bm, 1.4 + Math.random()); if (Math.random() < 0.5) sfx('boom', P.pos.distanceTo(_bm)); }
+      if (this.deathT <= 0) { _bm.set(this.pos.x, 8, this.pos.z); explodeAt(_bm, 22, 0, 'P', 4, 0xff7030); fx.flash(_bm, 0xffa060, 140, 120, 0.9); fx.trauma = 1; fx.dust(_bm.setY(1), 40, 6, 12); this.remove(); }
+      return;
+    }
+    const x0 = this.pos.x, z0 = this.pos.z, yaw0 = this.yaw;
+    const wasOn = P && P.alive && this.onDeck(P.pos, x0, z0);
+    const tv = this.phase === 2 ? BEAST.fast : BEAST.speed; this.v += (tv - this.v) * Math.min(1, dt * 0.5);
+    this.d += this.v * dt; this.tiltPh += dt; this.tilt = Math.max(0, this.tilt - dt * 1.6);
+    this.place();
+    this.vel.set((this.pos.x - x0) / Math.max(dt, 1e-4), 0, (this.pos.z - z0) / Math.max(dt, 1e-4));
+    if (wasOn) {   // carry: translate with the deck and turn with it
+      const dy = angDiff(this.yaw, yaw0), c = Math.cos(dy), sn = Math.sin(dy), dx = P.pos.x - x0, dz = P.pos.z - z0;
+      P.pos.x = this.pos.x + dx * c + dz * sn; P.pos.z = this.pos.z - dx * sn + dz * c; P.aimYaw += dy;
+    }
+    if (P && P.alive && this.onDeck(P.pos)) this.rideT += dt;
+    // riders sit on the deck whatever they are doing
+    this.riders = this.riders.filter((e) => e.alive && !e.dying && !e.gone);
+    for (const e of this.riders) this.seat(e);
+    this.riderT -= dt;
+    if (this.riderT <= 0 && this.riders.length < BEAST.riders) {
+      this.riderT = BEAST.riderCd;
+      const free = BEAST.seats.find(([lx, lz]) => !this.riders.some((e) => e.lx === lx && e.lz === lz));
+      if (free) { const e = new Interceptor(this.pos.clone(), this, free[0], free[1]); this.seat(e); this.riders.push(e); fx.ring(e.pos.clone().setY(BEAST.deckY + 0.3), new V3(0, 1, 0), 1, 5, 0.4, 0x40b8ff); G.onBeast && G.onBeast('rider'); }
+    }
+    // gait: diagonal pairs, a foot lands -> stomp
+    this.gait += dt * this.v * 0.3;
+    for (const L of this.legs) {
+      const a = this.gait + L.off, lift = Math.max(0, Math.cos(a));
+      L.L.rotation.x = Math.sin(a) * 0.26; L.L.position.y = L.y0 + lift * 1.2;
+      if (L.lift > 0 && lift === 0) this.stomp(L);
+      L.lift = lift;
+    }
+    // buck: warning (rim glow goes red), then the shell heaves and throws off anyone standing on the deck
+    this.buckT -= dt;
+    if (this.warnT > 0) {
+      this.warnT -= dt;
+      if (this.warnT <= 0) {
+        this.bucks++; this.tilt = 1; fx.trauma = Math.min(1, fx.trauma + (P && Math.hypot(P.pos.x - this.pos.x, P.pos.z - this.pos.z) < 40 ? 0.5 : 0.1));
+        _bm.set(this.pos.x, BEAST.deckY + 0.3, this.pos.z); fx.ring(_bm, new V3(0, 1, 0), 4, 20, 0.5, 0xff5030); sfx('pile', P.pos.distanceTo(this.pos) * 0.5);
+        if (P && P.alive && P.grounded && this.onDeck(P.pos)) {
+          let dx = P.pos.x - this.pos.x, dz = P.pos.z - this.pos.z, L = Math.hypot(dx, dz); if (L < 0.5) { const a = Math.random() * 6.28; dx = Math.cos(a); dz = Math.sin(a); L = 1; }
+          P.vel.set(dx / L * BEAST.buckV, BEAST.buckUp, dz / L * BEAST.buckV); P.grounded = false; P.pos.y += 0.3;
+          hurtPlayer(BEAST.buckDmg, 'beh-buck'); this.bucked++; G.onBeast && G.onBeast('bucked');
+        } else if (P && P.alive && this.aboard(P.pos)) { this.dodged++; G.onBeast && G.onBeast('dodge'); }
+      }
+    } else if (this.buckT <= 0) {
+      const R = this.phase === 2 ? BEAST.buck2 : BEAST.buck; this.buckT = R[0] + Math.random() * (R[1] - R[0]);
+      this.warnT = BEAST.warn; this.autoR = Math.random() < 0.75;
+      const on = P && P.alive && this.aboard(P.pos); sfx('warn', on ? 0 : P.pos.distanceTo(this.pos)); G.onBeast && G.onBeast('warn', on);
+    }
+    if (this.glowM) {
+      const w = this.warnT > 0 ? 0.5 + 0.5 * Math.sin(this.tiltPh * 26) : 0, p2 = this.phase === 2 ? 0.4 + 0.3 * Math.sin(this.tiltPh * 5) : 0;
+      this.glowM.emissive.copy(this.glowE).lerp(_bmCol, Math.max(w, p2 * 0.6)); this.glowM.emissiveIntensity = this.glowI * (1 + w * 1.8 + p2);
+    }
+    // exhaust from live vents, fire from wrecked ones
+    for (const q of this.vents) {
+      if (Math.random() > (q.alive ? 0.15 : 0.35)) continue;
+      fx.emit('smoke', { x: q.c.x + (Math.random() - 0.5), y: q.c.y + 0.6, z: q.c.z + (Math.random() - 0.5), vy: 5, vx: -this.vel.x * 0.5, vz: -this.vel.z * 0.5, life: q.alive ? 1.6 : 2.2, s0: 1.2, s1: q.alive ? 3.5 : 4.5, c0: q.alive ? 0x7a746c : 0x2a2624, a0: 0.5 });
+      if (!q.alive) fx.emit('add', { x: q.c.x, y: q.c.y, z: q.c.z, vy: 4, life: 0.4, s0: 1.4, s1: 0.3, c0: 0xff8a30 });
+    }
+    // phase 2: lid slides off, core rises
+    if (this.phase === 2) {
+      this.open = Math.min(1, this.open + dt * 0.6);
+      if (this.n.BH_Hatch && this.hatch0) { this.n.BH_Hatch.position.x = this.hatch0.x + this.open * 4.2; this.n.BH_Hatch.position.y = this.hatch0.y - this.open * 0.4; }
+      if (this.n.BH_Core) { this.n.BH_Core.position.y = this.core0 + this.open * 1.9; this.n.BH_Core.rotation.y += dt * 1.5; }
+    }
+    const t = this.tg(), tc = t.center(playerC), on = t === P && this.onDeck(P.pos);
+    // deck guns: twin-cannon bursts at the target
+    for (const g of this.guns) {
+      if (!g.alive || !g.node) continue;
+      const mp = this.n['Muzzle_BG' + g.i].getWorldPosition(_bm2), dist = mp.distanceTo(tc);
+      const want = Math.atan2(-(tc.x - g.c.x), -(tc.z - g.c.z)) - this.yaw;
+      g.node.rotation.y += angDiff(want, g.node.rotation.y) * Math.min(1, dt * 2.5);
+      g.t -= dt;
+      if (g.t <= 0 && g.burst <= 0 && dist < 120 && clearLine(mp, tc)) { g.t = BEAST.gunCd[0] + Math.random() * (BEAST.gunCd[1] - BEAST.gunCd[0]); g.burst = BEAST.gunN; g.bT = 0; }
+      if (g.burst > 0 && (g.bT -= dt) <= 0) {
+        g.burst--; g.bT = 0.11; const a = lead(mp, BEAST.gunSpd, _b, t);
+        _d.subVectors(a, mp).normalize(); _d.x += (Math.random() - 0.5) * 0.05; _d.y += (Math.random() - 0.5) * 0.03; _d.z += (Math.random() - 0.5) * 0.05;
+        spawnShot({ p: mp.clone(), v: _d.normalize().multiplyScalar(BEAST.gunSpd), dmg: BEAST.gunDmg, team: 'E', kind: 'ebullet', color: 0xffa050, w: 0.3, len: 5, label: 'beh-gun' });
+        fx.muzzle(mp, _d, 0xffa050, 1.2); sfx('eshot', P.pos.distanceTo(mp));
+      }
+    }
+    // head cannon: plasma salvo at anyone off the deck
+    const H = this.n.BH_Head;
+    if (H && !on) {
+      const mp = this.n.Muzzle_BH.getWorldPosition(_bm2), want = Math.max(-0.7, Math.min(0.7, angDiff(Math.atan2(-(tc.x - mp.x), -(tc.z - mp.z)), this.yaw)));
+      H.rotation.y += (want - H.rotation.y) * Math.min(1, dt * 1.5);
+      this.headT -= dt;
+      if (this.headT <= 0 && mp.distanceTo(tc) < 150 && clearLine(mp, tc)) {
+        this.headT = BEAST.headCd[0] + Math.random() * (BEAST.headCd[1] - BEAST.headCd[0]);
+        for (let k = 0; k < 3; k++) G.queue.push({ label: 'beh-cannon', t: k * 0.25, fn: () => {
+          if (!this.alive) return;
+          const m = this.n.Muzzle_BH.getWorldPosition(new V3()), f = this.tg(), a = lead(m, 70, _b, f);
+          _d.subVectors(a, m).normalize();
+          spawnShot({ p: m, v: _d.clone().multiplyScalar(70), dmg: BEAST.headDmg, team: 'E', kind: 'plasma', splash: 5, life: 3.2, size: 1.2, label: 'beh-cannon' });
+          G.fx.muzzle(m, _d, 0xff8a30, 2.2); sfx('cannon', G.player.pos.distanceTo(m));
+        } });
+      }
+    }
+    // aim point for the HUD / autopilot: the core in phase 2, else the vent nearest you
+    if (this.phase === 2) this.c.copy(this.core.c);
+    else { let b = null, bd = 1e9; if (P && P.alive && this.aboard(P.pos)) for (const q of this.guns) if (q.alive) { const dd = q.c.distanceTo(P.pos) - 30; if (dd < bd) { bd = dd; b = q; } }   // aboard: silence the deck guns first
+      for (const q of this.vents) if (q.alive) { const dd = q.c.distanceTo(P.pos); if (dd < bd) { bd = dd; b = q; } } this.c.copy((b || this.core).c); }
+  }
+}
+const _bmCol = new THREE.Color(0xff2010);
 
 // ---- v66 time loop: every 36 s the loop closes. The three chrono cores rewind 75 % of the damage they took during
 // that loop (destroy one inside a single loop to keep it down), and a ghost of you from the loop just ended appears and
@@ -11720,7 +12051,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
-  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updatePolar(dt); updateJavs(dt); updateCTF(dt); updateBH(dt); updateAerie(dt); updateHunted(dt); updateHeatwave(dt); updateTrips(dt); updateTLoop(dt); updateLag(dt); updateGlad(dt);
+  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updatePolar(dt); updateJavs(dt); updateCTF(dt); updateBH(dt); updateAerie(dt); updateHunted(dt); updateHeatwave(dt); updateTrips(dt); updateTLoop(dt); updateLag(dt); updateSeismic(dt); updateGlad(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

@@ -423,7 +423,7 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
   const free = (x, z, r) => {
     if (PR && Math.hypot(x, z) > PR - 16 - r) return false;
     if (Math.hypot(x, z - 120) < 28 || Math.hypot(x, z) < 26) return false;   // spawn + centre plaza
-    if (road && roadD(x, z) < (road.wide ? 17 : 11) + r) return false;
+    if (road && roadD(x, z) < (road.wide ? 17 : road.trail ? 25 : 11) + r) return false;
     if (forge && lavaD(x, z) < 9 + r) return false;
     for (const q of relaySites) if (Math.hypot(x - q.x, z - q.z) < 18 + r) return false;
     for (const s of solids) {
@@ -640,6 +640,18 @@ export function buildArena(scene, seed = 3, env = 'day', road = null, sites = nu
     const bm = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(bal), new THREE.MeshStandardMaterial({ color: 0x6a645c, roughness: 1 })); bm.receiveShadow = true; group.add(bm);
     const sm = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(slp), new THREE.MeshStandardMaterial({ color: 0x4a3a2c, roughness: 0.95 })); sm.receiveShadow = true; group.add(sm);
     const rm = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(rl), new THREE.MeshStandardMaterial({ color: 0x9a9ca0, roughness: 0.35, metalness: 0.85 })); rm.castShadow = true; group.add(rm);
+  } else if (road && road.trail) {   // behemoth trail: a 30 m strip of trampled earth (one closed band) with footprint pits either side
+    const n = road.length - 1, pos = [], idx = [], fp = [];
+    for (let i = 0; i <= n; i++) {
+      const [ax, az] = road[(i - 1 + n) % n], [bx, bz] = road[(i + 1) % n], [x, z] = road[i % n], tl = Math.hypot(bx - ax, bz - az) || 1, nx = -(bz - az) / tl, nz = (bx - ax) / tl;
+      pos.push(x + nx * 15, 0.04, z + nz * 15, x - nx * 15, 0.04, z - nz * 15);
+      if (i < n) idx.push(i * 2, i * 2 + 1, i * 2 + 2, i * 2 + 1, i * 2 + 3, i * 2 + 2);
+      if (i < n && i % 2 === 0) for (const sd of [-11, 11]) fp.push(new THREE.CircleGeometry(2.8, 14).rotateX(-Math.PI / 2).translate(x + nx * sd + (i % 4 ? 1.5 : -1.5) * (bx - ax) / tl, 0.07, z + nz * sd + (i % 4 ? 1.5 : -1.5) * (bz - az) / tl));
+    }
+    const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3)); g.setIndex(idx); g.computeVertexNormals();
+    if (g.attributes.normal.array[1] < 0) { const ix = g.index.array; for (let k = 0; k < ix.length; k += 3) { const t = ix[k + 1]; ix[k + 1] = ix[k + 2]; ix[k + 2] = t; } g.computeVertexNormals(); }
+    const tm = new THREE.Mesh(g, new THREE.MeshStandardMaterial({ color: 0x5e5244, roughness: 1 })); tm.receiveShadow = true; group.add(tm);
+    const fm = new THREE.Mesh(BufferGeometryUtils.mergeGeometries(fp), new THREE.MeshStandardMaterial({ color: 0x3a3128, roughness: 1 })); fm.receiveShadow = true; group.add(fm);
   } else if (road && road.wide) {   // four-lane highway: asphalt band, white lane dashes, double yellow median, kerbs
     const W = road.wide, Lx = ARENA * 2 + 80, geos = [new THREE.PlaneGeometry(Lx, W).rotateX(-Math.PI / 2).translate(0, 0.03, 0)], dash = [], yel = [], kerb = [];
     for (const z of [-6.75, 6.75]) for (let x = -Lx / 2; x < Lx / 2; x += 10) dash.push(new THREE.PlaneGeometry(4, 0.35).rotateX(-Math.PI / 2).translate(x, 0.06, z));

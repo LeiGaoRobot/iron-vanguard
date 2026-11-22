@@ -173,6 +173,7 @@ M = dict(
     HeatGlow=mat("HeatGlow", "#fff0c0", 0.2, emit="#ff7a1a", strength=2.6), CoolGlow=mat("CoolGlow", "#e0fbff", 0.2, emit="#40d8ff", strength=2.2),
     TripGlow=mat("TripGlow", "#ffe0e0", 0.2, emit="#ff2a3a", strength=2.6),
     ChronoGlow=mat("ChronoGlow", "#e0fcff", 0.2, emit="#5ae8ff", strength=2.4), SandGlow=mat("SandGlow", "#fff0c8", 0.2, emit="#ffb840", strength=2.2),
+    BehGlow=mat("BehGlow", "#ffe0c0", 0.2, emit="#ff6a28", strength=2.2), QuakeGlow=mat("QuakeGlow", "#ffe8c0", 0.2, emit="#ffa040", strength=2.0), InterGlow=mat("InterGlow", "#d8f4ff", 0.2, emit="#40b8ff", strength=2.0),
     NemGlow=mat("NemGlow", "#ffd0d0", 0.2, emit="#ff1a2a", strength=2.6), CellGlow=mat("CellGlow", "#f4ffd0", 0.2, emit="#c8ff30", strength=2.4),
     SnareGlow=mat("SnareGlow", "#ffe0f6", 0.2, emit="#ff40c8", strength=2.2), XSwapGlow=mat("XSwapGlow", "#f0e4ff", 0.2, emit="#b070ff", strength=2.2),
     AdaptGlow=mat("AdaptGlow", "#d8ecff", 0.25, emit="#6fb8ff", strength=2.4), AdaptPaint=mat("AdaptPaint", "#5a5e6a", 0.45, metal=0.55),
@@ -4219,6 +4220,122 @@ def build_halt():
         cyl((0, z, -0.28), 0.18, 0.05, M["CommandGold"], K, rot=ALONG_Y, verts=10)
     muzzle("Muzzle_Halt", (0, 1.52, 0.02), K)
 
+def build_behemoth():
+    # behemoth: a walking fortress-turtle, 36 m across. The flat armoured deck on top of the shell sits at exactly 16 m
+    # (the game puts a walkable collision box there); four exhaust vents (BH_Vent1-4, glow BH_VGlow1-4) on the deck
+    # diagonals, two deck guns (BH_Gun1 front / BH_Gun2 back, Muzzle_BG1/2), a core under a lid in the middle (BH_Core,
+    # raised in phase 2; lid BH_Hatch slides off), a head with a cannon (BH_Head, Muzzle_BH) and four legs pivoting at
+    # the hips (BH_LegFL / FR / BL / BR, swung in game round their X axis)
+    K = kit("E_Behemoth")
+    cyl((0, 0, 10.0), 12.5, 4.4, M["EArmor2"], K, verts=20)                    # hull z 7.8 .. 12.2
+    cyl((0, 0, 7.6), 10.5, 0.6, M["Frame"], K, verts=20)                     # belly plate
+    cyl((0, 0, 14.0), 17.5, 3.8, M["EArmor"], K, verts=28, r2=14.6)            # shell z 12.1 .. 15.9
+    cyl((0, 0, 11.9), 17.6, 0.5, M["Frame"], K, verts=28)                      # shell skirt
+    cyl((0, 0, 15.95), 14.5, 0.1, M["Frame"], K, verts=28)                     # deck plate, top at 16.0
+    torus((0, 0, 16.0), 14.0, 0.12, M["Hazard"], K)
+    for k in range(14):                                                        # rim scutes
+        a = k * math.pi * 2 / 14
+        box((math.cos(a) * 16.0, math.sin(a) * 16.0, 13.4), (2.6, 4.6, 0.7), M["EArmor2"], K, rot=(0.0, 0.62, a), bevel=0.1)
+        box((math.cos(a) * 17.7, math.sin(a) * 17.7, 11.9), (1.2, 1.2, 0.9), M["BehGlow"] if k % 2 else M["Frame"], K, rot=(0, 0, a))
+    for x in (-9.0, -3.0, 3.0, 9.0):                                           # deck plating seams
+        box((x, 0, 16.02), (0.12, 26.0 - abs(x) * 1.1, 0.04), M["Frame"], K)
+        box((0, x, 16.02), (26.0 - abs(x) * 1.1, 0.12, 0.04), M["Frame"], K)
+    for i, (x, y) in enumerate(((6.5, 6.5), (-6.5, 6.5), (6.5, -6.5), (-6.5, -6.5))):
+        v = empty("BH_Vent%d" % (i + 1), (x, y, 16.0), K)
+        cyl((0, 0, 0.3), 1.9, 0.6, M["Frame"], v, verts=10)
+        cyl((0, 0, 1.6), 1.35, 2.6, M["EArmor2"], v, verts=10, r2=1.05)
+        for z in (1.1, 1.9):
+            torus((0, 0, z), 1.32, 0.08, M["Frame"], v)
+        gl = empty("BH_VGlow%d" % (i + 1), (0, 0, 2.9), v)
+        cyl((0, 0, 0), 1.0, 0.24, M["BehGlow"], gl, verts=10)
+        for k in range(4):
+            box((0, 0, 0.2), (2.0, 0.12, 0.12), M["Frame"], gl, rot=(0, 0, k * math.pi / 4))
+    for i, y in enumerate((7.8, -7.8)):
+        g = empty("BH_Gun%d" % (i + 1), (0, y, 16.0), K, rot=(0, 0, 0 if i == 0 else math.pi))
+        cyl((0, 0, 0.35), 1.6, 0.7, M["Frame"], g, verts=10)
+        box((0, 0, 1.25), (2.0, 2.2, 1.1), M["EArmor2"], g, bevel=0.12)
+        for sx in (-0.42, 0.42):
+            cyl((sx, 1.9, 1.35), 0.2, 2.4, M["Frame"], g, rot=ALONG_Y, verts=8)
+        box((0, -0.6, 1.95), (1.0, 0.7, 0.3), M["EEye"], g)
+        muzzle("Muzzle_BG%d" % (i + 1), (0, 3.2, 1.35), g)
+    cyl((0, 0, 15.75), 2.9, 0.5, M["Frame"], K, verts=16)
+    torus((0, 0, 16.0), 2.9, 0.16, M["Hazard"], K)
+    c = empty("BH_Core", (0, 0, 15.4), K)
+    ball((0, 0, 0), 1.7, M["BehGlow"], c, sub=2)
+    torus((0, 0, 0), 2.1, 0.18, M["Frame"], c)
+    for k in range(3):
+        torus((0, 0, 0), 1.95, 0.06, M["BehGlow"], c, rot=(k * 1.05, 0.5, 0))
+    h = empty("BH_Hatch", (0, 0, 16.05), K)
+    cyl((0, 0, 0), 2.75, 0.22, M["EArmor2"], h, verts=16)
+    box((0, 0, 0.14), (3.6, 0.3, 0.08), M["Hazard"], h)
+    # head + cannon
+    hd = empty("BH_Head", (0, 17.0, 9.6), K)
+    hd.scale = (1.55, 1.55, 1.55)
+    cyl((0, -2.0, 0), 2.4, 4.4, M["Frame"], hd, rot=ALONG_Y, verts=12)
+    box((0, 1.4, 0.4), (4.6, 4.2, 3.4), M["EArmor"], hd, bevel=0.3)
+    wedge((0, 3.9, -0.3), (3.6, 1.6, 2.0), M["EArmor2"], hd, rot=(math.pi / 2, 0, 0), taper=0.5)
+    for sx in (-1.5, 1.5):
+        box((sx, 3.3, 1.2), (0.7, 0.3, 0.4), M["EEye"], hd)
+    cyl((0, 4.0, 1.9), 0.42, 3.4, M["Frame"], hd, rot=ALONG_Y, verts=10)
+    torus((0, 5.4, 1.9), 0.5, 0.12, M["BehGlow"], hd, rot=ALONG_Y)
+    muzzle("Muzzle_BH", (0, 5.9, 1.9), hd)
+    # tail
+    cyl((0, -18.0, 9.0), 2.2, 4.0, M["EArmor2"], K, rot=(math.pi / 2 + 0.3, 0, 0), verts=10, r2=0.6)
+    # legs: hip pivots, thigh + knee + column + foot down to z 0
+    for nm_, x, y in (("FL", -10.0, 8.0), ("FR", 10.0, 8.0), ("BL", -10.0, -8.0), ("BR", 10.0, -8.0)):
+        L = empty("BH_Leg" + nm_, (x, y, 10.0), K)
+        sx = 1 if x > 0 else -1
+        ball((0, 0, 0), 2.6, M["Frame"], L, sub=1)
+        box((sx * 1.6, 0, -2.2), (3.0, 3.4, 4.6), M["EArmor"], L, rot=(0, -0.35 * sx, 0), bevel=0.25)
+        ball((sx * 2.4, 0, -4.6), 1.8, M["Frame"], L, sub=1)
+        cyl((sx * 2.4, 0, -7.0), 2.0, 4.8, M["EArmor2"], L, verts=10, r2=2.5)
+        cyl((sx * 2.4, 0, -9.6), 3.0, 0.8, M["Frame"], L, verts=10)
+        for k in range(3):
+            a = (k - 1) * 0.7 + (math.pi / 2)
+            box((sx * 2.4 + math.cos(a) * 2.6, math.sin(a) * 2.6, -9.8), (1.0, 1.4, 0.5), M["EArmor2"], L, rot=(0, 0, a))
+        box((sx * 3.5, 0, -6.0), (0.4, 1.0, 1.4), M["BehGlow"], L)
+
+def build_interceptor():
+    # interceptor: a 5 m point-defence tripod. Three legs, a hub, a yawing turret (IC_Turret) carrying a spinning
+    # six-barrel gun (IC_Barrels, spun round its local Y, Muzzle_IC at the front), a radar dish (IC_Dish) and four
+    # heat fins (IC_Heat, glow tinted in game as it heats up)
+    K = kit("E_Interceptor")
+    for k in range(3):
+        a = k * 2.094 + 0.5
+        cyl((math.cos(a) * 1.25, math.sin(a) * 1.25, 1.5), 0.22, 3.4, M["Frame"], K, rot=(0, 0, 0), verts=8, r2=0.16)
+        box((math.cos(a) * 1.25, math.sin(a) * 1.25, 1.5), (0.5, 0.5, 3.0), M["EArmor2"], K, rot=(math.sin(a) * 0.45, -math.cos(a) * 0.45, 0))
+        cyl((math.cos(a) * 2.2, math.sin(a) * 2.2, 0.15), 0.6, 0.3, M["Frame"], K, verts=8)
+    cyl((0, 0, 3.0), 1.1, 0.9, M["Frame"], K, verts=10)
+    t = empty("IC_Turret", (0, 0, 3.6), K)
+    cyl((0, 0, 0.6), 1.35, 1.2, M["EArmor"], t, verts=12)
+    box((0, 0.6, 0.6), (1.6, 1.4, 0.9), M["EArmor2"], t, bevel=0.1)
+    b = empty("IC_Barrels", (0, 1.3, 0.6), t)
+    for k in range(6):
+        a = k * math.pi / 3
+        cyl((math.cos(a) * 0.22, 0.9, math.sin(a) * 0.22), 0.07, 1.8, M["Frame"], b, rot=ALONG_Y, verts=6)
+    cyl((0, 0.2, 0), 0.34, 0.4, M["Frame"], b, rot=ALONG_Y, verts=10)
+    torus((0, 1.7, 0), 0.3, 0.05, M["InterGlow"], b, rot=ALONG_Y)
+    muzzle("Muzzle_IC", (0, 3.25, 0.6), t)
+    d = empty("IC_Dish", (0, -0.4, 1.4), t)
+    cyl((0, 0, 0.3), 0.08, 0.6, M["Frame"], d, verts=6)
+    cyl((0, 0, 0.7), 0.9, 0.18, M["EArmor2"], d, rot=(0.5, 0, 0), verts=12, r2=0.2)
+    ball((0, 0.2, 0.95), 0.16, M["InterGlow"], d, sub=1)
+    h = empty("IC_Heat", (0, -0.6, 0.6), t)
+    for k in range(4):
+        box(((k - 1.5) * 0.36, -0.55, 0), (0.12, 0.6, 0.9), M["HeatGlow"], h)
+    box((0, 0.3, 1.25), (0.9, 0.5, 0.2), M["EEye"], t)
+
+def build_quake():
+    # SQ-2 quake driver (shoulder): a squat hammer pack with a downward piston and a ribbed striker plate
+    K = kit("S_Quake")
+    box((0, -0.05, 0.22), (0.66, 0.9, 0.4), M["Armor2"], K, bevel=0.05)
+    cyl((0, 0.35, 0.5), 0.17, 0.75, M["Joint"], K, rot=ALONG_Y, verts=10)
+    cyl((0, 0.78, 0.5), 0.26, 0.2, M["Frame"], K, rot=ALONG_Y, verts=10)
+    for yy in (0.1, 0.3):
+        torus((0, yy, 0.5), 0.2, 0.04, M["QuakeGlow"], K, rot=ALONG_Y)
+    box((0, -0.45, 0.48), (0.5, 0.18, 0.18), M["Hazard"], K)
+    muzzle("Muzzle_Quake", (0, 0.92, 0.5), K)
+
 def build_charge():
     # EC-2 energy cannon: a long receiver, three capacitor rings, a glowing core CG_Core (scaled with your energy at
     # runtime) sitting in a cradle on top, a wide muzzle (Muzzle_Charge)
@@ -4302,7 +4419,7 @@ def build_bubble():
     cyl((0, 1.02, 0), 0.32, 0.28, M["SoapGlow"], K, rot=ALONG_Y, verts=18, r2=0.16)
     torus((0, 1.18, 0), 0.3, 0.035, M["Hazard"], K, rot=ALONG_Y)
     muzzle("Muzzle_Bubble", (0, 1.25, 0.0), K)
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb(); build_bloater(); build_coolant(); build_cooltower(); build_atomdome(); build_decon(); build_isotope(); build_adaptor(); build_saws(); build_sawdisc(); build_arenagate(); build_firevent(); build_sprayer(); build_splat(); build_paintcan(); build_scrambler(); build_bubble(); build_dyad(); build_javelin(); build_raptor(); build_flag(); build_flag_base(); build_arc(); build_gyro(); build_injector(); build_charge(); build_aerogen(); build_swatter(); build_antigrav(); build_nemesis(); build_powercell(); build_snare(); build_xswap(); build_scorcher(); build_furnace(); build_trip(); build_chrono(); build_reverter(); build_halt()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb(); build_bloater(); build_coolant(); build_cooltower(); build_atomdome(); build_decon(); build_isotope(); build_adaptor(); build_saws(); build_sawdisc(); build_arenagate(); build_firevent(); build_sprayer(); build_splat(); build_paintcan(); build_scrambler(); build_bubble(); build_dyad(); build_javelin(); build_raptor(); build_flag(); build_flag_base(); build_arc(); build_gyro(); build_injector(); build_charge(); build_aerogen(); build_swatter(); build_antigrav(); build_nemesis(); build_powercell(); build_snare(); build_xswap(); build_scorcher(); build_furnace(); build_trip(); build_chrono(); build_reverter(); build_halt(); build_behemoth(); build_interceptor(); build_quake()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
