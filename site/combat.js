@@ -21,6 +21,7 @@ export const G = {
 };
 
 export const WEAPONS = {
+  halt: { slot: 'arm', name: 'CR-9 停滞步枪', en: 'CR-9 Halt Rifle', desc: '按住开火：子弹停在机体前方排成一排（最多 9 发）· 松开或停满时一齐射向准星 · 一次齐射的弹数越多每发越痛（9 发 +36%）· 打不中移动目标就松早一点', type: 'park', rate: 0.11, dmg: 18, max: 9, bonus: 0.04, speed: 200, spread: 0.004, mag: 36, reload: 2.2, color: 0x7af0ff, sfx: 'coil', recoil: 0.3 },
   siphon: { slot: 'arm', name: 'VB-1 汲能枪', en: 'VB-1 Siphon Gun', desc: '高速红色能量弹 · 每发命中敌机为你回复 12% 伤害量的装甲 · 持续输出也是持续回血', type: 'bullet', siphon: 0.12, rate: 0.12, dmg: 13, speed: 210, spread: 0.014, mag: 36, reload: 2.2, color: 0xff3050, w: 0.28, len: 4, life: 0.6, sfx: 'rifle', recoil: 0.1 },
   acid: { slot: 'arm', name: 'AC-2 酸液喷枪', en: 'AC-2 Acid Sprayer', desc: '抛射酸液团（有下坠）· 溅射 3 m · 命中叠加腐蚀：每层受伤 +7%，最多 5 层，4 秒不补就消退', type: 'bullet', acid: true, rate: 0.15, dmg: 15, speed: 90, spread: 0.02, mag: 30, reload: 2.0, color: 0x90ff30, w: 0.45, len: 1.6, life: 1.1, sfx: 'rifle', recoil: 0.12 },
   needler: { slot: 'arm', name: 'NX-8 针刺枪', en: 'NX-8 Needler', desc: '追踪锁定目标的钢针 · 扎在敌机上 · 同一目标扎满 8 根一起引爆（100 / 4.5 m）· 3 秒没补针就脱落', type: 'bullet', needle: true, rate: 0.085, dmg: 5, speed: 150, spread: 0.02, mag: 48, reload: 2.2, color: 0xff70e0, w: 0.16, len: 3, life: 1.6, sfx: 'rifle', recoil: 0.08 },
@@ -88,7 +89,7 @@ export const WEAPONS = {
   sonar: { slot: 'shoulder', name: 'SN-1 声呐脉冲', en: 'SN-1 Sonar Pulse', desc: '向四周发出声呐波 · 75 m 内敌机标记 7 秒（受伤 +25%、隐身失效、干扰机停摆）· 近身 10 m 冲击', type: 'sonar', R: 75, mark: 7, vuln: 1.25, bossVuln: 1.12, burst: 45, burstR: 10, cd: 11, sfx: 'sonar' },
   shield: { slot: 'shoulder', name: 'AS-3 能量护盾', en: 'AS-3 Aegis Shield', desc: '展开 3 秒 · 正面伤害 −85%', type: 'shield', dur: 3, cd: 9, block: 0.85, arc: 0.15, sfx: 'shield' },
 };
-export const ARM_KEYS = ['ecan', 'arc', 'javelin', 'bubble', 'splat', 'isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
+export const ARM_KEYS = ['halt', 'ecan', 'arc', 'javelin', 'bubble', 'splat', 'isotope', 'plorb', 'tractor', 'drill', 'frag', 'melter', 'siphon', 'acid', 'needler', 'ricochet', 'rifle', 'gatling', 'shotgun', 'flamer', 'cryo', 'grenade', 'sticky', 'coil', 'disc', 'hook', 'sonic', 'flak', 'rail', 'blade', 'pile'];
 export const SHOULDER_KEYS = ['trip', 'xswap', 'antigrav', 'saws', 'nanocloud', 'bwall', 'chainb', 'camo', 'hack', 'ciws', 'net', 'burner', 'repair', 'reflect', 'rewind', 'pound', 'rod', 'pmines', 'missile', 'cannon', 'laser', 'shield', 'drones', 'emp', 'decoy', 'grav', 'orbital', 'blink', 'sonar', 'sentry', 'smoke', 'stasis', 'cluster', 'chaff', 'icewall', 'rockets'];
 
 export function weaponState(key) {
@@ -163,6 +164,7 @@ function dealDamage(ent, dmg, team, at, label) {
     if (team === 'P' && G.hf && G.hf.h === h && h.kind !== 'boss' && h.kind !== 'raider' && (label || G.curLabel) !== 'p-fuse') { dmg *= FUSE.carrierK; G.hf.shielded = (G.hf.shielded || 0) + dmg; }   // the bomb's field shields its carrier   // adaptor: resists the damage type it adapted to
     if (team === 'P' && G.glad && !isAlly(label || G.curLabel) && !ent.isBarrel) { if (G.glad.h >= GLAD.frenzy) { G.gladBonus += dmg * (GLAD.fdmg - 1); dmg *= GLAD.fdmg; } G.glad.lastDmgT = G.time; G.glad.h = Math.min(100, G.glad.h + Math.min(dmg, 200) * (h.kind === 'boss' ? GLAD.bossK : GLAD.dmgK)); }   // a good show keeps them interested
     if (h && !ent.isBarrel) { h._lastLbl = label || G.curLabel || ''; h._lastTeam = team; } }
+  if (G.tl && team === 'P' && (label || G.curLabel || '').startsWith('ally-ghost')) G.tl.gdmg += dmg;
   ent.hit(dmg, at, label || G.curLabel);
   if (dmg >= 4) hitFlash(ent.kind === 'cpart' ? ent.owner : ent);
   if (team === 'P' && !ent.isBarrel && G.lgroups.length && (label || G.curLabel) !== 'link') { const h = ent.kind === 'cpart' ? ent.owner : ent; if (h.linkG && h.linkG.t > 0 && !isAlly(label || G.curLabel)) linkShare(h, dmg, h.linkG); }
@@ -325,6 +327,7 @@ function impact0(s, at, ent) {
     if (s.decay && ent && ent.alive !== false && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly) decayAdd(ent, 1);
     if (s.siphon && ent && ent.alive !== false && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly && !ent.holo && G.player && G.player.alive) { const P = G.player, h = Math.min(P.maxHp - P.hp, s.dmg * s.siphon); if (h > 0) { P.hp += h; G.siphonHeal = (G.siphonHeal || 0) + h; } }
     if (s.jamOrb && ent && ent.isPlayer) jamPlayer();
+    if (s.lagBolt && ent && ent.isPlayer) lagPlayer();
     if (s.chill && ent && ent.alive && !ent.isBarrel && !ent.isPlayer && !ent.isMine && !ent.isAlly) { chillAdd(ent.kind === 'cpart' ? ent.owner : ent, s.chill); fx.sparks(at, null, 3, 0xd8f6ff, 6, 0.8, 0.3, 0.2); }
     fx.sparks(at, _a.copy(s.v).normalize().multiplyScalar(-1), ent ? 6 : 4, s.team === 'P' ? 0xffd27a : 0xff7a50, 14, 0.8, 0.25, 0.22);
     fx.emit('add', { x: at.x, y: at.y, z: at.z, life: 0.08, s0: ent ? 1.4 : 0.9, c0: s.color });
@@ -356,9 +359,9 @@ function updateShots(DT) {
       if (_a.dot(_b) > 0.3) { _b.lerp(_a, Math.min(1, 3.2 * dt)).normalize(); s.v.copy(_b).multiplyScalar(sp); }
     }
     if (G.rift) riftShot(s);
-    if (s.jamOrb && s.age > 0.1 && G.player && G.player.alive) {   // violet orbs bend slowly toward you: a sideways boost beats them
+    if ((s.jamOrb || s.lagBolt) && s.age > 0.1 && G.player && G.player.alive) {   // violet orbs bend slowly toward you: a sideways boost beats them
       const sp = s.v.length(), pc = G.player.center(_c); _a.set(pc.x - s.x, pc.y - s.y, pc.z - s.z).normalize(); _b.copy(s.v).divideScalar(sp || 1);
-      if (_a.dot(_b) > 0.3) { _b.lerp(_a, Math.min(1, DISARM.turn * dt)).normalize(); s.v.copy(_b).multiplyScalar(sp); }
+      if (_a.dot(_b) > 0.3) { _b.lerp(_a, Math.min(1, (s.lagBolt ? REVERT.turn : DISARM.turn) * dt)).normalize(); s.v.copy(_b).multiplyScalar(sp); }
       if (Math.random() < 0.6) fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.25, s0: 1.2, s1: 0.2, c0: 0xd080ff });
     }
     if (s.acid) { s.v.y -= CORR.grav * dt; if (Math.random() < 0.5) fx.emit('add', { x: s.x, y: s.y, z: s.z, life: 0.12, s0: 0.9, s1: 0.3, c0: 0xa0ff40, c1: 0x408010 }); }
@@ -542,6 +545,27 @@ export function weaponTick(dt, owner, slot, ws, held, aim, target, team, locks, 
       if (ws.ammo <= 0) startReload();
     }
     if (!held && ws.cd < 0) ws.cd = 0;
+  } else if (d.type === 'park') {   // CR-9: shots hang in a row in front of the muzzle and fly together on release
+    const P = ws.park || (ws.park = []), mp = owner.muzzlePos(slot, _a);
+    if (held && ws.reloadT <= 0) {
+      while (ws.cd <= 0 && ws.ammo > 0 && P.length < d.max) { ws.cd += d.rate; ws.ammo--; P.push({ k: P.length, m: parkMesh(isP), t: 0 }); if (me) G.stats.shots++; mslot.recoil = Math.min(0.4, (mslot.recoil || 0) + 0.05); }
+      if (ws.cd < 0) ws.cd = 0;
+    }
+    _d.subVectors(aim, mp); if (!(_d.lengthSq() > 1e-6)) _d.set(-Math.sin(owner.aimYaw || 0), 0, -Math.cos(owner.aimYaw || 0)); _d.normalize();
+    _c.set(-_d.z, 0, _d.x); if (_c.lengthSq() < 1e-6) _c.set(1, 0, 0); _c.normalize();
+    for (const b of P) { b.t += dt; const o = (b.k - (d.max - 1) / 2) * 0.55; b.m.position.copy(mp).addScaledVector(_d, 3.4 + 0.3 * Math.sin(b.k * 1.3)).addScaledVector(_c, o); b.m.position.y += Math.sin(b.k * 1.7 + b.t * 3) * 0.3; b.m.scale.setScalar(Math.min(1, b.t * 6) * (1 + 0.15 * Math.sin(b.t * 18 + b.k))); }
+    if (P.length && (!held || P.length >= d.max || ws.ammo <= 0 || !owner.alive)) {
+      const mul = 1 + d.bonus * P.length;
+      for (const b of P) {
+        _b.subVectors(aim, b.m.position); if (!(_b.lengthSq() > 1e-6)) _b.copy(_d); _b.normalize(); _b.x += (Math.random() - 0.5) * d.spread; _b.y += (Math.random() - 0.5) * d.spread; _b.z += (Math.random() - 0.5) * d.spread; _b.normalize();
+        spawnShot({ p: b.m.position, v: _b.clone().multiplyScalar(d.speed), dmg: d.dmg * dmgMul * mul, team, kind: isP ? 'bullet' : 'ebullet', color: d.color, w: 0.32, len: 5, life: 1.5 });
+        dropPark(b.m);
+      }
+      G.haltVolleys = (G.haltVolleys || 0) + (me ? 1 : 0); P.length = 0;
+      fx.muzzle(mp, _d, 0x7af0ff, 1.6); mslot.recoil = Math.min(0.6, (mslot.recoil || 0) + d.recoil); if (me) fx.trauma = Math.min(1, fx.trauma + 0.1);
+      sfx(d.sfx, dist);
+    }
+    if (ws.ammo <= 0 && !P.length) startReload();
   } else if (d.type === 'sonic') {
     if (held && ws.cd <= 0 && ws.reloadT <= 0 && ws.ammo > 0) {
       ws.cd = d.rate; ws.ammo--;
@@ -2167,7 +2191,7 @@ export const ACES = {
 Object.assign(RAIDERS, ACES);
 // Echo: the mirror boss copies the player's loadout (player-only gear is swapped for the nearest enemy-capable weapon).
 // Phase 2 splits off two weak Shards with the same weapons.
-const ECHO_SUB = { trip: 'missile', xswap: 'missile', antigrav: 'missile', ecan: 'rifle', arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
+const ECHO_SUB = { halt: 'rifle', trip: 'missile', xswap: 'missile', antigrav: 'missile', ecan: 'rifle', arc: 'rifle', javelin: 'rail', bubble: 'grenade', splat: 'grenade', saws: 'missile', isotope: 'rifle', plorb: 'coil', nanocloud: 'missile', tractor: 'rifle', bwall: 'missile', chainb: 'missile', camo: 'missile', hack: 'missile', ciws: 'missile', net: 'missile', drill: 'rifle', burner: 'missile', repair: 'missile', reflect: 'missile', frag: 'shotgun', melter: 'rifle', rewind: 'missile', pound: 'missile', siphon: 'rifle', needler: 'rifle', acid: 'rifle', rod: 'missile', ricochet: 'rifle', pmines: 'missile', sticky: 'grenade', rockets: 'missile', icewall: 'missile', chaff: 'missile', cluster: 'cannon', flak: 'gatling', stasis: 'missile', sonic: 'shotgun', smoke: 'missile', hook: 'rifle', pile: 'blade', disc: 'rifle', decoy: 'missile', sentry: 'drones', grav: 'cannon', orbital: 'cannon', emp: 'missile' };
 const ECHO_MUL = { rifle: 0.22, gatling: 0.26, shotgun: 0.3, flamer: 0.3, cryo: 0.3, grenade: 0.4, coil: 0.3, rail: 0.25, blade: 0.34, missile: 0.5, cannon: 0.6, laser: 0.45, drones: 0.4, shield: 0 };
 export function setEcho(L) {
   const f = (k) => ECHO_SUB[k] || k, lo = { R: f(L.R), L: f(L.L), S: f(L.S) };
@@ -6109,6 +6133,215 @@ function updateTrips(dt) {
   }
 }
 
+// ---- v66 time loop: every 36 s the loop closes. The three chrono cores rewind 75 % of the damage they took during
+// that loop (destroy one inside a single loop to keep it down), and a ghost of you from the loop just ended appears and
+// replays it: same path, same trigger presses, aimed at whatever enemy sits near the line you were aiming along. Ghosts
+// keep re-running their own loop (up to 3, the oldest fades); a ghost destroyed is a paradox and costs you 8 % armour
+export const TLOOP = { len: 36, max: 3, step: 0.1, cores: [[-96, -46], [92, -58], [2, 104]], coreHp: 8000, undo: 0.75, ghostHp: 0.55, ghostDmg: 0.35, cone: 0.42, range: 130, paradox: 0.08, warn: 3 };
+export function tlSites() { return TLOOP.cores.map(([x, z]) => [x, z]); }
+const GHOST_OK = { bullet: 1, park: 1 };
+function ghostMats(root, col, op) {
+  root.traverse((o) => { if (o.isMesh && o.material && !Array.isArray(o.material)) { const m = o.material.clone(); m.transparent = true; m.depthWrite = false; m.opacity = op; if (m.emissive) { m.emissive.setHex(col); m.emissiveIntensity = 0.6; } else if (m.color) m.color.setHex(col); o.material = m; o.castShadow = false; } });
+}
+const _tlc = new V3(), _tld = new V3(), _tle = new V3(), _tla = new V3();
+class LoopGhost {
+  constructor(rec, n) {
+    this.rec = rec; this.n = n; this.t = 0; this.isGhost = true; this.foeW = 0.9; this.foeWAir = 0.9; this.foeWBoss = 0.9; this.tgt = null; this.tgT = 0;
+    const keys = ['R', 'L'].map((k) => { const key = G.pw[k].key; return GHOST_OK[WEAPONS[key].type] ? key : 'rifle'; });
+    this.mech = G.tl.mk({ R: keys[0], L: keys[1], S: G.pw.S.key }); this.mech.isAlly = true;
+    ghostMats(this.mech.root, 0x40d8ff, 0.42);
+    this.ws = { R: weaponState(keys[0]), L: weaponState(keys[1]) };
+    this.pos = this.mech.pos; this.vel = this.mech.vel;
+    const self = this; this._ent = { isAlly: true, c: new V3(), r: 2.1, get alive() { return self.alive; }, w: this, hit: (d) => this.damage(d) };
+    this.place();
+  }
+  get alive() { return !!this.mech && this.mech.alive && !this.gone; }
+  center(out) { return this.mech.center(out); }
+  get hp() { return this.mech ? this.mech.hp : 0; }
+  get maxHp() { return this.mech ? this.mech.maxHp : 1; }
+  repair(k) { if (this.alive) this.mech.hp = Math.min(this.mech.maxHp, this.mech.hp + this.mech.maxHp * k); }
+  place() { const f = this.rec[0]; this.t = 0; this.pos.set(f.x, f.y, f.z); this.vel.set(0, 0, 0); this.mech.aimYaw = f.yaw; G.fx.ring(new V3(f.x, f.y + 0.3, f.z), null, 0.5, 5, 0.35, 0x40d8ff); G.fx.sparks(this.mech.center(_tlc), null, 14, 0x9ff0ff, 10, 1, 0.4, 0.2); }
+  damage(d) {
+    if (!this.alive || G.godMode) return;
+    this.mech.hit(d * G.diff.dmg);
+    if (!this.mech.alive) this.kill(true);
+  }
+  kill(paradox) {
+    if (this.gone) return; this.gone = true;
+    const i = G.friends.indexOf(this); if (i >= 0) G.friends.splice(i, 1);
+    for (const k of ['R', 'L']) { const P = this.ws[k].park; if (P) { for (const b of P) dropPark(b.m); P.length = 0; } }
+    G.fx.sparks(this.mech.center(_tlc), null, 24, 0x9ff0ff, 14, 1, 0.5, 0.25); G.fx.ring(this.mech.center(_tlc).clone(), null, 0.6, 7, 0.4, 0x40d8ff);
+    this.mech.dispose();
+    if (paradox && G.player && G.player.alive) { G.tl.para++; hurtPlayer(G.player.maxHp * TLOOP.paradox, 'paradox'); G.onTLoop && G.onTLoop('paradox', G.tl.para); }
+  }
+  update(dt) {
+    if (!this.alive) return;
+    const R = this.rec, m = this.mech; this.t += dt;
+    const fi = Math.min(R.length - 1.001, this.t / TLOOP.step), i = Math.floor(fi), u = fi - i, f0 = R[i], f1 = R[i + 1];
+    const tx = f0.x + (f1.x - f0.x) * u, ty = f0.y + (f1.y - f0.y) * u, tz = f0.z + (f1.z - f0.z) * u;
+    const dx = tx - m.pos.x, dz = tz - m.pos.z, L = Math.hypot(dx, dz), sp = L / Math.max(dt, 1e-3);
+    const k = L > 1e-3 ? Math.min(1, sp / 14) / L : 0;
+    const aimYaw = f0.yaw + angDiff(f1.yaw, f0.yaw) * u, aimPitch = f0.pitch + (f1.pitch - f0.pitch) * u;
+    m.update(dt, { mx: dx * k, mz: dz * k, boost: f1.b, qboost: false, jump: false, hover: f1.h, aimYaw, aimPitch });
+    if (!m.alive) return;
+    m.pos.set(tx, ty, tz); if (L > 4) m.vel.set(0, 0, 0); else m.vel.set(dx / Math.max(dt, 1e-3), (ty - m.pos.y) / Math.max(dt, 1e-3), dz / Math.max(dt, 1e-3));
+    // replay the triggers, aimed at whatever enemy sits close to the recorded aim line
+    const c = m.center(_tlc);
+    _tld.set(f1.ax - f1.x, f1.ay - (f1.y + 3), f1.az - f1.z); if (_tld.lengthSq() < 1e-4) _tld.set(-Math.sin(aimYaw), 0, -Math.cos(aimYaw)); _tld.normalize();
+    this.tgT -= dt;
+    if (this.tgT <= 0) {
+      this.tgT = 0.3; this.tgt = null; let bs = 1e9;
+      for (const e of G.enemies) {
+        if (!e.alive || e.dying || e.holo || e.cloaked || e.hacked || e.isMine || !e.c) continue;
+        _tle.subVectors(e.c, c); const d = _tle.length(); if (d > TLOOP.range || d < 1) continue;
+        const a = Math.acos(Math.max(-1, Math.min(1, _tle.dot(_tld) / d))); if (a > TLOOP.cone) continue;
+        const sc = a * 60 + d * 0.3; if (sc < bs && clearLine(c, e.c)) { bs = sc; this.tgt = e; }
+      }
+    }
+    const t = this.tgt && this.tgt.alive && !this.tgt.dying ? this.tgt : null;
+    const aim = t ? _tla.copy(t.c) : _tla.set(f1.ax, f1.ay, f1.az);
+    for (const s_ of ['R', 'L']) { G.curLabel = 'ally-ghost-' + this.ws[s_].key; weaponTick(dt, m, s_, this.ws[s_], s_ === 'R' ? f1.r : f1.l, aim, t, 'P', t ? [t] : null, TLOOP.ghostDmg); }
+    G.curLabel = null;
+  }
+}
+// park meshes for the CR-9 halt rifle
+const parkGeo = new THREE.IcosahedronGeometry(0.28, 1), parkMatP = new THREE.MeshBasicMaterial({ color: new THREE.Color(0x7af0ff).multiplyScalar(2.2) }), parkMatE = new THREE.MeshBasicMaterial({ color: new THREE.Color(0xff6a40).multiplyScalar(2) });
+const parkPool = [];
+function parkMesh(isP) { const m = parkPool.pop() || new THREE.Mesh(parkGeo, parkMatP); m.material = isP ? parkMatP : parkMatE; m.scale.setScalar(0.01); G.scene.add(m); (G.parks || (G.parks = [])).push(m); return m; }
+function dropPark(m) { m.parent && m.parent.remove(m); const i = G.parks ? G.parks.indexOf(m) : -1; if (i >= 0) G.parks.splice(i, 1); parkPool.push(m); }
+export function clearParks() { for (const m of (G.parks || []).slice()) dropPark(m); G.parks = []; }
+
+export class ChronoCore extends Enemy {
+  constructor(pos) {
+    super('chrono', 'E_Chrono', pos, TLOOP.coreHp, 3.2); this.boom = 2.4; this.isObjective = true;
+    this.pos.y = groundAt(pos.x, pos.z, 99);
+    this.solids = [addSolid(pos.x, pos.z, 8, 8, 1.2, this.pos.y, 'chrono'), addSolid(pos.x, pos.z, 3, 3, 10.2, this.pos.y + 1.2, 'chrono')];
+    this.c.set(pos.x, this.pos.y + 12.4, pos.z); this.ph = Math.random() * 6; this.snap = this.maxHp; this.rwF = 0;
+  }
+  rewind() {
+    if (!this.alive) return 0;
+    const lost = Math.max(0, this.snap - this.hp) * TLOOP.undo; this.hp += lost; this.snap = this.hp;
+    if (lost > 1) { this.rwF = 1; G.fx.ring(this.c.clone(), null, 1, 14, 0.6, 0x5ae8ff); G.fx.sparks(this.c, null, 24, 0x9ff0ff, 16, 1.2, 0.5, 0.3); }
+    return lost;
+  }
+  die() {
+    for (const so of this.solids) removeSolid(so);
+    this.dying = true; this.alive = false; G.stats.kills++; G.onKill && G.onKill(this);
+    explodeAt(this.c, 10, 40, 'P', 2.6, 0x5ae8ff); G.fx.flash(this.c, 0x9ff0ff, 80, 34, 0.6);
+    for (let k = 0; k < 4; k++) G.queue.push({ label: 'chrono', t: 0.25 + k * 0.3, fn: () => explodeAt(new V3(this.pos.x + (Math.random() - 0.5) * 4, this.pos.y + 2 + k * 2.6, this.pos.z + (Math.random() - 0.5) * 4), 0, 0, 'P', 1.3, 0xffb840) });
+    G.onTLoop && G.onTLoop('core', G.tl ? G.tl.cores.filter((f) => f.alive).length : 0);
+    this.remove();
+  }
+  update(dt) {
+    this.ph += dt; const n = this.n, k = this.rwF > 0 ? 6 : 1;
+    if (n.CQ_Ring1) n.CQ_Ring1.rotation.y += dt * 0.5 * k; if (n.CQ_Ring2) n.CQ_Ring2.rotation.y -= dt * 0.8 * k; if (n.CQ_Ring3) n.CQ_Ring3.rotation.y += dt * 1.2 * k;
+    if (this.rwF > 0) this.rwF = Math.max(0, this.rwF - dt * 0.8);
+    if (n.CQ_Core) { n.CQ_Core.getWorldPosition(this.c); n.CQ_Core.rotation.y += dt * 0.3; n.CQ_Core.scale.setScalar(1 + 0.04 * Math.sin(this.ph * 4) + 0.15 * this.rwF); }
+    if (Math.random() < dt * 4) G.fx.emit('add', { x: this.c.x + (Math.random() - 0.5) * 2.4, y: this.c.y - 1, z: this.c.z + (Math.random() - 0.5) * 2.4, vy: 2.5, life: 0.7, s0: 0.7, s1: 0.1, c0: 0xffc860 });
+  }
+}
+
+export function startTLoop(mk) {
+  clearTLoop();
+  G.tl = { t: 0, n: 0, rec: [], recT: 0, ghosts: [], mk, para: 0, gdmg: 0, undone: 0, hR: false, hL: false, warned: false };
+  G.tl.cores = TLOOP.cores.map(([x, z]) => new ChronoCore(new V3(x, 0, z)));
+}
+export function clearTLoop() {
+  const T = G.tl; if (T) for (const g of T.ghosts) g.kill(false);
+  G.tl = null; clearParks();
+}
+function tlFrame(P) {
+  const a = G.aimPoint || P.pos;
+  return { x: P.pos.x, y: P.pos.y, z: P.pos.z, yaw: P.aimYaw, pitch: P.aimPitch || 0, ax: a.x, ay: a.y, az: a.z, r: !!G.tl.hR, l: !!G.tl.hL, b: !!P.boosting, h: !P.grounded };
+}
+function updateTLoop(dt) {
+  const T = G.tl, P = G.player; if (!T || !P) return;
+  for (const g of T.ghosts) g.update(dt);
+  if (!P.alive) return;
+  T.t += dt; T.recT -= dt;
+  if (T.recT <= 0) { T.recT += TLOOP.step; T.rec.push(tlFrame(P)); }
+  if (!T.warned && T.t > TLOOP.len - TLOOP.warn) { T.warned = true; G.onTLoop && G.onTLoop('warn'); }
+  if (T.t < TLOOP.len) return;
+  // the loop closes: cores rewind, a new ghost replays the loop just ended, old ghosts start their loop again
+  T.t = 0; T.n++; T.warned = false;
+  let undone = 0; for (const c of T.cores) undone += c.rewind(); T.undone += undone;
+  for (const g of T.ghosts) if (g.alive) g.place();
+  T.ghosts = T.ghosts.filter((g) => g.alive);
+  if (T.rec.length > 20) {
+    if (T.ghosts.length >= TLOOP.max) T.ghosts.shift().kill(false);
+    const g = new LoopGhost(T.rec, T.n); T.ghosts.push(g); G.friends.push(g);
+  }
+  T.rec = [];
+  G.fx.flash(P.center(_tlc), 0x9ff0ff, 60, 30, 0.4); sfx('stasis', 0);
+  G.onTLoop && G.onTLoop('loop', T.n, undone);
+}
+
+// ---- Reverter: a hovering hourglass drone. Keeps 22-38 m away and fires three slow homing lag bolts (a hit slows you
+// to 62 % for 2.2 s). Every 5 s it snaps back to where it was 3 s ago and gets back the armour it had then; its ghost
+// (a faint copy) shows where it will return to. Burst it down between rewinds
+export const REVERT = { hp: 720, r: 1.9, hover: 7, near: 22, far: 38, speed: 9, every: 5, back: 3, gunCd: [2.0, 2.8], boltDmg: 12, boltSpd: 46, turn: 1.4, lagT: 2.2, lagMul: 0.62 };
+export class Reverter extends Enemy {
+  constructor(pos) {
+    super('revert', 'E_Reverter', pos, REVERT.hp, REVERT.r); this.boom = 1.1; this.flying = true;
+    this.pos.y = groundAt(pos.x, pos.z, 40) + REVERT.hover; this.vel = new V3(); this.yaw = 0; this.ph = Math.random() * 6; this.dir = Math.random() < 0.5 ? 1 : -1;
+    this.hist = []; this.hT = 0; this.rwT = REVERT.every + Math.random() * 2; this.gunT = 1.5 + Math.random(); this.burst = 0; this.burstT = 0; this.flip = 0;
+    this.echo = cloneKit('E_Reverter'); ghostMats(this.echo, 0x5ae8ff, 0.32); this.echo.visible = false; G.scene.add(this.echo);
+    this.c.copy(this.pos);
+  }
+  remove() { this.echo.parent && this.echo.parent.remove(this.echo); super.remove(); }
+  update(dt) {
+    const tg = this.tg(), pc = tg.center(playerC); this.ph += dt;
+    const dx = this.pos.x - pc.x, dz = this.pos.z - pc.z, dist = Math.hypot(dx, dz) || 1;
+    const want = dist < REVERT.near ? 1 : dist > REVERT.far ? -1 : 0, ox = dx / dist, oz = dz / dist, tx = -oz * this.dir, tz = ox * this.dir;
+    if (Math.random() < dt * 0.25) this.dir *= -1;
+    this.vel.x += ((ox * want * 1.2 + tx) * REVERT.speed - this.vel.x) * (1 - Math.exp(-2 * dt)); this.vel.z += ((oz * want * 1.2 + tz) * REVERT.speed - this.vel.z) * (1 - Math.exp(-2 * dt));
+    this.pos.x += this.vel.x * dt; this.pos.z += this.vel.z * dt;
+    this.pos.x = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.x)); this.pos.z = Math.max(-ARENA + 6, Math.min(ARENA - 6, this.pos.z));
+    if (collideCyl(this.pos, 2, 2)) { this.dir *= -1; blockedSlide(this); }
+    const gy = Math.max(groundAt(this.pos.x, this.pos.z, this.pos.y + 1), pc.y - 3) + REVERT.hover + Math.sin(this.ph * 1.4) * 0.6;
+    this.pos.y += (gy - this.pos.y) * (1 - Math.exp(-1.5 * dt));
+    this.yaw += angDiff(Math.atan2(dx, dz), this.yaw) * Math.min(1, dt * 3);
+    this.c.copy(this.pos);
+    // history: where it was (and how much armour it had) over the last few seconds
+    this.hT -= dt; if (this.hT <= 0) { this.hT = 0.2; this.hist.push({ x: this.pos.x, y: this.pos.y, z: this.pos.z, hp: this.hp, t: G.time }); while (this.hist.length && this.hist[0].t < G.time - REVERT.back - 0.6) this.hist.shift(); }
+    let back = null; for (const h of this.hist) if (h.t <= G.time - REVERT.back) back = h; else break;
+    this.rwT -= dt;
+    const E = this.echo; E.visible = !!back;
+    if (back) { E.position.set(back.x, back.y, back.z); E.rotation.set(0, this.yaw, 0); const w = this.rwT < 0.8 ? 1.4 + Math.sin(this.ph * 30) * 0.4 : 1; E.scale.setScalar(w > 1 ? 1.06 : 1); E.traverse((o) => { if (o.isMesh) o.material.opacity = 0.32 * w; }); }
+    if (this.rwT <= 0 && back) {
+      this.rwT = REVERT.every;
+      const healed = Math.max(0, back.hp - this.hp);
+      G.fx.sparks(this.c, null, 14, 0x9ff0ff, 12, 1, 0.4, 0.2);
+      this.hp = Math.max(this.hp, back.hp); this.pos.set(back.x, back.y, back.z); this.c.copy(this.pos); this.vel.set(0, 0, 0);
+      G.fx.ring(this.c.clone(), null, 0.5, 6, 0.35, 0x5ae8ff); G.revertN = (G.revertN || 0) + 1; G.revertHeal = (G.revertHeal || 0) + healed;
+      this.flip = 1; this.hist.length = 0; sfx('blink', dist);
+    }
+    // lag bolts: three slow homing orbs
+    const m = this.n.Muzzle_RT, mp = m ? m.getWorldPosition(_tla) : _tla.copy(this.c);
+    const los = dist < 80 && this.checkLos(dt);
+    this.gunT -= dt;
+    if (los && this.gunT <= 0 && this.burst <= 0) { this.burst = 3; this.burstT = 0; this.gunT = REVERT.gunCd[0] + Math.random() * (REVERT.gunCd[1] - REVERT.gunCd[0]); }
+    if (this.burst > 0 && (this.burstT -= dt) <= 0) {
+      this.burst--; this.burstT = 0.22; const aim = lead(mp, REVERT.boltSpd, _tle, tg);
+      _tld.subVectors(aim, mp).normalize(); _tld.x += (Math.random() - 0.5) * 0.12; _tld.y += (Math.random() - 0.5) * 0.06; _tld.z += (Math.random() - 0.5) * 0.12; _tld.normalize();
+      const sh = spawnShot({ p: mp.clone(), v: _tld.multiplyScalar(REVERT.boltSpd), dmg: REVERT.boltDmg, team: 'E', kind: 'ebullet', color: 0x5ae8ff, w: 0.7, len: 1.2, life: 3, label: 'revert-bolt' });
+      sh.lagBolt = true; G.lagBolts = (G.lagBolts || 0) + 1; sfx('eshot', dist);
+    }
+    const n = this.n;
+    if (n.RT_Ring) n.RT_Ring.rotation.y += dt * 2.2;
+    if (n.RT_Glass) { if (this.flip > 0) { this.flip = Math.max(0, this.flip - dt * 2.5); n.RT_Glass.rotation.x = Math.PI * (1 - this.flip); } else n.RT_Glass.rotation.x = 0; }
+    this.obj.rotation.set(Math.sin(this.ph * 1.6) * 0.05, this.yaw, Math.sin(this.ph) * 0.07);
+  }
+}
+// time lag (reverter bolts): you move at 62 % for 2.2 s
+G.lagT = 0;
+function lagPlayer() { const P = G.player; if (!P) return; if (!(G.lagT > 0)) G.lagHits = (G.lagHits || 0) + 1; G.lagT = REVERT.lagT; G.lagN = (G.lagN || 0) + 1; G.fx.sparks(P.center(_tlc), null, 10, 0x9ff0ff, 8, 1, 0.3, 0.2); }
+function updateLag(dt) {
+  const P = G.player; if (!P) return;
+  if (G.lagT > 0) { G.lagT -= dt; P.lagMul = REVERT.lagMul; G.lagTime = (G.lagTime || 0) + dt; if (Math.random() < dt * 8) G.fx.emit('add', { x: P.pos.x + (Math.random() - 0.5) * 2, y: P.pos.y + 1 + Math.random() * 3, z: P.pos.z + (Math.random() - 0.5) * 2, life: 0.4, s0: 0.6, s1: 0.1, c0: 0x9ff0ff }); }
+  else P.lagMul = 1;
+}
+
 // ---- v63 aerie: four armoured decks float 24-45 m up, each held by a lift engine (AeroGen) with a turret beside it.
 // A jump pad on the ground next to each deck throws you onto it (a scripted 1.7 s arc). Destroying an engine drops its
 // deck: it falls and crashes, crushing whatever is below (220 to enemies, 60 to you)
@@ -7627,7 +7860,7 @@ function reflectShot(s, pc) {
   else { s.grav = 0; s.splash = Math.max(s.splash || 0, 3.5); s.v.multiplyScalar(Math.max(70, Math.min(sp, 120))); }
   s.x = pc.x + (s.x - pc.x) * 1.02; s.y = pc.y + (s.y - pc.y) * 1.02; s.z = pc.z + (s.z - pc.z) * 1.02;
   s.team = 'P'; s.dmg *= d.mul; s.label = 'reflect'; s.color = 0x80f0ff; s.age = 0; s.life = Math.max(s.life, 1.6);
-  s.frostP = 0; s.jamOrb = false; s.acid = false; s.decay = false; s.chill = 0; s.bounce = 0;
+  s.frostP = 0; s.jamOrb = false; s.lagBolt = false; s.acid = false; s.decay = false; s.chill = 0; s.bounce = 0;
   G.stats.shots++; G.reflN = (G.reflN || 0) + 1;
   G.fx.sparks(at, s.v.clone().normalize(), 5, 0xb0f8ff, 14, 0.6, 0.2, 0.2);
   if (Math.random() < 0.3) sfx('ric', 0);
@@ -11469,7 +11702,7 @@ export function updateCombat(dt) {
   if (G.twisters.length) updateTwisters(dt);
   updateBarrage(dt);
   updateIce(dt); updateIceWalls(dt); updateWind(dt); updateStickies(dt); updateCranes(dt); updatePMines(dt); updateQuakes(dt); updateFlares(dt); updateNeedles(dt); updateThunder(dt); updateRods(dt); updateTraffic(dt); updateRifts(dt); updateSupply(dt); updatePound(dt); for (const k in G.jam) if (G.jam[k] > 0) G.jam[k] -= dt;
-  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updatePolar(dt); updateJavs(dt); updateCTF(dt); updateBH(dt); updateAerie(dt); updateHunted(dt); updateHeatwave(dt); updateTrips(dt); updateGlad(dt);
+  updateMaze(dt); updateRings(dt); updateBWalls(dt); updateFactory(dt); updateTBeams(dt); updateTsunami(dt); updateNano(dt); updateBio(dt); updatePlOrbs(dt); updateAtom(dt); updateSaws(dt); updateTurf(dt); updateGoo(dt); updateBubbles(dt); updateFuse(dt); updateScram(dt); updatePolar(dt); updateJavs(dt); updateCTF(dt); updateBH(dt); updateAerie(dt); updateHunted(dt); updateHeatwave(dt); updateTrips(dt); updateTLoop(dt); updateLag(dt); updateGlad(dt);
   updateShots(dt); RAYF.skipIce = false;
   for (let i = G.pickups.length - 1; i >= 0; i--) {
     const k = G.pickups[i]; k.t += dt;

@@ -172,6 +172,7 @@ M = dict(
     AntiGlow=mat("AntiGlow", "#e8fff8", 0.2, emit="#40ffd8", strength=2.2),
     HeatGlow=mat("HeatGlow", "#fff0c0", 0.2, emit="#ff7a1a", strength=2.6), CoolGlow=mat("CoolGlow", "#e0fbff", 0.2, emit="#40d8ff", strength=2.2),
     TripGlow=mat("TripGlow", "#ffe0e0", 0.2, emit="#ff2a3a", strength=2.6),
+    ChronoGlow=mat("ChronoGlow", "#e0fcff", 0.2, emit="#5ae8ff", strength=2.4), SandGlow=mat("SandGlow", "#fff0c8", 0.2, emit="#ffb840", strength=2.2),
     NemGlow=mat("NemGlow", "#ffd0d0", 0.2, emit="#ff1a2a", strength=2.6), CellGlow=mat("CellGlow", "#f4ffd0", 0.2, emit="#c8ff30", strength=2.4),
     SnareGlow=mat("SnareGlow", "#ffe0f6", 0.2, emit="#ff40c8", strength=2.2), XSwapGlow=mat("XSwapGlow", "#f0e4ff", 0.2, emit="#b070ff", strength=2.2),
     AdaptGlow=mat("AdaptGlow", "#d8ecff", 0.25, emit="#6fb8ff", strength=2.4), AdaptPaint=mat("AdaptPaint", "#5a5e6a", 0.45, metal=0.55),
@@ -4144,6 +4145,80 @@ def build_trip():
     l = empty("TQ_Lamp", (0, 0, 3.8), P)
     ball((0, 0, 0), 0.18, M["TripGlow"], l, sub=1)
 
+def build_chrono():
+    # chrono core: a 13 m clock spire. Octagonal plinth, tapering column, three counter-rotating gear rings round the
+    # column (CQ_Ring1-3, spun in game) and a glowing hourglass on top (CQ_Core, the hit point above the collision boxes)
+    K = kit("E_Chrono")
+    cyl((0, 0, 0.6), 4.0, 1.2, M["Frame"], K, verts=8)
+    box((0, 0, 1.25), (5.0, 5.0, 0.1), M["Hazard"], K)
+    cyl((0, 0, 10.9), 0.55, 1.2, M["Frame"], K, verts=8)
+    cyl((0, 0, 5.7), 1.4, 9.0, M["Armor2"], K, verts=8, r2=0.9)
+    for z in (2.2, 10.2):
+        cyl((0, 0, z), 1.8, 0.4, M["Frame"], K, verts=8)
+    for i, (z, r) in enumerate(((3.6, 3.2), (6.4, 2.7), (9.0, 2.2))):
+        g = empty("CQ_Ring%d" % (i + 1), (0, 0, z), K)
+        torus((0, 0, 0), r, 0.2, M["Frame"], g)
+        torus((0, 0, 0.12), r - 0.25, 0.05, M["ChronoGlow"], g)
+        for k in range(10):
+            a = k * math.pi / 5
+            box((math.cos(a) * (r + 0.28), math.sin(a) * (r + 0.28), 0), (0.42, 0.42, 0.34), M["Armor2"], g, rot=(0, 0, a))
+        for k in range(3):
+            a = k * 2.094 + i
+            box((math.cos(a) * r * 0.5, math.sin(a) * r * 0.5, 0), (r, 0.12, 0.1), M["Frame"], g, rot=(0, 0, a))
+    c = empty("CQ_Core", (0, 0, 12.4), K)
+    cyl((0, 0, 0.75), 0.18, 1.3, M["Glass"], c, verts=12, r2=1.15)
+    cyl((0, 0, -0.75), 1.15, 1.3, M["Glass"], c, verts=12, r2=0.18)
+    ball((0, 0, 0), 0.42, M["SandGlow"], c, sub=1)
+    ball((0, 0, -0.95), 0.62, M["SandGlow"], c, scale=(1, 1, 0.45), sub=1)
+    for z in (-1.5, 1.5):
+        cyl((0, 0, z), 1.4, 0.22, M["CommandGold"], c, verts=12)
+    for k in range(4):
+        a = k * math.pi / 2 + 0.785
+        cyl((math.cos(a) * 1.25, math.sin(a) * 1.25, 0), 0.08, 3.0, M["CommandGold"], c, verts=6)
+    torus((0, 0, 0), 1.55, 0.07, M["ChronoGlow"], c)
+
+def build_reverter():
+    # reverter: a hovering hourglass drone (about 3 m). The glass and sand (RT_Glass) flip over when it rewinds, a gold
+    # ring (RT_Ring) spins round it, and a cyan emitter at the front (+Y) carries Muzzle_RT
+    K = kit("E_Reverter")
+    gl = empty("RT_Glass", (0, 0, 0), K)
+    cyl((0, 0, 0.62), 0.14, 1.05, M["Glass"], gl, verts=12, r2=0.95)
+    cyl((0, 0, -0.62), 0.95, 1.05, M["Glass"], gl, verts=12, r2=0.14)
+    ball((0, 0, 0.0), 0.28, M["SandGlow"], gl, sub=1)
+    ball((0, 0, -0.8), 0.55, M["SandGlow"], gl, scale=(1, 1, 0.4), sub=1)
+    for z in (-1.25, 1.25):
+        cyl((0, 0, z), 1.15, 0.2, M["CommandGold"], gl, verts=12)
+    for k in range(3):
+        a = k * 2.094
+        cyl((math.cos(a) * 1.0, math.sin(a) * 1.0, 0), 0.06, 2.5, M["CommandGold"], gl, verts=6)
+    r = empty("RT_Ring", (0, 0, 0), K)
+    torus((0, 0, 0), 1.55, 0.09, M["CommandGold"], r)
+    torus((0, 0, 0), 1.42, 0.04, M["ChronoGlow"], r)
+    for k in range(4):
+        a = k * math.pi / 2
+        box((math.cos(a) * 1.6, math.sin(a) * 1.6, 0), (0.32, 0.32, 0.32), M["EArmor"], r, rot=(0, 0, a))
+    box((0, 1.1, 0), (0.5, 0.7, 0.42), M["EArmor2"], K)
+    cyl((0, 1.6, 0), 0.16, 0.5, M["Frame"], K, rot=ALONG_Y, verts=8)
+    ball((0, 1.9, 0), 0.2, M["ChronoGlow"], K, sub=1)
+    muzzle("Muzzle_RT", (0, 2.05, 0), K)
+    for s_ in (-1, 1):
+        box((s_ * 1.25, -0.2, 0), (0.7, 0.9, 0.12), M["EArmor"], K, rot=(0, 0.3 * s_, 0))
+
+def build_halt():
+    # CR-9 halt rifle (arm): a squared rifle with three cyan time rings floating round the barrel and an hourglass cell
+    K = kit("W_Halt")
+    box((0, 0.1, 0), (0.36, 1.3, 0.38), M["Frame"], K, bevel=0.05)
+    box((0, -0.35, 0.24), (0.4, 0.55, 0.12), M["Armor2"], K)
+    cyl((0, 1.0, 0.02), 0.08, 1.0, M["Joint"], K, rot=ALONG_Y, verts=10)
+    for yy in (0.8, 1.05, 1.3):
+        torus((0, yy, 0.02), 0.2, 0.03, M["ChronoGlow"], K, rot=ALONG_Y)
+    cyl((0, -0.12, -0.28), 0.16, 0.22, M["Glass"], K, verts=10, r2=0.04)
+    cyl((0, -0.34, -0.28), 0.04, 0.22, M["Glass"], K, verts=10, r2=0.16)
+    ball((0, -0.36, -0.28), 0.1, M["SandGlow"], K, sub=1)
+    for z in (-0.02, -0.48):
+        cyl((0, z, -0.28), 0.18, 0.05, M["CommandGold"], K, rot=ALONG_Y, verts=10)
+    muzzle("Muzzle_Halt", (0, 1.52, 0.02), K)
+
 def build_charge():
     # EC-2 energy cannon: a long receiver, three capacitor rings, a glowing core CG_Core (scaled with your energy at
     # runtime) sitting in a cradle on top, a wide muzzle (Muzzle_Charge)
@@ -4227,7 +4302,7 @@ def build_bubble():
     cyl((0, 1.02, 0), 0.32, 0.28, M["SoapGlow"], K, rot=ALONG_Y, verts=18, r2=0.16)
     torus((0, 1.18, 0), 0.3, 0.035, M["Hazard"], K, rot=ALONG_Y)
     muzzle("Muzzle_Bubble", (0, 1.25, 0.0), K)
-build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb(); build_bloater(); build_coolant(); build_cooltower(); build_atomdome(); build_decon(); build_isotope(); build_adaptor(); build_saws(); build_sawdisc(); build_arenagate(); build_firevent(); build_sprayer(); build_splat(); build_paintcan(); build_scrambler(); build_bubble(); build_dyad(); build_javelin(); build_raptor(); build_flag(); build_flag_base(); build_arc(); build_gyro(); build_injector(); build_charge(); build_aerogen(); build_swatter(); build_antigrav(); build_nemesis(); build_powercell(); build_snare(); build_xswap(); build_scorcher(); build_furnace(); build_trip()
+build_rifle(); build_gatling(); build_coil(); build_rail(); build_blade(); build_shotgun(); build_grenade(); build_pile(); build_flamer(); build_cryo(); build_disc(); build_grappler(); build_blink(); build_eel(); build_sonar(); build_jet(); build_split(); build_sentry(); build_sentry_pod(); build_skimmer(); build_hook(); build_lev(); build_smoke(); build_jungle(); build_prism(); build_sonic(); build_fencer(); build_stasis(); build_toxic(); build_hive(); build_flak(); build_grid(); build_blinker(); build_cluster(); build_twister(); build_watch(); build_chaff(); build_frost(); build_icewall(); build_blimp(); build_rockets(); build_mirage(); build_sticky(); build_crane(); build_deflector(); build_minepod(); build_rammer(); build_ricochet(); build_leaper(); build_needler(); build_herald(); build_rod(); build_rod_pack(); build_hwy_truck(); build_leech(); build_acid(); build_rift(); build_disarmer(); build_siphon(); build_crate(); build_snatcher(); build_pound_pack(); build_fog_lamp(); build_lurker(); build_rewind_pack(); build_fuel_tank(); build_planter(); build_melter(); build_salvage(); build_salv_pad(); build_scav(); build_frag(); build_hulk(); build_build_pad(); build_bastion(); build_hijack(); build_reflect(); build_trooper(); build_tower(); build_citadel(); build_shade(); build_repair(); build_gate(); build_engineer(); build_burner(); build_dish(); build_anchor(); build_drill(); build_courier(); build_torcher(); build_upstation(); build_net(); build_launcher(); build_cruise(); build_shelter(); build_ciws(); build_weaver(); build_civ(); build_shuttle(); build_evacpad(); build_hack(); build_reviver(); build_pylon(); build_camo(); build_marshal(); build_dazzler(); build_link_pod(); build_liftwall(); build_pulsar(); build_barrier_pod(); build_press(); build_fab(); build_fork(); build_tractor(); build_pump(); build_swapper(); build_nanocloud(); build_bionode(); build_seeder(); build_tumor(); build_plorb(); build_bloater(); build_coolant(); build_cooltower(); build_atomdome(); build_decon(); build_isotope(); build_adaptor(); build_saws(); build_sawdisc(); build_arenagate(); build_firevent(); build_sprayer(); build_splat(); build_paintcan(); build_scrambler(); build_bubble(); build_dyad(); build_javelin(); build_raptor(); build_flag(); build_flag_base(); build_arc(); build_gyro(); build_injector(); build_charge(); build_aerogen(); build_swatter(); build_antigrav(); build_nemesis(); build_powercell(); build_snare(); build_xswap(); build_scorcher(); build_furnace(); build_trip(); build_chrono(); build_reverter(); build_halt()
 build_missile(); build_cannon(); build_laser(); build_shield(); build_drones(); build_emp(); build_mini()
 build_turret(); build_drone(); build_walker(); build_gunship(); build_bulwark(); build_relay(); build_reactor(); build_truck(); build_colossus(); build_stalker(); build_mender(); build_crawler(); build_cache(); build_sapper(); build_mine(); build_jammer(); build_dropship(); build_howitzer(); build_decoy(); build_warden(); build_grav(); build_burrower(); build_train(); build_orbital()
 build_props()
