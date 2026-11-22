@@ -53,6 +53,7 @@ canvas#c { position: fixed; inset: 0; width: 100%; height: 100%; display: block;
 .bar i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--cyan); transition: width 0.08s; }
 #hpBar i { background: linear-gradient(90deg, #3fd18a, #8dffb8); }
 #hpBar.low i { background: linear-gradient(90deg, #ff3a2a, #ff8a5a); }
+#hpBar s { position: absolute; left: 0; top: 0; height: 4px; width: 0; background: #7fd4ff; box-shadow: 0 0 6px #6fc8ff; transition: width 0.08s; }   /* aegis shield */
 #enBar i { background: linear-gradient(90deg, #2aa8ff, #8fe8ff); }
 #odBar i { background: linear-gradient(90deg, #ff6a1a, #ffd27a); }
 #odBar.ready i { animation: odPulse 0.8s ease-in-out infinite alternate; }
@@ -268,7 +269,7 @@ body.touchmode #mAlert { top: 30%; }
   <div id="info">速度 <b id="spd">0</b> km/h<br>高度 <b id="alt">0</b> m</div>
   <div id="bars">
     <div class="barlbl"><span>机体 AP</span><b id="hpTxt">1200</b></div>
-    <div class="bar" id="hpBar"><i style="width:100%"></i></div>
+    <div class="bar" id="hpBar"><i style="width:100%"></i><s id="agFill"></s></div>
     <div class="bar" id="enBar"><i style="width:100%"></i></div>
     <div class="barlbl"><span>能量 EN</span><span id="enTxt"></span></div>
     <div class="bar" id="odBar"><i style="width:0%"></i></div>

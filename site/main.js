@@ -10,7 +10,7 @@ import { buildArena, addSolid, ARENA, solids, raySolids, groundAt, pointInSolid,
 import { FX, TEX } from './fx.js';
 import { AtmospherePass, makeRidge } from './post.js';
 import { initAudio, sfx, thrust, musicTick, setVolume } from './audio.js';
-import { Mech, PALETTES, FRAMES, angDiff, PHYS, MECHS, PARTS, PART_SLOTS, SLOT_NAMES, BUILDS, PATTERNS, partStats, partsReady } from './mech.js';
+import { Mech, PALETTES, FRAMES, angDiff, PHYS, MECHS, PARTS, PART_SLOTS, SLOT_NAMES, BUILDS, PATTERNS, partStats, partsReady, partAvail } from './mech.js';
 import { Wingman, Reactor, Convoy, WING } from './ally.js';
 import { G, OD, ACES, explodeAt, WEAPONS, ARM_KEYS, SHOULDER_KEYS, weaponState, weaponTick, updateCombat, Turret, Drone, Walker, Bulwark, Gunship, Relay, Boss, BOSSES, RAIDERS, Colossus, Stalker, Mender, Crawler, Sapper, Jammer, JAM_R, Dropship, Howitzer, Warden, Burrower, Train, TRAIN, setEcho, Eel, Jet, Splitter, clearMeteors, Skimmer, clearHooks, Leviathan, Prism, PRISM, Fencer, FENCE, Hive, clearGrid, Blinker, BLINK, Watchtower, WATCH, clearBarrage, Frostcaster, FROST, ICE, startIce, clearIce, Airship, BLIMP, WIND, startWind, clearWind, Mirage, MIRAGE, clearStickies, Deflector, DEFL, MAGNET, startCranes, clearCranes, clearPMines, Rammer, RAM, QUAKE, startQuakes, clearQuakes, fissureDist, Leaper, LEAP, FLARE, Herald, HERALD, Tower, Citadel, Trooper, Shade, SHADE, LANE, Marshal, DECAP, startDecap, clearDecap, Dazzler, DAZZ, clearLinkB, Pulsar, PULSE, MAZE, startMaze, clearMaze, clearRings, clearBWalls, Forklift, FACT, startFactory, clearFactory, clearTBeams, TSU, Swapper, SWAP, startTsunami, clearTsunami, clearNano, tsuEta, inWave, BIO, Seeder, SEED, startBio, clearBio, clearPlOrbs, inCreep, ATOM, Bloater, BLOAT, startAtom, clearAtom, decaySpread, GLAD, Adaptor, ADAPT, Sprayer, SPRAY, Scrambler, SCRAM, FUSE, startFuse, clearFuse, fuseNear, POL, DYAD, Dyad, spawnDyads, startPolar, clearPolar, togglePol, setPol, polThreat, Raptor, RAPT, CTF, startCTF, clearCTF, Gyro, GYRO, BH, startBH, clearBH, AER, aerPads, startAerie, clearAerie, Swatter, SWAT, clearAG, NEM, Nemesis, nemPylons, startHunted, clearHunted, HEATW, heatSites, startHeatwave, clearHeatwave, heatAdd, inPool, Scorcher, SCORCH, clearTrips, BUB, clearBubbles, TURF, startTurf, clearTurf, turfShare, turfAt, turfKill, startGlad, clearGlad, gladGate, gladKill, gladVentAt, clearSaws, Reviver, REVIVE, noteWreck, CAMO, clearCamo, clearWrecks, SABOT, startSabot, clearSabot, sabTarget, Weaver, WEAVE, HACK, hackable, EVAC, EVAC_ROAD, startEvac, clearEvac, evacWalking, clearWebs, clearHacks, Launcher, Cruise, SKY, startSky, clearSky, Courier, COURIER, COURIER_PATH, startPursuit, clearPursuit, Torcher, TORCH, clearFires, clearNets, Dish, Anchor, ANCHOR, LANCE, startLance, clearLance, Engineer, ENG, BEACON, BEACON_GATES, BEACON_PATH, startBeacon, clearBeacon, beaconNext, beaconTime, clearBurn, startLane, clearLane, laneObjective, laneEscorted, clearRBeam, Bastion, Hijacker, HIJACK, FORT, FORT_PADS, startFort, clearFort, padAction, fortGoal, clearRefl, Scav, SCAV, SALV, startSalvage, clearSalvage, dropCores, nearestCore, Planter, PLANT, DEPOT, startDepots, clearDepots, nearestCharge, Lurker, LURK, FOG, startFog, clearFog, fogSeen, fogFar, resetRewind, Snatcher, SNATCH, SUPPLY, startSupply, clearSupply, nearestCrate, Disarmer, DISARM, RIFT, startRifts, clearRifts, Leech, LEECH, TRAFFIC, startTraffic, clearTraffic, truckAhead, THUNDER, startThunder, clearThunder, rodCover, clearRods, startFlares, clearFlares, inShade, resetNeedles, startTwisters, clearTwisters, TWIST, startAcid, clearAcid, clearStasis, clearSmokes, Grappler, hurtPlayer, domeAt, clearWells, clearChill, clearStrikes, clearDiscs, clearDecoys, clearMines, clearMinis, dropRepair, enemyEnts, rayEnts } from './combat.js';
 
@@ -481,6 +481,8 @@ try { const o = JSON.parse(localStorage.getItem(SAVE_KEY) || 'null'); if (o) { O
 const partOwned = (slot, id) => id === 'std' || !!(save.parts && save.parts[slot + '.' + id]);
 const patOwned = (k) => k === 'none' || !!(save.pats && save.pats[k]);
 const myPattern = () => (PATTERNS[cfg.pattern] && patOwned(cfg.pattern) ? cfg.pattern : 'none');
+const frameOwned = (k) => !!FRAMES[k] && (!FRAMES[k].cost || !!(save.frames && save.frames[k]));
+const myFrame = () => (frameOwned(cfg.frame) ? cfg.frame : 'std');
 const myParts = () => { const r = {}; for (const s of PART_SLOTS) { const id = (cfg.parts || {})[s]; if (id && PARTS[s][id] && partOwned(s, id)) r[s] = id; } return r; };
 const writeSave = () => { try { localStorage.setItem(SAVE_KEY, JSON.stringify(save)); } catch (e) { /* ignore */ } };
 const playerMods = () => { const u = save.up, th = chipOn('thrust'); return { hp: 1 + 0.08 * u.armor, en: 1 + 0.08 * u.gen, regen: (1 + 0.08 * u.gen) * (th ? 1.25 : 1), boost: (1 + 0.04 * u.thr) * (th ? 1.1 : 1), speed: 1 + 0.02 * u.thr }; };
@@ -1057,7 +1059,7 @@ function mixWave(n, rnd) {
 
 function makePlayer() {
   if (G.player) G.player.dispose();
-  G.player = new Mech(scene, mctx, { palette: cfg.palette, frame: cfg.frame, parts: myParts(), pattern: myPattern(), loadout: { R: cfg.R, L: cfg.L, S: cfg.S }, yaw: 0, mods: playerMods() });
+  G.player = new Mech(scene, mctx, { palette: cfg.palette, frame: myFrame(), parts: myParts(), pattern: myPattern(), loadout: { R: cfg.R, L: cfg.L, S: cfg.S }, yaw: 0, mods: playerMods() });
   G.player.pos.set(0, 0, 128);
   G.pw = freshPW();
   cam.yaw = 0; cam.pitch = -0.05;
@@ -1085,7 +1087,7 @@ function newGame() {
   if (modOn('glass')) { G.player.maxHp = Math.round(G.player.maxHp * 0.6); G.player.hp = G.player.maxHp; }
   Object.assign(G.stats, { shots: 0, hits: 0, kills: 0, dmgTaken: 0, dmgDealt: 0, blocked: 0 });
   const M = MISSIONS[cfg.mission];
-  G.echoLo = setEcho({ R: cfg.R, L: cfg.L, S: cfg.S, frame: cfg.frame, parts: myParts(), pattern: myPattern() });
+  G.echoLo = setEcho({ R: cfg.R, L: cfg.L, S: cfg.S, frame: myFrame(), parts: myParts(), pattern: myPattern() });
   PHYS.g = M.grav || 1; PHYS.grip = M.grip || 1; if (M.ice) startIce(); if (M.wind) startWind(); G.glare = !!M.glare; if (M.cranes) startCranes(M.cranes); if (M.quake) startQuakes(); if (M.flare) startFlares(); if (M.thunder) startThunder(STORM_RODS); if (M.highway) startTraffic(); if (M.rift) startRifts(); if (M.supply) startSupply(); if (M.fog) startFog(); if (M.depot) startDepots(); if (M.salvage) startSalvage(); if (M.fortify) startFort(); if (M.lane) startLane(); G.meteorOn = !!M.meteors; if (M.acid) startAcid(M.acid); if (M.twisters) startTwisters(M.twisters); G.acidSaid = false; G.fenceSaid = false; G.linkSaid = false; if (tide) { tide.y = tide.yT = M.tide[0]; WATER.y = tide.y; } if (M.ascend) setStage(0, true); clearWells(); G.eruptT = 8; G.freezes = 0; G.lavaT = 0; G.eruptions = 0; G.burrowUps = 0;
   if (M.defense) {
     G.core = new Reactor(scene, new V3(0, 0, 0), M.coreHp); G.friends.push(G.core);
@@ -1124,7 +1126,7 @@ function newGame() {
     G.core = new Convoy(scene, M.path, M.coreHp); G.friends.push(G.core);
     G.player.pos.set(M.path[0][0] + 6, 0, M.path[0][1] - 9); cam.yaw = -Math.PI / 2; G.player.aimYaw = cam.yaw;
   }
-  G.od = { k: 0, t: 0, ringT: 0, dur: OD.dur + (chipOn('cap') ? 3 : 0) }; G.odGain = (chipOn('cap') ? 1.4 : 1) * (G.player.frame.od || 1); G.hurtAt = -99;
+  G.od = { k: 0, t: 0, ringT: 0, dur: OD.dur + (chipOn('cap') ? 3 : 0) }; G.odGain = (chipOn('cap') ? 1.4 : 1) * (G.player.frame.od || 1); G.hurtAt = -99; G.nanBank = 0; G.aegisSaid = false;
   $('coreName').textContent = G.core ? (M.creep ? '净化塔 PURIFIER' : M.convoy ? '运输车 CONVOY' : M.lane ? '基地 HQ' : '反应堆 REACTOR') : '';
   if (wingOn()) { G.wing = new Wingman(scene, mctx, cfg.palette === 'kestrel' ? 'vanguard' : 'kestrel'); G.friends.push(G.wing); }
   aceReset(); run.coreLost = false; run.trainLost = false; run.depotLost = false; run.salvage = !!M.salvage; run.quota = M.quota || 0; run.fortify = !!M.fortify; run.hackSaid = false; run.decap = !!M.decap; run.dcT = 16; run.dcN = 0; run.vipLost = false; run.dcWarn = 0; run.sabot = !!M.sabot; run.sbT = 14; run.sbN = 0; run.sbBoss = false; run.orbLost = false; run.sbWarn = 0; run.rescue = !!M.rescue; run.rsT = 10; run.rsN = 0; run.rsCap = 5; run.rsBoss = false; run.civLost = false; run.sky = !!M.sky; run.skyW = 0; run.skyBreak = 5; run.skyT = 16; run.skyB = 12; run.cityLost = false; run.pursuit = !!M.pursuit; run.prsT = 10; run.prsN = 0; run.dataLost = false; run.lance = !!M.lance; run.factory = !!M.factory; run.ctf = !!M.ctf; run.heatwave = !!M.heatwave; run.hwT = 36; run.hwSq = 0; run.hunted = !!M.hunted; run.hnT = 26; run.hnSq = 0; run.nemT = NEM.spawnT; run.aerie = !!M.aerie; run.aeSqT = 30; run.aeSq = 0; run.singularity = !!M.singularity; run.bhSqT = 22; run.bhSq = 0; run.flagLost = false; run.rpT = 7; run.sqT = 26; run.ctfSq = 0; run.raidSaid = false; run.fcT = 20; run.tsunami = !!M.tsunami; run.tsT = 18; run.tsN = 0; run.creep = !!M.creep; run.crT = 16; run.crN = 0; run.seedT = 14; run.glad = !!M.glad; run.turf = !!M.turf; run.hf = !!M.hotfuse; run.tfC = 0; run.tfT = 10; run.tfN = 0; run.tfLast = false; run.tfBoss = false; run.turfLost = false; run.gRound = -1; run.gT = 5; run.gBreak = false; run.gq = []; run.gRe = false; run.gN0 = 0; run.hypeLost = false; run.hypeMsg = ''; run.hypeMsgT = 0; run.meltdown = !!M.meltdown; run.mdT = 20; run.mdN = 0; run.blT = 10; run.meltLost = false; run.lcnT = 6; run.lcnN = 0; run.beacon = !!M.beacon; run.bcnT = 3; run.bcnN = 0; run.timeUp = false; run.lane = !!M.lane; run.laneT = 8; run.laneN = 0; run.shadeSaid = false; run.squadSaid = false; run.armorSaid = false;
@@ -3039,11 +3041,17 @@ function buildGarage() {
     }));
   }
   buildAces();
-  fill('gFrame', Object.entries(FRAMES).map(([k, f]) => opt(`${f.name}<small>${f.en}</small>`, cfg.frame === k, () => { cfg.frame = k; rebuildPreview(); })));
+  if (!save.frames) save.frames = {};   // frames with a cost are bought once
+  fill('gFrame', Object.entries(FRAMES).map(([k, f]) => { const own = frameOwned(k);
+    return opt(`${f.name}<small>${own ? (f.d || f.e) : `${f.cost} C · ${f.d}`}</small>`, myFrame() === k, () => {
+      if (!own) { if (save.cr < f.cost) { sfx('empty'); return; } save.cr -= f.cost; save.frames[k] = true; writeSave(); sfx('coin'); }
+      cfg.frame = k; rebuildPreview();
+    }, own ? '' : (save.cr < f.cost ? 'nocr' : 'buy')); }));
   buildParts(opt, fill);
   const F = G.player.frame, xs = (k, lab) => (F[k] !== 1 ? ` · ${lab} <b>×${F[k].toFixed(2)}</b>` : '');
   $('gStats').innerHTML = `AP <b>${Math.round(F.hp)}</b> · 速度 <b>×${F.speed.toFixed(2)}</b> · EN <b>${Math.round(F.en)}</b> · 推进 <b>×${F.boost.toFixed(2)}</b> · 受伤 <b>×${+F.armor.toFixed(2)}</b>` + (save.up.fcs ? ` · 伤害 <b>×${dmgMul().toFixed(2)}</b>` : '')
-    + xs('lock', '锁定') + xs('reload', '装填') + (F.jump !== 1 ? ` · 跳跃高度 <b>×${(F.jump * F.jump).toFixed(2)}</b>` : '') + xs('qb', '急闪耗能') + xs('hover', '悬停耗能') + xs('lift', '悬停爬升') + xs('radar', '雷达') + xs('od', '超载充能') + xs('spread', '散布') + xs('pspd', '弹速') + xs('scd', '肩武器冷却') + xs('melee', '近战伤害') + (F.grip ? ' · <b>防滑</b>' : '') + (F.float ? ' · <b>涉水</b>' : '');
+    + xs('lock', '锁定') + xs('reload', '装填') + (F.jump !== 1 ? ` · 跳跃高度 <b>×${(F.jump * F.jump).toFixed(2)}</b>` : '') + xs('qb', '急闪耗能') + xs('hover', '悬停耗能') + xs('lift', '悬停爬升') + xs('radar', '雷达') + xs('od', '超载充能') + xs('spread', '散布') + xs('pspd', '弹速') + xs('scd', '肩武器冷却') + xs('melee', '近战伤害') + (F.grip ? ' · <b>防滑</b>' : '') + (F.float ? ' · <b>涉水</b>' : '')
+    + (F.dodge ? ' · <b>急闪无敌</b>' : '') + (F.bulk ? ` · <b>重击减半 (>${F.bulk})</b>` : '') + (F.ew ? ' · <b>抗干扰</b>' : '') + (F.nanite ? ` · 纳米修复 <b>${Math.round(F.nanite * 100)}%</b>` : '') + (F.aegis ? ` · 护盾 <b>${F.aegis}</b>` : '');
   const wopt = (slot, k) => opt(`${WEAPONS[k].name}<small>${WEAPONS[k].desc}</small>`, cfg[slot] === k, () => { cfg[slot] = k; G.player.mount({ R: cfg.R, L: cfg.L, S: cfg.S }); G.pw = freshPW(); buildWeaponPanel(); });
   fill('gR', ARM_KEYS.map((k) => wopt('R', k)));
   fill('gL', ARM_KEYS.map((k) => wopt('L', k)));
@@ -3089,7 +3097,7 @@ function buildParts(opt, fill) {
   const cur = myParts();
   const buy = (list) => { const cost = list.reduce((a, [s, id]) => a + PARTS[s][id].cost, 0); if (save.cr < cost) { sfx('empty'); return false; }
     save.cr -= cost; for (const [s, id] of list) save.parts[s + '.' + id] = true; writeSave(); sfx('coin'); return true; };
-  fill('gBuild', Object.entries(BUILDS).map(([k, B]) => {
+  fill('gBuild', Object.entries(BUILDS).filter(([k, B]) => PART_SLOTS.every((s) => partAvail(s, B.parts[s] || 'std'))).map(([k, B]) => {
     const want = PART_SLOTS.map((s) => [s, B.parts[s] || 'std']);
     const miss = want.filter(([s, id]) => !partOwned(s, id)), cost = miss.reduce((a, [s, id]) => a + PARTS[s][id].cost, 0);
     const on = want.every(([s, id]) => (cur[s] || 'std') === id);
@@ -3104,6 +3112,7 @@ function buildParts(opt, fill) {
     row.innerHTML = `<span class="pl">${SLOT_NAMES[s][0]}</span>`;
     const o = document.createElement('div'); o.className = 'opts';
     for (const [id, P] of Object.entries(PARTS[s])) {
+      if (!partAvail(s, id)) continue;
       const own = partOwned(s, id);
       o.appendChild(opt(`${P.name}<small>${own ? (P.d || '基准') : `${P.cost} C · ${P.d}`}</small>`, (cur[s] || 'std') === id, () => {
         if (!own && !buy([[s, id]])) return;
@@ -3140,6 +3149,7 @@ function drawHUD(dt) {
   $('hpBar').firstElementChild.style.width = (hpK * 100).toFixed(1) + '%';
   $('hpBar').classList.toggle('low', hpK < 0.3);
   $('hpTxt').textContent = Math.ceil(p.hp);
+  { const ag = $('agFill'); if (ag) { const on = p.frame.aegis > 0; ag.style.width = on ? (p.aegis / p.frame.aegis * 100).toFixed(1) + '%' : '0%'; if (on && p.aegis >= 1) $('hpTxt').textContent = `${Math.ceil(p.hp)} +${Math.floor(p.aegis)}`; } }
   $('enBar').firstElementChild.style.width = (p.en / p.maxEn * 100).toFixed(1) + '%';
   $('enBar').classList.toggle('heat', p.overheat > 0);
   if (G.od) {
@@ -3919,6 +3929,10 @@ function step(dt) {
   if (A.od) activateOD();
   updateOD(dt);
   if (chipOn('nano') && G.player.alive && state === 'play' && G.time - G.hurtAt > 5) G.player.hp = Math.min(G.player.maxHp, G.player.hp + G.player.maxHp * 0.006 * dt);
+  { const p = G.player; if (p.alive && state === 'play') {   // nanite core pays back banked damage; the aegis shield recharges after 6 s unhurt
+    if (G.nanBank > 0 && G.time - G.hurtAt > 0.8) { const h = Math.min(G.nanBank, p.maxHp * 0.04 * dt); p.hp = Math.min(p.maxHp, p.hp + h); G.nanBank -= h; G.stats.nanite = (G.stats.nanite || 0) + h; }
+    if (p.frame.aegis && p.aegis < p.frame.aegis && G.time - G.hurtAt > 6) p.aegis = Math.min(p.frame.aegis, p.aegis + 30 * dt);
+  } }
   if (p.alive && !run.won && !frz) {
     const dm = dmgMul() * (G.od.t > 0 ? OD.dmg : 1);
     const hs0 = G.stats.shots;
@@ -4000,7 +4014,7 @@ window.__iv = {
 (async () => {
   try {
     await loadKit('./assets/kit.glb?v=74');
-    await loadParts('./assets/parts.glb?v=3');
+    await loadParts('./assets/parts.glb?v=4');
     ensureArena();
     makePlayer();
     setState('title');

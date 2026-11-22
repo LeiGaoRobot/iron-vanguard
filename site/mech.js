@@ -23,10 +23,14 @@ export const PALETTES = {
   ace_thunder: { name: '雷鸣', en: 'Thunder', ace: 'ace_thunder', Armor: '#4a2f78', Armor2: '#1d1a26', Accent: '#ffe020', Visor: '#ffe860', VisorEmit: '#ffd000' },
   tyrant: { name: '暴君', en: 'Tyrant', Armor: '#3b2627', Armor2: '#1d1e22', Accent: '#ff3a20', Visor: '#ff5a3a', VisorEmit: '#ff2a10', NozzleGlow: '#ffb070', NozzleGlowEmit: '#ff6a20' },
 };
+// en = energy (the English name is e); cost: bought once in the hangar (save.frames). Traits: dodge (quick boost is
+// invulnerable while qbT > 0), bulk (the part of a single hit above bulk is halved)
 export const FRAMES = {
-  light: { name: '轻型', en: 'Light', hp: 900, speed: 1.15, en: 125, boost: 1.12, regen: 1.15, armor: 1.1, scale: 0.94 },
-  std: { name: '标准', en: 'Standard', hp: 1200, speed: 1.0, en: 100, boost: 1.0, regen: 1.0, armor: 1.0, scale: 1.0 },
-  heavy: { name: '重型', en: 'Heavy', hp: 1650, speed: 0.86, en: 90, boost: 0.9, regen: 0.9, armor: 0.85, scale: 1.07 },
+  light: { name: '轻型', e: 'Light', hp: 900, speed: 1.15, en: 125, boost: 1.12, regen: 1.15, armor: 1.1, scale: 0.94 },
+  std: { name: '标准', e: 'Standard', hp: 1200, speed: 1.0, en: 100, boost: 1.0, regen: 1.0, armor: 1.0, scale: 1.0 },
+  heavy: { name: '重型', e: 'Heavy', hp: 1650, speed: 0.86, en: 90, boost: 0.9, regen: 0.9, armor: 0.85, scale: 1.07 },
+  wraith: { name: '迅影', e: 'Wraith', hp: 760, speed: 1.24, en: 130, boost: 1.18, regen: 1.25, armor: 1.15, scale: 0.9, cost: 4500, dodge: true, d: '急闪的 0.28 秒内完全无敌 · 最快 · 装甲最低', de: 'quick boost: 0.28 s invulnerable · fastest · lowest AP' },
+  titan: { name: '泰坦', e: 'Titan', hp: 2100, speed: 0.74, en: 85, boost: 0.8, regen: 0.85, armor: 0.84, scale: 1.15, cost: 5000, bulk: 40, d: '单次伤害超过 40 的部分减半 · 装甲最高 · 最慢', de: 'single hits above 40: the excess is halved · most AP · slowest' },
 };
 
 // Swappable parts (parts.glb). Multipliers stack onto the frame: hp / speed / en / boost / regen / armor (damage
@@ -43,12 +47,14 @@ export const PARTS = {
     mono: { name: '独眼', e: 'Mono-eye', cost: 1500, hp: 1.05, d: '装甲 +5%', de: 'AP +5%' },
     crest: { name: '角冠', e: 'Crest', cost: 1500, regen: 1.12, d: '能量回复 +12%', de: 'EN regen +12%' },
     radar: { name: '雷达头', e: 'Radar', cost: 2000, radar: 1.6, lock: 1.1, d: '雷达范围 +60% · 锁定范围 +10%', de: 'radar range +60% · lock-on +10%' },
+    ew: { name: '电战头', e: 'EW suite', cost: 2600, ew: true, lock: 1.1, hp: 0.96, d: '免疫电子干扰 · 致盲 / 扰频时长 −60% · 锁定范围 +10% · 装甲 −4%', de: 'immune to jamming · blind / scramble −60% · lock-on +10% · AP −4%' },
   },
   core: {
     std: { name: '标准', e: 'Standard' },
     bulwark: { name: '重甲胸', e: 'Bulwark', cost: 2200, armor: 0.92, speed: 0.97, d: '受伤 −8% · 速度 −3%', de: 'dmg taken −8% · speed −3%' },
     sleek: { name: '流线胸', e: 'Sleek', cost: 2000, speed: 1.05, hp: 0.95, d: '速度 +5% · 装甲 −5%', de: 'speed +5% · AP −5%' },
     reactor: { name: '反应堆胸', e: 'Reactor', cost: 2400, od: 1.35, regen: 1.06, hp: 0.97, d: '超载充能 +35% · 能量回复 +6% · 装甲 −3%', de: 'overdrive charge +35% · EN regen +6% · AP −3%' },
+    nanite: { name: '纳米核心', e: 'Nanite', cost: 2800, nanite: 0.25, hp: 0.96, d: '受到伤害的 25% 随后由纳米修复回来 · 装甲 −4%', de: '25% of damage taken is repaired back over the next seconds · AP −4%' },
   },
   arms: {
     std: { name: '标准', e: 'Standard' },
@@ -65,6 +71,7 @@ export const PARTS = {
     tread: { name: '履带', e: 'Treads', cost: 3000, hp: 1.15, armor: 0.92, speed: 0.86, jump: 0.75, grip: true, d: '装甲 +15% · 受伤 −8% · 冰面不打滑 · 速度 −14% · 跳跃高度 −44%', de: 'AP +15% · dmg −8% · no ice slide · speed −14% · jump height −44%' },
     hover: { name: '悬浮裙', e: 'Hover skirt', cost: 2800, speed: 1.12, hover: 0.85, float: true, hp: 0.88, d: '速度 +12% · 悬停耗能 −15% · 涉水不减速 · 装甲 −12%', de: 'speed +12% · hover drain −15% · no wading slowdown · AP −12%' },
     quad: { name: '四足', e: 'Quad', cost: 3200, hp: 1.12, armor: 0.94, reload: 0.92, grip: true, speed: 0.9, d: '装甲 +12% · 受伤 −6% · 臂武器装填 −8% · 冰面不打滑 · 速度 −10%', de: 'AP +12% · dmg −6% · arm reload −8% · no ice slide · speed −10%' },
+    wheel: { name: '轮足', e: 'Wheels', cost: 3000, speed: 1.2, boost: 1.06, jump: 0.85, hp: 0.92, d: '速度 +20% · 推进 +6% · 跳跃高度 −28% · 装甲 −8%', de: 'speed +20% · boost +6% · jump height −28% · AP −8%' },
   },
   pack: {
     std: { name: '标准', e: 'Standard' },
@@ -72,6 +79,7 @@ export const PARTS = {
     tank: { name: '大容量', e: 'Tank', cost: 1800, en: 1.18, boost: 0.95, d: '能量 +18% · 推进 −5%', de: 'EN +18% · boost −5%' },
     glide: { name: '滑翔翼', e: 'Glide', cost: 2200, hover: 0.7, d: '悬停耗能 −30%', de: 'hover drain −30%' },
     jumpjet: { name: '跳跃背包', e: 'Jump jet', cost: 2400, jump: 1.25, lift: 1.3, boost: 0.95, d: '跳跃高度 +56% · 悬停爬升 +30% · 推进 −5%', de: 'jump height +56% · hover climb +30% · boost −5%' },
+    aegis: { name: '神盾背包', e: 'Aegis', cost: 3200, aegis: 220, en: 0.9, d: '220 点护盾先于装甲受伤 · 6 秒未受伤后每秒回 30 · 能量 −10%', de: '220-point shield takes hits before armour · regenerates 30/s after 6 s unhurt · EN −10%' },
   },
 };
 // named builds for the garage / enemies (slot -> id; missing slots = std)
@@ -85,6 +93,8 @@ export const BUILDS = {
   brawler: { name: '格斗型', en: 'Brawler', parts: { head: 'mono', core: 'bulwark', arms: 'fist', legs: 'heavy', pack: 'sprint' } },
   marksman: { name: '狙击型', en: 'Marksman', parts: { head: 'hawk', arms: 'stab', legs: 'quad', pack: 'glide' } },
   barrage: { name: '火力型', en: 'Barrage', parts: { head: 'radar', core: 'reactor', arms: 'pod', legs: 'tread', pack: 'tank' } },
+  racer: { name: '飙车型', en: 'Racer', parts: { head: 'ew', core: 'sleek', arms: 'stab', legs: 'wheel', pack: 'sprint' } },
+  aegis: { name: '神盾型', en: 'Aegis', parts: { head: 'ew', core: 'nanite', arms: 'guard', legs: 'heavy', pack: 'aegis' } },
 };
 // camouflage over the primary armour (kit.js CAMO_FRAG); the tones come from the palette, so each paint gets its own
 export const PATTERNS = {
@@ -95,15 +105,17 @@ export const PATTERNS = {
   hex: { name: '蜂巢', e: 'Hex', id: 4, cost: 1000 },
 };
 export function partStats(parts) {
-  const r = { hp: 1, speed: 1, en: 1, boost: 1, regen: 1, armor: 1, lock: 1, reload: 1, jump: 1, qb: 1, hover: 1, radar: 1, od: 1, lift: 1, spread: 1, pspd: 1, scd: 1, melee: 1, grip: false, float: false };
+  const r = { hp: 1, speed: 1, en: 1, boost: 1, regen: 1, armor: 1, lock: 1, reload: 1, jump: 1, qb: 1, hover: 1, radar: 1, od: 1, lift: 1, spread: 1, pspd: 1, scd: 1, melee: 1, grip: false, float: false, ew: false, nanite: 0, aegis: 0 };
+  const ADD = { nanite: 1, aegis: 1 };   // additive: nanite (share of damage repaired back), aegis (shield points)
   for (const slot of PART_SLOTS) {
     const p = PARTS[slot][(parts || {})[slot]]; if (!p) continue;
-    for (const k in r) if (p[k] !== undefined) r[k] = typeof r[k] === 'boolean' ? r[k] || p[k] : r[k] * p[k];
+    for (const k in r) if (p[k] !== undefined) r[k] = typeof r[k] === 'boolean' ? r[k] || p[k] : ADD[k] ? r[k] + p[k] : r[k] * p[k];
   }
   return r;
 }
 export const partsReady = () => !!KIT.P_legs_tread;
 export const partsV2 = () => !!KIT.P_legs_quad;   // v61.1 parts in parts.glb
+export const partAvail = (slot, id) => id === 'std' || !!KIT[`P_${slot}_${id}`];   // an older parts.glb (WeChat build) lacks the newest parts
 // swap the standard meshes for the part kits: PT_<pid>__<Node> groups replace <Node>'s own meshes, PV_ moves a
 // pivot, PH_ hides a node (tread legs hide the thighs). Missing part kits (WeChat build) leave the standard part.
 function applyParts(body, n, parts) {
@@ -175,6 +187,7 @@ export class Mech {
     F0.lock = PS.lock; F0.reload = PS.reload; F0.jump = PS.jump; F0.qb = PS.qb; F0.hover = PS.hover; F0.grip = PS.grip;
     F0.radar = PS.radar; F0.od = PS.od; F0.lift = PS.lift; F0.float = PS.float;
     F0.spread = PS.spread; F0.pspd = PS.pspd; F0.scd = PS.scd; F0.melee = PS.melee;
+    F0.ew = PS.ew; F0.nanite = PS.nanite; F0.aegis = PS.aegis; this.aegis = PS.aegis;
     this.legKind = KIT['P_legs_' + this.parts.legs] ? this.parts.legs : 'std';
     this.scale = (opts.scale || 1) * this.frame.scale;
     this.isBoss = !!opts.isBoss;
@@ -361,6 +374,12 @@ export class Mech {
       this.quadAmp = amp;
       const st = Math.floor(this.phase / Math.PI);
       if (st !== this.lastStep && amp > 0.25) { this.lastStep = st; this.ctx.onStep && this.ctx.onStep(this, st & 1); }
+    } else if (this.legKind === 'wheel') {   // wheel legs: a skating crouch (deeper when boosting or airborne), feet kept level, no steps
+      const b = this.boosting && this.grounded ? 1 : 0, air = this.grounded ? 0 : 1;
+      const t = 0.2 + 0.14 * b + 0.22 * air, sh = -(0.4 + 0.28 * b + 0.5 * air);
+      T.tl = t; T.tr = t; T.sl = sh; T.sr = sh; T.fl = -(t + sh); T.fr = T.fl;
+      T.hipY = 2.75 - 1.15 * (1 - Math.cos(t)) - 1.2 * (1 - Math.cos(t + sh));
+      T.torX = -Math.max(-0.2, Math.min(0.25, vf * 0.01));
     } else if (this.grounded && !this.boosting && this.qbT <= 0) {
       const amp = Math.min(1, hs / (WALK * F.speed));
       this.phase += dt * (2.2 + hs * 0.42) * (this.backward ? -1 : 1);

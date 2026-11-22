@@ -592,7 +592,124 @@ def pack_jumpjet():
         grille((s * 0.36, -0.16, 0.0), (0.44, 0.03, 0.22), wg, n=3, axis="x")
         cyl((s * 0.66, -0.1, -0.04), 0.07, 0.16, M["Nozzle"], wg, r2=0.1, rot=(math.pi, 0, 0))
 
+def head_ew():
+    # electronic-warfare head: narrow wedge helm with a blade visor, a rear sensor dome with a spinning emitter ring
+    # (SPN_ew), and swept whip-antenna arrays on both temples
+    K = kit("P_head_ew"); g = pt(K, "headew", "M_Head")
+    cyl((0, 0, 0.06), 0.18, 0.17, M["Joint"], g)
+    wedge((0, 0.12, 0.24), (0.56, 0.7, 0.3), M["Armor"], g, bevel=0.04, taper=0.7)
+    box((0, 0.46, 0.24), (0.44, 0.05, 0.07), M["Black"], g)
+    box((0, 0.48, 0.24), (0.38, 0.02, 0.035), M["Visor"], g)
+    wedge((0, 0.36, 0.08), (0.36, 0.22, 0.1), M["Frame"], g, rot=(math.pi, 0, 0), bevel=0.02, taper=0.6)
+    box((0, -0.18, 0.3), (0.5, 0.36, 0.36), M["Armor2"], g, bevel=0.04)
+    ball((0, -0.22, 0.5), 0.2, M["Frame"], g, scale=(1, 1, 0.7))
+    torus((0, -0.22, 0.5), 0.2, 0.025, M["Accent"], g)
+    sp = empty("SPN_ew", (0, -0.22, 0.6), g)
+    torus((0, 0, 0), 0.13, 0.02, M["Armor2"], sp)
+    for k in range(3):
+        a = k / 3 * math.pi * 2
+        box((math.cos(a) * 0.13, math.sin(a) * 0.13, 0.03), (0.06, 0.06, 0.06), M["Visor"], sp)
+    for s in (-1, 1):
+        box((s * 0.3, 0.0, 0.26), (0.08, 0.44, 0.22), M["Armor2"], g, bevel=0.02)
+        for j, (ln, lean) in enumerate(((0.62, 14), (0.48, 26), (0.36, 38))):
+            a = R(-lean)
+            base = (s * 0.33, -0.12 - j * 0.1, 0.34)
+            tip = (base[0] + s * math.sin(R(10)) * ln, base[1] + math.sin(a) * ln, base[2] + math.cos(a) * ln)
+            rod(base, tip, 0.016, M["Piston"], g)
+            ball(tip, 0.028, M["Visor"], g, sub=1)
+        cyl((s * 0.35, 0.18, 0.26), 0.05, 0.04, M["Visor"], g, rot=(0, math.pi / 2, 0), verts=10)
+
+def core_nanite():
+    # nanite core: faceted chest of hexagonal armour cells over a glowing repair lattice, a nanite reservoir drum in
+    # the sternum and feed lines to the shoulders
+    K = kit("P_core_nanite"); g = pt(K, "corenanite", "M_Torso")
+    box((0, 0, 0.22), (0.9, 0.66, 0.56), M["Frame"], g, bevel=0.05)
+    cyl((0, 0, 0.0), 0.34, 0.2, M["Joint"], g, verts=16)
+    for i in range(3):
+        box((0, 0.34, 0.06 + i * 0.16), (0.64 + i * 0.06, 0.1, 0.12), M["Armor"] if i % 2 == 0 else M["Armor2"], g, bevel=0.02)
+    box((0, 0.0, 0.56), (1.16, 0.82, 0.14), M["Armor2"], g, bevel=0.03)
+    box((0, -0.02, 1.02), (1.66, 0.98, 0.86), M["Frame"], g, bevel=0.08)
+    box((0, 0.46, 1.02), (1.3, 0.04, 0.62), M["Visor"], g)
+    for row in range(3):
+        for col in range(4 - row % 2):
+            x = (col - (3 - row % 2) / 2) * 0.36
+            z = 0.8 + row * 0.22
+            cyl((x, 0.5, z), 0.17, 0.08, M["Armor"] if (row + col) % 3 else M["Armor2"], g, rot=ALONG_Y, verts=6, smooth=False)
+    cyl((0, 0.58, 1.02), 0.16, 0.2, M["Armor2"], g, rot=ALONG_Y, verts=14)
+    cyl((0, 0.66, 1.02), 0.1, 0.04, M["Visor"], g, rot=ALONG_Y, verts=14)
+    for s in (-1, 1):
+        box((s * 0.84, 0.02, 1.04), (0.14, 0.84, 0.72), M["Armor"], g, bevel=0.04)
+        for j in range(3):
+            box((s * 0.92, -0.22 + j * 0.22, 1.04), (0.03, 0.12, 0.5), M["Visor"], g)
+        cable([(s * 0.16, 0.6, 1.14), (s * 0.5, 0.56, 1.42), (s * 0.88, 0.2, 1.4)], 0.04, M["Piston"], g)
+    box((0, -0.54, 1.0), (1.24, 0.08, 0.68), M["Armor2"], g, bevel=0.02)
+    box((0, -0.04, 1.5), (1.0, 0.88, 0.16), M["Armor2"], g, bevel=0.04)
+    cyl((0, 0.12, 1.6), 0.25, 0.12, M["Joint"], g, verts=16)
+
+def legs_wheel():
+    # wheel legs: slim armoured legs ending in inline twin-wheel skates (TRW* wheels, r 0.3, roll with speed). The
+    # page holds a skating crouch instead of a walk cycle.
+    K = kit("P_legs_wheel")
+    for side, s in SIDES:
+        th = pt(K, "legswheel", f"M_Thigh{side}")
+        ball((0, 0, 0), 0.26, M["Joint"], th)
+        cyl((0, 0, -0.55), 0.15, 1.0, M["Frame"], th)
+        wedge((0, 0.08, -0.5), (0.52, 0.5, 0.86), M["Armor"], th, rot=(math.pi, 0, 0), bevel=0.05, taper=0.75)
+        box((s * 0.27, 0.0, -0.5), (0.05, 0.4, 0.6), M["Armor2"], th, bevel=0.02)
+        box((0, 0.34, -0.42), (0.08, 0.03, 0.46), M["Accent"], th)
+        sh = pt(K, "legswheel", f"M_Shin{side}")
+        ball((0, 0, 0), 0.24, M["Joint"], sh)
+        box((0, 0.26, 0.04), (0.46, 0.2, 0.46), M["Armor2"], sh, bevel=0.04)
+        box((0, 0.05, -0.58), (0.5, 0.52, 1.0), M["Armor"], sh, bevel=0.05)
+        box((0, 0.32, -0.6), (0.08, 0.03, 0.6), M["Visor"], sh)
+        for k in (-1, 1):
+            cyl((k * 0.18, -0.3, -0.62), 0.05, 0.9, M["Piston"], sh)
+            box((k * 0.27, 0.05, -0.75), (0.04, 0.4, 0.5), M["Hazard"] if k > 0 else M["Armor2"], sh)
+        box((0, -0.32, -0.3), (0.36, 0.2, 0.5), M["Frame"], sh, bevel=0.03)
+        ft = pt(K, "legswheel", f"M_Foot{side}")
+        ball((0, 0, 0), 0.2, M["Joint"], ft)
+        box((0, 0.04, -0.06), (0.4, 0.5, 0.2), M["Armor2"], ft, bevel=0.03)
+        box((0, 0.02, 0.34 - 0.36 - 0.06), (0.16, 1.2, 0.1), M["Frame"], ft, bevel=0.02)
+        for y in (0.36, -0.32):
+            for k in (-1, 1):
+                box((k * 0.17, y, -0.08), (0.04, 0.2, 0.18), M["Frame"], ft)
+            wh = wheel((0, y, -0.06), 0.3, 0.26, M["Black"], ft)
+            cyl((0, 0, 0), 0.2, 0.28, M["Frame"], wh, verts=12)
+            box((0, 0, 0), (0.3, 0.05, 0.3), M["Armor2"], wh)
+            box((0, 0, 0), (0.05, 0.3, 0.3), M["Armor2"], wh)
+            cyl((0, 0, 0), 0.07, 0.31, M["Accent"], wh, verts=8)
+        wedge((0, 0.62, -0.06), (0.32, 0.26, 0.2), M["Armor"], ft, rot=(R(-60), 0, 0), bevel=0.02, taper=0.5)
+        box((0, -0.56, 0.0), (0.24, 0.14, 0.24), M["Armor"], ft, bevel=0.02)
+        box((0, 0.04, 0.06), (0.04, 0.6, 0.04), M["NozzleGlow"], ft)
+
+def pack_aegis():
+    # aegis pack: compact core under a shield-generator dome, two tall emitter pylons with glowing capacitor tips
+    # and short bells; the thruster anchors move under the bells
+    K = kit("P_pack_aegis"); g = pt(K, "packaegis", "M_Pack")
+    box((0, 0, 0.05), (1.0, 0.52, 1.0), M["Frame"], g, bevel=0.06)
+    grille((0, -0.27, -0.05), (0.5, 0.04, 0.44), g, n=4)
+    cyl((0, -0.12, 0.62), 0.4, 0.14, M["Armor2"], g, verts=18)
+    ball((0, -0.12, 0.7), 0.34, M["Armor"], g, scale=(1, 1, 0.6))
+    torus((0, -0.12, 0.72), 0.3, 0.03, M["Visor"], g)
+    ball((0, -0.12, 0.88), 0.09, M["Visor"], g, sub=1)
+    for idx, s in ((1, -1), (2, 1)):
+        x = s * 0.66
+        pv(K, "packaegis", f"T_Back{idx}", (s * 0.4, -0.24, -0.9))
+        box((x, -0.06, 0.1), (0.22, 0.3, 1.1), M["Armor"], g, bevel=0.03)
+        box((x + s * 0.12, -0.06, 0.1), (0.03, 0.2, 0.8), M["Accent"], g)
+        rod((x, -0.06, 0.62), (s * 0.82, -0.14, 1.5), 0.07, M["Frame"], g)
+        for t in (0.35, 0.65):
+            cyl((x + (s * 0.82 - x) * t, -0.06 - 0.08 * t, 0.62 + 0.88 * t), 0.1, 0.06, M["Armor2"], g, verts=10)
+        ball((s * 0.82, -0.14, 1.56), 0.12, M["NozzleGlow"], g, sub=2)
+        torus((s * 0.82, -0.14, 1.56), 0.15, 0.025, M["Frame"], g)
+        bell((s * 0.4, -0.24, -0.62), 0.2, 0.14, 0.24, g)
+        cable([(s * 0.2, -0.2, 0.62), (s * 0.5, -0.32, 0.5), (x, -0.22, 0.3)], 0.035, M["Black"], g)
+        wg = pt(K, "packaegis", f"M_Wing{side_name(s)}")
+        box((s * 0.32, -0.1, 0.0), (0.5, 0.08, 0.3), M["Armor2"], wg, bevel=0.02)
+        box((s * 0.5, -0.15, 0.0), (0.12, 0.03, 0.2), M["Visor"], wg)
+
 head_radar(); core_reactor(); legs_hover(); legs_quad(); pack_jumpjet()
+head_ew(); core_nanite(); legs_wheel(); pack_aegis()
 arms_stab(); arms_pod(); arms_fist()
 head_hawk(); head_mono(); head_crest()
 core_bulwark(); core_sleek()
@@ -628,6 +745,8 @@ if PREVIEW:
         ("brawler", dict(head="mono", core="bulwark", arms="fist", legs="heavy", pack="sprint")),
         ("marksman", dict(head="hawk", arms="stab", legs="quad", pack="glide")),
         ("barrage", dict(head="radar", core="reactor", arms="pod", legs="tread", pack="tank")),
+        ("racer", dict(head="ew", core="sleek", arms="stab", legs="wheel", pack="sprint")),
+        ("aegis", dict(head="ew", core="nanite", arms="guard", legs="heavy", pack="aegis")),
     ]
     def dup(o, parent, tag):
         c = o.copy()

@@ -169,12 +169,17 @@ function dealDamage(ent, dmg, team, at, label) {
   if (team === 'P' && !ent.isBarrel && !isAlly(label || G.curLabel)) { G.stats.hits++; G.stats.dmgDealt += dmg; G.hud.hit = 0.14; if (G.od && !(G.od.t > 0) && !ent.isCore) G.od.k = Math.min(1, G.od.k + dmg / OD.fill * (G.odGain || 1)); }
 }
 
-const BURN_WEAK = 0.75, STUN_VULN = 1.3;
+const BURN_WEAK = 0.75, STUN_VULN = 1.3, _dodgeP = new THREE.Vector3();
 const isAlly = (l) => !!l && l.startsWith('ally');
 export function hurtPlayer(dmg, label) { G.curSrc = null; damagePlayer(dmg, null, label); }
 function damagePlayer(dmg, src, label) {
   const p = G.player; if (!p || !p.alive || G.godMode || G.blinkInv > 0) return;
   if (G.curShooter && G.curShooter.hacked) return;   // a hacked enemy's direct attacks never hit you
+  if (p.frame.dodge && p.qbT > 0) {   // wraith frame: a quick boost dodges everything
+    G.stats.dodged = (G.stats.dodged || 0) + 1;
+    if (!(G.time - (G.dodgeFxT || -9) < 0.2)) { G.dodgeFxT = G.time; _dodgeP.copy(p.pos); _dodgeP.y += 2.8 * p.scale; G.fx.ring(_dodgeP, null, 0.6, 3.4, 0.3, 0x9ff4ff); }
+    return;
+  }
   if (G.polar) { const pp = G.curPol !== undefined ? G.curPol : G.curShooter && G.curShooter.pol; if (pp) { if (pp === G.polar.p) { polAbsorb(dmg); return; } dmg *= POL.hitOpp; } }   // polarity: same charge is absorbed
   const blk = shieldBlock(p, src || G.curSrc);
   if (blk) { G.stats.blocked = (G.stats.blocked || 0) + dmg * blk; if (Math.random() < 0.3) sfx('shield', 0); }
@@ -188,9 +193,15 @@ function damagePlayer(dmg, src, label) {
   if (G.refl && G.refl.t > 0) dmg *= 1 - G.refl.d.cut;
   if (G.burn && G.burn.t > 0) dmg *= 1 - G.burn.d.cut;   // afterburner   // reflector: what it can't bounce, it softens
   if (G.curShooter && G.curShooter.burnT > 0) dmg *= BURN_WEAK;   // direct hits (melee, beams) from a burning enemy
-  const d = dmg * G.diff.dmg * p.frame.armor * (1 - blk) * (G.od && G.od.t > 0 ? OD.armor : 1);
+  let d = dmg * G.diff.dmg * p.frame.armor * (1 - blk) * (G.od && G.od.t > 0 ? OD.armor : 1);
+  const bk = p.frame.bulk; if (bk && d > bk) { G.stats.bulked = (G.stats.bulked || 0) + (d - bk) * 0.5; d = bk + (d - bk) * 0.5; }   // titan frame: big hits are softened
+  if (p.aegis > 0) {   // aegis pack: the shield soaks first
+    const a = Math.min(p.aegis, d); p.aegis -= a; d -= a; G.stats.aegis = (G.stats.aegis || 0) + a; G.hurtAt = G.time; G.aegisHitT = G.time;
+    if (p.aegis <= 0) { sfx('shield', 0); G.onHint && !G.aegisSaid && (G.aegisSaid = true, G.onHint('神盾护盾已击穿 · 6 秒不受伤后开始恢复', 3)); }
+    if (d <= 0.01) return;
+  }
   G.dmgLog = G.dmgLog || {}; G.dmgLog[label || '?'] = (G.dmgLog[label || '?'] || 0) + d;
-  p.hit(d); G.stats.dmgTaken += d; if (G.salv) salvHit(d); G.hud.hurt = Math.min(1, G.hud.hurt + d / 120); G.hurtAt = G.time;
+  p.hit(d); G.stats.dmgTaken += d; if (p.frame.nanite) G.nanBank = Math.min(p.maxHp * 0.25, (G.nanBank || 0) + d * p.frame.nanite); if (G.salv) salvHit(d); G.hud.hurt = Math.min(1, G.hud.hurt + d / 120); G.hurtAt = G.time;
   if (src) G.hud.hurtDir = Math.atan2(src.x - p.pos.x, src.z - p.pos.z);
   G.onPlayerHit && G.onPlayerHit(d);
 }
@@ -9895,7 +9906,7 @@ export class Dazzler extends Enemy {
           const cy = G.camYaw ?? P.aimYaw ?? 0, cp = G.camPitch ?? 0;
           _b.set(-Math.sin(cy) * Math.cos(cp), Math.sin(cp), -Math.cos(cy) * Math.cos(cp));
           _d.subVectors(lp, P.center(_c)).normalize();
-          if (_b.dot(_d) > DAZZ.cone) { G.dazzleT = Math.max(G.dazzleT || 0, DAZZ.blind); G.dazzled = (G.dazzled || 0) + 1; G.lockTarget = null; G.locks.length = 0; for (const sh of G.shots) if (sh.team === 'P' && sh.target) sh.target = null; G.onDazzle && G.onDazzle(this); }
+          if (_b.dot(_d) > DAZZ.cone) { G.dazzleT = Math.max(G.dazzleT || 0, DAZZ.blind * (P.frame && P.frame.ew ? 0.4 : 1)); G.dazzled = (G.dazzled || 0) + 1; G.lockTarget = null; G.locks.length = 0; for (const sh of G.shots) if (sh.team === 'P' && sh.target) sh.target = null; G.onDazzle && G.onDazzle(this); }
           else G.dazzleDodge = (G.dazzleDodge || 0) + 1;
         }
         this.st = 'idle'; this.cdT = DAZZ.cd[0] + Math.random() * (DAZZ.cd[1] - DAZZ.cd[0]);
@@ -11426,7 +11437,7 @@ export function updateCombat(dt) {
     if (e.flash > 0) e.flash -= dt;
   }
   const pp = G.player; G.jammed = null;
-  if (pp && pp.alive) for (const e of G.enemies) if (e.kind === 'jammer' && e.alive && !e.dying && !(e.stunT > 0) && !(e.markT > 0) && e.c.distanceTo(pp.pos) < JAM_R) { G.jammed = e; break; }
+  if (pp && pp.alive && !pp.frame.ew) for (const e of G.enemies) if (e.kind === 'jammer' && e.alive && !e.dying && !(e.stunT > 0) && !(e.markT > 0) && e.c.distanceTo(pp.pos) < JAM_R) { G.jammed = e; break; }
   if (G.jammed && !G.jamSaid) { G.jamSaid = true; G.onHint && G.onHint('电子干扰 · 锁定与雷达失效 · 击落紫色的干扰机，或用电磁脉冲瘫痪它', 4); }
   if (PLAT.R) for (const e of G.enemies) {   // sky elevator: nothing that walks or hovers leaves the deck
     if (!e.pos || !e.alive || e.kind === 'jet' || e.kind === 'dropship') continue;
@@ -12070,7 +12081,7 @@ export class Scrambler extends Enemy {
         const hp = this.hornPos(new V3());
         G.fx.ring(hp, null, 0.5, 14, 0.3, 0x7cff2a); G.fx.flash(hp, 0x9cff4a, 40, 30, 0.2); sfx('jam', dist * 0.4);
         if (P && P.alive && hp.distanceTo(P.center(_c)) < SCRAM.range && clearLine(P.center(_c), hp) && !smokeBlocks(hp, P.center(_c))) {
-          G.scramT = SCRAM.t; G.scrams = (G.scrams || 0) + 1; G.fx.streak(hp, P.center(_c), 0.5, 0x7cff2a); G.fx.ring(P.center(_c), null, 1, 6, 0.35, 0x7cff2a);
+          G.scramT = SCRAM.t * (P.frame && P.frame.ew ? 0.4 : 1); G.scrams = (G.scrams || 0) + 1; G.fx.streak(hp, P.center(_c), 0.5, 0x7cff2a); G.fx.ring(P.center(_c), null, 1, 6, 0.35, 0x7cff2a);
           G.onScramble && G.onScramble(this);
         } else G.scramDodge = (G.scramDodge || 0) + 1;
         this.st = 'idle'; this.cdT = SCRAM.cd[0] + Math.random() * (SCRAM.cd[1] - SCRAM.cd[0]);
