@@ -827,6 +827,112 @@ def pack_drone():
 
 head_ew(); core_nanite(); legs_wheel(); pack_aegis()
 head_hunter(); core_reclaim(); arms_rapid(); legs_spring(); pack_drone()
+def head_thermal():
+    # thermal head: rounded helm, a sun hood over a 2x2 cluster of orange thermal lenses, a cooling fin crest
+    K = kit("P_head_thermal"); g = pt(K, "headthermal", "M_Head")
+    cyl((0, 0, 0.06), 0.18, 0.17, M["Joint"], g)
+    ball((0, 0.0, 0.3), 0.36, M["Armor"], g, scale=(1.0, 1.05, 0.82))
+    box((0, 0.26, 0.3), (0.5, 0.2, 0.3), M["Frame"], g, bevel=0.03)
+    for x in (-0.11, 0.11):
+        for z in (0.24, 0.37):
+            cyl((x, 0.36, z), 0.065, 0.06, M["Black"], g, rot=ALONG_Y, verts=14)
+            cyl((x, 0.395, z), 0.05, 0.02, M["Plasma"], g, rot=ALONG_Y, verts=14)
+    wedge((0, 0.32, 0.5), (0.58, 0.3, 0.08), M["Armor2"], g, bevel=0.01, taper=0.8)
+    for k in range(4):
+        box((0, -0.16 + k * 0.1, 0.62), (0.04, 0.08, 0.12 - k * 0.015), M["Armor2"], g)
+    for sd in (-1, 1):
+        box((sd * 0.34, 0.0, 0.26), (0.08, 0.34, 0.2), M["Armor2"], g, bevel=0.02)
+        box((sd * 0.39, 0.0, 0.26), (0.02, 0.2, 0.04), M["Accent"], g)
+    box((0, -0.3, 0.22), (0.4, 0.12, 0.22), M["Frame"], g, bevel=0.02)
+
+def core_reactive():
+    # reactive armour core: a blocky chest tiled with explosive reactive armour bricks (bevelled tiles with dark gaps
+    # and hazard-striped edges), a squat collar
+    K = kit("P_core_reactive"); g = pt(K, "corereactive", "M_Torso")
+    box((0, 0, 0.22), (0.92, 0.66, 0.56), M["Frame"], g, bevel=0.05)
+    cyl((0, 0, 0.0), 0.34, 0.2, M["Joint"], g, verts=16)
+    box((0, 0.0, 0.56), (1.2, 0.84, 0.14), M["Armor2"], g, bevel=0.03)
+    box((0, -0.02, 1.02), (1.62, 0.96, 0.84), M["Frame"], g, bevel=0.06)
+    for i in range(4):
+        for j in range(3):
+            x = -0.57 + i * 0.38; z = 0.76 + j * 0.25
+            box((x, 0.52, z), (0.34, 0.1, 0.21), M["Armor"] if (i + j) % 2 else M["Armor2"], g, bevel=0.025)
+            box((x, 0.575, z + 0.085), (0.26, 0.012, 0.025), M["Hazard"], g)
+    for sd in (-1, 1):
+        for j in range(3):
+            box((sd * 0.86, 0.0, 0.76 + j * 0.25), (0.12, 0.7, 0.21), M["Armor"], g, bevel=0.02)
+        box((sd * 0.62, -0.5, 1.02), (0.3, 0.08, 0.6), M["Armor2"], g, bevel=0.02)
+    box((0, -0.04, 1.5), (1.04, 0.9, 0.16), M["Armor2"], g, bevel=0.04)
+    box((0, 0.36, 1.52), (0.6, 0.12, 0.12), M["Armor"], g, bevel=0.02)
+    cyl((0, 0.12, 1.62), 0.25, 0.12, M["Joint"], g, verts=16)
+
+def arms_coil():
+    # coil arms: capacitor banks on the pauldrons, forearms built around a rail with stacked glowing coil rings
+    K = kit("P_arms_coil")
+    for side, s in SIDES:
+        sh = pt(K, "armscoil", f"M_Shoulder{side}")
+        ball((0, 0, 0), 0.3, M["Joint"], sh)
+        box((s * 0.26, 0.0, 0.06), (0.6, 0.78, 0.52), M["Armor"], sh, bevel=0.07)
+        for k in range(3):
+            cyl((s * 0.42, -0.22 + k * 0.22, 0.42), 0.08, 0.2, M["Frame"], sh, verts=12)
+            cyl((s * 0.42, -0.22 + k * 0.22, 0.53), 0.05, 0.03, M["Coil"], sh, verts=12)
+        box((s * 0.56, 0.0, 0.06), (0.04, 0.5, 0.3), M["Accent"], sh)
+        ar = pt(K, "armscoil", f"M_Arm{side}")
+        cyl((0, 0, -0.42), 0.15, 0.84, M["Frame"], ar)
+        box((0, 0, -0.34), (0.42, 0.44, 0.5), M["Armor2"], ar, bevel=0.05)
+        cyl((0, 0, -0.82), 0.2, 0.44, M["Joint"], ar, rot=(0, math.pi / 2, 0))
+        fo = pt(K, "armscoil", f"M_Fore{side}")
+        ball((0, 0, 0), 0.2, M["Joint"], fo)
+        box((0, 0.2, -0.04), (0.42, 0.5, 0.42), M["Armor"], fo, bevel=0.05)
+        box((0, 0.7, -0.04), (0.12, 0.9, 0.16), M["Frame"], fo)
+        for i in range(5):
+            torus((0, 0.42 + i * 0.13, -0.04), 0.17, 0.045, M["Joint"], fo, rot=ALONG_Y)
+            torus((0, 0.42 + i * 0.13, -0.04), 0.13, 0.02, M["Coil"], fo, rot=ALONG_Y)
+        box((0, 0.2, 0.2), (0.22, 0.4, 0.06), M["Armor2"], fo)
+
+def legs_anchor():
+    # anchor legs: thick armoured legs, hydraulic rams down the shins, feet with three big forward claws and a heel spike
+    K = kit("P_legs_anchor")
+    for side, s in SIDES:
+        th = pt(K, "legsanchor", f"M_Thigh{side}")
+        ball((0, 0, 0), 0.3, M["Joint"], th)
+        cyl((0, 0, -0.55), 0.18, 1.0, M["Frame"], th)
+        wedge((0, 0.08, -0.48), (0.66, 0.62, 0.86), M["Armor"], th, rot=(math.pi, 0, 0), bevel=0.06, taper=0.8)
+        box((s * 0.34, 0.0, -0.46), (0.08, 0.5, 0.66), M["Armor2"], th, bevel=0.02)
+        sh = pt(K, "legsanchor", f"M_Shin{side}")
+        ball((0, 0, 0), 0.27, M["Joint"], sh)
+        box((0, 0.3, 0.04), (0.56, 0.22, 0.5), M["Armor2"], sh, bevel=0.04)
+        box((0, 0.08, -0.52), (0.6, 0.6, 0.9), M["Armor"], sh, bevel=0.06)
+        for k in (-1, 1):
+            cyl((k * 0.36, -0.1, -0.5), 0.07, 0.8, M["Piston"], sh)
+            cyl((k * 0.36, -0.1, -0.22), 0.1, 0.24, M["Frame"], sh)
+        box((0, 0.39, -0.5), (0.1, 0.03, 0.4), M["Hazard"], sh)
+        ft = pt(K, "legsanchor", f"M_Foot{side}")
+        ball((0, 0, 0), 0.24, M["Joint"], ft)
+        box((0, 0.0, -0.08), (0.7, 0.7, 0.3), M["Armor2"], ft, bevel=0.04)
+        box((0, 0.06, -0.26), (0.9, 0.9, 0.16), M["Frame"], ft, bevel=0.03)
+        for k, x in enumerate((-0.3, 0.0, 0.3)):
+            wedge((x, 0.66, -0.26), (0.2, 0.62, 0.22), M["Joint"] if k == 1 else M["Frame"], ft, rot=(R(-12), 0, 0), taper=0.25)
+            box((x, 0.38, -0.12), (0.16, 0.2, 0.12), M["Armor"], ft, bevel=0.02)
+        wedge((0, -0.6, -0.26), (0.18, 0.42, 0.2), M["Joint"], ft, rot=(R(12), 0, math.pi), taper=0.2)
+
+def pack_swarm():
+    # swarm pack: a missile box on the back, a 4x3 grid of tubes with dark mouths and glowing seeker tips, angled up
+    K = kit("P_pack_swarm"); g = pt(K, "packswarm", "M_Pack")
+    box((0, 0, 0.0), (0.96, 0.5, 1.0), M["Frame"], g, bevel=0.06)
+    grille((0, -0.26, -0.2), (0.46, 0.04, 0.4), g, n=4)
+    box((0, -0.12, 0.66), (1.06, 0.62, 0.44), M["Armor"], g, rot=(R(-20), 0, 0), bevel=0.04)
+    for i in range(4):
+        for j in range(3):
+            x = -0.36 + i * 0.24; y = -0.32 + j * 0.2
+            cyl((x, y, 0.88 + (j - 1) * 0.07), 0.075, 0.06, M["Black"], g, rot=(R(-20), 0, 0), verts=12)
+            cyl((x, y, 0.9 + (j - 1) * 0.07), 0.035, 0.02, M["Plasma"], g, rot=(R(-20), 0, 0), verts=8)
+    for sd in (-1, 1):
+        box((sd * 0.56, -0.12, 0.66), (0.06, 0.64, 0.48), M["Armor2"], g, rot=(R(-20), 0, 0), bevel=0.02)
+        box((sd * 0.6, -0.12, 0.66), (0.02, 0.4, 0.06), M["Hazard"], g, rot=(R(-20), 0, 0))
+        box((sd * 0.52, -0.06, -0.06), (0.12, 0.38, 0.8), M["Armor"], g, bevel=0.03)
+
+head_thermal(); core_reactive(); arms_coil(); legs_anchor(); pack_swarm()
 arms_stab(); arms_pod(); arms_fist()
 head_hawk(); head_mono(); head_crest()
 core_bulwark(); core_sleek()
@@ -866,6 +972,8 @@ if PREVIEW:
         ("aegis", dict(head="ew", core="nanite", arms="guard", legs="heavy", pack="aegis")),
         ("hunter", dict(head="hunter", core="reclaim", arms="rapid", legs="rev", pack="drone")),
         ("hopper", dict(head="crest", core="sleek", arms="stab", legs="spring", pack="jumpjet")),
+        ("berserk", dict(head="mono", core="reactive", arms="fist", legs="anchor", pack="sprint")),
+        ("command", dict(head="thermal", core="reactor", arms="coil", legs="heavy", pack="swarm")),
     ]
     def dup(o, parent, tag):
         c = o.copy()

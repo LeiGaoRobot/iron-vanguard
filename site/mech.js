@@ -32,6 +32,8 @@ export const FRAMES = {
   wraith: { name: '迅影', e: 'Wraith', hp: 760, speed: 1.24, en: 130, boost: 1.18, regen: 1.25, armor: 1.15, scale: 0.9, cost: 4500, dodge: true, d: '急闪的 0.28 秒内完全无敌 · 最快 · 装甲最低', de: 'quick boost: 0.28 s invulnerable · fastest · lowest AP' },
   falcon: { name: '猎隼', e: 'Falcon', hp: 1100, speed: 1.0, en: 120, boost: 1.08, regen: 1.1, armor: 1.0, scale: 0.95, cost: 4800, aerial: 0.2, hv: 0.7, d: '离地时伤害 +20% · 悬停耗能 −30% · 装甲略低', de: 'damage +20% while airborne · hover drain −30% · slightly less AP' },
   rock: { name: '磐石', e: 'Bedrock', hp: 1550, speed: 0.84, en: 95, boost: 0.88, regen: 0.95, armor: 0.92, scale: 1.1, cost: 4800, stance: true, d: '落地站定 0.6 秒进入架设:伤害 +20%、受伤 −30% · 慢', de: 'stand still on the ground for 0.6 s to brace: damage +20%, damage taken −30% · slow' },
+  rage: { name: '狂战', e: 'Berserker', hp: 1300, speed: 1.06, en: 105, boost: 1.04, regen: 1.0, armor: 1.0, scale: 1.02, cost: 4600, rage: 0.45, d: '装甲低于 70% 后伤害逐渐提高,20% 以下 +45%', de: 'below 70% AP your damage climbs, up to +45% under 20% AP' },
+  cmd: { name: '指挥', e: 'Commander', hp: 1200, speed: 0.96, en: 110, boost: 0.96, regen: 1.05, armor: 1.0, scale: 1.04, cost: 4800, cmd: true, d: '自带一架护卫无人机 · 友军(无人机 / 僚机 / 炮塔 / 诱饵)伤害 +30%、受伤 −30% · 肩武器冷却 −10%', de: 'brings an escort drone · allies (drones / wingman / turrets / decoys) deal +30% and take −30% · shoulder cooldown −10%' },
   titan: { name: '泰坦', e: 'Titan', hp: 2100, speed: 0.74, en: 85, boost: 0.8, regen: 0.85, armor: 0.84, scale: 1.15, cost: 5000, bulk: 40, d: '单次伤害超过 40 的部分减半 · 装甲最高 · 最慢', de: 'single hits above 40: the excess is halved · most AP · slowest' },
 };
 
@@ -50,6 +52,7 @@ export const PARTS = {
     crest: { name: '角冠', e: 'Crest', cost: 1500, regen: 1.12, d: '能量回复 +12%', de: 'EN regen +12%' },
     radar: { name: '雷达头', e: 'Radar', cost: 2000, radar: 1.6, lock: 1.1, d: '雷达范围 +60% · 锁定范围 +10%', de: 'radar range +60% · lock-on +10%' },
     hunter: { name: '猎手', e: 'Hunter', cost: 2400, hunt: 1.2, hp: 0.97, d: '对装甲低于 30% 的敌人伤害 +20% · 装甲 −3%', de: 'damage +20% to enemies below 30% AP · AP −3%' },
+    thermal: { name: '热成像', e: 'Thermal', cost: 2200, thermal: 45, lock: 1.1, d: '45 m 内看穿隐身 / 伪装 / 幽影(可锁定、雷达可见,雾中同样)· 锁定范围 +10%', de: 'within 45 m cloaked / disguised / veiled enemies show (lockable, on radar, in fog too) · lock-on +10%' },
     ew: { name: '电战头', e: 'EW suite', cost: 2600, ew: true, lock: 1.1, hp: 0.96, d: '免疫电子干扰 · 致盲 / 扰频时长 −60% · 锁定范围 +10% · 装甲 −4%', de: 'immune to jamming · blind / scramble −60% · lock-on +10% · AP −4%' },
   },
   core: {
@@ -58,6 +61,7 @@ export const PARTS = {
     sleek: { name: '流线胸', e: 'Sleek', cost: 2000, speed: 1.05, hp: 0.95, d: '速度 +5% · 装甲 −5%', de: 'speed +5% · AP −5%' },
     reactor: { name: '反应堆胸', e: 'Reactor', cost: 2400, od: 1.35, regen: 1.06, hp: 0.97, d: '超载充能 +35% · 能量回复 +6% · 装甲 −3%', de: 'overdrive charge +35% · EN regen +6% · AP −3%' },
     reclaim: { name: '回收核心', e: 'Reclaim', cost: 2600, reclaim: 0.015, hp: 0.97, d: '你击毁的敌人修复 1.5% 装甲(大型目标 6%)· 装甲 −3%', de: 'your kills repair 1.5% AP (6% for big targets) · AP −3%' },
+    reactive: { name: '反应装甲', e: 'Reactive', cost: 2600, reactive: true, hp: 0.98, d: '单次 ≥25 的伤害 −25% 并炸出 8 m 冲击波(70 伤害、击退),冷却 3 秒 · 装甲 −2%', de: 'a hit of 25+ is cut 25% and blows an 8 m shockwave (70 dmg, knockback), 3 s cooldown · AP −2%' },
     nanite: { name: '纳米核心', e: 'Nanite', cost: 2800, nanite: 0.25, hp: 0.96, d: '受到伤害的 25% 随后由纳米修复回来 · 装甲 −4%', de: '25% of damage taken is repaired back over the next seconds · AP −4%' },
   },
   arms: {
@@ -67,6 +71,7 @@ export const PARTS = {
     stab: { name: '稳定臂', e: 'Stabilizer', cost: 2200, spread: 0.55, pspd: 1.15, d: '臂武器散布 −45% · 弹速 +15%', de: 'arm weapon spread −45% · projectile speed +15%' },
     pod: { name: '挂舱臂', e: 'Pod', cost: 2400, scd: 0.85, hp: 0.97, d: '肩武器冷却 −15% · 装甲 −3%', de: 'shoulder cooldown −15% · AP −3%' },
     rapid: { name: '速射臂', e: 'Rapid', cost: 2400, rate: 0.87, spread: 1.25, hp: 0.97, d: '臂武器射速 +15% · 散布 +25% · 装甲 −3%', de: 'arm weapon fire rate +15% · spread +25% · AP −3%' },
+    coil: { name: '磁轨臂', e: 'Coil', cost: 2600, adm: 1.12, pspd: 1.35, rate: 1.12, d: '臂武器伤害 +12% · 弹速 +35% · 射速 −11%', de: 'arm weapon damage +12% · projectile speed +35% · fire rate −11%' },
     fist: { name: '格斗臂', e: 'Brawler', cost: 2400, melee: 1.3, armor: 0.97, reload: 1.08, d: '近战伤害 +30% · 受伤 −3% · 臂武器装填 +8%', de: 'melee damage +30% · dmg taken −3% · arm reload +8%' },
   },
   legs: {
@@ -77,6 +82,7 @@ export const PARTS = {
     hover: { name: '悬浮裙', e: 'Hover skirt', cost: 2800, speed: 1.12, hover: 0.85, float: true, hp: 0.88, d: '速度 +12% · 悬停耗能 −15% · 涉水不减速 · 装甲 −12%', de: 'speed +12% · hover drain −15% · no wading slowdown · AP −12%' },
     quad: { name: '四足', e: 'Quad', cost: 3200, hp: 1.12, armor: 0.94, reload: 0.92, grip: true, speed: 0.9, d: '装甲 +12% · 受伤 −6% · 臂武器装填 −8% · 冰面不打滑 · 速度 −10%', de: 'AP +12% · dmg −6% · arm reload −8% · no ice slide · speed −10%' },
     spring: { name: '弹跳腿', e: 'Spring', cost: 2800, djump: true, jump: 1.05, hp: 0.95, d: '空中可再跳一次(不耗能)· 跳跃高度 +10% · 装甲 −5%', de: 'a second jump in mid-air (no EN) · jump height +10% · AP −5%' },
+    anchor: { name: '锚爪腿', e: 'Anchor', cost: 2600, anchor: 0.3, hp: 1.06, speed: 0.92, jump: 0.9, d: '受到的击退 / 击飞 −70% · 装甲 +6% · 速度 −8% · 跳跃高度 −19%', de: 'knockback and launches −70% · AP +6% · speed −8% · jump height −19%' },
     wheel: { name: '轮足', e: 'Wheels', cost: 3000, speed: 1.2, boost: 1.06, jump: 0.85, hp: 0.92, d: '速度 +20% · 推进 +6% · 跳跃高度 −28% · 装甲 −8%', de: 'speed +20% · boost +6% · jump height −28% · AP −8%' },
   },
   pack: {
@@ -86,6 +92,7 @@ export const PARTS = {
     glide: { name: '滑翔翼', e: 'Glide', cost: 2200, hover: 0.7, d: '悬停耗能 −30%', de: 'hover drain −30%' },
     jumpjet: { name: '跳跃背包', e: 'Jump jet', cost: 2400, jump: 1.25, lift: 1.3, boost: 0.95, d: '跳跃高度 +56% · 悬停爬升 +30% · 推进 −5%', de: 'jump height +56% · hover climb +30% · boost −5%' },
     drone: { name: '僚机背包', e: 'Escort drone', cost: 3000, drone: true, en: 0.92, d: '全程带一架护卫无人机自动射击(约 18 伤害/秒)· 能量 −8%', de: 'an escort drone fights beside you all sortie (~18 dps) · EN −8%' },
+    swarm: { name: '蜂群背包', e: 'Swarm', cost: 3000, swarm: true, en: 0.94, d: '每 8 秒自动向 70 m 内最多 4 个敌人各发一枚微型导弹(24 伤害)· 能量 −6%', de: 'every 8 s fires a micro-missile (24 dmg) at each of up to 4 enemies within 70 m · EN −6%' },
     aegis: { name: '神盾背包', e: 'Aegis', cost: 3200, aegis: 220, en: 0.9, d: '220 点护盾先于装甲受伤 · 6 秒未受伤后每秒回 30 · 能量 −10%', de: '220-point shield takes hits before armour · regenerates 30/s after 6 s unhurt · EN −10%' },
   },
 };
@@ -104,6 +111,8 @@ export const BUILDS = {
   aegis: { name: '神盾型', en: 'Aegis', parts: { head: 'ew', core: 'nanite', arms: 'guard', legs: 'heavy', pack: 'aegis' } },
   hunter: { name: '猎杀型', en: 'Hunter', parts: { head: 'hunter', core: 'reclaim', arms: 'rapid', legs: 'rev', pack: 'drone' } },
   hopper: { name: '跳蚤型', en: 'Hopper', parts: { head: 'crest', core: 'sleek', arms: 'stab', legs: 'spring', pack: 'jumpjet' } },
+  berserk: { name: '狂战型', en: 'Berserker', parts: { head: 'mono', core: 'reactive', arms: 'fist', legs: 'anchor', pack: 'sprint' } },
+  command: { name: '指挥型', en: 'Command', parts: { head: 'thermal', core: 'reactor', arms: 'coil', legs: 'heavy', pack: 'swarm' } },
 };
 // camouflage over the primary armour (kit.js CAMO_FRAG); the tones come from the palette, so each paint gets its own
 export const PATTERNS = {
@@ -114,8 +123,8 @@ export const PATTERNS = {
   hex: { name: '蜂巢', e: 'Hex', id: 4, cost: 1000 },
 };
 export function partStats(parts) {
-  const r = { hp: 1, speed: 1, en: 1, boost: 1, regen: 1, armor: 1, lock: 1, reload: 1, jump: 1, qb: 1, hover: 1, radar: 1, od: 1, lift: 1, spread: 1, pspd: 1, scd: 1, melee: 1, grip: false, float: false, ew: false, nanite: 0, aegis: 0, hunt: 1, reclaim: 0, rate: 1, djump: false, drone: false };
-  const ADD = { nanite: 1, aegis: 1, reclaim: 1 };   // additive: nanite (share of damage repaired back), aegis (shield points)
+  const r = { hp: 1, speed: 1, en: 1, boost: 1, regen: 1, armor: 1, lock: 1, reload: 1, jump: 1, qb: 1, hover: 1, radar: 1, od: 1, lift: 1, spread: 1, pspd: 1, scd: 1, melee: 1, grip: false, float: false, ew: false, nanite: 0, aegis: 0, hunt: 1, reclaim: 0, rate: 1, djump: false, drone: false, thermal: 0, reactive: false, adm: 1, anchor: 1, swarm: false };
+  const ADD = { nanite: 1, aegis: 1, reclaim: 1, thermal: 1 };   // additive: nanite (share of damage repaired back), aegis (shield points)
   for (const slot of PART_SLOTS) {
     const p = PARTS[slot][(parts || {})[slot]]; if (!p) continue;
     for (const k in r) if (p[k] !== undefined) r[k] = typeof r[k] === 'boolean' ? r[k] || p[k] : ADD[k] ? r[k] + p[k] : r[k] * p[k];
@@ -198,6 +207,7 @@ export class Mech {
     F0.spread = PS.spread; F0.pspd = PS.pspd; F0.scd = PS.scd; F0.melee = PS.melee;
     F0.ew = PS.ew; F0.nanite = PS.nanite; F0.aegis = PS.aegis; this.aegis = PS.aegis;
     F0.hunt = PS.hunt; F0.reclaim = PS.reclaim; F0.rate = PS.rate; F0.djump = PS.djump; F0.drone = PS.drone;
+    F0.thermal = PS.thermal; F0.reactive = PS.reactive; F0.adm = PS.adm; F0.anchor = PS.anchor; F0.swarm = PS.swarm;
     this.stanceT = 0; this.stanceK = 0; this.stance = false; this.djUsed = false;
     this.legKind = KIT['P_legs_' + this.parts.legs] ? this.parts.legs : 'std';
     this.scale = (opts.scale || 1) * this.frame.scale;
@@ -275,6 +285,10 @@ export class Mech {
   update(dt, I) {
     if (!this.alive) return;
     const F = this.frame;
+    if (F.anchor < 1 && this._vE && !(this.lungeT > 0) && !(this.ctx.anchorFree && this.ctx.anchorFree(this))) {   // anchor legs
+      const ax = this.vel.x - this._vE.x, ay = this.vel.y - this._vE.y, az = this.vel.z - this._vE.z, m2 = ax * ax + ay * ay + az * az;
+      if (m2 > 9) { const k = F.anchor; this.vel.set(this._vE.x + ax * k, this._vE.y + ay * k, this._vE.z + az * k); this.ctx.onAnchor && this.ctx.onAnchor(this, Math.sqrt(m2) * (1 - k)); }
+    }
     this.aimYaw = I.aimYaw; this.aimPitch = I.aimPitch;
     const mlen = Math.min(1, Math.hypot(I.mx, I.mz));
     const dx = mlen > 0.01 ? I.mx / Math.hypot(I.mx, I.mz) : 0, dz = mlen > 0.01 ? I.mz / Math.hypot(I.mx, I.mz) : 0;
@@ -375,6 +389,7 @@ export class Mech {
     this.flinch = Math.max(0, this.flinch - dt * 4);
     this.landC = Math.max(0, this.landC - dt * 2.4);
     this.animate(dt, hs);
+    if (F.anchor < 1) (this._vE || (this._vE = new THREE.Vector3())).copy(this.vel);
   }
 
   // ------------------------------------------------------------------ animation

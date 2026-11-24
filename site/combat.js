@@ -170,7 +170,13 @@ function dealDamage(ent, dmg, team, at, label) {
     if (pf.aerial && !pl.grounded) { fb.air += dmg * pf.aerial; dmg *= 1 + pf.aerial; }
     if (pl.stance) { fb.brace += dmg * (MECHX.braceDmg - 1); dmg *= MECHX.braceDmg; }
     if (pf.hunt > 1 && h.maxHp && h.hp < h.maxHp * MECHX.huntBelow) { fb.hunt += dmg * (pf.hunt - 1); dmg *= pf.hunt; }
-    if ((label || G.curLabel) === 'drone-pack') fb.drone = (fb.drone || 0) + dmg;
+    { const lbx = label || G.curLabel; if (lbx === 'drone-pack') fb.drone = (fb.drone || 0) + dmg; else if (lbx === 'p-swarm') fb.swarm = (fb.swarm || 0) + dmg; else if (lbx === 'p-react') fb.react = (fb.react || 0) + dmg; }
+    if (pf.rage) { const f = Math.max(0, Math.min(1, (MECHX.rageFrom - pl.hp / pl.maxHp) / (MECHX.rageFrom - MECHX.rageFull))); if (f > 0) { fb.rage = (fb.rage || 0) + dmg * pf.rage * f; dmg *= 1 + pf.rage * f; } }   // berserker frame
+  }
+  if (G.player && G.player.frame.cmd) {   // commander frame: allies hit harder and take less
+    const lb = label || G.curLabel || '';
+    if (team === 'P' && !ent.isBarrel && (isAlly(lb) || lb === 'drone-pack')) { const fb = G.stats.fb || (G.stats.fb = { air: 0, brace: 0, hunt: 0 }); fb.cmd = (fb.cmd || 0) + dmg * (MECHX.cmdDmg - 1); dmg *= MECHX.cmdDmg; }
+    else if (team !== 'P' && ent.isAlly && !ent.isPlayer && !(ent.maxHp > 3000)) { G.stats.cmdSaved = (G.stats.cmdSaved || 0) + dmg * (1 - MECHX.cmdCut); dmg *= MECHX.cmdCut; }
   }
   if (G.tl && team === 'P' && (label || G.curLabel || '').startsWith('ally-ghost')) G.tl.gdmg += dmg;
   ent.hit(dmg, at, label || G.curLabel);
@@ -181,7 +187,9 @@ function dealDamage(ent, dmg, team, at, label) {
 
 const BURN_WEAK = 0.75, STUN_VULN = 1.3, _dodgeP = new THREE.Vector3();
 // v66.1 frames and parts: bedrock brace, hunter head threshold, escort drone
-export const MECHX = { braceCut: 0.7, braceDmg: 1.2, huntBelow: 0.3, drone: { dmg: 5, rate: 0.28, range: 60 } };
+export const MECHX = { braceCut: 0.7, braceDmg: 1.2, huntBelow: 0.3, drone: { dmg: 5, rate: 0.28, range: 60 },
+  rageFrom: 0.7, rageFull: 0.2, cmdDmg: 1.3, cmdCut: 0.7,   // v66.2 berserker / commander frames
+  react: { min: 25, cut: 0.25, cd: 3, R: 8, dmg: 70, push: 14 }, thermal: 45, swarm: { cd: 8, n: 4, R: 70, dmg: 24 } };
 const isAlly = (l) => !!l && l.startsWith('ally');
 export function hurtPlayer(dmg, label) { G.curSrc = null; damagePlayer(dmg, null, label); }
 function damagePlayer(dmg, src, label) {
@@ -207,6 +215,9 @@ function damagePlayer(dmg, src, label) {
   if (G.curShooter && G.curShooter.burnT > 0) dmg *= BURN_WEAK;   // direct hits (melee, beams) from a burning enemy
   let d = dmg * G.diff.dmg * p.frame.armor * (1 - blk) * (G.od && G.od.t > 0 ? OD.armor : 1);
   if (p.stance) { G.stats.braced = (G.stats.braced || 0) + d * (1 - MECHX.braceCut); d *= MECHX.braceCut; }   // bedrock frame: braced
+  if (p.frame.reactive && d >= MECHX.react.min && !(G.time - (G.reactT ?? -99) < MECHX.react.cd)) {   // reactive armour: the brick goes off
+    G.reactT = G.time; G.stats.react = (G.stats.react || 0) + 1; G.stats.reactCut = (G.stats.reactCut || 0) + d * MECHX.react.cut; d *= 1 - MECHX.react.cut; reactBurst(p);
+  }
   const bk = p.frame.bulk; if (bk && d > bk) { G.stats.bulked = (G.stats.bulked || 0) + (d - bk) * 0.5; d = bk + (d - bk) * 0.5; }   // titan frame: big hits are softened
   if (p.aegis > 0) {   // aegis pack: the shield soaks first
     const a = Math.min(p.aegis, d); p.aegis -= a; d -= a; G.stats.aegis = (G.stats.aegis || 0) + a; G.hurtAt = G.time; G.aegisHitT = G.time;
@@ -1547,13 +1558,44 @@ function spawnMini(owner, slot, k, d, dmgMul, team) {
   G.minis.push({ obj, n: nodes(obj), owner, t: d.dur, side: k ? -1 : 1, fireT: 0.4 + k * 0.08, team, dmg: d.dmg * dmgMul, rate: d.rate, range: d.range, tgt: null, tgtT: 0, ph: Math.random() * 6, label: owner === G.player ? 'drone-pod' : 'ally-drone' });
   G.fx.ring(obj.position, null, 0.2, 1.6, 0.25, 0x9fe8ff);
 }
-export function spawnPackDrone(owner) {   // escort drone pack: one drone for the whole sortie
+function reactBurst(p) {   // reactive armour shockwave: hurts and shoves nearby enemies, never the player
+  const R = MECHX.react, c = p.center(new V3()), lb = G.curLabel, sh = G.curShooter; G.curLabel = 'p-react'; G.curShooter = null;
+  try { explodeAt(c, R.R, R.dmg, 'P', 1.1, 0xffb060); } finally { G.curLabel = lb; G.curShooter = sh; }
+  G.fx.ring(c, null, 0.6, R.R, 0.35, 0xffc070);
+  for (const e of G.enemies) {
+    if (!e.alive || e.dying || !e.pos || !e.c || e.isObjective || e.kind === 'cpart' || e.kind === 'boss' || e.kind === 'raider' || e.maxHp > 3000) continue;
+    const dx = e.c.x - c.x, dz = e.c.z - c.z, L = Math.hypot(dx, dz); if (L > R.R + (e.r || 1) || L < 0.01) continue;
+    const k = (1 - L / (R.R + (e.r || 1))) * R.push; e.pos.x += dx / L * k * 0.12; e.pos.z += dz / L * k * 0.12; if (e.vel) { e.vel.x += dx / L * k; e.vel.z += dz / L * k; }
+  }
+}
+export function spawnPackDrone(owner, off = 0) {   // escort drone pack / commander frame: drones for the whole sortie
   const obj = cloneKit('D_Mini'), D = MECHX.drone;
   if (owner.paletteKey) recolor(obj, PALETTES[owner.paletteKey], owner.paletteKey);
   obj.position.set(owner.pos.x, owner.pos.y + 4.2 * owner.scale, owner.pos.z);
   G.scene.add(obj);
-  G.minis.push({ obj, n: nodes(obj), owner, t: Infinity, side: 1, pack: true, fireT: 0.6, team: 'P', dmg: D.dmg, rate: D.rate, range: D.range, tgt: null, tgtT: 0, ph: Math.random() * 6, label: 'drone-pack' });
+  G.minis.push({ obj, n: nodes(obj), owner, t: Infinity, side: 1, pack: true, fireT: 0.6, team: 'P', dmg: D.dmg, rate: D.rate, range: D.range, tgt: null, tgtT: 0, ph: Math.random() * 6, off, label: 'drone-pack' });
   G.fx.ring(obj.position, null, 0.2, 1.6, 0.25, 0x9fe8ff);
+}
+export function thermalScan(p) {   // thermal head: flag enemies within range so the cloak / veil / disguise checks let them show
+  const R = p && p.alive ? p.frame.thermal || 0 : 0; let n = 0;
+  for (const e of G.enemies) { const c = e.c || e.pos; const on = R > 0 && !!c && !e.dying && c.distanceTo(p.pos) < R; if (on && e.cloaked === true && !e.therm) n++; e.therm = on; }
+  if (n) G.stats.thermal = (G.stats.thermal || 0) + n;
+}
+export function swarmSalvo(p, mul) {   // swarm pack: one micro-missile at each of the nearest visible enemies
+  const S = MECHX.swarm, from = p.center(new V3()); from.y += 1.6 * p.scale;
+  const list = [];
+  for (const e of entsFor('P')) { if (e.isBarrel || e.isMine || e.cloaked || e.holo || e.hacked || !e.c) continue; const d = e.c.distanceTo(from); if (d < S.R && clearLine(from, e.c)) list.push([d, e]); }
+  if (!list.length) return 0;
+  list.sort((a, b) => a[0] - b[0]);
+  const fwd = new V3(-Math.sin(p.aimYaw), 0, -Math.cos(p.aimYaw));
+  for (let i = 0; i < S.n; i++) { const e = list[i % list.length][1];
+    G.queue.push({ label: 'p-swarm', t: i * 0.09, fn: () => { if (!p.alive) return;
+      const mp = p.center(new V3()); mp.y += 1.8 * p.scale; mp.addScaledVector(fwd, -1.2 * p.scale); mp.x += (Math.random() - 0.5) * 0.8; mp.z += (Math.random() - 0.5) * 0.8;
+      const v = fwd.clone().multiplyScalar(8).add(new V3((Math.random() - 0.5) * 8, 20 + Math.random() * 5, (Math.random() - 0.5) * 8));
+      spawnShot({ p: mp, v, dmg: S.dmg * mul, team: 'P', kind: 'missile', splash: 2.5, target: e.alive ? e : null, aim: e.c.clone(), life: 4, maxSpeed: 80, turn: 4.5, label: 'p-swarm', size: 0.7 });
+      G.stats.shots++; G.fx.muzzle(mp, v.clone().normalize(), 0xffc070, 0.5); sfx('missile', 0);
+    } }); }
+  return Math.min(S.n, 4);
 }
 export function clearMinis() { for (const m of G.minis) m.obj.parent && m.obj.parent.remove(m.obj); G.minis.length = 0; }
 const _md = new V3();
@@ -1563,7 +1605,7 @@ function updateMinis(dt) {
     m.t -= dt;
     if (m.t <= 0 || !o.alive) { G.fx.sparks(P, null, 6, 0x9fe8ff, 8, 0.6, 0.25, 0.2); G.fx.ring(P, null, 0.2, 1.4, 0.2, 0x9fe8ff); m.obj.parent && m.obj.parent.remove(m.obj); G.minis.splice(i, 1); continue; }
     m.ph += dt;
-    const a = G.time * (m.pack ? -0.6 : 0.8) + (m.pack ? 0 : m.side > 0 ? 0 : Math.PI), mr = m.pack ? 3.8 : 4.6;
+    const a = G.time * (m.pack ? -0.6 : 0.8) + (m.pack ? m.off || 0 : m.side > 0 ? 0 : Math.PI), mr = m.pack ? 3.8 : 4.6;
     _md.set(o.pos.x + Math.cos(a) * mr, o.pos.y + (m.pack ? 6.2 : 5.2) + Math.sin(m.ph * 2.1) * 0.5, o.pos.z + Math.sin(a) * mr);
     P.lerp(_md, 1 - Math.exp(-3.5 * dt));
     for (let r = 1; r <= 4; r++) { const rr = m.n['D_Rotor' + r]; if (rr) rr.rotation.z += dt * 40; }
@@ -2749,7 +2791,7 @@ export class Stalker extends Enemy {
     // visibility: cloaked units shimmer a little so a sharp eye can spot them
     const tgtA = want < 0.1 ? 0.05 + (Math.sin(G.time * 7 + this.ph) > 0.92 ? 0.12 : 0) : want;
     this.alpha += (tgtA - this.alpha) * (1 - Math.exp(-6 * dt));
-    if (this.markT > 0) this.alpha = Math.max(this.alpha, 0.62);   // sonar-marked: the cloak fails
+    if (this.markT > 0 || this.therm) this.alpha = Math.max(this.alpha, 0.62);   // sonar-marked / thermal head: the cloak fails
     this.setAlpha(this.alpha); this.cloaked = this.alpha < 0.35;
     // pose
     const sp = Math.hypot(this.vel.x, this.vel.z);
@@ -8306,7 +8348,7 @@ function updateVeil(dt) {
   for (const e of G.enemies) {
     if (!SHADE.kinds.has(e.kind) || !e.obj) continue;
     let want = false;
-    if (shades.length && e.alive && !e.dying && !(e.markT > 0) && !((e.pingT || 0) > FOG.ping - SHADE.reveal) && !(P && P.alive && e.c.distanceTo(P.pos) < SHADE.near))
+    if (shades.length && e.alive && !e.dying && !(e.markT > 0) && !e.therm && !((e.pingT || 0) > FOG.ping - SHADE.reveal) && !(P && P.alive && e.c.distanceTo(P.pos) < SHADE.near))
       for (const s of shades) if (s.pos.distanceTo(e.c) < SHADE.R) { want = true; break; }
     if (want) {
       if (!e.veil) { e.veil = true; e.cloaked = true; e.veilPh = Math.random() * 6; veilMats(e, true); G.fx.sparks(e.c, null, 6, 0xb080ff, 8, 0.8, 0.3, 0.2); }
@@ -8832,7 +8874,7 @@ function updateFog(dt) {
 export function fogFar() { return G.fog ? FOG.far0 + FOG.perLamp * G.fog.lit : 0; }
 export function fogSeen(e) {   // may this enemy show on the radar (and be targeted by the autopilot)?
   if (!G.fog) return true;
-  if (e.kind === 'boss' || e.markT > 0 || e.pingT > 0) return true;
+  if (e.kind === 'boss' || e.markT > 0 || e.pingT > 0 || e.therm) return true;
   const c = e.c || e.pos, P = G.player; if (!c) return true;
   if (P && Math.hypot(c.x - P.pos.x, c.z - P.pos.z) < FOG.radar) return true;
   for (const L of G.fog.lamps) if (L.lit && Math.hypot(c.x - L.x, c.z - L.z) < FOG.lampSee) return true;
@@ -8871,7 +8913,7 @@ export class Lurker extends Enemy {
       this.sleepT += dt; this.eyeT -= dt;
       if (this.n.LK_Eye) this.n.LK_Eye.visible = this.eyeT < 0.22;
       if (this.eyeT <= 0) this.eyeT = LURK.eyeEvery[0] + Math.random() * (LURK.eyeEvery[1] - LURK.eyeEvery[0]);
-      this.cloaked = !(this.markT > 0);   // a sonar pulse shows it, but does not wake it
+      this.cloaked = !(this.markT > 0 || this.therm);   // a sonar pulse (or a thermal head) shows it, but does not wake it
       const last = !G.enemies.some((e) => e !== this && e.alive && !e.dying && !(e.kind === 'lurker' && e.st === 'sleep'));
       if (dist < LURK.wake || this.sleepT > LURK.sleepMax || last) this.wake(dist < LURK.wake ? 'near' : 'time');
     } else if (this.st === 'unfold' || this.st === 'fold') {
