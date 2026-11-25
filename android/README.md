@@ -37,6 +37,16 @@ python android/build_apk.py --code 2 --name 1.0.1
 
 这些改动只在 APK 里生效,不改 `site/`。
 
+## 商店素材(`store/`)
+
+- **截图**:`store/screenshots/` 里 8 张 1920×1080 横屏 JPG(标题 / 机库 / 暴雨 / 熔岩 / 巨龟 / 奇点 / 角斗场 / 雪原)。重拍:先 `python android/build_apk.py`(截图用的是 `build/assets/www` 里打包后的页面),再
+  ```
+  node android/store/capture.mjs            # 全部
+  node android/store/capture.mjs forge beh  # 只拍这几张(按名字)
+  ```
+  脚本起一个本地 http.server(8240)和无头 Chrome(CDP 9333),按 960×540、DPR 2、安卓 UA、触屏模拟打开页面,所以画质档位、触屏按钮和 APK 里一样。每张战斗图让自动驾驶先打 24–34 秒,然后逐帧推到"镜头前 60 m 内至少两台敌机、镜头没贴墙、没有横幅和提示"再截;游戏在截图间隙仍按真实时间运行,横幅可能刚好弹出,所以截完会检查,不干净就再推几帧重拍。存档里资金固定为 18450 C,并拥有全部部件 / 框架 / 迷彩,方便换展示用的机体。改 `SHOTS` 表可以换任务和配装
+- **隐私政策**:`docs/privacy.html`,中英双语,随 GitHub Pages 发布在 https://leigaorobot.github.io/iron-vanguard/privacy.html (推送后生效)。内容按现状写:不申请权限、没有网络权限、不收集任何信息,进度只存在本机 localStorage,卸载或清除数据即删除;网页版会请求 Google Fonts。以后加联网、广告或统计,要先改这一页
+
 ## 签名密钥 —— 一定要备份
 
 第一次构建时会在 `android/keystore/` 生成 `release.jks` 和 `keystore.properties`(密码在后者里),这个目录已加入 .gitignore。**TapTap 只接受用同一把密钥签名的更新**,丢了就只能换包名重新上架。请把整个 `keystore/` 目录备份到别的盘或密码管理器。
